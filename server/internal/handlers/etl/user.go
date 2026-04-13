@@ -92,7 +92,7 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to update user"
 // @Router /api/v1/users/{id} [put]
 func (h *Handler) UpdateUser(c *gin.Context) {
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -135,7 +135,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to delete user"
 // @Router /api/v1/users/{id} [delete]
 func (h *Handler) DeleteUser(c *gin.Context) {
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return

@@ -12,7 +12,7 @@ import (
 
 // User-related methods on AppService
 
-func (s *Service) CreateUser(_ context.Context, req *models.User) error {
+func (s Service) CreateUser(_ context.Context, req *models.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("%w: %v", constants.ErrPasswordProcessing, err)

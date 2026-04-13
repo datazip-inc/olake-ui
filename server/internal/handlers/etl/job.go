@@ -55,7 +55,7 @@ func (h *Handler) GetJob(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	jobID, err := utils.GetIDParam(c, "id")
+	jobID, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -136,7 +136,7 @@ func (h *Handler) UpdateJob(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	jobID, err := utils.GetIDParam(c, "id")
+	jobID, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -175,7 +175,7 @@ func (h *Handler) UpdateJob(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to delete job"
 // @Router /api/v1/project/{projectid}/jobs/{id} [delete]
 func (h *Handler) DeleteJob(c *gin.Context) {
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -246,7 +246,7 @@ func (h *Handler) SyncJob(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -283,7 +283,7 @@ func (h *Handler) ActivateJob(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -326,7 +326,7 @@ func (h *Handler) CancelJobRun(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -360,7 +360,7 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -396,7 +396,7 @@ func (h *Handler) GetStreamDifference(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -438,7 +438,7 @@ func (h *Handler) GetClearDestinationStatus(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	jobID, err := utils.GetIDParam(c, "id")
+	jobID, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -473,7 +473,7 @@ func (h *Handler) GetJobTasks(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -509,7 +509,7 @@ func (h *Handler) GetJobTasks(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to get task logs"
 // @Router /api/v1/project/{projectid}/jobs/{id}/tasks/{taskid}/logs [post]
 func (h *Handler) GetTaskLogs(c *gin.Context) {
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -560,7 +560,7 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /api/v1/project/{projectid}/jobs/{id}/logs/download [get]
 func (h *Handler) DownloadTaskLogs(c *gin.Context) {
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -581,12 +581,15 @@ func (h *Handler) DownloadTaskLogs(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	c.Header("Cache-Control", "no-cache")
 	c.Header("X-Content-Type-Options", "nosniff")
+	// Expose Content-Disposition header so browser JS can access filename for download
 	c.Header("Access-Control-Expose-Headers", "Content-Disposition")
-	c.Status(http.StatusOK)
+
 	if err := h.etl.StreamLogArchive(id, filePath, c.Writer); err != nil {
 		logger.Errorf("failed to stream log archive job_id[%d]: %s", id, err)
 		return
 	}
+
+	logger.Infof("successfully streamed log archive job_id[%d] filename[%s]", id, filename)
 }
 
 // @Summary (Internal) Update sync telemetry
@@ -633,7 +636,7 @@ func (h *Handler) RecoverClearDestination(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	jobID, err := utils.GetIDParam(c, "id")
+	jobID, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -663,7 +666,7 @@ func (h *Handler) RecoverClearDestination(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /internal/project/{projectid}/jobs/{id}/statefile [put]
 func (h *Handler) UpdateStateFile(c *gin.Context) {
-	jobID, err := utils.GetIDParam(c, "id")
+	jobID, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return

@@ -68,28 +68,6 @@ func (db *Database) CreateJob(job *models.Job) error {
 	return db.conn.Create(job).Error
 }
 
-// GetAll retrieves all jobs
-func (db *Database) ListJobs() ([]*models.Job, error) {
-	var jobs []*models.Job
-	err := db.conn.
-		Preload("Source").
-		Preload("Destination").
-		Preload("CreatedBy").
-		Preload("UpdatedBy").
-		Order("updated_at DESC").
-		Find(&jobs).Error
-	if err != nil {
-		return nil, fmt.Errorf("failed to list jobs: %s", err)
-	}
-
-	// Decrypt related Source and Destination configs
-	if err := db.decryptJobSliceConfig(jobs); err != nil {
-		return nil, err
-	}
-
-	return jobs, nil
-}
-
 // GetAllJobsByProjectID retrieves all jobs belonging to a specific project,
 // including related Source and Destination, sorted by latest update time.
 // Only fetches columns needed for JobResponse

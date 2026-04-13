@@ -54,7 +54,7 @@ func (h *Handler) GetSource(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	sourceID, err := utils.GetIDParam(c, "id")
+	sourceID, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -135,7 +135,7 @@ func (h *Handler) UpdateSource(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -173,7 +173,7 @@ func (h *Handler) UpdateSource(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to delete source"
 // @Router /api/v1/project/{projectid}/sources/{id} [delete]
 func (h *Handler) DeleteSource(c *gin.Context) {
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return

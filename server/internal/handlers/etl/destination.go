@@ -54,7 +54,7 @@ func (h *Handler) GetDestination(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	destinationID, err := utils.GetIDParam(c, "id")
+	destinationID, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -136,7 +136,7 @@ func (h *Handler) UpdateDestination(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
@@ -182,7 +182,7 @@ func (h *Handler) UpdateDestination(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to delete destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [delete]
 func (h *Handler) DeleteDestination(c *gin.Context) {
-	id, err := utils.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return

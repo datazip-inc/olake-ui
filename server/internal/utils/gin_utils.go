@@ -34,10 +34,10 @@ func GetProjectID(c *gin.Context) (string, error) {
 	return projectID, nil
 }
 
-func GetIDParam(c *gin.Context, key string) (int, error) {
-	id, err := strconv.Atoi(c.Param(key))
+func GetIDParam(c *gin.Context) (int, error) {
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return 0, fmt.Errorf("invalid %s: %w", key, err)
+		return 0, fmt.Errorf("invalid id: %s", err)
 	}
 	return id, nil
 }
