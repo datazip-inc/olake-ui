@@ -1,6 +1,9 @@
 import semver from "semver"
 
-import { MIN_COLUMN_SELECTION_SOURCE_VERSION } from "@/modules/ingestion/common/constants"
+import {
+	MIN_COLUMN_SELECTION_SOURCE_VERSION,
+	MIN_JSON_FILTER_VERSION,
+} from "@/modules/ingestion/common/constants"
 import {
 	SelectedStreamsByNamespace,
 	StreamsDataStructure,
@@ -13,12 +16,16 @@ import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
 
 import {
 	DESTINATION_SUPPORTED_INGESTION_MODES,
-	FILTER_REGEX,
 	SOURCE_SUPPORTED_INGESTION_MODES,
 	STREAM_DEFAULTS,
 } from "../constants"
 import { IngestionMode } from "../enums"
 import { CursorFieldValues } from "../types"
+import {
+	castFilterConditionValue,
+	validateFilter,
+	validateFilterConfig,
+} from "./filterUtils"
 
 /**
  * Processes the raw SourceStreamsResponse into the
@@ -120,30 +127,91 @@ export function isColumnEnabled(
 	return selectedStream.selected_columns!.columns.includes(columnName)
 }
 
-// Returns a copy of the selected streams map with all disabled streams removed
-export const getSelectedStreams = (selectedStreams: {
-	[key: string]: SelectedStream[]
-}): { [key: string]: SelectedStream[] } => {
+// Filters out disabled streams
+const getSelectedStreams = (
+	selectedStreams: SelectedStreamsByNamespace,
+): SelectedStreamsByNamespace => {
+	const result: SelectedStreamsByNamespace = {}
+
+	Object.keys(selectedStreams).forEach(key => {
+		result[key] = selectedStreams[key].filter(stream => !stream.disabled)
+	})
+
+	return result
+}
+
+// Formats the selected streams configuration for the API payload
+export const formatSelectedStreamsPayload = (
+	streamsConfig: StreamsDataStructure,
+): SelectedStreamsByNamespace => {
+	const filteredStreams = getSelectedStreams(streamsConfig.selected_streams)
+
+	const typeSchemaByName = new Map(
+		streamsConfig.streams?.map(s => [
+			`${s.stream.namespace}.${s.stream.name}`,
+			s.stream.type_schema?.properties,
+		]) ?? [],
+	)
+
 	return Object.fromEntries(
-		Object.entries(selectedStreams).map(([key, streams]) => [
-			key,
-			streams.filter(stream => !stream.disabled),
+		Object.entries(filteredStreams).map(([namespace, namespaceStreams]) => [
+			namespace,
+			namespaceStreams.map(stream => {
+				const typeSchemaProps = typeSchemaByName.get(
+					`${namespace}.${stream.stream_name}`,
+				)
+				if (!stream.filter_config || !typeSchemaProps) return stream
+
+				return {
+					...stream,
+					// Cast each condition's value to its schema-defined native type
+					filter_config: {
+						...stream.filter_config,
+						conditions: stream.filter_config.conditions.map(cond =>
+							castFilterConditionValue(cond, typeSchemaProps[cond.column]),
+						),
+					},
+				}
+			}),
 		]),
 	)
 }
 
-// validates filter expression
-export const validateFilter = (filter: string): boolean => {
-	if (!filter.trim()) return false
-	return FILTER_REGEX.test(filter.trim())
-}
-
-export const validateStreams = (selections: {
-	[key: string]: SelectedStream[]
-}): boolean => {
-	return !Object.values(selections).some(streams =>
-		streams.some(sel => sel.filter && !validateFilter(sel.filter)),
+// Returns null if all selected stream configurations are valid, or a descriptive error string otherwise.
+export const validateStreams = (
+	streamsConfig: StreamsDataStructure,
+): string | null => {
+	// Map typeSchemaProperties by stream name for quick lookup
+	const typeSchemaByName = new Map(
+		streamsConfig.streams?.map(s => [
+			`${s.stream.namespace}.${s.stream.name}`,
+			s.stream.type_schema?.properties,
+		]) ?? [],
 	)
+
+	const selectedStreams = getSelectedStreams(streamsConfig.selected_streams)
+
+	for (const [namespace, nsStreams] of Object.entries(selectedStreams)) {
+		for (const sel of nsStreams) {
+			if (sel.filter && !validateFilter(sel.filter)) {
+				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Invalid filter expression`
+			}
+			if (sel.filter_config) {
+				const typeSchemaProps = typeSchemaByName.get(
+					`${namespace}.${sel.stream_name}`,
+				)
+				const error = validateFilterConfig(
+					sel.filter_config,
+					sel.stream_name,
+					namespace,
+					typeSchemaProps,
+				)
+				if (error) return error
+			}
+		}
+	}
+
+	return null
 }
 
 export const getIngestionMode = (
@@ -222,6 +290,21 @@ export const getCursorFieldValues = (
 		primary,
 		fallback: fallback || "",
 	}
+}
+
+// Returns true if filter_config (JSON) should be used instead of the legacy filter string.
+// Requires source >= v0.6.0 AND no selected stream already carries a non-empty legacy filter.
+export function shouldUseFilterConfig(
+	selectedStreams: SelectedStreamsByNamespace,
+	sourceVersion: string,
+): boolean {
+	if (!sourceVersion || !semver.valid(sourceVersion)) return false
+	if (!semver.gte(sourceVersion, MIN_JSON_FILTER_VERSION)) return false
+
+	// If ANY stream already carries a legacy filter string, keep legacy path.
+	return !Object.values(selectedStreams).some(streams =>
+		streams.some(s => typeof s.filter === "string" && s.filter.trim() !== ""),
+	)
 }
 
 // Returns true when grouped stream namespaces or namespace stream counts change.

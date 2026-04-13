@@ -5,11 +5,25 @@ export interface StreamIdentifier {
 	namespace: string
 }
 
+export type FilterOperator = "=" | "!=" | ">" | "<" | ">=" | "<="
+export type LogicalOperator = "and" | "or"
+
 export enum SyncMode {
 	FULL_REFRESH = "full_refresh",
 	CDC = "cdc",
 	INCREMENTAL = "incremental",
 	STRICT_CDC = "strict_cdc",
+}
+
+export interface FilterConfigCondition {
+	column: string
+	operator: FilterOperator
+	value: any
+}
+
+export type MultiFilterCondition = {
+	conditions: FilterConfigCondition[]
+	logicalOperator: LogicalOperator
 }
 
 export type StreamData = {
@@ -32,7 +46,7 @@ export type StreamData = {
 				{
 					destination_column_name?: string
 					olake_column?: boolean
-					type: string | string[]
+					type: string[]
 					format?: string
 					properties?: Record<string, any>
 				}
@@ -69,6 +83,12 @@ export interface SelectedStream {
 	disabled?: boolean
 	append_mode?: boolean
 	selected_columns?: SelectedColumns
+	filter_config?: FilterConfig
+}
+
+export interface FilterConfig {
+	logical_operator: LogicalOperator
+	conditions: FilterConfigCondition[]
 }
 
 export interface SelectedStreamsByNamespace {

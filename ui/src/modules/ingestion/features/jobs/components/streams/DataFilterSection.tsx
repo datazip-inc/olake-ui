@@ -9,30 +9,34 @@ import { Button, Divider, Input, message, Select, Switch, Tooltip } from "antd"
 import clsx from "clsx"
 import { useEffect, useRef, useState } from "react"
 
-import { StreamData } from "@/modules/ingestion/common/types"
-
-import { CARD_STYLE, operatorOptions } from "../../constants"
-import { useStreamSelectionStore } from "../../stores"
 import {
-	selectActiveStreamData,
-	selectActiveSelectedStream,
-	selectIsStreamEnabled,
-	selectStreamFilterState,
-	noopNullSelector,
-	noopFalseSelector,
-} from "../../stores"
-import {
-	FilterCondition,
+	FilterConfig,
+	FilterConfigCondition,
 	FilterOperator,
 	LogicalOperator,
 	MultiFilterCondition,
-} from "../../types"
+	StreamData,
+} from "@/modules/ingestion/common/types"
+
+import { CARD_STYLE, operatorOptions } from "../../constants"
+import {
+	noopFalseSelector,
+	noopNullSelector,
+	selectActiveSelectedStream,
+	selectActiveStreamData,
+	selectIsStreamEnabled,
+	selectStreamFilterState,
+	selectUseFilterConfig,
+	useStreamSelectionStore,
+} from "../../stores"
 
 export interface DataFilterSectionProps {
 	isBulkMode?: boolean
 	bulkStream?: StreamData
 	bulkFilter?: string
 	onBulkFilterChange?: (filterString: string) => void
+	bulkFilterConfig?: FilterConfig
+	onBulkFilterConfigChange?: (filterConfig: FilterConfig | undefined) => void
 }
 
 const DataFilterSection = ({
@@ -40,12 +44,19 @@ const DataFilterSection = ({
 	bulkStream,
 	bulkFilter,
 	onBulkFilterChange,
+	bulkFilterConfig,
+	onBulkFilterConfigChange,
 }: DataFilterSectionProps = {}) => {
 	const updateFilter = useStreamSelectionStore(state => state.updateFilter)
+	const updateFilterConfig = useStreamSelectionStore(
+		state => state.updateFilterConfig,
+	)
 	const setStreamFilterState = useStreamSelectionStore(
 		state => state.setStreamFilterState,
 	)
-	// don't subsribe to store if in bulkMode
+	const useFilterConfig = useStreamSelectionStore(selectUseFilterConfig)
+
+	// Don't subscribe to store if in bulk mode
 	const storeStream = useStreamSelectionStore(
 		isBulkMode ? noopNullSelector : selectActiveStreamData,
 	) as StreamData | null
@@ -60,7 +71,7 @@ const DataFilterSection = ({
 
 	const stream = isBulkMode ? bulkStream : storeStream
 	const selectedStream = isBulkMode
-		? { filter: bulkFilter }
+		? { filter: bulkFilter, filter_config: bulkFilterConfig }
 		: storeSelectedStream
 	const isSelected = isBulkMode ? true : storeIsSelected
 
@@ -68,21 +79,19 @@ const DataFilterSection = ({
 	const streamKey = storeStream
 		? `${storeStream.stream.namespace || ""}_${storeStream.stream.name}`
 		: ""
-	const storeStreamFilterState = useStreamSelectionStore(
+	const streamFilterState = useStreamSelectionStore(
 		isBulkMode ? noopFalseSelector : selectStreamFilterState(streamKey),
 	)
-
-	const streamFilterState = isBulkMode ? false : storeStreamFilterState
 
 	const isBulkDisabled =
 		isBulkMode && (stream?.stream.available_cursor_fields || []).length === 0
 
-	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
+	const [isFilterEnabled, setIsFilterEnabled] = useState<boolean>(false)
 	const [multiFilterCondition, setMultiFilterCondition] =
 		useState<MultiFilterCondition>({
 			conditions: [
 				{
-					columnName: "",
+					column: "",
 					operator: "=",
 					value: "",
 				},
@@ -93,19 +102,39 @@ const DataFilterSection = ({
 	// Guard to prevent prop-driven effect from clobbering local edits
 	const isLocalFilterUpdateRef = useRef(false)
 
-	if (!isBulkMode && (!stream || !selectedStream)) return null
-
-	// Filter parsing effect to parse the filter string and set the filter state
+	// Filter parsing effect — re-runs when the active stream changes or its filter/filter_config changes
 	const currentFilter = selectedStream?.filter || ""
+	const currentFilterConfig = selectedStream?.filter_config
+
 	useEffect(() => {
 		// Skip when change originated from local user action
 		if (isLocalFilterUpdateRef.current) {
 			isLocalFilterUpdateRef.current = false
 			return
 		}
-		// Parse initial filter if exists
+
+		if (useFilterConfig) {
+			if (currentFilterConfig && currentFilterConfig.conditions.length > 0) {
+				setMultiFilterCondition({
+					conditions: currentFilterConfig.conditions,
+					logicalOperator: currentFilterConfig.logical_operator,
+				})
+				setIsFilterEnabled(true)
+				if (!isBulkMode) setStreamFilterState(streamKey, true)
+			} else {
+				setMultiFilterCondition({
+					conditions: [{ column: "", operator: "=", value: null }],
+					logicalOperator: "and",
+				})
+				const savedFilterState = streamFilterState || false
+				setIsFilterEnabled(savedFilterState)
+			}
+			return
+		}
+
+		// Legacy filter string path
 		if (currentFilter) {
-			const conditions: FilterCondition[] = []
+			const conditions: FilterConfigCondition[] = []
 			let logicalOperator: LogicalOperator = "and"
 			// Check for AND/OR operator
 			const parts = currentFilter.toLowerCase().includes(" and ")
@@ -126,7 +155,7 @@ const DataFilterSection = ({
 					// Remove quotes if present in the value
 					const cleanValue = value.trim().replace(/^"(.*)"$/, "$1")
 					conditions.push({
-						columnName: columnName.trim(),
+						column: columnName.trim(),
 						operator,
 						value: cleanValue,
 					})
@@ -135,19 +164,47 @@ const DataFilterSection = ({
 
 			if (conditions.length > 0) {
 				setMultiFilterCondition({ conditions, logicalOperator })
-				setFullLoadFilter(true)
-				// Persist the filter enabled state for this stream
+				setIsFilterEnabled(true)
 				if (!isBulkMode) setStreamFilterState(streamKey, true)
 			}
 		} else {
 			setMultiFilterCondition({
-				conditions: [{ columnName: "", operator: "=", value: "" }],
+				conditions: [{ column: "", operator: "=", value: "" }],
 				logicalOperator: "and",
 			})
 			// Restore filter state for this stream or default to false
-			setFullLoadFilter(streamFilterState)
+			setIsFilterEnabled(streamFilterState)
 		}
-	}, [currentFilter])
+	}, [currentFilter, currentFilterConfig])
+
+	if (!isBulkMode && (!stream || !selectedStream)) return null
+
+	// Dispatch helpers — route to store actions or bulk prop callbacks
+	const dispatchFilter = (filterString: string) => {
+		if (isBulkMode) {
+			onBulkFilterChange?.(filterString)
+		} else {
+			if (!storeStream) return
+			updateFilter(
+				storeStream.stream.name,
+				storeStream.stream.namespace || "",
+				filterString,
+			)
+		}
+	}
+
+	const dispatchFilterConfig = (filterConfig: FilterConfig | undefined) => {
+		if (isBulkMode) {
+			onBulkFilterConfigChange?.(filterConfig)
+		} else {
+			if (!storeStream) return
+			updateFilterConfig(
+				storeStream.stream.name,
+				storeStream.stream.namespace || "",
+				filterConfig,
+			)
+		}
+	}
 
 	// get columns based on primary keys and cursor fields and their properties
 	const getColumnOptions = () => {
@@ -170,9 +227,7 @@ const DataFilterSection = ({
 			.map(key => {
 				const types = properties[key].type
 				// Get the first non-null type as primary type
-				const primaryType = Array.isArray(types)
-					? types.find(t => t !== "null") || types[0]
-					: types
+				const primaryType = types.find(t => t !== "null") || types[0]
 				const isPrimaryKey = primaryKeys.includes(key)
 				return {
 					label: (
@@ -199,12 +254,12 @@ const DataFilterSection = ({
 
 	// when the type is either string or timestamp we wrap the value in quotes
 	const formatFilterValue = (columnName: string, value: string) => {
+		if (!value) return value ?? ""
 		if (!stream) return value
+
 		const properties = stream.stream.type_schema?.properties || {}
 		const columnType = properties[columnName]?.type
-		const primaryType = Array.isArray(columnType)
-			? columnType.find(t => t !== "null") || columnType[0]
-			: columnType
+		const primaryType = columnType?.find(t => t !== "null") || columnType?.[0]
 
 		if (
 			primaryType === "string" ||
@@ -221,37 +276,35 @@ const DataFilterSection = ({
 		return value
 	}
 
-	const dispatchFilterUpdate = (filterString: string) => {
-		if (isBulkMode) {
-			onBulkFilterChange?.(filterString)
-		} else {
-			if (!storeStream) return
-			updateFilter(
-				storeStream.stream.name,
-				storeStream.stream.namespace || "",
-				filterString,
-			)
-		}
-	}
-
 	// Handlers
-	const handleFullLoadFilterChange = (checked: boolean) => {
-		setFullLoadFilter(checked)
-		// Persist the filter state for this stream
+	const handleFilterEnabledChange = (checked: boolean) => {
+		setIsFilterEnabled(checked)
 		if (!isBulkMode) setStreamFilterState(streamKey, checked)
 
 		setMultiFilterCondition({
-			conditions: [{ columnName: "", operator: "=", value: "" }],
+			conditions: [
+				{
+					column: "",
+					operator: "=",
+					value: null,
+				},
+			],
 			logicalOperator: "and",
 		})
 		isLocalFilterUpdateRef.current = true
-		// If toggled on insert empty condition
-		dispatchFilterUpdate(checked ? "=" : "")
+
+		if (useFilterConfig) {
+			dispatchFilterConfig(
+				checked ? { logical_operator: "and", conditions: [] } : undefined,
+			)
+		} else {
+			dispatchFilter(checked ? "=" : "")
+		}
 	}
 
 	const handleFilterConditionChange = (
 		index: number,
-		field: keyof FilterCondition,
+		field: keyof FilterConfigCondition,
 		value: string,
 	) => {
 		const newConditions = [...multiFilterCondition.conditions]
@@ -262,16 +315,23 @@ const DataFilterSection = ({
 			conditions: newConditions,
 		}
 		setMultiFilterCondition(newMultiCondition)
-
-		const filterString = newConditions
-			.map(
-				cond =>
-					`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
-			)
-			.join(` ${newMultiCondition.logicalOperator} `)
-
 		isLocalFilterUpdateRef.current = true
-		dispatchFilterUpdate(filterString)
+
+		if (useFilterConfig) {
+			const filterConfig: FilterConfig = {
+				logical_operator: newMultiCondition.logicalOperator,
+				conditions: newConditions,
+			}
+			dispatchFilterConfig(filterConfig)
+		} else {
+			const filterString = newConditions
+				.map(
+					cond =>
+						`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
+				)
+				.join(` ${newMultiCondition.logicalOperator} `)
+			dispatchFilter(filterString)
+		}
 	}
 
 	const handleLogicalOperatorChange = (value: LogicalOperator) => {
@@ -283,19 +343,26 @@ const DataFilterSection = ({
 
 		// Regenerate filter string if conditions exist
 		const filledConditions = multiFilterCondition.conditions.filter(
-			cond => cond.columnName && cond.operator && cond.value,
+			cond => cond.column && cond.operator,
 		)
 
 		if (filledConditions.length > 1) {
-			const filterString = filledConditions
-				.map(
-					cond =>
-						`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
-				)
-				.join(` ${value} `)
-
 			isLocalFilterUpdateRef.current = true
-			dispatchFilterUpdate(filterString)
+			if (useFilterConfig) {
+				const filterConfig: FilterConfig = {
+					logical_operator: value,
+					conditions: filledConditions,
+				}
+				dispatchFilterConfig(filterConfig)
+			} else {
+				const filterString = filledConditions
+					.map(
+						cond =>
+							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
+					)
+					.join(` ${value} `)
+				dispatchFilter(filterString)
+			}
 		}
 	}
 
@@ -305,31 +372,37 @@ const DataFilterSection = ({
 		if (conditions.length >= 2) return
 
 		const firstCondition = conditions[0]
-		if (
-			!firstCondition.columnName ||
-			!firstCondition.operator ||
-			!firstCondition.value
-		) {
+		if (!firstCondition.column || !firstCondition.operator) {
 			message.error("Please complete the first filter before applying another.")
 			return
 		}
 
+		const newConditions = [
+			...conditions,
+			{ column: "", operator: "=" as FilterOperator, value: null },
+		]
 		setMultiFilterCondition({
 			...multiFilterCondition,
-			conditions: [...conditions, { columnName: "", operator: "=", value: "" }],
+			conditions: newConditions,
 		})
 
-		// insert empty condition in the filter string
-		const filterString =
-			conditions
-				.map(
-					cond =>
-						`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
-				)
-				.join(` ${multiFilterCondition.logicalOperator} `) + " = "
-
 		isLocalFilterUpdateRef.current = true
-		dispatchFilterUpdate(filterString)
+		if (useFilterConfig) {
+			const filterConfig: FilterConfig = {
+				logical_operator: multiFilterCondition.logicalOperator,
+				conditions: newConditions,
+			}
+			dispatchFilterConfig(filterConfig)
+		} else {
+			const filterString =
+				conditions
+					.map(
+						cond =>
+							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
+					)
+					.join(` ${multiFilterCondition.logicalOperator} `) + " = "
+			dispatchFilter(filterString)
+		}
 	}
 
 	const handleRemoveFilter = (index: number) => {
@@ -345,13 +418,26 @@ const DataFilterSection = ({
 		// If removing leaves us with one condition, update the filter string
 		if (newConditions.length === 1) {
 			const condition = newConditions[0]
-			if (condition.columnName && condition.operator && condition.value) {
-				const filterString = `${condition.columnName} ${condition.operator} ${formatFilterValue(condition.columnName, condition.value)}`
-				isLocalFilterUpdateRef.current = true
-				dispatchFilterUpdate(filterString)
+			isLocalFilterUpdateRef.current = true
+
+			if (useFilterConfig) {
+				if (condition.column && condition.operator) {
+					const filterConfig: FilterConfig = {
+						logical_operator: newMultiCondition.logicalOperator,
+						conditions: newConditions,
+					}
+					dispatchFilterConfig(filterConfig)
+				} else {
+					// Remaining condition is incomplete — clear filter_config
+					dispatchFilterConfig(undefined)
+				}
 			} else {
-				isLocalFilterUpdateRef.current = true
-				dispatchFilterUpdate("")
+				if (condition.column && condition.operator) {
+					const filterString = `${condition.column} ${condition.operator} ${formatFilterValue(condition.column, condition.value as string)}`
+					dispatchFilter(filterString)
+				} else {
+					dispatchFilter("")
+				}
 			}
 		}
 	}
@@ -387,12 +473,12 @@ const DataFilterSection = ({
 						</a>
 					</div>
 					<Switch
-						checked={fullLoadFilter}
-						onChange={handleFullLoadFilterChange}
+						checked={isFilterEnabled}
+						onChange={handleFilterEnabledChange}
 						disabled={!isSelected || isBulkDisabled}
 					/>
 				</div>
-				{fullLoadFilter && (
+				{isFilterEnabled && (
 					<>
 						<Divider className="my-0 p-0" />
 						<div className="flex flex-col gap-4 !p-3">
@@ -460,13 +546,9 @@ const DataFilterSection = ({
 											<Select
 												className="w-full"
 												placeholder="Select Column"
-												value={condition.columnName}
+												value={condition.column}
 												onChange={value =>
-													handleFilterConditionChange(
-														index,
-														"columnName",
-														value,
-													)
+													handleFilterConditionChange(index, "column", value)
 												}
 												options={getColumnOptions()}
 												labelInValue={false}
@@ -494,8 +576,13 @@ const DataFilterSection = ({
 												Value
 											</label>
 											<Input
-												placeholder="Enter value"
-												value={condition.value}
+												placeholder={condition.value === null ? "<null>" : ""}
+												value={condition.value === null ? "" : condition.value}
+												onFocus={() => {
+													if (condition.value === null) {
+														handleFilterConditionChange(index, "value", "")
+													}
+												}}
 												onChange={e =>
 													handleFilterConditionChange(
 														index,

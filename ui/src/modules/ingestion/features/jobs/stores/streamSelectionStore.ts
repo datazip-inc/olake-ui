@@ -8,6 +8,7 @@ import {
 	SelectedColumns,
 	StreamIdentifier,
 	SyncMode,
+	FilterConfig,
 } from "@/modules/ingestion/common/types"
 import { IngestionMode } from "@/modules/ingestion/features/jobs/enums"
 
@@ -21,6 +22,7 @@ export interface BulkStreamConfig {
 	normalization: boolean
 	partitionRegex: string
 	filterValue: string
+	filterConfig?: FilterConfig
 }
 
 interface StreamSelectionState {
@@ -34,6 +36,9 @@ interface StreamSelectionState {
 
 	// Per-stream filter toggle keyed by `${namespace}_${name}`.
 	streamFilterStates: Record<string, boolean>
+
+	// Whether to use structured filter_config (new) vs legacy filter string.
+	useFilterConfig: boolean
 
 	initializeFromDiscovery: (data: StreamsDataStructure) => void
 	setDiscovering: (loading: boolean) => void
@@ -75,6 +80,14 @@ interface StreamSelectionState {
 		filterValue: string,
 	) => void
 
+	updateFilterConfig: (
+		streamName: string,
+		namespace: string,
+		filterConfig: FilterConfig | undefined,
+	) => void
+
+	setUseFilterConfig: (value: boolean) => void
+
 	updateIngestionMode: (
 		streamName: string,
 		namespace: string,
@@ -110,6 +123,7 @@ const initialState = {
 	discoverError: null,
 	activeStreamKey: null,
 	streamFilterStates: {} as Record<string, boolean>,
+	useFilterConfig: false,
 }
 
 export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
@@ -298,6 +312,38 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
+	updateFilterConfig: (streamName, namespace, filterConfig) =>
+		set(state => {
+			if (!state.streamsData) return state
+
+			const prev = state.streamsData
+			const streamExists = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+			if (!streamExists) return state
+
+			return {
+				streamsData: {
+					...prev,
+					selected_streams: {
+						...prev.selected_streams,
+						[namespace]: prev.selected_streams[namespace].map(s => {
+							if (s.stream_name !== streamName) return s
+							if (filterConfig === undefined) {
+								// Remove filter_config when filter is disabled
+								const updated = { ...s }
+								delete updated.filter_config
+								return updated
+							}
+							return { ...s, filter_config: filterConfig }
+						}),
+					},
+				},
+			}
+		}),
+
+	setUseFilterConfig: value => set({ useFilterConfig: value }),
+
 	updateIngestionMode: (streamName, namespace, appendMode) =>
 		set(state => {
 			if (!state.streamsData) return state
@@ -375,10 +421,14 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 					newStream.partition_regex = config.partitionRegex
 					newStream.disabled = false
 
-					if (config.filterValue) {
+					// Clear both fields first to ensure only one is ever set at a time
+					delete newStream.filter
+					delete newStream.filter_config
+
+					if (config.filterConfig) {
+						newStream.filter_config = config.filterConfig
+					} else if (config.filterValue) {
 						newStream.filter = config.filterValue
-					} else {
-						delete newStream.filter
 					}
 
 					updatedSelected[namespace] = [
@@ -400,7 +450,11 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 						append_mode: config.appendMode,
 						normalization: config.normalization,
 						partition_regex: config.partitionRegex,
-						...(config.filterValue ? { filter: config.filterValue } : {}),
+						...(config.filterConfig
+							? { filter_config: config.filterConfig }
+							: config.filterValue
+								? { filter: config.filterValue }
+								: {}),
 					}
 
 					updatedSelected[namespace] = [
@@ -599,6 +653,9 @@ export const selectDestinationDatabase = (
 
 	return { display: destDb, forModal: destDb }
 }
+
+export const selectUseFilterConfig = (state: StreamSelectionState) =>
+	state.useFilterConfig
 
 // Returns true when the given stream is selected (not disabled).
 export const selectIsStreamEnabled = (

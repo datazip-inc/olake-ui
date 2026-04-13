@@ -9,7 +9,10 @@ import { Button, Modal } from "antd"
 import clsx from "clsx"
 import { useEffect, useMemo, useState } from "react"
 
-import { StreamIdentifier } from "@/modules/ingestion/common/types"
+import {
+	FilterConfig,
+	StreamIdentifier,
+} from "@/modules/ingestion/common/types"
 import { BulkConfigureStreamsModalProps } from "@/modules/ingestion/features/jobs/types"
 
 import { IngestionMode } from "../../enums"
@@ -51,6 +54,9 @@ const BulkConfigureStreamsModal = ({
 	const [bulkAppendMode, setBulkAppendMode] = useState<boolean>(false)
 	const [bulkNormalization, setBulkNormalization] = useState<boolean>(false)
 	const [bulkFilter, setBulkFilter] = useState<string>("")
+	const [bulkFilterConfig, setBulkFilterConfig] = useState<
+		FilterConfig | undefined
+	>()
 	const [bulkPartitionRegex, setBulkPartitionRegex] = useState<string>("")
 
 	const isSourceUpsertSupported =
@@ -107,6 +113,7 @@ const BulkConfigureStreamsModal = ({
 		setBulkAppendMode(defaultAppendMode)
 		setBulkNormalization(false)
 		setBulkFilter("")
+		setBulkFilterConfig(undefined)
 		setBulkPartitionRegex("")
 	}, [selectionKey, defaultAppendMode])
 
@@ -133,6 +140,7 @@ const BulkConfigureStreamsModal = ({
 			normalization: bulkNormalization,
 			partitionRegex: bulkPartitionRegex,
 			filterValue: bulkFilter,
+			filterConfig: bulkFilterConfig,
 		})
 
 		setCloseCountdown(CLOSE_COUNTDOWN)
@@ -350,6 +358,8 @@ const BulkConfigureStreamsModal = ({
 											bulkStream={bulkStream}
 											bulkFilter={bulkFilter}
 											onBulkFilterChange={setBulkFilter}
+											bulkFilterConfig={bulkFilterConfig}
+											onBulkFilterConfigChange={setBulkFilterConfig}
 										/>
 									</div>
 								) : (
