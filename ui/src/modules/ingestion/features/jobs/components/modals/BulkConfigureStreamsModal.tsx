@@ -95,7 +95,7 @@ const BulkConfigureStreamsModal = ({
 		StreamIdentifier[]
 	>([])
 
-	// Local bulk config state — all fields are grouped since they share lifecycle (reset together on selection change)
+	// Local bulk config state
 	const [bulkConfig, setBulkConfig] = useState<BulkConfig>(INITIAL_BULK_CONFIG)
 	const setBulkConfigField = <K extends keyof BulkConfig>(
 		key: K,
