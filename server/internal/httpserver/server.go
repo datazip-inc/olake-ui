@@ -60,10 +60,6 @@ func New(cfg *appconfig.Config, h *handlers.Handler) *Server {
 	}
 }
 
-func (s *Server) Engine() *gin.Engine {
-	return s.engine
-}
-
 func (s *Server) Run(ctx context.Context) error {
 	errCh := make(chan error, 1)
 
