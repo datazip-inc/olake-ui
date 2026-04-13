@@ -49,7 +49,6 @@ BACKEND_ENV_VARS = \
       APP_NAME=olake-server \
       HTTP_PORT=8000 \
       RUN_MODE=localdev \
-      COPY_REQUEST_BODY=true \
       OLAKE_POSTGRES_USER=temporal \
       OLAKE_POSTGRES_PASSWORD=temporal \
       OLAKE_POSTGRES_HOST=localhost \

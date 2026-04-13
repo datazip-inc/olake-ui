@@ -62,9 +62,14 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 	etl.GET("/project/:projectid/jobs/:id/clear-destination", etlHandler.GetClearDestinationStatus)
 	etl.POST("/project/:projectid/jobs/:id/stream-difference", etlHandler.GetStreamDifference)
 
+	// Project settings routes
 	etl.PUT("/project/:projectid/settings", etlHandler.UpsertProjectSettings)
 	etl.GET("/project/:projectid/settings", etlHandler.GetProjectSettings)
+
+	// validation routes
 	etl.POST("/project/:projectid/check-unique", etlHandler.CheckUniqueName)
+
+	// platform routes
 	etl.GET("/platform/releases", etlHandler.GetReleaseUpdates)
 
 	// module gate routes

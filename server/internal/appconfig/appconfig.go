@@ -10,7 +10,6 @@ type Config struct {
 	AppName               string
 	HTTPPort              string
 	RunMode               string
-	CopyRequestBody       bool
 	MaxMemory             int64
 	MaxUploadSize         int64
 	PostgresDSN           string
@@ -57,7 +56,6 @@ func loadConfig() Config {
 		ContainerRegistryBase: strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_BASE")),
 		LogsDir:               strings.TrimSpace(v.GetString("LOGS_DIR")),
 		TemporalAddress:       strings.TrimSpace(v.GetString("TEMPORAL_ADDRESS")),
-		CopyRequestBody:       v.GetBool("COPY_REQUEST_BODY"),
 		MaxMemory:             v.GetInt64("MAX_MEMORY"),
 		MaxUploadSize:         v.GetInt64("MAX_UPLOAD_SIZE"),
 		SessionOn:             v.GetBool("SESSION_ON"),

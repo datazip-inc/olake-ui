@@ -24,7 +24,6 @@ Review and update the configuration in `conf/app.conf` as needed:
 appname = olake-server
 httpport = 8000
 runmode = dev
-copyrequestbody = true
 postgresdb = postgres://postgres:testing@testing-postgres.postgres.database.azure.com:5432/olakedb
 
 # Session configuration
