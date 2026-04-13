@@ -392,6 +392,8 @@ const EMPTY_BULK_STREAM: StreamData = {
 	},
 }
 
+// Intersection of string lists across streams: start from the first stream’s array, then keep only
+// entries that also appear in every later stream’s array (order follows the first stream).
 const intersectArrays = (
 	streams: StreamData[],
 	getArr: (s: StreamData) => string[] | undefined,

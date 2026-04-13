@@ -168,14 +168,13 @@ const BulkStreamSelectorList = ({
 	}
 
 	return (
-		<div className="flex h-full flex-col overflow-y-auto rounded-[4px]">
+		<div className="flex h-full flex-col overflow-y-auto rounded">
 			{sortedGroups.length === 0 ? (
 				<Empty className="pt-10" />
 			) : (
 				<>
 					<div className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-neutral-border bg-olake-surface px-8 py-4">
 						<Checkbox
-							className="!text-sm !leading-[22px]"
 							checked={checkedStatus.global}
 							onChange={e => handleGlobalSyncAll(e.target.checked)}
 						>
@@ -189,18 +188,16 @@ const BulkStreamSelectorList = ({
 							className="border-b border-neutral-border"
 						>
 							<div
-								className="sticky top-[55px] z-[9] flex h-14 cursor-pointer items-center bg-background-primary px-8"
+								className="sticky top-14 z-[9] flex h-14 cursor-pointer items-center bg-background-primary px-8"
 								onClick={() => handleToggleNamespace(ns)}
 							>
 								<Checkbox
-									className="mr-2 !text-sm !leading-[22px]"
+									className="mr-2"
 									checked={checkedStatus.namespaces[ns]}
 									onChange={e => handleNamespaceSyncAll(ns, e.target.checked)}
 									onClick={e => e.stopPropagation()}
 								/>
-								<span className="text-sm leading-[22px] text-olake-text">
-									{ns}
-								</span>
+								<span className="text-sm leading-5 text-olake-text">{ns}</span>
 								<span className="ml-auto text-olake-text-secondary">
 									{openNamespaces[ns] ? (
 										<CaretDownIcon
@@ -228,7 +225,7 @@ const BulkStreamSelectorList = ({
 												className="flex h-14 items-center border-b border-neutral-border bg-olake-surface px-8 py-4"
 											>
 												<Checkbox
-													className="!text-sm !leading-5 text-olake-text"
+													className="text-olake-text"
 													checked={isSelected}
 													onChange={e =>
 														handleStreamSelect(

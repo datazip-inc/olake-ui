@@ -28,9 +28,19 @@ import SyncModeSection from "../streams/SyncModeSection"
 type BulkConfigureStep = "select-streams" | "apply-configurations" | "success"
 type BulkConfigurationTab = "config" | "partitioning"
 
+type BulkConfig = {
+	syncMode: string
+	cursorField: string | undefined
+	appendMode: boolean
+	normalization: boolean
+	filter: string
+	filterConfig: FilterConfig | undefined
+	partitionRegex: string
+}
+
 enum BulkDirtyFieldKey {
 	SyncMode = "syncMode",
-	IngestionMode = "ingestionMode",
+	AppendMode = "appendMode",
 	Normalization = "normalization",
 	Filter = "filter",
 	PartitionRegex = "partitionRegex",
@@ -40,10 +50,20 @@ type BulkDirtyFields = Record<BulkDirtyFieldKey, boolean>
 
 const INITIAL_DIRTY_FIELDS: BulkDirtyFields = {
 	[BulkDirtyFieldKey.SyncMode]: false,
-	[BulkDirtyFieldKey.IngestionMode]: false,
+	[BulkDirtyFieldKey.AppendMode]: false,
 	[BulkDirtyFieldKey.Normalization]: false,
 	[BulkDirtyFieldKey.Filter]: false,
 	[BulkDirtyFieldKey.PartitionRegex]: false,
+}
+
+const INITIAL_BULK_CONFIG: BulkConfig = {
+	syncMode: SyncMode.FULL_REFRESH,
+	cursorField: undefined,
+	appendMode: false,
+	normalization: false,
+	filter: "",
+	filterConfig: undefined,
+	partitionRegex: "",
 }
 
 const CLOSE_COUNTDOWN = 3
@@ -75,16 +95,12 @@ const BulkConfigureStreamsModal = ({
 		StreamIdentifier[]
 	>([])
 
-	// Local bulk config state
-	const [bulkSyncMode, setBulkSyncMode] = useState<string>("full_refresh")
-	const [bulkCursorField, setBulkCursorField] = useState<string | undefined>()
-	const [bulkAppendMode, setBulkAppendMode] = useState<boolean>(false)
-	const [bulkNormalization, setBulkNormalization] = useState<boolean>(false)
-	const [bulkFilter, setBulkFilter] = useState<string>("")
-	const [bulkFilterConfig, setBulkFilterConfig] = useState<
-		FilterConfig | undefined
-	>()
-	const [bulkPartitionRegex, setBulkPartitionRegex] = useState<string>("")
+	// Local bulk config state — all fields are grouped since they share lifecycle (reset together on selection change)
+	const [bulkConfig, setBulkConfig] = useState<BulkConfig>(INITIAL_BULK_CONFIG)
+	const setBulkConfigField = <K extends keyof BulkConfig>(
+		key: K,
+		value: BulkConfig[K],
+	) => setBulkConfig(prev => ({ ...prev, [key]: value }))
 
 	// Tracks which sections the user has explicitly modified.
 	// Only dirty sections are included in the apply payload.
@@ -144,22 +160,18 @@ const BulkConfigureStreamsModal = ({
 		const availableCursors = bulkStream.stream.available_cursor_fields ?? []
 		const primaryKeys = bulkStream.stream.source_defined_primary_key ?? []
 		const sortedCursors = sortCursorFields(availableCursors, primaryKeys)
-		setBulkSyncMode(syncMode)
-		setBulkCursorField(
-			syncMode === SyncMode.INCREMENTAL ? sortedCursors[0] : undefined,
-		)
-		setBulkAppendMode(bulkStreamDefaults.append_mode ?? false)
-		setBulkNormalization(bulkStreamDefaults.normalization)
-		setBulkFilter("")
-		setBulkFilterConfig(undefined)
-		setBulkPartitionRegex("")
+		setBulkConfig({
+			syncMode,
+			cursorField:
+				syncMode === SyncMode.INCREMENTAL ? sortedCursors[0] : undefined,
+			appendMode: bulkStreamDefaults.append_mode ?? false,
+			normalization: bulkStreamDefaults.normalization,
+			filter: "",
+			filterConfig: undefined,
+			partitionRegex: "",
+		})
 		setDirtyFields(INITIAL_DIRTY_FIELDS)
 	}, [selectionKey])
-
-	const displayedSelectedStreams = useMemo(
-		() => bulkSelectedStreams,
-		[bulkSelectedStreams],
-	)
 
 	const getStepTitle = () => {
 		if (step === "select-streams") return "Select Streams"
@@ -174,21 +186,21 @@ const BulkConfigureStreamsModal = ({
 	const handleApplyChanges = () => {
 		bulkUpdateStreams(bulkSelectedStreams, {
 			...(dirtyFields[BulkDirtyFieldKey.SyncMode] && {
-				syncMode: bulkSyncMode as SyncMode,
-				cursorField: bulkCursorField,
+				syncMode: bulkConfig.syncMode as SyncMode,
+				cursorField: bulkConfig.cursorField,
 			}),
-			...(dirtyFields[BulkDirtyFieldKey.IngestionMode] && {
-				appendMode: bulkAppendMode,
+			...(dirtyFields[BulkDirtyFieldKey.AppendMode] && {
+				appendMode: bulkConfig.appendMode,
 			}),
 			...(dirtyFields[BulkDirtyFieldKey.Normalization] && {
-				normalization: bulkNormalization,
+				normalization: bulkConfig.normalization,
 			}),
 			...(dirtyFields[BulkDirtyFieldKey.Filter] && {
-				filterValue: bulkFilter,
-				filterConfig: bulkFilterConfig,
+				filterValue: bulkConfig.filter,
+				filterConfig: bulkConfig.filterConfig,
 			}),
 			...(dirtyFields[BulkDirtyFieldKey.PartitionRegex] && {
-				partitionRegex: bulkPartitionRegex,
+				partitionRegex: bulkConfig.partitionRegex,
 			}),
 		})
 
@@ -214,15 +226,9 @@ const BulkConfigureStreamsModal = ({
 		if (step === "select-streams") {
 			return (
 				<div className="flex h-20 items-center justify-end gap-3 border-t border-olake-border px-8">
-					<Button
-						className="!h-8 !rounded-md !px-4 !text-sm"
-						onClick={onClose}
-					>
-						Cancel
-					</Button>
+					<Button onClick={onClose}>Cancel</Button>
 					<Button
 						type="primary"
-						className="!h-8 !rounded-md !px-4 !text-sm"
 						onClick={() => setStep("apply-configurations")}
 						disabled={bulkSelectedStreams.length === 0}
 					>
@@ -234,22 +240,11 @@ const BulkConfigureStreamsModal = ({
 
 		return (
 			<div className="flex h-20 items-center justify-between border-t border-olake-border px-8">
-				<Button
-					className="!h-8 !rounded-md !px-4 !text-sm"
-					onClick={() => setStep("select-streams")}
-				>
-					Back
-				</Button>
+				<Button onClick={() => setStep("select-streams")}>Back</Button>
 				<div className="flex items-center gap-3">
-					<Button
-						className="!h-8 !rounded-md !px-4 !text-sm"
-						onClick={onClose}
-					>
-						Cancel
-					</Button>
+					<Button onClick={onClose}>Cancel</Button>
 					<Button
 						type="primary"
-						className="!h-8 !rounded-md !px-4 !text-sm"
 						onClick={handleApplyChanges}
 						disabled={
 							bulkSelectedStreams.length === 0 ||
@@ -280,7 +275,7 @@ const BulkConfigureStreamsModal = ({
 		>
 			{step === "success" ? (
 				<div className="relative h-[808px] bg-background-primary">
-					<div className="absolute left-1/2 top-1/2 flex w-[374px] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-[22px] text-center">
+					<div className="absolute left-1/2 top-1/2 flex w-[374px] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-5 text-center">
 						<div className="rounded-xl bg-primary-100 p-3">
 							<CheckIcon
 								weight="bold"
@@ -288,8 +283,8 @@ const BulkConfigureStreamsModal = ({
 							/>
 						</div>
 						<div className="w-full">
-							<div className="text-[20px] font-medium leading-7 text-olake-text">
-								{`${displayedSelectedStreams.length} streams configured successfully`}
+							<div className="text-xl font-medium leading-7 text-olake-text">
+								{`${bulkSelectedStreams.length} streams configured successfully`}
 							</div>
 							<div className="mt-1 text-base leading-6 text-olake-text">
 								You are free to edit the stream separately if you wish
@@ -297,18 +292,13 @@ const BulkConfigureStreamsModal = ({
 						</div>
 					</div>
 					<div className="absolute left-1/2 top-[683px] -translate-x-1/2">
-						<Button
-							className="!h-8 !rounded-md !px-4 !text-sm"
-							onClick={onClose}
-						>
-							Closing in {closeCountdown}...
-						</Button>
+						<Button onClick={onClose}>Closing in {closeCountdown}...</Button>
 					</div>
 				</div>
 			) : (
 				<div className="flex h-[728px] flex-col">
-					<div className="border-b border-olake-border px-8 pb-5 pt-[34px]">
-						<h2 className="text-[20px] font-medium leading-7 text-olake-text">
+					<div className="border-b border-olake-border px-8 pb-5 pt-8">
+						<h2 className="text-xl font-medium leading-7 text-olake-text">
 							Bulk Streams configure
 						</h2>
 						<p className="mt-2 text-sm leading-5 text-olake-text">
@@ -316,7 +306,7 @@ const BulkConfigureStreamsModal = ({
 						</p>
 					</div>
 
-					<div className="border-b border-olake-border px-8 py-[18px] text-base font-medium leading-7 text-olake-text">
+					<div className="border-b border-olake-border px-8 py-4 text-base font-medium leading-7 text-olake-text">
 						{getStepTitle()}
 					</div>
 
@@ -330,11 +320,11 @@ const BulkConfigureStreamsModal = ({
 								/>
 							</div>
 						) : (
-							<div className={clsx("h-full", "overflow-y-auto px-8 py-[22px]")}>
+							<div className={clsx("h-full", "overflow-y-auto px-8 py-5")}>
 								<div className="text-base leading-6 text-olake-text">
-									Streams Selected ({displayedSelectedStreams.length})
+									Streams Selected ({bulkSelectedStreams.length})
 								</div>
-								{displayedSelectedStreams.length === 0 ? (
+								{bulkSelectedStreams.length === 0 ? (
 									<div className="flex h-full items-center justify-center">
 										<div className="max-w-[420px] text-center">
 											<div className="text-base font-medium text-olake-text">
@@ -349,12 +339,12 @@ const BulkConfigureStreamsModal = ({
 								) : (
 									<>
 										<div className="mt-2 flex flex-wrap gap-2">
-											{displayedSelectedStreams.map(stream => {
+											{bulkSelectedStreams.map(stream => {
 												const streamId = `${stream.namespace}__${stream.streamName}`
 												return (
 													<div
 														key={streamId}
-														className="flex h-7 items-center gap-[7px] rounded bg-olake-surface-muted px-[13px] py-[3px]"
+														className="flex h-7 items-center gap-2 rounded bg-olake-surface-muted px-3.5 py-0.5"
 													>
 														<TableIcon className="size-4 text-olake-text" />
 														<span className="text-sm text-olake-text">
@@ -382,13 +372,13 @@ const BulkConfigureStreamsModal = ({
 											</span>
 										</div>
 
-										<div className="mt-8 rounded-md bg-olake-surface-muted p-[2px]">
+										<div className="mt-8 rounded-md bg-olake-surface-muted p-0.5">
 											<div className="grid grid-cols-2 gap-1">
 												<button
 													type="button"
 													onClick={() => setActiveTab("config")}
 													className={clsx(
-														"flex h-7 items-center justify-center gap-2 rounded-md border px-3 text-sm leading-[22px]",
+														"flex h-7 items-center justify-center gap-2 rounded-md border px-3 text-sm leading-5",
 														activeTab === "config"
 															? "border-primary bg-white text-primary shadow-sm"
 															: "border-transparent text-olake-text",
@@ -401,7 +391,7 @@ const BulkConfigureStreamsModal = ({
 													type="button"
 													onClick={() => setActiveTab("partitioning")}
 													className={clsx(
-														"flex h-7 items-center justify-center gap-2 rounded-md border px-3 text-sm leading-[22px]",
+														"flex h-7 items-center justify-center gap-2 rounded-md border px-3 text-sm leading-5",
 														activeTab === "partitioning"
 															? "border-primary bg-white text-primary shadow-sm"
 															: "border-transparent text-olake-text",
@@ -419,30 +409,30 @@ const BulkConfigureStreamsModal = ({
 													className="flex flex-col gap-4"
 												>
 													{/* Sync Mode and Ingestion Mode Sections */}
-													<div className="rounded-[4px] border border-neutral-disabled bg-white p-4">
+													<div className="rounded border border-neutral-disabled bg-white p-4">
 														<SyncModeSection
 															isBulkMode
 															isDirty={dirtyFields[BulkDirtyFieldKey.SyncMode]}
 															bulkStream={bulkStream}
-															bulkSyncMode={bulkSyncMode}
-															bulkCursorField={bulkCursorField}
+															bulkSyncMode={bulkConfig.syncMode}
+															bulkCursorField={bulkConfig.cursorField}
 															onBulkSyncModeChange={(mode, cursor) => {
-																setBulkSyncMode(mode)
-																setBulkCursorField(cursor)
+																setBulkConfigField("syncMode", mode)
+																setBulkConfigField("cursorField", cursor)
 																markDirty(BulkDirtyFieldKey.SyncMode)
 															}}
 														/>
 														<IngestionModeSection
 															isBulkMode
 															isDirty={
-																dirtyFields[BulkDirtyFieldKey.IngestionMode]
+																dirtyFields[BulkDirtyFieldKey.AppendMode]
 															}
 															sourceType={sourceType}
 															destinationType={destinationType}
-															bulkAppendMode={bulkAppendMode}
+															bulkAppendMode={bulkConfig.appendMode}
 															onBulkIngestionModeChange={value => {
-																setBulkAppendMode(value)
-																markDirty(BulkDirtyFieldKey.IngestionMode)
+																setBulkConfigField("appendMode", value)
+																markDirty(BulkDirtyFieldKey.AppendMode)
 															}}
 														/>
 													</div>
@@ -453,9 +443,9 @@ const BulkConfigureStreamsModal = ({
 														isDirty={
 															dirtyFields[BulkDirtyFieldKey.Normalization]
 														}
-														bulkNormalization={bulkNormalization}
+														bulkNormalization={bulkConfig.normalization}
 														onBulkNormalizationChange={(value: boolean) => {
-															setBulkNormalization(value)
+															setBulkConfigField("normalization", value)
 															markDirty(BulkDirtyFieldKey.Normalization)
 														}}
 													/>
@@ -465,14 +455,14 @@ const BulkConfigureStreamsModal = ({
 														isBulkMode
 														isDirty={dirtyFields[BulkDirtyFieldKey.Filter]}
 														bulkStream={bulkStream}
-														bulkFilter={bulkFilter}
+														bulkFilter={bulkConfig.filter}
 														onBulkFilterChange={value => {
-															setBulkFilter(value)
+															setBulkConfigField("filter", value)
 															markDirty(BulkDirtyFieldKey.Filter)
 														}}
-														bulkFilterConfig={bulkFilterConfig}
+														bulkFilterConfig={bulkConfig.filterConfig}
 														onBulkFilterConfigChange={value => {
-															setBulkFilterConfig(value)
+															setBulkConfigField("filterConfig", value)
 															markDirty(BulkDirtyFieldKey.Filter)
 														}}
 													/>
@@ -488,9 +478,9 @@ const BulkConfigureStreamsModal = ({
 															dirtyFields[BulkDirtyFieldKey.PartitionRegex]
 														}
 														destinationType={destinationType}
-														bulkPartitionRegex={bulkPartitionRegex}
+														bulkPartitionRegex={bulkConfig.partitionRegex}
 														onBulkPartitionRegexChange={value => {
-															setBulkPartitionRegex(value)
+															setBulkConfigField("partitionRegex", value)
 															markDirty(BulkDirtyFieldKey.PartitionRegex)
 														}}
 													/>
