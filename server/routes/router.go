@@ -15,9 +15,11 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 	engine.GET("/telemetry-id", h.TelemetryID)
 	engine.GET("/swagger/*any", h.ServeSwagger)
 
+	api := engine.Group("/api")
+	api.Use(h.AuthMiddleware())
+
 	etlHandler := h.ETL
-	etl := engine.Group("/api/v1")
-	etl.Use(h.AuthMiddleware())
+	etl := api.Group("/v1")
 
 	// users routes
 	etl.POST("/users", etlHandler.CreateUser)
@@ -82,8 +84,7 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 
 	if h.Optimization != nil {
 		optHandler := h.Optimization
-		opt := engine.Group("/api/opt/v1")
-		opt.Use(h.AuthMiddleware())
+		opt := api.Group("/opt/v1")
 
 		// catalogs: crud
 		opt.POST("/catalog", optHandler.CreateCatalog)
