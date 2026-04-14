@@ -1,8 +1,6 @@
 package routes
 
 import (
-	"strings"
-
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
 	"github.com/gin-gonic/gin"
 )
@@ -109,26 +107,16 @@ type ModuleNoRouteHandler struct {
 	Forward gin.HandlerFunc
 }
 
-// Module-specific unmatched paths (e.g. /api/opt/v1/*) are delegated here so
-// httpserver can keep a single engine-level NoRoute policy.
-func HandleModulesNoRoute(c *gin.Context, handlers ...ModuleNoRouteHandler) bool {
-	for _, module := range handlers {
-		if !strings.HasPrefix(c.Request.URL.Path, module.PathPrefix) {
-			continue
-		}
-
-		if module.Middleware != nil {
-			module.Middleware(c)
-			// Aborted means middleware already wrote a response (e.g. 401).
-			// Treat it as handled and stop fallback processing.
-			if c.IsAborted() {
-				return true
-			}
-		}
-
-		module.Forward(c)
-		return true
+func ModuleNoRouteHandlers(h *handlers.Handler) []ModuleNoRouteHandler {
+	moduleHandlers := make([]ModuleNoRouteHandler, 0, 1)
+	if h.Optimization != nil {
+		// Register optimization as a module fallback for unmatched /api/opt/v1/*.
+		// This avoids route tree conflicts from wildcard catch-all registration.
+		moduleHandlers = append(moduleHandlers, ModuleNoRouteHandler{
+			PathPrefix: "/api/opt/v1/",
+			Middleware: h.AuthMiddleware(),
+			Forward:    h.Optimization.PiggyBacking,
+		})
 	}
-
-	return false
+	return moduleHandlers
 }

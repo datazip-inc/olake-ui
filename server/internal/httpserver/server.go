@@ -24,38 +24,38 @@ type Server struct {
 }
 
 func New(cfg *appconfig.Config, h *handlers.Handler) *Server {
-	configureMode(cfg)
-	engine := gin.New()
-	engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+	s := &Server{}
+
+	s.configureMode(cfg)
+
+	s.engine = gin.New()
+	s.engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		SkipPaths: []string{"/health"},
 	}))
-	engine.Use(gin.Recovery())
+	s.engine.Use(gin.Recovery())
 
-	configureRequestLimits(engine, cfg)
-	configureBaseRoutes(engine)
+	s.configureRequestLimits(cfg)
+	s.configureBaseRoutes()
 
 	if cfg.RunMode == "localdev" {
-		engine.Use(defaultCORSMiddleware())
+		s.engine.Use(s.defaultCORSMiddleware())
 	} else {
-		configureStaticFrontend(engine)
+		s.configureStaticFrontend()
 	}
 
-	routes.RegisterRoutes(engine, h)
-	configureNoRoute(engine, cfg, h)
+	routes.RegisterRoutes(s.engine, h)
+	s.configureNoRoute(cfg, h)
 
-	server := &http.Server{
+	s.httpServer = &http.Server{
 		Addr:              fmt.Sprintf(":%s", cfg.HTTPPort),
-		Handler:           engine,
+		Handler:           s.engine,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      60 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
 
-	return &Server{
-		engine:     engine,
-		httpServer: server,
-	}
+	return s
 }
 
 func (s *Server) Run(ctx context.Context) error {
@@ -78,7 +78,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 }
 
-func configureMode(cfg *appconfig.Config) {
+func (s *Server) configureMode(cfg *appconfig.Config) {
 	switch cfg.RunMode {
 	case "localdev":
 		gin.SetMode(gin.DebugMode)
@@ -89,15 +89,15 @@ func configureMode(cfg *appconfig.Config) {
 	}
 }
 
-func configureRequestLimits(engine *gin.Engine, cfg *appconfig.Config) {
+func (s *Server) configureRequestLimits(cfg *appconfig.Config) {
 	// the maximum amount of memory used to store parsed multipart form data, such as file uploads.
 	if cfg.MaxMemory > 0 {
-		engine.MaxMultipartMemory = cfg.MaxMemory
+		s.engine.MaxMultipartMemory = cfg.MaxMemory
 	}
 
 	// middleware to limit the size of the request body
 	if cfg.MaxUploadSize > 0 {
-		engine.Use(func(c *gin.Context) {
+		s.engine.Use(func(c *gin.Context) {
 			if c.Request != nil && c.Request.Body != nil {
 				c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, cfg.MaxUploadSize)
 			}
@@ -106,32 +106,23 @@ func configureRequestLimits(engine *gin.Engine, cfg *appconfig.Config) {
 	}
 }
 
-func configureBaseRoutes(engine *gin.Engine) {
-	engine.GET("/health", func(c *gin.Context) {
+func (s *Server) configureBaseRoutes() {
+	s.engine.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 }
 
-func configureStaticFrontend(engine *gin.Engine) {
-	engine.Static("/assets", filepath.Join(frontendDistPath, "assets"))
-	engine.StaticFile("/favicon.ico", filepath.Join(frontendDistPath, "favicon.ico"))
+func (s *Server) configureStaticFrontend() {
+	s.engine.Static("/assets", filepath.Join(frontendDistPath, "assets"))
+	s.engine.StaticFile("/favicon.ico", filepath.Join(frontendDistPath, "favicon.ico"))
 }
 
-func configureNoRoute(engine *gin.Engine, cfg *appconfig.Config, h *handlers.Handler) {
-	moduleHandlers := make([]routes.ModuleNoRouteHandler, 0, 1)
-	if h.Optimization != nil {
-		// Register optimization as a module fallback for unmatched /api/opt/v1/*.
-		// This avoids route tree conflicts from wildcard catch-all registration.
-		moduleHandlers = append(moduleHandlers, routes.ModuleNoRouteHandler{
-			PathPrefix: "/api/opt/v1/",
-			Middleware: h.AuthMiddleware(),
-			Forward:    h.Optimization.PiggyBacking,
-		})
-	}
+func (s *Server) configureNoRoute(cfg *appconfig.Config, h *handlers.Handler) {
+	moduleHandlers := routes.ModuleNoRouteHandlers(h)
 
-	engine.NoRoute(func(c *gin.Context) {
+	s.engine.NoRoute(func(c *gin.Context) {
 		// Give module-level fallbacks first chance to handle unmatched paths.
-		if routes.HandleModulesNoRoute(c, moduleHandlers...) {
+		if s.handleModulesNoRoute(c, moduleHandlers...) {
 			return
 		}
 
@@ -151,7 +142,29 @@ func configureNoRoute(engine *gin.Engine, cfg *appconfig.Config, h *handlers.Han
 	})
 }
 
-func defaultCORSMiddleware() gin.HandlerFunc {
+func (s *Server) handleModulesNoRoute(c *gin.Context, handlers ...routes.ModuleNoRouteHandler) bool {
+	for _, module := range handlers {
+		if !strings.HasPrefix(c.Request.URL.Path, module.PathPrefix) {
+			continue
+		}
+
+		if module.Middleware != nil {
+			module.Middleware(c)
+			// Aborted means middleware already wrote a response (e.g. 401).
+			// Treat it as handled and stop fallback processing.
+			if c.IsAborted() {
+				return true
+			}
+		}
+
+		module.Forward(c)
+		return true
+	}
+
+	return false
+}
+
+func (s *Server) defaultCORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
 		if origin != "" {
