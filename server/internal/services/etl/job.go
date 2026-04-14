@@ -1,4 +1,4 @@
-package services
+package etl
 
 import (
 	"archive/tar"
@@ -25,7 +25,7 @@ import (
 
 // Job-related methods on AppService
 
-func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobResponse, error) {
+func (s Service) ListJobs(ctx context.Context, projectID string) ([]dto.JobResponse, error) {
 	jobs, err := s.db.ListJobsByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list jobs: %s", err)
@@ -54,7 +54,7 @@ func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobR
 	return jobResponses, nil
 }
 
-func (s *ETLService) GetJob(ctx context.Context, projectID string, jobID int) (*dto.JobResponse, error) {
+func (s Service) GetJob(ctx context.Context, projectID string, jobID int) (*dto.JobResponse, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job: %s", err)
@@ -80,7 +80,7 @@ func (s *ETLService) GetJob(ctx context.Context, projectID string, jobID int) (*
 	return &jobResponse, nil
 }
 
-func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
+func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
 	unique, err := s.db.IsJobNameUniqueInProject(ctx, projectID, req.Name)
 	if err != nil {
 		return fmt.Errorf("failed to check job name uniqueness: %s", err)
@@ -100,17 +100,29 @@ func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 	}
 
 	user := &models.User{ID: *userID}
+
+	var advancedSettings *string
+	if req.AdvancedSettings != nil {
+		b, err := json.Marshal(req.AdvancedSettings)
+		if err != nil {
+			return fmt.Errorf("failed to serialise advanced_settings: %s", err)
+		}
+		s := string(b)
+		advancedSettings = &s
+	}
+
 	job := &models.Job{
-		Name:          req.Name,
-		SourceID:      source,
-		DestID:        dest,
-		Active:        true,
-		Frequency:     req.Frequency,
-		StreamsConfig: req.StreamsConfig,
-		State:         "{}",
-		ProjectID:     projectID,
-		CreatedBy:     user,
-		UpdatedBy:     user,
+		Name:             req.Name,
+		SourceID:         source,
+		DestID:           dest,
+		Active:           true,
+		Frequency:        req.Frequency,
+		StreamsConfig:    req.StreamsConfig,
+		State:            "{}",
+		AdvancedSettings: advancedSettings,
+		ProjectID:        projectID,
+		CreatedBy:        user,
+		UpdatedBy:        user,
 	}
 	if err := s.db.CreateJob(job); err != nil {
 		return fmt.Errorf("failed to create job: %s", err)
@@ -132,7 +144,7 @@ func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 	return nil
 }
 
-func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error {
+func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error {
 	// TODO: remove fetching existing job from database to verify it's existence, fetch only if the details aren't already available in the params/request. If job not exists it will fail during query execution.
 	existingJob, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
@@ -199,6 +211,14 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		"updated_by_id":  *userID,
 	}
 
+	if req.AdvancedSettings != nil {
+		b, err := json.Marshal(req.AdvancedSettings)
+		if err != nil {
+			return fmt.Errorf("failed to serialise advanced_settings: %s", err)
+		}
+		updateParams["advanced_settings"] = string(b)
+	}
+
 	// Update job within transaction
 	if err := s.db.UpdateJobWithTx(tx, existingJob.ID, updateParams); err != nil {
 		return fmt.Errorf("failed to update job: %s", err)
@@ -221,7 +241,7 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	return nil
 }
 
-func (s *ETLService) DeleteJob(ctx context.Context, jobID int) (string, error) {
+func (s Service) DeleteJob(ctx context.Context, jobID int) (string, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return "", fmt.Errorf("failed to find job: %s", err)
@@ -238,7 +258,7 @@ func (s *ETLService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 	return job.Name, nil
 }
 
-func (s *ETLService) SyncJob(ctx context.Context, projectID string, jobID int) (interface{}, error) {
+func (s Service) SyncJob(ctx context.Context, projectID string, jobID int) (interface{}, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find job: %s", err)
@@ -257,7 +277,7 @@ func (s *ETLService) SyncJob(ctx context.Context, projectID string, jobID int) (
 	}, nil
 }
 
-func (s *ETLService) CancelJobRun(ctx context.Context, projectID string, jobID int) error {
+func (s Service) CancelJobRun(ctx context.Context, projectID string, jobID int) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("failed to find job: %s", err)
@@ -270,7 +290,7 @@ func (s *ETLService) CancelJobRun(ctx context.Context, projectID string, jobID i
 	return nil
 }
 
-func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
+func (s Service) ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("failed to find job: %s", err)
@@ -302,7 +322,7 @@ func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 	return nil
 }
 
-func (s *ETLService) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string, syncWaitTime time.Duration, resetState bool) error {
+func (s Service) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string, syncWaitTime time.Duration, resetState bool) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("job not found: %s", err)
@@ -351,7 +371,7 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 	return nil
 }
 
-func (s *ETLService) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
+func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("job not found: %s", err)
@@ -375,7 +395,7 @@ func (s *ETLService) GetStreamDifference(ctx context.Context, _ string, jobID in
 	return diffCatalog, nil
 }
 
-func (s *ETLService) GetClearDestinationStatus(ctx context.Context, projectID string, jobID int) (bool, error) {
+func (s Service) GetClearDestinationStatus(ctx context.Context, projectID string, jobID int) (bool, error) {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return false, fmt.Errorf("job not found: %s", err)
@@ -389,7 +409,7 @@ func (s *ETLService) GetClearDestinationStatus(ctx context.Context, projectID st
 	return isClearRunning, nil
 }
 
-func (s *ETLService) CheckUniqueName(ctx context.Context, projectID string, req dto.CheckUniqueNameRequest) (bool, error) {
+func (s Service) CheckUniqueName(ctx context.Context, projectID string, req dto.CheckUniqueNameRequest) (bool, error) {
 	var tableType constants.TableType
 	switch req.EntityType {
 	case "job":
@@ -410,14 +430,14 @@ func (s *ETLService) CheckUniqueName(ctx context.Context, projectID string, req 
 	return unique, nil
 }
 
-func (s *ETLService) GetJobTasks(ctx context.Context, projectID string, jobID int) ([]dto.JobTask, error) {
+func (s Service) GetJobTasks(ctx context.Context, projectID string, jobID int) ([]dto.JobTask, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find job: %s", err)
 	}
 
 	var tasks []dto.JobTask
-	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, job.ID, projectID, job.ID)
+	query := fmt.Sprintf("WorkflowId BETWEEN 'sync-%s-%d-' AND 'sync-%s-%d-z'", projectID, job.ID, projectID, job.ID)
 
 	resp, err := s.temporal.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
 		Query: query,
@@ -449,7 +469,7 @@ func (s *ETLService) GetJobTasks(ctx context.Context, projectID string, jobID in
 	return tasks, nil
 }
 
-func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
+func (s Service) GetTaskLogs(_ context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find job: %s", err)
@@ -470,7 +490,7 @@ func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string, 
 }
 
 // TODO: frontend needs to send source id and destination id
-func (s *ETLService) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, includeConfig bool) (dto.JobResponse, error) {
+func (s Service) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, includeConfig bool) (dto.JobResponse, error) {
 	jobResp := dto.JobResponse{
 		ID:        job.ID,
 		Name:      job.Name,
@@ -515,10 +535,18 @@ func (s *ETLService) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, 
 		jobResp.LastRunType = lastRun.LastRunType
 	}
 
+	if job.AdvancedSettings != nil && *job.AdvancedSettings != "" && *job.AdvancedSettings != "{}" {
+		var advSettings dto.AdvancedSettings
+		if err := json.Unmarshal([]byte(*job.AdvancedSettings), &advSettings); err != nil {
+			return dto.JobResponse{}, fmt.Errorf("failed to parse advanced_settings for job %d: %s", job.ID, err)
+		}
+		jobResp.AdvancedSettings = &advSettings
+	}
+
 	return jobResp, nil
 }
 
-func (s *ETLService) upsertSource(ctx context.Context, config *dto.DriverConfig, projectID string, userID *int) (*models.Source, error) {
+func (s Service) upsertSource(ctx context.Context, config *dto.DriverConfig, projectID string, userID *int) (*models.Source, error) {
 	if config == nil {
 		return nil, fmt.Errorf("source config is required")
 	}
@@ -556,7 +584,7 @@ func (s *ETLService) upsertSource(ctx context.Context, config *dto.DriverConfig,
 	return newSource, nil
 }
 
-func (s *ETLService) upsertDestination(ctx context.Context, config *dto.DriverConfig, projectID string, userID *int) (*models.Destination, error) {
+func (s Service) upsertDestination(ctx context.Context, config *dto.DriverConfig, projectID string, userID *int) (*models.Destination, error) {
 	if config == nil {
 		return nil, fmt.Errorf("destination config is required")
 	}
@@ -596,7 +624,7 @@ func (s *ETLService) upsertDestination(ctx context.Context, config *dto.DriverCo
 }
 
 // worker service
-func (s *ETLService) UpdateSyncTelemetry(ctx context.Context, req dto.UpdateSyncTelemetryRequest) error {
+func (s Service) UpdateSyncTelemetry(ctx context.Context, req dto.UpdateSyncTelemetryRequest) error {
 	switch strings.ToLower(req.Event) {
 	case "started":
 		telemetry.TrackSyncStart(ctx, req.JobID, req.WorkflowID, req.Environment)
@@ -611,7 +639,7 @@ func (s *ETLService) UpdateSyncTelemetry(ctx context.Context, req dto.UpdateSync
 
 // RecoverFromClearDestination cancels stuck clear-destination workflows and restores normal sync schedule
 // This is an internal recovery API for when clear-destination gets stuck in infinite retry
-func (s *ETLService) RecoverFromClearDestination(ctx context.Context, projectID string, jobID int) error {
+func (s Service) RecoverFromClearDestination(ctx context.Context, projectID string, jobID int) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("job not found: %s", err)
@@ -652,7 +680,7 @@ func (s *ETLService) RecoverFromClearDestination(ctx context.Context, projectID 
 }
 
 // StreamLogArchive creates and streams a tar.gz archive of job logs to the provided writer
-func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer io.Writer) error {
+func (s Service) StreamLogArchive(jobID int, taskLogFilePath string, writer io.Writer) error {
 	baseDir, err := utils.GetAndValidateLogBaseDir(taskLogFilePath)
 	if err != nil {
 		return err
@@ -702,7 +730,7 @@ func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer 
 	return nil
 }
 
-func (s *ETLService) UpdateStateFile(jobID int, stateFile string) error {
+func (s Service) UpdateStateFile(jobID int, stateFile string) error {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("job not found: %s", err)

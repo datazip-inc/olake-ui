@@ -1,6 +1,8 @@
 import { Page, Locator, expect } from "@playwright/test"
-import { TIMEOUTS } from "../../playwright.config"
+
 import { BasePage } from "./BasePage"
+import { TIMEOUTS } from "../../playwright.config"
+import { pollToClickAndVerifyText } from "../utils/page-utils"
 
 export class JobsPage extends BasePage {
 	readonly createJobButton: Locator
@@ -13,7 +15,7 @@ export class JobsPage extends BasePage {
 
 	constructor(page: Page) {
 		super(page)
-		this.createJobButton = page.getByRole("button", { name: "Create Job" })
+		this.createJobButton = page.getByTestId("create-job-button")
 		this.jobsTitle = page.locator("h1", { hasText: "Jobs" })
 		this.jobsLink = page.getByRole("link", { name: "Jobs" })
 		this.activeTab = page.getByRole("tab", { name: "Active" })
@@ -46,7 +48,15 @@ export class JobsPage extends BasePage {
 	async syncJob(jobName: string) {
 		const jobRow = await this.getJobRow(jobName)
 		await jobRow.click()
-		await this.page.getByText("Sync now").click()
+		const syncNowBtn = this.page.getByText("Sync now")
+		await expect(syncNowBtn).toBeVisible()
+		await expect(syncNowBtn).toBeEnabled()
+
+		// Click the button AND wait for the navigation to the history page
+		await Promise.all([
+			this.page.waitForURL("**/history", { timeout: 10000 }), // Wait up to 10s for the redirect
+			syncNowBtn.click(),
+		])
 	}
 
 	async editJob(jobName: string) {
@@ -83,23 +93,39 @@ export class JobsPage extends BasePage {
 		await this.savedTab.click()
 	}
 
-	async viewJobLogs() {
-		// Wait for the page to be fully loaded first
+	async viewJobLogs(jobName?: string) {
 		await this.page.waitForLoadState("networkidle", {
 			timeout: TIMEOUTS.LONG,
 		})
 
-		// Wait for the View logs button to be visible and enabled
-		const viewLogsButton = this.page.getByRole("button", { name: "View logs" })
-		await viewLogsButton.waitFor({
-			state: "visible",
+		// Dynamic getter so Playwright re-evaluates the DOM on every retry loop
+		const getViewLogsButton = () => {
+			const container = jobName
+				? this.page.getByTestId(`job-${jobName}`)
+				: this.page
+			return container.getByRole("button", { name: "View logs" }).first()
+		}
+
+		// Playwright will retry this block until the assertions inside pass
+		await expect(async () => {
+			const btn = getViewLogsButton()
+
+			// If the job hasn't appeared yet, force a hard reload
+			if (!(await btn.isVisible())) {
+				await this.page.reload()
+				await this.page.waitForLoadState("networkidle")
+			}
+
+			// Attempt to assert visibility. If this fails, expect.toPass() catches the error and retries.
+			await expect(btn).toBeVisible({ timeout: 2000 })
+		}).toPass({
 			timeout: TIMEOUTS.LONG,
+			intervals: [3000], // Wait 3 seconds between reload attempts
 		})
 
-		// Ensure the button is enabled before clicking
-		await expect(viewLogsButton).toBeEnabled({ timeout: TIMEOUTS.LONG })
-
-		await viewLogsButton.click()
+		const finalBtn = getViewLogsButton()
+		await expect(finalBtn).toBeEnabled({ timeout: TIMEOUTS.LONG })
+		await finalBtn.click()
 	}
 
 	async viewJobConfigurations() {
@@ -112,5 +138,25 @@ export class JobsPage extends BasePage {
 		await expect(
 			this.page.getByRole("cell", { name: "Total records read:" }),
 		).toBeVisible()
+	}
+
+	async waitForSyncCompletionLogs() {
+		// Find the refresh button using test id
+		const refreshButton = this.page.getByTestId("refresh-logs-button")
+
+		// Poll every 5 seconds for up to the LONG timeout
+		await pollToClickAndVerifyText(
+			this.page,
+			refreshButton,
+			"Sync completed, wait 5 seconds cleanup in progress...",
+		)
+
+		// Wait 5 seconds after the message appears as requested
+		await this.page.waitForTimeout(5000)
+	}
+
+	async expectJobStatus(jobName: string, expectedStatus: string) {
+		const row = this.page.getByRole("row").filter({ hasText: jobName }).first()
+		await expect(row).toContainText(expectedStatus)
 	}
 }

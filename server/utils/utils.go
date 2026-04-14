@@ -714,3 +714,29 @@ func GetLogArchiveFilename(jobID int, filePath string) (string, error) {
 
 	return filename, nil
 }
+
+func MarshalToString(v interface{}) (string, error) {
+	bytes, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
+func SetIfNotEmpty(m map[string]string, key, value string) {
+	if value != "" {
+		m[key] = value
+	}
+}
+
+// NormalizeString converts a string to lowercase, trims leading and trailing spaces and replaces spaces with underscores
+func NormalizeString(s string) string {
+	words := strings.Fields(strings.ToLower(s))
+	return strings.Join(words, "_")
+}
+
+func ConvertMBToBytes(sizeMB int64) string {
+	const bytesPerMB = 1024 * 1024
+	sizeBytes := sizeMB * bytesPerMB
+	return strconv.FormatInt(sizeBytes, 10)
+}

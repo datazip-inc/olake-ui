@@ -1,4 +1,4 @@
-package services
+package etl
 
 import (
 	"context"
@@ -38,7 +38,9 @@ func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Tempor
 	}
 
 	// Query latest workflow execution per job ID for this project.
-	query := fmt.Sprintf("WorkflowId between 'sync-%s-' and 'sync-%s-~'", projectID, projectID)
+	// Using BETWEEN with 'z' suffix.
+	// 'z' sorts after all digits/hyphens in standard collation, ensuring we capture the full range.
+	query := fmt.Sprintf("WorkflowId BETWEEN 'sync-%s-' AND 'sync-%s-z'", projectID, projectID)
 
 	result := make(map[int]JobLastRunInfo, len(jobs))
 	var nextPageToken []byte
@@ -102,7 +104,7 @@ func cancelAllJobWorkflows(ctx context.Context, tempClient *temporal.Temporal, j
 	var conditions []string
 	for _, job := range jobs {
 		conditions = append(conditions, fmt.Sprintf(
-			"(WorkflowId BETWEEN 'sync-%s-%d' AND 'sync-%s-%d-~' AND OperationType != '%s')",
+			"(WorkflowId BETWEEN 'sync-%s-%d-' AND 'sync-%s-%d-z' AND OperationType != '%s')",
 			projectID, job.ID, projectID, job.ID, temporal.ClearDestination,
 		))
 	}
@@ -191,7 +193,7 @@ func syncWorkflowOperationType(execution *workflow.WorkflowExecutionInfo) tempor
 // isWorkflowRunning checks if workflows of a specific type are running
 func isWorkflowRunning(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobID int, opType temporal.Command) (bool, []*workflow.WorkflowExecutionInfo, error) {
 	query := fmt.Sprintf(
-		"WorkflowId BETWEEN 'sync-%s-%d' AND 'sync-%s-%d-~' AND OperationType = '%s' AND ExecutionStatus = 'Running'",
+		"WorkflowId BETWEEN 'sync-%s-%d-' AND 'sync-%s-%d-z' AND OperationType = '%s' AND ExecutionStatus = 'Running'",
 		projectID, jobID, projectID, jobID, opType,
 	)
 
@@ -250,7 +252,7 @@ func waitForSyncToStop(ctx context.Context, tempClient *temporal.Temporal, proje
 // checks the version compatibility for clear-destination and stream difference operation
 // supported in versions >= v0.3.0
 func CheckClearDestinationCompatibility(sourceVersion string) error {
-	if semver.Compare(sourceVersion, constants.DefaultClearDestinationVersion) < 0 {
+	if semver.Compare(sourceVersion, constants.DefaultClearDestinationVersion) < 0 && utils.GetCustomDriverVersion() == "" {
 		return fmt.Errorf("source version %s is not supported for clear destination. please update the source version to %s or higher", sourceVersion, constants.DefaultClearDestinationVersion)
 	}
 	return nil

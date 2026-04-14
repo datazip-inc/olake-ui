@@ -1,9 +1,14 @@
 import { Page, Locator, expect } from "@playwright/test"
-import { TIMEOUTS } from "../../playwright.config"
+
 import { BasePage } from "./BasePage"
-import { DestinationFormConfig } from "../types/PageConfig.types"
-import { selectConnector } from "../utils/page-utils"
+import { TIMEOUTS } from "../../playwright.config"
 import { CatalogType, DestinationConnector } from "../enums"
+import { DestinationFormConfig } from "../types/PageConfig.types"
+import {
+	expectTestConnectionModalVisible,
+	assertTestConnectionOutcome,
+} from "../utils/modal-utils"
+import { selectConnector } from "../utils/page-utils"
 
 export class CreateDestinationPage extends BasePage {
 	readonly destinationNameInput: Locator
@@ -40,7 +45,7 @@ export class CreateDestinationPage extends BasePage {
 		this.createButton = page.getByRole("button", { name: "Create" })
 		this.cancelButton = page.getByRole("button", { name: "Cancel" })
 		this.backToDestinationsLink = page.getByRole("link").first()
-		this.pageTitle = page.locator("text=Create destination")
+		this.pageTitle = page.getByTestId("create-destination-page-title")
 		this.testConnectionButton = page.getByRole("button", {
 			name: "Test Connection",
 		})
@@ -277,34 +282,32 @@ export class CreateDestinationPage extends BasePage {
 	}
 
 	async expectTestConnectionModal() {
-		await expect(this.page.locator(".ant-modal")).toBeVisible()
+		await expectTestConnectionModalVisible(this.page, "Destination")
 	}
 
 	async expectSuccessModal() {
-		await expect(this.page.getByText("Connection successful")).toBeVisible({
-			timeout: TIMEOUTS.LONG,
-		})
+		await this.page.waitForSelector(
+			"text=Destination test connection is successful",
+			{
+				state: "visible",
+			},
+		)
+		await expect(
+			this.page.getByText("Destination test connection is successful"),
+		).toBeVisible()
 	}
 
 	async assertTestConnectionSucceeded() {
-		const failure = this.page
-			.waitForSelector("text=Your test connection has failed", {
-				state: "visible",
-				timeout: TIMEOUTS.LONG,
-			})
-			.then(() => "failure")
-		const success = this.page
-			.waitForSelector("text=Connection successful", {
-				state: "visible",
-				timeout: TIMEOUTS.LONG,
-			})
-			.then(() => "success")
-
-		const outcome = await Promise.race([failure, success])
-		expect(outcome, "Test connection failed").toBe("success")
+		await assertTestConnectionOutcome(this.page, "Destination")
 	}
 
 	async expectEntitySavedModal() {
+		await this.page.waitForSelector(
+			"text=Destination is connected and saved successfully",
+			{
+				state: "visible",
+			},
+		)
 		await expect(
 			this.page.getByText("Destination is connected and saved successfully"),
 		).toBeVisible()

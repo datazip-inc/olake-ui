@@ -1,5 +1,7 @@
 package dto
 
+import "encoding/json"
+
 type JSONResponse struct {
 	Success bool        `json:"success" example:"true"`
 	Message string      `json:"message" example:"operation completed successfully"`
@@ -88,20 +90,21 @@ type VersionsResponse struct {
 
 // Job response
 type JobResponse struct {
-	ID            int          `json:"id" example:"1"`
-	Name          string       `json:"name" example:"my-sync-job"`
-	Source        DriverConfig `json:"source"`
-	Destination   DriverConfig `json:"destination"`
-	StreamsConfig string       `json:"streams_config,omitempty"`
-	Frequency     string       `json:"frequency" example:"0 */6 * * *"`
-	LastRunTime   string       `json:"last_run_time,omitempty" example:"2024-01-09T12:00:00Z"`
-	LastRunState  string       `json:"last_run_state,omitempty" example:"completed"`
-	LastRunType   string       `json:"last_run_type,omitempty" example:"sync"` // "sync" | "clear-destination"
-	CreatedAt     string       `json:"created_at" example:"2024-01-01T00:00:00Z"`
-	UpdatedAt     string       `json:"updated_at" example:"2024-01-09T12:00:00Z"`
-	Activate      bool         `json:"activate" example:"true"`
-	CreatedBy     string       `json:"created_by,omitempty" example:"admin"`
-	UpdatedBy     string       `json:"updated_by,omitempty" example:"admin"`
+	ID               int               `json:"id" example:"1"`
+	Name             string            `json:"name" example:"my-sync-job"`
+	Source           DriverConfig      `json:"source"`
+	Destination      DriverConfig      `json:"destination"`
+	StreamsConfig    string            `json:"streams_config,omitempty"`
+	Frequency        string            `json:"frequency" example:"0 */6 * * *"`
+	LastRunTime      string            `json:"last_run_time,omitempty" example:"2024-01-09T12:00:00Z"`
+	LastRunState     string            `json:"last_run_state,omitempty" example:"completed"`
+	LastRunType      string            `json:"last_run_type,omitempty" example:"sync"` // "sync" | "clear-destination"
+	CreatedAt        string            `json:"created_at" example:"2024-01-01T00:00:00Z"`
+	UpdatedAt        string            `json:"updated_at" example:"2024-01-09T12:00:00Z"`
+	Activate         bool              `json:"activate" example:"true"`
+	CreatedBy        string            `json:"created_by,omitempty" example:"admin"`
+	UpdatedBy        string            `json:"updated_by,omitempty" example:"admin"`
+	AdvancedSettings *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
 type JobTask struct {
@@ -195,4 +198,49 @@ type ReleasesResponse struct {
 type TelemetryIDResponse struct {
 	TelemetryUserID string `json:"user_id" example:"1234567890abcdef1234567890abcdef"`
 	OlakeUIVersion  string `json:"version" example:"v0.2.5"`
+}
+
+// TODO: convert all optimization struct json-keys to "snake-case"
+
+type OptimizationResponse struct {
+	Code    int             `json:"code"`
+	Message string          `json:"message"`
+	Result  json.RawMessage `json:"result"`
+}
+
+// TablesResponse represents tables with full details for a specific catalog/database
+type TablesResponse struct {
+	Catalog  string      `json:"catalog"`
+	Database string      `json:"database"`
+	Tables   []TableInfo `json:"tables"`
+}
+
+type TableInfo struct {
+	Name         string            `json:"name"`
+	TotalSize    string            `json:"totalSize"`
+	OLakeCreated bool              `json:"olake_created"`
+	Major        *OptimizationInfo `json:"major"`
+	Minor        *OptimizationInfo `json:"minor"`
+	Full         *OptimizationInfo `json:"full"`
+	Enabled      bool              `json:"enabled"`
+	HealthScore  int               `json:"healthScore,omitempty"`
+}
+
+type OptimizationInfo struct {
+	FinishTime int64  `json:"finish_time,omitempty"`
+	Status     string `json:"status,omitempty"`
+	RunID      string `json:"runID,omitempty"`
+}
+
+// TableProperties represents the response from setting table properties
+type TableProperties struct {
+	SessionID string   `json:"sessionId"`
+	Success   bool     `json:"success"`
+	Message   string   `json:"message"`
+	Logs      []string `json:"logs,omitempty"`
+}
+
+// TerminalSessionResponse represents the response from terminal execute
+type TerminalSessionResponse struct {
+	SessionID string `json:"sessionId"`
 }

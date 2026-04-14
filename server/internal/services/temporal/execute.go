@@ -3,12 +3,14 @@ package temporal
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 	"go.temporal.io/sdk/client"
 	"golang.org/x/mod/semver"
@@ -65,7 +67,7 @@ const (
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
 
 // DiscoverStreams runs a workflow to discover catalog data
-func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string) (map[string]interface{}, error) {
+func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
 
 	configs := []JobConfig{
@@ -84,8 +86,17 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		"/mnt/config/config.json",
 	}
 
-	if jobName != "" && semver.Compare(version, "v0.2.0") >= 0 {
+	if jobName != "" && (utils.GetCustomDriverVersion() != "" || semver.Compare(version, "v0.2.0") >= 0) {
 		cmdArgs = append(cmdArgs, "--destination-database-prefix", jobName)
+	}
+
+	// Only add max-discover-threads flag for versions >= v0.3.18
+	if semver.Compare(version, constants.DefaultMaxDiscoverThreadsVersion) >= 0 {
+		threads := constants.DefaultMaxDiscoverThreads
+		if maxDiscoverThreads != nil && *maxDiscoverThreads > 0 {
+			threads = *maxDiscoverThreads
+		}
+		cmdArgs = append(cmdArgs, constants.MaxDiscoverThreadsFlag, strconv.Itoa(threads))
 	}
 
 	if streamsConfig != "" {
@@ -131,7 +142,7 @@ func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceTy
 	workflowID := fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix())
 
 	// spec version >= DefaultSpecVersion is required
-	if semver.Compare(version, constants.DefaultSpecVersion) < 0 {
+	if semver.Compare(version, constants.DefaultSpecVersion) < 0 && utils.GetCustomDriverVersion() == "" {
 		version = constants.DefaultSpecVersion
 	}
 
