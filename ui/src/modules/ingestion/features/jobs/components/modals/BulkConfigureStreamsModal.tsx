@@ -1,8 +1,11 @@
 import {
+	CaretDownIcon,
+	CaretRightIcon,
 	CheckIcon,
 	FadersHorizontalIcon,
 	RowsIcon,
 	TableIcon,
+	WarningIcon,
 	XIcon,
 } from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
@@ -16,6 +19,7 @@ import {
 } from "@/modules/ingestion/common/types"
 import { BulkConfigureStreamsModalProps } from "@/modules/ingestion/features/jobs/types"
 
+import { CARD_STYLE } from "../../constants"
 import { useStreamSelectionStore } from "../../stores"
 import { buildBulkStreamsData } from "../../utils/streams"
 import BulkStreamSelectorList from "../streams/BulkStreamSelectorList"
@@ -67,6 +71,7 @@ const INITIAL_BULK_CONFIG: BulkConfig = {
 }
 
 const CLOSE_COUNTDOWN = 3
+const MAX_VISIBLE_SELECTED_STREAMS = 5
 
 const sortCursorFields = (
 	availableCursors: string[],
@@ -90,6 +95,10 @@ const BulkConfigureStreamsModal = ({
 	const [step, setStep] = useState<BulkConfigureStep>("select-streams")
 	const [activeTab, setActiveTab] = useState<BulkConfigurationTab>("config")
 	const [closeCountdown, setCloseCountdown] = useState(CLOSE_COUNTDOWN)
+	const [isSyncIngestionCollapsed, setIsSyncIngestionCollapsed] =
+		useState<boolean>(true)
+	const [isSelectedStreamsExpanded, setIsSelectedStreamsExpanded] =
+		useState<boolean>(false)
 
 	const [bulkSelectedStreams, setBulkSelectedStreams] = useState<
 		StreamIdentifier[]
@@ -136,6 +145,8 @@ const BulkConfigureStreamsModal = ({
 			setActiveTab("config")
 			setCloseCountdown(CLOSE_COUNTDOWN)
 			setBulkSelectedStreams([])
+			setIsSyncIngestionCollapsed(true)
+			setIsSelectedStreamsExpanded(false)
 		}
 	}, [open])
 
@@ -171,6 +182,8 @@ const BulkConfigureStreamsModal = ({
 			partitionRegex: "",
 		})
 		setDirtyFields(INITIAL_DIRTY_FIELDS)
+		setIsSyncIngestionCollapsed(true)
+		setIsSelectedStreamsExpanded(false)
 	}, [selectionKey])
 
 	const getStepTitle = () => {
@@ -219,6 +232,14 @@ const BulkConfigureStreamsModal = ({
 			),
 		)
 	}
+
+	const visibleSelectedStreams = isSelectedStreamsExpanded
+		? bulkSelectedStreams
+		: bulkSelectedStreams.slice(0, MAX_VISIBLE_SELECTED_STREAMS)
+	const hiddenSelectedStreamsCount = Math.max(
+		0,
+		bulkSelectedStreams.length - MAX_VISIBLE_SELECTED_STREAMS,
+	)
 
 	const getFooter = () => {
 		if (step === "success") return null
@@ -302,7 +323,9 @@ const BulkConfigureStreamsModal = ({
 							Bulk Streams configure
 						</h2>
 						<p className="mt-2 text-sm leading-5 text-olake-text">
-							Select streams you wish to bulk configure
+							{step === "select-streams"
+								? "Select streams you wish to bulk configure"
+								: "Set the properties to be applied across selected streams"}
 						</p>
 					</div>
 
@@ -339,7 +362,7 @@ const BulkConfigureStreamsModal = ({
 								) : (
 									<>
 										<div className="mt-2 flex flex-wrap gap-2">
-											{bulkSelectedStreams.map(stream => {
+											{visibleSelectedStreams.map(stream => {
 												const streamId = `${stream.namespace}__${stream.streamName}`
 												return (
 													<div
@@ -362,13 +385,38 @@ const BulkConfigureStreamsModal = ({
 													</div>
 												)
 											})}
+											{hiddenSelectedStreamsCount > 0 &&
+												!isSelectedStreamsExpanded && (
+													<button
+														type="button"
+														onClick={() => setIsSelectedStreamsExpanded(true)}
+														className="flex h-7 items-center gap-2 rounded bg-olake-surface-muted px-3.5 py-0.5 text-olake-text"
+													>
+														<span className="text-sm font-medium">
+															+{hiddenSelectedStreamsCount} more
+														</span>
+													</button>
+												)}
+											{isSelectedStreamsExpanded &&
+												bulkSelectedStreams.length >
+													MAX_VISIBLE_SELECTED_STREAMS && (
+													<button
+														type="button"
+														onClick={() => setIsSelectedStreamsExpanded(false)}
+														className="flex h-7 items-center gap-2 rounded bg-olake-surface-muted px-3.5 py-0.5 text-olake-text"
+													>
+														<span className="text-sm font-medium">
+															View less
+														</span>
+													</button>
+												)}
 										</div>
-										<div className="mt-4 flex items-center gap-2 rounded-md border border-olake-border bg-olake-surface-muted px-3 py-2 text-sm text-olake-text-secondary">
-											<span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full bg-warning" />
-											<span>
-												Only fields marked with this indicator will be applied
-												to all selected streams and will override previous
-												configuration.
+										<div className="mt-4 flex items-center gap-2 rounded-md border border-olake-border bg-primary-100 px-3 py-2 text-sm text-olake-text-secondary">
+											<WarningIcon className="size-4 text-orange-500" />
+											<span className="font-medium">
+												Properties configured through this bulk edit will be
+												applied to the selected streams, overriding any existing
+												values
 											</span>
 										</div>
 
@@ -409,32 +457,57 @@ const BulkConfigureStreamsModal = ({
 													className="flex flex-col gap-4"
 												>
 													{/* Sync Mode and Ingestion Mode Sections */}
-													<div className="rounded border border-neutral-disabled bg-white p-4">
-														<SyncModeSection
-															isBulkMode
-															isDirty={dirtyFields[BulkDirtyFieldKey.SyncMode]}
-															bulkStream={bulkStream}
-															bulkSyncMode={bulkConfig.syncMode}
-															bulkCursorField={bulkConfig.cursorField}
-															onBulkSyncModeChange={(mode, cursor) => {
-																setBulkConfigField("syncMode", mode)
-																setBulkConfigField("cursorField", cursor)
-																markDirty(BulkDirtyFieldKey.SyncMode)
-															}}
-														/>
-														<IngestionModeSection
-															isBulkMode
-															isDirty={
-																dirtyFields[BulkDirtyFieldKey.AppendMode]
+													<div className={CARD_STYLE}>
+														<button
+															type="button"
+															onClick={() =>
+																setIsSyncIngestionCollapsed(prev => !prev)
 															}
-															sourceType={sourceType}
-															destinationType={destinationType}
-															bulkAppendMode={bulkConfig.appendMode}
-															onBulkIngestionModeChange={value => {
-																setBulkConfigField("appendMode", value)
-																markDirty(BulkDirtyFieldKey.AppendMode)
-															}}
-														/>
+															className={clsx(
+																`flex w-full items-center justify-between text-left text-sm font-medium text-olake-text`,
+																!isSyncIngestionCollapsed && "mb-2",
+															)}
+															aria-expanded={!isSyncIngestionCollapsed}
+															aria-label="Toggle sync and ingestion settings"
+														>
+															<span>Ingestion Settings</span>
+															{isSyncIngestionCollapsed ? (
+																<CaretRightIcon className="size-4 text-olake-text-tertiary" />
+															) : (
+																<CaretDownIcon className="size-4 text-olake-text-tertiary" />
+															)}
+														</button>
+														{!isSyncIngestionCollapsed && (
+															<>
+																<SyncModeSection
+																	isBulkMode
+																	isDirty={
+																		dirtyFields[BulkDirtyFieldKey.SyncMode]
+																	}
+																	bulkStream={bulkStream}
+																	bulkSyncMode={bulkConfig.syncMode}
+																	bulkCursorField={bulkConfig.cursorField}
+																	onBulkSyncModeChange={(mode, cursor) => {
+																		setBulkConfigField("syncMode", mode)
+																		setBulkConfigField("cursorField", cursor)
+																		markDirty(BulkDirtyFieldKey.SyncMode)
+																	}}
+																/>
+																<IngestionModeSection
+																	isBulkMode
+																	isDirty={
+																		dirtyFields[BulkDirtyFieldKey.AppendMode]
+																	}
+																	sourceType={sourceType}
+																	destinationType={destinationType}
+																	bulkAppendMode={bulkConfig.appendMode}
+																	onBulkIngestionModeChange={value => {
+																		setBulkConfigField("appendMode", value)
+																		markDirty(BulkDirtyFieldKey.AppendMode)
+																	}}
+																/>
+															</>
+														)}
 													</div>
 
 													{/* Normalization Section */}

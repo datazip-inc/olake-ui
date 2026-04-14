@@ -1,4 +1,4 @@
-import { InfoIcon } from "@phosphor-icons/react"
+import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
 import { Radio, Tooltip } from "antd"
 import clsx from "clsx"
 
@@ -103,9 +103,7 @@ const IngestionModeSection = ({
 		>
 			<div className="mb-3">
 				<div className="flex items-center gap-1">
-					{isDirty && (
-						<span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full bg-warning" />
-					)}
+					{isDirty && <WarningIcon className="size-4 text-orange-500" />}
 					<label className="block w-full">Ingestion Mode:</label>
 				</div>
 				<div

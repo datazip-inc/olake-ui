@@ -1,4 +1,4 @@
-import { InfoIcon } from "@phosphor-icons/react"
+import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
 import { Switch } from "antd"
 import clsx from "clsx"
 
@@ -71,9 +71,7 @@ const NormalizationSection = ({
 			>
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-1">
-						{isDirty && (
-							<span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full bg-warning" />
-						)}
+						{isDirty && <WarningIcon className="size-4 text-orange-500" />}
 						<label>Normalization</label>
 					</div>
 					<Switch

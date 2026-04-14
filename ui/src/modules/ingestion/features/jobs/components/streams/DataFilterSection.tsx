@@ -3,6 +3,7 @@ import {
 	InfoIcon,
 	LightningIcon,
 	PlusIcon,
+	WarningIcon,
 	XIcon,
 } from "@phosphor-icons/react"
 import { Button, Divider, Input, message, Select, Switch, Tooltip } from "antd"
@@ -457,9 +458,7 @@ const DataFilterSection = ({
 			>
 				<div className="flex items-center justify-between !p-3">
 					<div className="flex items-center gap-1">
-						{isDirty && (
-							<span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full bg-warning" />
-						)}
+						{isDirty && <WarningIcon className="size-4 text-orange-500" />}
 						<label>Data Filter</label>
 						<Tooltip title="Filters the stream to include only records that match conditions on specific columns.">
 							<InfoIcon

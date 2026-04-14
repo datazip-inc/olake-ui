@@ -1,4 +1,8 @@
-import { ArrowSquareOutIcon, InfoIcon } from "@phosphor-icons/react"
+import {
+	ArrowSquareOutIcon,
+	InfoIcon,
+	WarningIcon,
+} from "@phosphor-icons/react"
 import { Button, Input, Tooltip } from "antd"
 import { useState } from "react"
 
@@ -90,9 +94,7 @@ const PartitionRegexSection = ({
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="flex items-center gap-0.5">
-				{isDirty && (
-					<span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full bg-warning" />
-				)}
+				{isDirty && <WarningIcon className="size-4 text-orange-500" />}
 				<div className="text-neutral-text">Partitioning regex:</div>
 
 				<Tooltip title={PartitioningRegexTooltip}>

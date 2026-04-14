@@ -1,4 +1,9 @@
-import { ArrowSquareOutIcon, InfoIcon, PlusIcon } from "@phosphor-icons/react"
+import {
+	ArrowSquareOutIcon,
+	InfoIcon,
+	PlusIcon,
+	WarningIcon,
+} from "@phosphor-icons/react"
 import { Radio, Select, Tooltip, Button } from "antd"
 import { useEffect, useState } from "react"
 
@@ -192,9 +197,7 @@ const SyncModeSection = ({
 		<>
 			<div className="mb-4">
 				<div className="mb-3 flex w-full items-center gap-1 font-medium text-neutral-text">
-					{isDirty && (
-						<span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full bg-warning" />
-					)}
+					{isDirty && <WarningIcon className="size-4 text-orange-500" />}
 					<label>Sync mode:</label>
 					<a
 						href="https://olake.io/docs/understanding/terminologies/olake/#2-sync-modes"
