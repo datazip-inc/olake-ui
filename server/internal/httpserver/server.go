@@ -24,6 +24,7 @@ type Server struct {
 }
 
 func New(cfg *appconfig.Config, h *handlers.Handler) *Server {
+	configureMode(cfg)
 	engine := gin.New()
 	engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		SkipPaths: []string{"/health"},
@@ -31,7 +32,6 @@ func New(cfg *appconfig.Config, h *handlers.Handler) *Server {
 	engine.Use(gin.Recovery())
 
 	configureRequestLimits(engine, cfg)
-	configureMode(cfg)
 	configureBaseRoutes(engine)
 
 	if cfg.RunMode == "localdev" {
@@ -40,10 +40,8 @@ func New(cfg *appconfig.Config, h *handlers.Handler) *Server {
 		configureStaticFrontend(engine)
 	}
 
-	if h != nil {
-		routes.RegisterRoutes(engine, h)
-		configureNoRoute(engine, cfg, h)
-	}
+	routes.RegisterRoutes(engine, h)
+	configureNoRoute(engine, cfg, h)
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%s", cfg.HTTPPort),
@@ -121,7 +119,7 @@ func configureStaticFrontend(engine *gin.Engine) {
 
 func configureNoRoute(engine *gin.Engine, cfg *appconfig.Config, h *handlers.Handler) {
 	moduleHandlers := make([]routes.ModuleNoRouteHandler, 0, 1)
-	if h != nil && h.Optimization != nil {
+	if h.Optimization != nil {
 		// Register optimization as a module fallback for unmatched /api/opt/v1/*.
 		// This avoids route tree conflicts from wildcard catch-all registration.
 		moduleHandlers = append(moduleHandlers, routes.ModuleNoRouteHandler{

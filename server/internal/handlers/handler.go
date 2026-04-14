@@ -17,18 +17,18 @@ type Handler struct {
 	sessions     *sessionStore
 }
 
-func NewHandler(appSvc *services.AppService, cfg *appconfig.Config, db *database.Database) (*Handler, error) {
+func NewHandler(appSvc *services.AppService, cfg *appconfig.Config, db *database.Database) *Handler {
 	sessionStore := newSessionStore(cfg, db)
 
-	h := &Handler{
+	handler := &Handler{
 		appSvc:   appSvc,
 		ETL:      etl.NewHandler(appSvc.ETL()),
 		sessions: sessionStore,
 	}
 
 	if opt := appSvc.Optimization(); opt != nil {
-		h.Optimization = optimization.NewHandler(opt)
+		handler.Optimization = optimization.NewHandler(opt)
 	}
 
-	return h, nil
+	return handler
 }

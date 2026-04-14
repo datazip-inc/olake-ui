@@ -76,12 +76,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	api, err := handlers.NewHandler(appSvc, &cfg, db)
-	if err != nil {
-		logger.Fatalf("Failed to initialize handler: %s", err)
-		return
-	}
+	api := handlers.NewHandler(appSvc, &cfg, db)
 	server := httpserver.New(&cfg, api)
+
 	logger.Infof("Starting HTTP server on port %s", cfg.HTTPPort)
 	if err := server.Run(ctx); err != nil {
 		logger.Fatalf("HTTP server exited with error: %s", err)
