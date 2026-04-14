@@ -53,16 +53,6 @@ func (db *Database) decryptJobConfig(job *models.Job) error {
 	return nil
 }
 
-// decryptJobSliceConfig decrypts related entities for a slice of jobs
-func (db *Database) decryptJobSliceConfig(jobs []*models.Job) error {
-	for _, job := range jobs {
-		if err := db.decryptJobConfig(job); err != nil {
-			return fmt.Errorf("failed to decrypt job config job_id[%d]: %s", job.ID, err)
-		}
-	}
-	return nil
-}
-
 // Create a new job
 func (db *Database) CreateJob(job *models.Job) error {
 	return db.conn.Create(job).Error
