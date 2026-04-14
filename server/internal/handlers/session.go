@@ -49,7 +49,7 @@ func (s *sessionStore) SetUserSession(c *gin.Context, userID int) error {
 		return fmt.Errorf("failed to marshal session payload: %w", err)
 	}
 
-	err = s.db.UpsertSession(sessionID, payload, expiresAt)
+	err = s.db.CreateSession(sessionID, payload, expiresAt)
 	if err != nil {
 		return fmt.Errorf("failed to persist session: %w", err)
 	}

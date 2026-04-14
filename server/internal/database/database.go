@@ -58,6 +58,11 @@ func Init() (*Database, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create session table: %s", err)
 		}
+
+		// cleanup expired sessions
+		if err := conn.Exec(`DELETE FROM session WHERE session_expiry <= NOW()`).Error; err != nil {
+			return nil, fmt.Errorf("failed to cleanup expired sessions: %s", err)
+		}
 	}
 	return &Database{conn: conn}, nil
 }
