@@ -61,7 +61,11 @@ func (db *Database) GetUserByID(id int) (*models.User, error) {
 }
 
 func (db *Database) UpdateUser(user *models.User) error {
-	return db.conn.Updates(user).Error
+	return db.conn.
+		Model(&models.User{}).
+		Where("id = ?", user.ID).
+		Select("username", "email").
+		Updates(user).Error
 }
 
 func (db *Database) DeleteUser(id int) error {

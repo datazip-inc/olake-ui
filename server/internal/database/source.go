@@ -104,7 +104,11 @@ func (db *Database) UpdateSource(source *models.Source) error {
 		return fmt.Errorf("failed to encrypt source config id[%d]: %s", source.ID, err)
 	}
 	source.Config = eConfig
-	return db.conn.Updates(source).Error
+	return db.conn.
+		Model(&models.Source{}).
+		Where("id = ?", source.ID).
+		Select("name", "type", "version", "config", "updated_by_id").
+		Updates(source).Error
 }
 
 func (db *Database) DeleteSource(id int) error {

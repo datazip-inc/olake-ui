@@ -103,7 +103,11 @@ func (db *Database) UpdateDestination(destination *models.Destination) error {
 		return fmt.Errorf("failed to encrypt destination[%d] config: %s", destination.ID, err)
 	}
 	destination.Config = eConfig
-	return db.conn.Updates(destination).Error
+	return db.conn.
+		Model(&models.Destination{}).
+		Where("id = ?", destination.ID).
+		Select("name", "dest_type", "version", "config", "updated_by_id").
+		Updates(destination).Error
 }
 
 func (db *Database) DeleteDestination(id int) error {
