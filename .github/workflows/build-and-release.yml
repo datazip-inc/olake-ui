@@ -7,11 +7,6 @@ on:
         required: true
         default: ""
         type: string
-      ref:
-        description: "Git ref (branch/tag/SHA) to build from. If empty, derived from environment mapping."
-        required: false
-        default: ""
-        type: string
       version:
         description: "Version to release"
         required: true
@@ -28,11 +23,6 @@ on:
           - master
           - staging
           - dev
-      ref:
-        description: "Git ref (branch/tag/SHA) to build from (optional). If empty, derived from environment mapping."
-        required: false
-        default: ""
-        type: string
       version:
         description: "Version to release"
         required: true
@@ -53,35 +43,10 @@ jobs:
       VERSION: ${{ inputs.version }}
 
     steps:
-      - name: Checkout code from explicit ref
-        if: ${{ inputs.ref != '' }}
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
-
-      - name: Checkout code for master
-        if: ${{ inputs.ref == '' && inputs.environment == 'master' }}
-        uses: actions/checkout@v4
-        with:
-          ref: master
-
-      - name: Checkout code for staging
-        if: ${{ inputs.ref == '' && inputs.environment == 'staging' }}
-        uses: actions/checkout@v4
-        with:
-          ref: staging
-
-      - name: Checkout code for dev
-        if: ${{ inputs.ref == '' && inputs.environment == 'dev' }}
-        uses: actions/checkout@v4
-        with:
-          ref: ci/workerReleaseIssues
-
-      - name: Checkout code for other environments
-        if: ${{ inputs.ref == '' && inputs.environment != 'master' && inputs.environment != 'staging' && inputs.environment != 'dev' }}
-        uses: actions/checkout@v4
-        with:
-          ref: staging
+          ref: ${{ inputs.environment == 'master' && 'master' || (inputs.environment == 'staging' && 'staging' || inputs.environment == 'dev' && 'ci/workerReleaseIssues' || 'develop') }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
