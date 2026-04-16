@@ -125,6 +125,7 @@ func (h *Handler) CreateSource(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to update source"
 // @Router /api/v1/project/{projectid}/sources/{id} [put]
 func (h *Handler) UpdateSource(c *gin.Context) {
+	// TODO: on SESSION_ON=false we need to skip userID check
 	userID := utils.GetCurrentUserID(c)
 	if userID == nil {
 		utils.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
