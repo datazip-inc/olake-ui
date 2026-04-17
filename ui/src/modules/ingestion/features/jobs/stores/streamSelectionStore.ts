@@ -660,8 +660,3 @@ export const selectIsStreamEnabled = (
 	if (!stream) return false
 	return !stream.disabled
 }
-// A stable no-op selector that returns null; used to avoid store subscriptions and re-renders during bulk configuration.
-export const noopNullSelector = () => null
-
-// A stable no-op selector that returns false; used to avoid store subscriptions and re-renders during bulk configuration.
-export const noopFalseSelector = () => false
