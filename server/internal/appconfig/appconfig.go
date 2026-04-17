@@ -41,7 +41,7 @@ func loadConfig() Config {
 	v := viper.New()
 
 	// Note: config priority: env variables -> file (app.yaml)
-	v.SetConfigFile("./conf/app.yaml")
+	v.SetConfigFile("./config/app.yaml")
 	if err := v.ReadInConfig(); err != nil {
 		panic(err)
 	}
