@@ -9,86 +9,33 @@ import { useState } from "react"
 import { DESTINATION_INTERNAL_TYPES } from "@/modules/ingestion/common/constants"
 
 import { PartitioningRegexTooltip } from "../../constants"
-import { useStreamSelectionStore } from "../../stores"
-import {
-	selectActiveStreamData,
-	selectActiveSelectedStream,
-	selectIsStreamEnabled,
-	noopNullSelector,
-	noopFalseSelector,
-} from "../../stores"
 
-interface PartitionRegexSectionProps {
+interface PartitionRegexSectionViewProps {
 	destinationType?: string
-	isBulkMode?: boolean
+	isSelected: boolean
 	isDirty?: boolean
-	bulkPartitionRegex?: string
-	onBulkPartitionRegexChange?: (regex: string) => void
+	activePartitionRegex: string
+	onChange: (regex: string) => void
 }
 
-const PartitionRegexSection = ({
+const PartitionRegexSectionView = ({
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
-	isBulkMode,
+	isSelected,
 	isDirty,
-	bulkPartitionRegex,
-	onBulkPartitionRegexChange,
-}: PartitionRegexSectionProps) => {
-	const updatePartitionRegex = useStreamSelectionStore(
-		state => state.updatePartitionRegex,
-	)
-	// don't subsribe to store if in bulkMode
-	const storeStream = useStreamSelectionStore(
-		isBulkMode ? noopNullSelector : selectActiveStreamData,
-	)
-	const storeSelectedStream = useStreamSelectionStore(
-		isBulkMode ? noopNullSelector : selectActiveSelectedStream,
-	)
-	const storeIsSelected = useStreamSelectionStore(
-		isBulkMode
-			? noopFalseSelector
-			: state => selectIsStreamEnabled(state, storeStream),
-	)
-
-	const selectedStream = isBulkMode
-		? { partition_regex: bulkPartitionRegex }
-		: storeSelectedStream
-	const isSelected = isBulkMode ? true : storeIsSelected
-
+	activePartitionRegex,
+	onChange,
+}: PartitionRegexSectionViewProps) => {
 	const [partitionRegex, setPartitionRegex] = useState("")
-
-	if (!isBulkMode && (!storeStream || !selectedStream)) return null
-
-	const activePartitionRegex = isBulkMode
-		? bulkPartitionRegex
-		: selectedStream?.partition_regex || ""
 
 	const handleSetPartitionRegex = () => {
 		if (partitionRegex) {
-			if (isBulkMode) {
-				onBulkPartitionRegexChange?.(partitionRegex)
-			} else {
-				if (!storeStream) return
-				updatePartitionRegex(
-					storeStream.stream.name,
-					storeStream.stream.namespace || "",
-					partitionRegex,
-				)
-			}
+			onChange(partitionRegex)
 			setPartitionRegex("")
 		}
 	}
 
 	const handleClearPartitionRegex = () => {
-		if (isBulkMode) {
-			onBulkPartitionRegexChange?.("")
-		} else {
-			if (!storeStream) return
-			updatePartitionRegex(
-				storeStream.stream.name,
-				storeStream.stream.namespace || "",
-				"",
-			)
-		}
+		onChange("")
 	}
 
 	return (
@@ -160,4 +107,4 @@ const PartitionRegexSection = ({
 	)
 }
 
-export default PartitionRegexSection
+export default PartitionRegexSectionView

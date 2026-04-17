@@ -374,9 +374,6 @@ export const sortGroupedStreamsByCheckedState = (
 }
 
 const EMPTY_BULK_STREAM: StreamData = {
-	sync_mode: SyncMode.FULL_REFRESH,
-	destination_sync_mode: "",
-	sort_key: null,
 	stream: {
 		name: "",
 		namespace: "",
@@ -385,6 +382,7 @@ const EMPTY_BULK_STREAM: StreamData = {
 		available_cursor_fields: [],
 		source_defined_primary_key: [],
 		supported_sync_modes: [],
+		sync_mode: SyncMode.FULL_REFRESH,
 		default_stream_properties: {
 			normalization: false,
 			append_mode: false,
@@ -477,9 +475,6 @@ export const buildBulkCommonStream = (
 			: rawSyncMode
 
 	return {
-		sync_mode: commonSyncMode,
-		destination_sync_mode: "",
-		sort_key: null,
 		stream: {
 			name: "",
 			namespace: "",
@@ -488,6 +483,7 @@ export const buildBulkCommonStream = (
 			available_cursor_fields: intersectedCursors,
 			source_defined_primary_key: intersectedPks,
 			supported_sync_modes: supportedModes,
+			sync_mode: commonSyncMode,
 			default_stream_properties: streams[0].stream.default_stream_properties,
 		},
 	}

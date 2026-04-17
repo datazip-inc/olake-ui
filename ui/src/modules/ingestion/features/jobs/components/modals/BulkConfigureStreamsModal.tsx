@@ -23,11 +23,11 @@ import { CARD_STYLE } from "../../constants"
 import { useStreamSelectionStore } from "../../stores"
 import { buildBulkStreamsData } from "../../utils/streams"
 import BulkStreamSelectorList from "../streams/BulkStreamSelectorList"
-import DataFilterSection from "../streams/DataFilterSection"
-import IngestionModeSection from "../streams/IngestionModeSection"
-import NormalizationSection from "../streams/NormalizationSection"
-import PartitionRegexSection from "../streams/PartitionRegexSection"
-import SyncModeSection from "../streams/SyncModeSection"
+import DataFilterSectionBulk from "../streams/DataFilterSectionBulk"
+import IngestionModeSectionBulk from "../streams/IngestionModeSectionBulk"
+import NormalizationSectionBulk from "../streams/NormalizationSectionBulk"
+import PartitionRegexSectionBulk from "../streams/PartitionRegexSectionBulk"
+import SyncModeSectionBulk from "../streams/SyncModeSectionBulk"
 
 type BulkConfigureStep = "select-streams" | "apply-configurations" | "success"
 type BulkConfigurationTab = "config" | "partitioning"
@@ -145,6 +145,8 @@ const BulkConfigureStreamsModal = ({
 			setActiveTab("config")
 			setCloseCountdown(CLOSE_COUNTDOWN)
 			setBulkSelectedStreams([])
+			setBulkConfig(INITIAL_BULK_CONFIG)
+			setDirtyFields(INITIAL_DIRTY_FIELDS)
 			setIsSyncIngestionCollapsed(true)
 			setIsSelectedStreamsExpanded(false)
 		}
@@ -154,6 +156,8 @@ const BulkConfigureStreamsModal = ({
 		if (!open || step !== "success") return
 
 		if (closeCountdown <= 0) {
+			setStep("select-streams")
+			setCloseCountdown(CLOSE_COUNTDOWN)
 			onClose()
 			return
 		}
@@ -167,7 +171,7 @@ const BulkConfigureStreamsModal = ({
 
 	useEffect(() => {
 		// Reset all config state to defaults on selection change.
-		const syncMode = bulkStream.sync_mode
+		const syncMode = bulkStream.stream.sync_mode
 		const availableCursors = bulkStream.stream.available_cursor_fields ?? []
 		const primaryKeys = bulkStream.stream.source_defined_primary_key ?? []
 		const sortedCursors = sortCursorFields(availableCursors, primaryKeys)
@@ -479,8 +483,7 @@ const BulkConfigureStreamsModal = ({
 														</button>
 														{!isSyncIngestionCollapsed && (
 															<>
-																<SyncModeSection
-																	isBulkMode
+																<SyncModeSectionBulk
 																	isDirty={
 																		dirtyFields[BulkDirtyFieldKey.SyncMode]
 																	}
@@ -493,8 +496,7 @@ const BulkConfigureStreamsModal = ({
 																		markDirty(BulkDirtyFieldKey.SyncMode)
 																	}}
 																/>
-																<IngestionModeSection
-																	isBulkMode
+																<IngestionModeSectionBulk
 																	isDirty={
 																		dirtyFields[BulkDirtyFieldKey.AppendMode]
 																	}
@@ -511,21 +513,19 @@ const BulkConfigureStreamsModal = ({
 													</div>
 
 													{/* Normalization Section */}
-													<NormalizationSection
-														isBulkMode
+													<NormalizationSectionBulk
 														isDirty={
 															dirtyFields[BulkDirtyFieldKey.Normalization]
 														}
-														bulkNormalization={bulkConfig.normalization}
-														onBulkNormalizationChange={(value: boolean) => {
+														normalization={bulkConfig.normalization}
+														onChange={(value: boolean) => {
 															setBulkConfigField("normalization", value)
 															markDirty(BulkDirtyFieldKey.Normalization)
 														}}
 													/>
 
 													{/* Data Filter Section */}
-													<DataFilterSection
-														isBulkMode
+													<DataFilterSectionBulk
 														isDirty={dirtyFields[BulkDirtyFieldKey.Filter]}
 														bulkStream={bulkStream}
 														bulkFilter={bulkConfig.filter}
@@ -545,8 +545,7 @@ const BulkConfigureStreamsModal = ({
 													key={selectionKey}
 													className="flex flex-col gap-4"
 												>
-													<PartitionRegexSection
-														isBulkMode
+													<PartitionRegexSectionBulk
 														isDirty={
 															dirtyFields[BulkDirtyFieldKey.PartitionRegex]
 														}

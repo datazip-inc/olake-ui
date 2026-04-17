@@ -27,15 +27,6 @@ export type MultiFilterCondition = {
 }
 
 export type StreamData = {
-	sync_mode:
-		| SyncMode.FULL_REFRESH
-		| SyncMode.CDC
-		| SyncMode.INCREMENTAL
-		| SyncMode.STRICT_CDC
-	skip_nested_flattening?: boolean
-	cursor_field?: string[]
-	destination_sync_mode: string
-	sort_key: string[] | null
 	stream: {
 		name: string
 		namespace?: string
@@ -57,6 +48,11 @@ export type StreamData = {
 		default_cursor_field?: string[]
 		available_cursor_fields?: string[]
 		cursor_field?: string
+		sync_mode:
+			| SyncMode.FULL_REFRESH
+			| SyncMode.CDC
+			| SyncMode.INCREMENTAL
+			| SyncMode.STRICT_CDC
 		destination_database?: string
 		destination_table?: string
 		source_defined_primary_key?: string[]

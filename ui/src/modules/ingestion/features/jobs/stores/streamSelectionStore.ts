@@ -40,6 +40,10 @@ interface StreamSelectionState {
 	// Whether to use structured filter_config (new) vs legacy filter string.
 	useFilterConfig: boolean
 
+	// Incremented each time bulkUpdateStreams successfully applies changes.
+	// used to trigger a re-sort only after bulk apply.
+	bulkApplyVersion: number
+
 	initializeFromDiscovery: (data: StreamsDataStructure) => void
 	setDiscovering: (loading: boolean) => void
 	setDiscoverError: (message: string | null) => void
@@ -124,6 +128,7 @@ const initialState = {
 	activeStreamKey: null,
 	streamFilterStates: {} as Record<string, boolean>,
 	useFilterConfig: false,
+	bulkApplyVersion: 0,
 }
 
 export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
@@ -455,6 +460,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 							streams: updatedStreams,
 							selected_streams: updatedSelected,
 						},
+						bulkApplyVersion: state.bulkApplyVersion + 1,
 					}
 				: state
 		}),

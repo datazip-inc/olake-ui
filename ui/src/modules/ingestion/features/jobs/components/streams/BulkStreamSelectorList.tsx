@@ -1,5 +1,5 @@
 import { CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react"
-import { Checkbox, Empty } from "antd"
+import { Checkbox, Empty, Input } from "antd"
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import {
@@ -24,21 +24,32 @@ const BulkStreamSelectorList = ({
 	bulkSelectedStreams,
 	onChange,
 }: BulkStreamSelectorListProps) => {
+	const [searchText, setSearchText] = useState("")
 	const [openNamespaces, setOpenNamespaces] = useState<{
 		[ns: string]: boolean
 	}>({})
 	const [sortedGroups, setSortedGroups] = useState<[string, StreamData[]][]>([])
 	const prevGroupedStreams = useRef<Record<string, StreamData[]>>({})
 
+	const filteredStreams = useMemo(() => {
+		if (!streamsData?.streams) return []
+		if (!searchText) return streamsData.streams
+
+		const normalizedSearch = searchText.toLowerCase()
+		return streamsData.streams.filter(streamData =>
+			streamData.stream.name.toLowerCase().includes(normalizedSearch),
+		)
+	}, [streamsData?.streams, searchText])
+
 	const groupedStreams = useMemo(() => {
 		const groups: Record<string, StreamData[]> = {}
-		streamsData?.streams?.forEach(streamData => {
+		filteredStreams.forEach(streamData => {
 			const ns = streamData.stream.namespace || ""
 			if (!groups[ns]) groups[ns] = []
 			groups[ns].push(streamData)
 		})
 		return groups
-	}, [streamsData?.streams])
+	}, [filteredStreams])
 
 	// Keep all namespaces expanded by default and automatically open any newly added namespaces.
 	useEffect(() => {
@@ -169,11 +180,20 @@ const BulkStreamSelectorList = ({
 
 	return (
 		<div className="flex h-full flex-col overflow-y-auto rounded">
+			<div className="border-b border-neutral-border px-8 py-4">
+				<Input.Search
+					placeholder="Search Streams"
+					allowClear
+					className="custom-search-input w-full"
+					value={searchText}
+					onChange={e => setSearchText(e.target.value)}
+				/>
+			</div>
 			{sortedGroups.length === 0 ? (
 				<Empty className="pt-10" />
 			) : (
 				<>
-					<div className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-neutral-border bg-olake-surface px-8 py-4">
+					<div className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-neutral-border bg-olake-surface px-8 py-4">
 						<Checkbox
 							checked={checkedStatus.global}
 							onChange={e => handleGlobalSyncAll(e.target.checked)}
@@ -188,7 +208,7 @@ const BulkStreamSelectorList = ({
 							className="border-b border-neutral-border"
 						>
 							<div
-								className="sticky top-14 z-[9] flex h-14 cursor-pointer items-center bg-background-primary px-8"
+								className="sticky top-[55px] z-10 flex h-14 cursor-pointer items-center border-t border-neutral-border bg-background-primary px-8"
 								onClick={() => handleToggleNamespace(ns)}
 							>
 								<Checkbox

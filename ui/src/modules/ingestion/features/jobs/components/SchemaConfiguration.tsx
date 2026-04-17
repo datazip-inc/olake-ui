@@ -240,17 +240,17 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				/>
 			)}
 
-			<div className="mb-4 mr-4 flex items-center justify-between gap-4">
-				<div className="flex w-2/6 items-center">
-					<Search
-						placeholder="Search Streams"
-						allowClear
-						className="custom-search-input w-full"
-						value={searchText}
-						onChange={e => setSearchText(e.target.value)}
-					/>
-				</div>
-				<div className="flex flex-1 items-center justify-between gap-2">
+			<div className="mb-4 mr-4 flex flex-wrap items-center justify-between gap-y-3">
+				<div className="flex items-center gap-4">
+					<div className="flex w-2/6 min-w-48 items-center">
+						<Search
+							placeholder="Search Streams"
+							allowClear
+							className="custom-search-input w-full"
+							value={searchText}
+							onChange={e => setSearchText(e.target.value)}
+						/>
+					</div>
 					{destinationDatabase && (
 						<div className="flex min-w-0 flex-none items-center justify-start gap-1">
 							<div className="group relative w-fit min-w-0 max-w-[480px] rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200">
@@ -302,31 +302,25 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							</div>
 						</div>
 					)}
-					<div
-						className={clsx(
-							"ml-auto flex flex-wrap items-center gap-2",
-							destinationDatabase ? "justify-end" : "justify-start",
-						)}
-					>
-						{STREAM_FILTERS.map(filter => (
-							<FilterButton
-								key={filter}
-								filter={filter}
-								selectedFilters={selectedFilters}
-								setSelectedFilters={setSelectedFilters}
-							/>
-						))}
-						{streamsData?.selected_streams && (
-							<Button
-								type="primary"
-								size="middle"
-								className="!h-9 !rounded-lg !px-4"
-								onClick={() => setShowBulkConfigureStreamsModal(true)}
-							>
-								Bulk Configure
-							</Button>
-						)}
-					</div>
+				</div>
+				<div className="flex flex-wrap items-center gap-2">
+					{STREAM_FILTERS.map(filter => (
+						<FilterButton
+							key={filter}
+							filter={filter}
+							selectedFilters={selectedFilters}
+							setSelectedFilters={setSelectedFilters}
+						/>
+					))}
+					{streamsData?.selected_streams && (
+						<Button
+							type="primary"
+							size="middle"
+							onClick={() => setShowBulkConfigureStreamsModal(true)}
+						>
+							Bulk Configure
+						</Button>
+					)}
 				</div>
 			</div>
 

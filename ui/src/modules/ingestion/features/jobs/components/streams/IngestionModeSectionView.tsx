@@ -3,55 +3,28 @@ import { Radio, Tooltip } from "antd"
 import clsx from "clsx"
 
 import { IngestionMode } from "../../enums"
-import { useStreamSelectionStore } from "../../stores"
-import {
-	selectActiveStreamData,
-	selectActiveSelectedStream,
-	selectIsStreamEnabled,
-	noopNullSelector,
-	noopFalseSelector,
-} from "../../stores"
 import {
 	isSourceIngestionModeSupported,
 	isDestinationIngestionModeSupported,
 } from "../../utils/streams"
 
-interface IngestionModeSectionProps {
+interface IngestionModeSectionViewProps {
 	sourceType?: string
 	destinationType?: string
-	isBulkMode?: boolean
+	isSelected: boolean
 	isDirty?: boolean
-	bulkAppendMode?: boolean
-	onBulkIngestionModeChange?: (appendMode: boolean) => void
+	appendMode: boolean
+	onChange: (ingestionMode: IngestionMode) => void
 }
 
-const IngestionModeSection = ({
+const IngestionModeSectionView = ({
 	sourceType,
 	destinationType,
-	isBulkMode,
+	isSelected,
 	isDirty,
-	bulkAppendMode,
-	onBulkIngestionModeChange,
-}: IngestionModeSectionProps) => {
-	const updateIngestionMode = useStreamSelectionStore(
-		state => state.updateIngestionMode,
-	)
-	// don't subsribe to store if in bulkMode
-	const storeStream = useStreamSelectionStore(
-		isBulkMode ? noopNullSelector : selectActiveStreamData,
-	)
-	const storeSelectedStream = useStreamSelectionStore(
-		isBulkMode ? noopNullSelector : selectActiveSelectedStream,
-	)
-	const storeIsSelected = useStreamSelectionStore(
-		isBulkMode
-			? noopFalseSelector
-			: state => selectIsStreamEnabled(state, storeStream),
-	)
-
-	const selectedStream = isBulkMode ? null : storeSelectedStream
-	const isSelected = isBulkMode ? true : storeIsSelected
-
+	appendMode,
+	onChange,
+}: IngestionModeSectionViewProps) => {
 	const isSourceUpsertSupported = isSourceIngestionModeSupported(
 		IngestionMode.UPSERT,
 		sourceType,
@@ -67,29 +40,16 @@ const IngestionModeSection = ({
 		destinationType,
 	)
 
-	if (!isBulkMode && (!storeStream || !selectedStream)) return null
-
 	// Don't render if destination doesn't support upsert mode
 	if (!isDestUpsertModeSupported) return null
 
 	// Ingestion mode is Append if:
 	// 1. Source doesn't support Upsert (forced Append)
 	// 2. OR user selected Append mode
-	const isAppendMode = isBulkMode
-		? !isSourceUpsertSupported || !!bulkAppendMode
-		: !isSourceUpsertSupported || !!selectedStream?.append_mode
+	const isAppendMode = !isSourceUpsertSupported || !!appendMode
 
 	const handleIngestionModeChange = (ingestionMode: IngestionMode) => {
-		if (isBulkMode) {
-			onBulkIngestionModeChange?.(ingestionMode === IngestionMode.APPEND)
-		} else {
-			if (!storeStream) return
-			updateIngestionMode(
-				storeStream.stream.name,
-				storeStream.stream.namespace || "",
-				ingestionMode === IngestionMode.APPEND,
-			)
-		}
+		onChange(ingestionMode)
 	}
 
 	return (
@@ -162,4 +122,4 @@ const IngestionModeSection = ({
 	)
 }
 
-export default IngestionModeSection
+export default IngestionModeSectionView

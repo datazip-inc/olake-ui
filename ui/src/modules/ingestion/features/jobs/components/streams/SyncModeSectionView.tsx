@@ -10,119 +10,38 @@ import { useEffect, useState } from "react"
 import { SyncMode, StreamData } from "@/modules/ingestion/common/types"
 
 import { SYNC_MODE_MAP } from "../../constants"
-import {
-	selectActiveStreamData,
-	selectActiveSelectedStream,
-	useStreamSelectionStore,
-	noopNullSelector,
-} from "../../stores"
 import { getCursorFieldValues } from "../../utils/streams"
 
-export interface SyncModeSectionProps {
-	isBulkMode?: boolean
+export interface SyncModeSectionViewProps {
+	stream: StreamData
+	syncMode: string | undefined
+	cursorField: string | undefined
 	isDirty?: boolean
-	bulkStream?: StreamData
-	bulkSyncMode?: string
-	bulkCursorField?: string
-	onBulkSyncModeChange?: (syncMode: string, cursorField?: string) => void
+	isBulkMode?: boolean
+	onChange: (mode: SyncMode, cursorField?: string) => void
 }
 
-const SyncModeSection = ({
-	isBulkMode,
+const SyncModeSectionView = ({
+	stream,
+	syncMode,
+	cursorField,
 	isDirty,
-	bulkStream,
-	bulkSyncMode,
-	bulkCursorField,
-	onBulkSyncModeChange,
-}: SyncModeSectionProps = {}) => {
-	const updateSyncMode = useStreamSelectionStore(state => state.updateSyncMode)
-	// don't subsribe to store if in bulkMode
-	const storeStream = useStreamSelectionStore(
-		isBulkMode ? noopNullSelector : selectActiveStreamData,
-	)
-	const storeSelectedStream = useStreamSelectionStore(
-		isBulkMode ? noopNullSelector : selectActiveSelectedStream,
-	)
-
-	const stream = isBulkMode ? bulkStream : storeStream
-	const selectedStream = isBulkMode ? null : storeSelectedStream
-
-	const [storeSyncMode, setStoreSyncMode] = useState(
-		storeStream?.stream.sync_mode,
-	)
-	const [storeCursorField, setStoreCursorField] = useState<string | undefined>(
-		storeStream?.stream.cursor_field,
-	)
-
-	const syncMode = isBulkMode ? bulkSyncMode : storeSyncMode
-	const cursorField = isBulkMode ? bulkCursorField : storeCursorField
-
+	isBulkMode,
+	onChange,
+}: SyncModeSectionViewProps) => {
 	const [showFallbackSelector, setShowFallbackSelector] = useState(false)
 	const [fallBackCursorField, setFallBackCursorField] = useState<string>("")
 
-	// Re-sync sync/cursor state when the active stream changes
+	// Parse fallback cursor field whenever the cursor field prop changes
 	useEffect(() => {
-		// Parse cursor field for default value
-		// cursor field and default will be in a:b form where a is the cursor field and b is the default field
-		const activeCursorField = isBulkMode
-			? bulkCursorField
-			: storeStream?.stream.cursor_field
 		const { fallback: initialFallbackCursor } =
-			getCursorFieldValues(activeCursorField)
+			getCursorFieldValues(cursorField)
 		setFallBackCursorField(initialFallbackCursor)
 		setShowFallbackSelector(!!initialFallbackCursor)
-
-		if (isBulkMode) return
-
-		if (!storeStream || !storeSelectedStream) return
-
-		const initialApiSyncMode = storeStream.stream.sync_mode
-
-		setStoreSyncMode(initialApiSyncMode ?? "full_refresh")
-		setStoreCursorField(activeCursorField)
-		// Auto-select first available cursor field if default sync mode is incremental and no cursor field is set
-		if (initialApiSyncMode === "incremental" && !activeCursorField) {
-			const cursor = getColumnOptionsForCursor()[0]?.value
-			if (cursor) {
-				setStoreCursorField(getCursorFieldValues(cursor).primary)
-				setFallBackCursorField(getCursorFieldValues(cursor).fallback)
-				updateSyncMode(
-					storeStream.stream.name,
-					storeStream.stream.namespace || "",
-					SyncMode.INCREMENTAL,
-					cursor,
-				)
-			}
-		}
-	}, [
-		isBulkMode,
-		bulkCursorField,
-		storeStream?.stream.name,
-		storeStream?.stream.namespace,
-	])
-
-	if (!stream || (!isBulkMode && !selectedStream)) return null
+	}, [cursorField])
 
 	const isSyncModeSupported = (mode: string): boolean =>
 		stream.stream.supported_sync_modes?.some(m => m === mode) ?? false
-
-	const dispatchUpdate = (mode: SyncMode, cf?: string) => {
-		if (isBulkMode) {
-			onBulkSyncModeChange?.(mode, cf)
-		} else {
-			setStoreSyncMode(mode)
-			setStoreCursorField(cf)
-			setFallBackCursorField(getCursorFieldValues(cf).fallback)
-			if (storeStream) {
-				updateSyncMode(
-					storeStream.stream.name,
-					storeStream.stream.namespace || "",
-					mode,
-					cf,
-				)
-			}
-		}
-	}
 
 	const handleSyncModeChange = (selectedRadioValue: string) => {
 		const newApiSyncMode = (
@@ -134,9 +53,9 @@ const SyncModeSection = ({
 		// Auto-select first available cursor field for incremental mode
 		if (selectedRadioValue === "incremental") {
 			const cursor = cursorField || getColumnOptionsForCursor()[0]?.value
-			dispatchUpdate(SyncMode.INCREMENTAL, cursor)
+			onChange(SyncMode.INCREMENTAL, cursor)
 		} else {
-			dispatchUpdate(newApiSyncMode, undefined)
+			onChange(newApiSyncMode, undefined)
 		}
 	}
 
@@ -144,21 +63,18 @@ const SyncModeSection = ({
 		const newCursorField = fallBackCursorField
 			? `${value}:${fallBackCursorField}`
 			: value
-		dispatchUpdate(SyncMode.INCREMENTAL, newCursorField)
+		onChange(SyncMode.INCREMENTAL, newCursorField)
 	}
 
 	const handleFallbackCursorChange = (value: string) => {
 		const { primary } = getCursorFieldValues(cursorField)
 		const newCursorField = value ? `${primary}:${value}` : primary
-		dispatchUpdate(SyncMode.INCREMENTAL, newCursorField)
+		onChange(SyncMode.INCREMENTAL, newCursorField)
 	}
 
 	const handleFallbackCursorClear = () => {
 		setShowFallbackSelector(false)
-		dispatchUpdate(
-			SyncMode.INCREMENTAL,
-			getCursorFieldValues(cursorField).primary,
-		)
+		onChange(SyncMode.INCREMENTAL, getCursorFieldValues(cursorField).primary)
 	}
 
 	const getColumnOptionsForCursor = (
@@ -333,4 +249,4 @@ const SyncModeSection = ({
 	)
 }
 
-export default SyncModeSection
+export default SyncModeSectionView

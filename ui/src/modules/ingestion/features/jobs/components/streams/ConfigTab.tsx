@@ -1,7 +1,7 @@
-import DataFilterSection from "./DataFilterSection"
-import IngestionModeSection from "./IngestionModeSection"
-import NormalizationSection from "./NormalizationSection"
-import SyncModeSection from "./SyncModeSection"
+import DataFilterSectionSingle from "./DataFilterSectionSingle"
+import IngestionModeSectionSingle from "./IngestionModeSectionSingle"
+import NormalizationSectionSingle from "./NormalizationSectionSingle"
+import SyncModeSectionSingle from "./SyncModeSectionSingle"
 import { CARD_STYLE } from "../../constants"
 
 interface ConfigTabProps {
@@ -13,14 +13,14 @@ const ConfigTab = ({ sourceType, destinationType }: ConfigTabProps) => {
 	return (
 		<div className="flex flex-col gap-4">
 			<div className={CARD_STYLE}>
-				<SyncModeSection />
-				<IngestionModeSection
+				<SyncModeSectionSingle />
+				<IngestionModeSectionSingle
 					sourceType={sourceType}
 					destinationType={destinationType}
 				/>
 			</div>
-			<NormalizationSection />
-			<DataFilterSection />
+			<NormalizationSectionSingle />
+			<DataFilterSectionSingle />
 		</div>
 	)
 }

@@ -57,6 +57,11 @@ const StreamsCollapsibleList = ({
 	>([])
 
 	const prevGroupedStreams = useRef(groupedStreams)
+	const prevBulkApplyVersion = useRef(0)
+
+	const bulkApplyVersion = useStreamSelectionStore(
+		state => state.bulkApplyVersion,
+	)
 
 	useEffect(() => {
 		setIngestionMode(getIngestionMode(selectedStreams, sourceType))
@@ -116,13 +121,16 @@ const StreamsCollapsibleList = ({
 
 		setCheckedStatus(newCheckedStatus)
 
-		// sort the namespaces and streams inside it alphabetically on the basis of checked and unchecked status.
+		// Sort namespaces and streams alphabetically by checked/unchecked status.
+		// Re-sort on first render, structure change, or after a bulk apply.
+		const isBulkApply = bulkApplyVersion !== prevBulkApplyVersion.current
 		if (
 			sortedGroupedNamespaces.length === 0 ||
 			hasGroupedStreamsStructureChanged(
 				prevGroupedStreams.current,
 				groupedStreams,
-			)
+			) ||
+			isBulkApply
 		) {
 			setSortedGroupedNamespaces(
 				sortGroupedStreamsByCheckedState(
@@ -131,8 +139,9 @@ const StreamsCollapsibleList = ({
 				),
 			)
 			prevGroupedStreams.current = groupedStreams
+			prevBulkApplyVersion.current = bulkApplyVersion
 		}
-	}, [selectedStreams, groupedStreams])
+	}, [selectedStreams, groupedStreams, bulkApplyVersion])
 
 	// Auto-select first stream once sortedGroupedNamespaces is populated
 	useEffect(() => {
