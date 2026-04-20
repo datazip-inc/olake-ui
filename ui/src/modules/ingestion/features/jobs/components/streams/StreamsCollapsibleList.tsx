@@ -153,7 +153,7 @@ const StreamsCollapsibleList = ({
 		) {
 			const first = sortedGroupedNamespaces[0][1][0]
 			setActiveStreamKey({
-				name: first.stream.name,
+				streamName: first.stream.name,
 				namespace: first.stream.namespace ?? "",
 			})
 		}
@@ -181,7 +181,14 @@ const StreamsCollapsibleList = ({
 
 		const streamsInNamespace = groupedStreams[ns] || []
 		streamsInNamespace.forEach(streamData => {
-			toggleStream(streamData.stream.name, ns, checked, ingestionMode)
+			toggleStream(
+				{
+					streamName: streamData.stream.name,
+					namespace: ns,
+				},
+				checked,
+				ingestionMode,
+			)
 		})
 	}
 
@@ -208,7 +215,14 @@ const StreamsCollapsibleList = ({
 
 		Object.entries(groupedStreams).forEach(([ns, streams]) => {
 			streams.forEach(streamData => {
-				toggleStream(streamData.stream.name, ns, checked, ingestionMode)
+				toggleStream(
+					{
+						streamName: streamData.stream.name,
+						namespace: ns,
+					},
+					checked,
+					ingestionMode,
+				)
 			})
 		})
 	}
@@ -244,7 +258,14 @@ const StreamsCollapsibleList = ({
 			}
 		})
 
-		toggleStream(streamName, ns, checked, ingestionMode)
+		toggleStream(
+			{
+				streamName,
+				namespace: ns,
+			},
+			checked,
+			ingestionMode,
+		)
 	}
 
 	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(

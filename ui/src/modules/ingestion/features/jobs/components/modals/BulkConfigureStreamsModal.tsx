@@ -33,7 +33,7 @@ type BulkConfigureStep = "select-streams" | "apply-configurations" | "success"
 type BulkConfigurationTab = "config" | "partitioning"
 
 type BulkConfig = {
-	syncMode: string
+	syncMode: SyncMode
 	cursorField: string | undefined
 	appendMode: boolean
 	normalization: boolean
@@ -203,7 +203,7 @@ const BulkConfigureStreamsModal = ({
 	const handleApplyChanges = () => {
 		bulkUpdateStreams(bulkSelectedStreams, {
 			...(dirtyFields[BulkDirtyFieldKey.SyncMode] && {
-				syncMode: bulkConfig.syncMode as SyncMode,
+				syncMode: bulkConfig.syncMode,
 				cursorField: bulkConfig.cursorField,
 			}),
 			...(dirtyFields[BulkDirtyFieldKey.AppendMode] && {
@@ -324,7 +324,7 @@ const BulkConfigureStreamsModal = ({
 				<div className="flex h-[728px] flex-col">
 					<div className="border-b border-olake-border px-8 pb-5 pt-8">
 						<h2 className="text-xl font-medium leading-7 text-olake-text">
-							Bulk Streams configure
+							Bulk Streams Configure
 						</h2>
 						<p className="mt-2 text-sm leading-5 text-olake-text">
 							{step === "select-streams"

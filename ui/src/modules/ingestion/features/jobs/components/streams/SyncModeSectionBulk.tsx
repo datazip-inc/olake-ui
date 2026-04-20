@@ -5,9 +5,9 @@ import SyncModeSectionView from "./SyncModeSectionView"
 interface SyncModeSectionBulkProps {
 	isDirty?: boolean
 	bulkStream: StreamData
-	bulkSyncMode: string
+	bulkSyncMode: SyncMode
 	bulkCursorField: string | undefined
-	onBulkSyncModeChange: (syncMode: string, cursorField?: string) => void
+	onBulkSyncModeChange: (syncMode: SyncMode, cursorField?: string) => void
 }
 
 const SyncModeSectionBulk = ({
@@ -23,7 +23,7 @@ const SyncModeSectionBulk = ({
 		cursorField={bulkCursorField}
 		isDirty={isDirty}
 		isBulkMode
-		onChange={onBulkSyncModeChange as (mode: SyncMode, cf?: string) => void}
+		onChange={onBulkSyncModeChange}
 	/>
 )
 

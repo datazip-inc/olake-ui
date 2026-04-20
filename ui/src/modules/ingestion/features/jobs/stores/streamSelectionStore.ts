@@ -32,7 +32,7 @@ interface StreamSelectionState {
 	initialStreamsSnapshot: StreamsDataStructure | null
 	isDiscovering: boolean
 	discoverError: string | null
-	activeStreamKey: { name: string; namespace: string } | null
+	activeStreamKey: StreamIdentifier | null
 
 	// Per-stream filter toggle keyed by `${namespace}_${name}`.
 	streamFilterStates: Record<string, boolean>
@@ -51,52 +51,36 @@ interface StreamSelectionState {
 	// Toggles a stream on (disabled:false) or off (disabled:true).
 	// Inserts a default entry if the stream has never been in selected_streams.
 	toggleStream: (
-		streamName: string,
-		namespace: string,
+		stream: StreamIdentifier,
 		checked: boolean,
 		ingestionMode: IngestionMode,
 	) => void
 
 	// Updates sync_mode and optional cursor_field; no-op if unchanged.
 	updateSyncMode: (
-		streamName: string,
-		namespace: string,
+		stream: StreamIdentifier,
 		syncMode: SyncMode,
 		cursorField?: string,
 	) => void
 
 	updateNormalization: (
-		streamName: string,
-		namespace: string,
+		stream: StreamIdentifier,
 		normalization: boolean,
 	) => void
 
-	updatePartitionRegex: (
-		streamName: string,
-		namespace: string,
-		regex: string,
-	) => void
+	updatePartitionRegex: (stream: StreamIdentifier, regex: string) => void
 
 	// Empty string removes the `filter` key entirely.
-	updateFilter: (
-		streamName: string,
-		namespace: string,
-		filterValue: string,
-	) => void
+	updateFilter: (stream: StreamIdentifier, filterValue: string) => void
 
 	updateFilterConfig: (
-		streamName: string,
-		namespace: string,
+		stream: StreamIdentifier,
 		filterConfig: FilterConfig | undefined,
 	) => void
 
 	setUseFilterConfig: (value: boolean) => void
 
-	updateIngestionMode: (
-		streamName: string,
-		namespace: string,
-		appendMode: boolean,
-	) => void
+	updateIngestionMode: (stream: StreamIdentifier, appendMode: boolean) => void
 
 	bulkUpdateStreams: (
 		streamsToUpdate: StreamIdentifier[],
@@ -110,13 +94,12 @@ interface StreamSelectionState {
 	updateDestinationDatabase: (format: string, databaseName: string) => void
 
 	updateSelectedColumns: (
-		streamName: string,
-		namespace: string,
+		stream: StreamIdentifier,
 		columns: SelectedColumns,
 	) => void
 
 	setStreamFilterState: (streamKey: string, value: boolean) => void
-	setActiveStreamKey: (key: { name: string; namespace: string } | null) => void
+	setActiveStreamKey: (key: StreamIdentifier | null) => void
 	reset: () => void
 }
 
@@ -145,9 +128,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 	setDiscovering: loading => set({ isDiscovering: loading }),
 	setDiscoverError: error => set({ discoverError: error }),
 
-	toggleStream: (streamName, namespace, checked, ingestionMode) =>
+	toggleStream: (stream, checked, ingestionMode) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const updated = {
@@ -197,9 +181,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			return changed ? { streamsData: updated } : state
 		}),
 
-	updateSyncMode: (streamName, namespace, newSyncMode, cursorField) =>
+	updateSyncMode: (stream, newSyncMode, cursorField) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const streamIndex = prev.streams.findIndex(
@@ -240,9 +225,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
-	updateNormalization: (streamName, namespace, normalization) =>
+	updateNormalization: (stream, normalization) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const streamExists = prev.selected_streams[namespace]?.some(
@@ -263,9 +249,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
-	updatePartitionRegex: (streamName, namespace, regex) =>
+	updatePartitionRegex: (stream, regex) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const streamExists = prev.selected_streams[namespace]?.some(
@@ -288,9 +275,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
-	updateFilter: (streamName, namespace, filterValue) =>
+	updateFilter: (stream, filterValue) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const streamExists = prev.selected_streams[namespace]?.some(
@@ -317,9 +305,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
-	updateFilterConfig: (streamName, namespace, filterConfig) =>
+	updateFilterConfig: (stream, filterConfig) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const streamExists = prev.selected_streams[namespace]?.some(
@@ -349,9 +338,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 
 	setUseFilterConfig: value => set({ useFilterConfig: value }),
 
-	updateIngestionMode: (streamName, namespace, appendMode) =>
+	updateIngestionMode: (stream, appendMode) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const streamExists = prev.selected_streams[namespace]?.some(
@@ -543,9 +533,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
-	updateSelectedColumns: (streamName, namespace, columns) =>
+	updateSelectedColumns: (stream, columns) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			return {
@@ -601,7 +592,7 @@ export const selectActiveStreamData = (
 		state.streamsData.streams.find(
 			s =>
 				s.stream.namespace === state.activeStreamKey!.namespace &&
-				s.stream.name === state.activeStreamKey!.name,
+				s.stream.name === state.activeStreamKey!.streamName,
 		) ?? null
 	)
 }
@@ -614,7 +605,7 @@ export const selectActiveSelectedStream = (
 		return null
 	return (
 		state.streamsData.selected_streams[state.activeStreamKey.namespace]?.find(
-			s => s.stream_name === state.activeStreamKey!.name,
+			s => s.stream_name === state.activeStreamKey!.streamName,
 		) ?? null
 	)
 }

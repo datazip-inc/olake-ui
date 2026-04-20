@@ -43,16 +43,12 @@ export type StreamData = {
 				}
 			>
 		}
-		supported_sync_modes?: string[]
+		supported_sync_modes?: SyncMode[]
 		source_defined_cursor?: boolean
 		default_cursor_field?: string[]
 		available_cursor_fields?: string[]
 		cursor_field?: string
-		sync_mode:
-			| SyncMode.FULL_REFRESH
-			| SyncMode.CDC
-			| SyncMode.INCREMENTAL
-			| SyncMode.STRICT_CDC
+		sync_mode: SyncMode
 		destination_database?: string
 		destination_table?: string
 		source_defined_primary_key?: string[]

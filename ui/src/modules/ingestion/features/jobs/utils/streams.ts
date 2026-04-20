@@ -148,7 +148,7 @@ export const formatSelectedStreamsPayload = (
 
 	const typeSchemaByName = new Map(
 		streamsConfig.streams?.map(s => [
-			`${s.stream.namespace}.${s.stream.name}`,
+			`${s.stream.namespace || ""}.${s.stream.name}`,
 			s.stream.type_schema?.properties,
 		]) ?? [],
 	)
@@ -184,7 +184,7 @@ export const validateStreams = (
 	// Map typeSchemaProperties by stream name for quick lookup
 	const typeSchemaByName = new Map(
 		streamsConfig.streams?.map(s => [
-			`${s.stream.namespace}.${s.stream.name}`,
+			`${s.stream.namespace || ""}.${s.stream.name}`,
 			s.stream.type_schema?.properties,
 		]) ?? [],
 	)
@@ -202,8 +202,7 @@ export const validateStreams = (
 				)
 				const error = validateFilterConfig(
 					sel.filter_config,
-					sel.stream_name,
-					namespace,
+					{ streamName: sel.stream_name, namespace },
 					typeSchemaProps,
 				)
 				if (error) return error

@@ -46,15 +46,19 @@ const DataFilterSectionSingle = () => {
 			streamFilterState={streamFilterState}
 			onFilterChange={filterString =>
 				updateFilter(
-					storeStream.stream.name,
-					storeStream.stream.namespace || "",
+					{
+						streamName: storeStream.stream.name,
+						namespace: storeStream.stream.namespace || "",
+					},
 					filterString,
 				)
 			}
 			onFilterConfigChange={fc =>
 				updateFilterConfig(
-					storeStream.stream.name,
-					storeStream.stream.namespace || "",
+					{
+						streamName: storeStream.stream.name,
+						namespace: storeStream.stream.namespace || "",
+					},
 					fc,
 				)
 			}

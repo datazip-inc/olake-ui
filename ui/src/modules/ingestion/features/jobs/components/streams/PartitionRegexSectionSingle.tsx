@@ -33,8 +33,10 @@ const PartitionRegexSectionSingle = ({
 			activePartitionRegex={storeSelectedStream.partition_regex || ""}
 			onChange={regex =>
 				updatePartitionRegex(
-					storeStream.stream.name,
-					storeStream.stream.namespace || "",
+					{
+						streamName: storeStream.stream.name,
+						namespace: storeStream.stream.namespace || "",
+					},
 					regex,
 				)
 			}

@@ -26,8 +26,10 @@ const NormalizationSectionSingle = () => {
 			isSelected={isSelected}
 			onChange={checked =>
 				updateNormalization(
-					storeStream.stream.name,
-					storeStream.stream.namespace || "",
+					{
+						streamName: storeStream.stream.name,
+						namespace: storeStream.stream.namespace || "",
+					},
 					checked,
 				)
 			}

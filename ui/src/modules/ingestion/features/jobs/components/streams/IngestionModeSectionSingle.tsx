@@ -37,8 +37,10 @@ const IngestionModeSectionSingle = ({
 			appendMode={!!storeSelectedStream.append_mode}
 			onChange={ingestionMode =>
 				updateIngestionMode(
-					storeStream.stream.name,
-					storeStream.stream.namespace || "",
+					{
+						streamName: storeStream.stream.name,
+						namespace: storeStream.stream.namespace || "",
+					},
 					ingestionMode === IngestionMode.APPEND,
 				)
 			}

@@ -35,8 +35,10 @@ const SyncModeSectionSingle = () => {
 			const cursor = sorted[0]
 			if (cursor) {
 				updateSyncMode(
-					storeStream.stream.name,
-					storeStream.stream.namespace || "",
+					{
+						streamName: storeStream.stream.name,
+						namespace: storeStream.stream.namespace || "",
+					},
 					SyncMode.INCREMENTAL,
 					cursor,
 				)
@@ -53,8 +55,10 @@ const SyncModeSectionSingle = () => {
 			cursorField={storeStream.stream.cursor_field}
 			onChange={(mode, cf) =>
 				updateSyncMode(
-					storeStream.stream.name,
-					storeStream.stream.namespace || "",
+					{
+						streamName: storeStream.stream.name,
+						namespace: storeStream.stream.namespace || "",
+					},
 					mode,
 					cf,
 				)
