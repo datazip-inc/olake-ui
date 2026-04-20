@@ -187,7 +187,7 @@ const DataFilterSectionView = ({
 
 	// when the type is either string or timestamp we wrap the value in quotes
 	const formatFilterValue = (columnName: string, value: string) => {
-		if (!value) return value ?? ""
+		if (!value) return ""
 		if (!stream) return value
 
 		const properties = stream.stream.type_schema?.properties || {}
