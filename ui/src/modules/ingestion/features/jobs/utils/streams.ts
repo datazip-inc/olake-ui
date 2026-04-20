@@ -407,7 +407,7 @@ const intersectArrays = (
 // - type_schema columns: only columns present in every stream with identical types
 // - available_cursor_fields: intersection across all streams, filtered to intersected columns only
 // - source_defined_primary_key: intersection across all streams
-// - supported_sync_mode: taken from the first selected strea
+// - supported_sync_mode: taken from the first selected stream
 // - sync_mode: taken from the first selected stream
 // - default_stream_properties: taken from the first selected stream
 //
