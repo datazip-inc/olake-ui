@@ -33,7 +33,7 @@ type BulkConfigureStep = "select-streams" | "apply-configurations" | "success"
 type BulkConfigurationTab = "config" | "partitioning"
 
 type BulkConfig = {
-	syncMode: SyncMode
+	syncMode: SyncMode | undefined
 	cursorField: string | undefined
 	appendMode: boolean
 	normalization: boolean

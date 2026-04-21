@@ -5,7 +5,7 @@ import SyncModeSectionView from "./SyncModeSectionView"
 interface SyncModeSectionBulkProps {
 	isDirty?: boolean
 	bulkStream: StreamData
-	bulkSyncMode: SyncMode
+	bulkSyncMode: SyncMode | undefined
 	bulkCursorField: string | undefined
 	onBulkSyncModeChange: (syncMode: SyncMode, cursorField?: string) => void
 }

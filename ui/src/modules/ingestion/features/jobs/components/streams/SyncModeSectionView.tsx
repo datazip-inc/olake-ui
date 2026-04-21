@@ -14,7 +14,7 @@ import { getCursorFieldValues } from "../../utils/streams"
 
 export interface SyncModeSectionViewProps {
 	stream: StreamData
-	syncMode: SyncMode
+	syncMode: SyncMode | undefined
 	cursorField: string | undefined
 	isDirty?: boolean
 	isBulkMode?: boolean
