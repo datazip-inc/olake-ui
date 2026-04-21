@@ -324,11 +324,13 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 			</div>
 
-			<div className={clsx("flex", !isLoading && "rounded-[4px] border")}>
+			<div
+				className={clsx("relative flex", !isLoading && "rounded-[4px] border")}
+			>
 				<div
 					className={clsx(
-						activeStreamData ? "w-1/2" : "w-full",
-						"max-h-[calc(100vh-250px)] overflow-y-auto",
+						activeStreamData ? "absolute inset-y-0 left-0 w-1/2" : "w-full",
+						"overflow-y-auto",
 					)}
 				>
 					{!isLoading && streamsData?.streams ? (
@@ -359,7 +361,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 				<div
 					className={clsx(
-						"sticky top-0 flex w-1/2 flex-col rounded-[4px] bg-white p-4 transition-all duration-150 ease-linear",
+						"sticky top-0 ml-auto flex w-1/2 flex-col rounded-[4px] bg-white p-4 transition-all duration-150 ease-linear",
 						!isLoading && "border-l",
 					)}
 				>

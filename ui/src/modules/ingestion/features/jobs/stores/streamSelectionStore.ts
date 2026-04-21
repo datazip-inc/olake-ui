@@ -371,6 +371,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			const prev = state.streamsData
 			const updatedStreams = [...prev.streams]
 			const updatedSelected = { ...prev.selected_streams }
+			const updatedFilterStates = { ...state.streamFilterStates }
 			let changed = false
 
 			streamsToUpdate.forEach(({ streamName, namespace }) => {
@@ -432,6 +433,11 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 						} else if (config.filterValue) {
 							newStream.filter = config.filterValue
 						}
+
+						const streamKey = `${namespace}_${streamName}`
+						updatedFilterStates[streamKey] = !!(
+							config.filterConfig || config.filterValue
+						)
 					}
 
 					updatedSelected[namespace] = [
@@ -450,6 +456,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 							streams: updatedStreams,
 							selected_streams: updatedSelected,
 						},
+						streamFilterStates: updatedFilterStates,
 						bulkApplyVersion: state.bulkApplyVersion + 1,
 					}
 				: state

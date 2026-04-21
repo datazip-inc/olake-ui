@@ -48,7 +48,7 @@ export type StreamData = {
 		default_cursor_field?: string[]
 		available_cursor_fields?: string[]
 		cursor_field?: string
-		sync_mode: SyncMode
+		sync_mode: SyncMode | undefined
 		destination_database?: string
 		destination_table?: string
 		source_defined_primary_key?: string[]

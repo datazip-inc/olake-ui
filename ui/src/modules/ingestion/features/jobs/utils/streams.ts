@@ -465,13 +465,18 @@ export const buildBulkCommonStream = (
 	)
 
 	const supportedModes = streams[0].stream.supported_sync_modes || []
-	const rawSyncMode =
-		(streams[0].stream.sync_mode as SyncMode) ?? SyncMode.FULL_REFRESH
-	// Fall back to full_refresh if incremental has no intersected cursor fields.
+	const noCursorFields = intersectedCursors.length === 0
+	const noCdcSupport =
+		!supportedModes.includes(SyncMode.CDC) &&
+		!supportedModes.includes(SyncMode.STRICT_CDC)
+	// Edge case: no intersected cursors disables incremental, and if CDC/strict_cdc
+	// are also unsupported, only full_refresh is enabled. If full_refresh is also
+	// the default, the user can't interact with the radio group at all — so SyncMode
+	// never gets marked dirty and can't be bulk applied. Setting to undefined
+	// leaves no radio pre-selected, so the user must explicitly pick full_refresh,
+	// ensuring sync mode is only bulk applied when the user explicitly changes it.
 	const commonSyncMode =
-		rawSyncMode === SyncMode.INCREMENTAL && intersectedCursors.length === 0
-			? SyncMode.FULL_REFRESH
-			: rawSyncMode
+		noCursorFields && noCdcSupport ? undefined : streams[0].stream.sync_mode
 
 	return {
 		stream: {
