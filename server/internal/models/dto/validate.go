@@ -4,27 +4,7 @@ import (
 	"fmt"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/go-playground/validator/v10"
 )
-
-// ValidateStruct validates any struct that has `validate` tags.
-func Validate(s interface{}) error {
-	validate := validator.New()
-	err := validate.Struct(s)
-	if err != nil {
-		if _, ok := err.(*validator.InvalidValidationError); ok {
-			return fmt.Errorf("invalid validation: %s", err)
-		}
-
-		// collect all validation errors into a single message
-		var errorMessages string
-		for _, err := range err.(validator.ValidationErrors) {
-			errorMessages += fmt.Sprintf("Field '%s' failed validation rule '%s'; ", err.Field(), err.Tag())
-		}
-		return fmt.Errorf("validation failed: %s", errorMessages)
-	}
-	return nil
-}
 
 // ValidateSourceType checks if the provided type is in the list of supported source types
 func ValidateSourceType(t string) error {

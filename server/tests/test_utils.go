@@ -14,7 +14,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/moby/moby/api/types/container"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
+	testcontainers "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
