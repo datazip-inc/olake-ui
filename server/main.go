@@ -26,15 +26,19 @@
 package main
 
 import (
-	"github.com/beego/beego/v2/client/orm"
-	"github.com/beego/beego/v2/server/web"
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
+	"github.com/datazip-inc/olake-ui/server/internal/httpserver"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
-	"github.com/datazip-inc/olake-ui/server/routes"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
-	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 
 	"github.com/datazip-inc/olake-ui/server/docs"
 )
@@ -42,6 +46,7 @@ import (
 func main() {
 	constants.Init()
 	logger.Init()
+
 	db, err := database.Init()
 	if err != nil {
 		logger.Fatalf("Failed to initialize database: %s", err)
@@ -55,6 +60,7 @@ func main() {
 		return
 	}
 	logger.Info("Application services initialized successfully")
+
 	telemetry.InitTelemetry(db)
 
 	// Set Swagger Info version to match the application's runtime version.
@@ -62,14 +68,19 @@ func main() {
 		docs.SwaggerInfo.Version = constants.AppVersion
 	}
 
-	routes.Init(handlers.NewHandler(appSvc))
-	if key, _ := web.AppConfig.String(constants.ConfEncryptionKey); key == "" {
+	cfg := appconfig.Load()
+	if cfg.EncryptionKey == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
 
-	if web.BConfig.RunMode == "dev" || web.BConfig.RunMode == "staging" {
-		orm.Debug = true
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	api := handlers.NewHandler(appSvc, &cfg, db)
+	server := httpserver.New(&cfg, api)
+
+	logger.Infof("Starting HTTP server on port %s", cfg.HTTPPort)
+	if err := server.Run(ctx); err != nil {
+		logger.Fatalf("HTTP server exited with error: %s", err)
 	}
-	web.Run()
-	// TODO: handle gracefull shutdown
 }

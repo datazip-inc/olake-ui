@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 	"go.temporal.io/sdk/client"
 	"golang.org/x/mod/semver"
 )
@@ -103,7 +103,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
 	}
 
-	if encryptionKey, _ := web.AppConfig.String(constants.ConfEncryptionKey); encryptionKey != "" {
+	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 
@@ -200,7 +200,7 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		fmt.Sprintf("--%s", flag),
 		"/mnt/config/config.json",
 	}
-	if encryptionKey, _ := web.AppConfig.String(constants.ConfEncryptionKey); encryptionKey != "" {
+	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 
@@ -295,14 +295,14 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		"--streams", "/mnt/config/old_streams.json",
 		"--difference", "/mnt/config/new_streams.json",
 	}
-	if encryptionKey, _ := web.AppConfig.String(constants.ConfEncryptionKey); encryptionKey != "" {
+	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 
 	req := &ExecutionRequest{
 		Command:       Discover,
-		ConnectorType: job.SourceID.Type,
-		Version:       job.SourceID.Version,
+		ConnectorType: job.Source.Type,
+		Version:       job.Source.Version,
 		Args:          cmdArgs,
 		Configs:       nil,
 		WorkflowID:    workflowID,

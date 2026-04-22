@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 // TrackUserLogin tracks when a user logs in to  olake-ui

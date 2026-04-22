@@ -38,6 +38,12 @@ type Error409Response struct {
 	Message string `json:"message" example:"Resource already exists"`
 }
 
+// Error413Response represents a 413 Payload Too Large error
+type Error413Response struct {
+	Success bool   `json:"success" example:"false"`
+	Message string `json:"message" example:"Payload too large"`
+}
+
 // Error500Response represents a 500 Internal Server Error
 type Error500Response struct {
 	Success bool   `json:"success" example:"false"`
@@ -169,6 +175,12 @@ type ProjectSettingsResponse struct {
 
 type LoginResponse struct {
 	Username string `json:"username" example:"admin"`
+}
+
+type UserResponse struct {
+	ID       int    `json:"id" example:"1"`
+	Username string `json:"username" example:"admin"`
+	Email    string `json:"email" example:"admin@example.com"`
 }
 
 // ReleaseMetadataResponse represents a single release

@@ -15,9 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/spf13/viper"
 )
 
 type Service struct {
@@ -250,17 +249,19 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 }
 
 func getCredentials() (string, string, string, error) {
-	baseURL, err := web.AppConfig.String(constants.ConfOptimizationBaseURL)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get optimization base URL: %s", err)
+	cfg := appconfig.Load()
+
+	baseURL := cfg.OptimizationBaseURL
+	if baseURL == "" {
+		return "", "", "", fmt.Errorf("failed to get optimization base URL: OPTIMIZATION_BASE_URL environment variable not set")
 	}
 
-	username := viper.GetString(constants.ConfOptimizationUsername)
+	username := cfg.OptimizationUsername
 	if username == "" {
 		return "", "", "", fmt.Errorf("failed to get optimization username: USERNAME environment variable not set")
 	}
 
-	password := viper.GetString(constants.ConfOptimizationPassword)
+	password := cfg.OptimizationPassword
 	if password == "" {
 		return "", "", "", fmt.Errorf("failed to get optimization password: PASSWORD environment variable not set")
 	}

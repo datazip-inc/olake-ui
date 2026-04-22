@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 type jobDetails struct {
@@ -43,14 +43,14 @@ func getJobDetails(jobID int) (*jobDetails, error) {
 		}
 	}
 
-	if job.SourceID != nil {
-		details.SourceType = job.SourceID.Type
-		details.SourceName = job.SourceID.Name
+	if job.Source != nil {
+		details.SourceType = job.Source.Type
+		details.SourceName = job.Source.Name
 	}
 
-	if job.DestID != nil {
-		details.DestinationType = job.DestID.DestType
-		details.DestinationName = job.DestID.Name
+	if job.Destination != nil {
+		details.DestinationType = job.Destination.DestType
+		details.DestinationName = job.Destination.Name
 	}
 
 	return details, nil

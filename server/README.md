@@ -1,6 +1,6 @@
 # Olake Server
 
-Olake Server is a RESTful API service built with the Beego framework that manages data sources, destinations, jobs, and users for data ingestion workflows.
+Olake Server is a RESTful API service built with Gin that manages data sources, destinations, jobs, and users for data ingestion workflows.
 
 ## Prerequisites
 
@@ -24,7 +24,6 @@ Review and update the configuration in `conf/app.conf` as needed:
 appname = olake-server
 httpport = 8000
 runmode = dev
-copyrequestbody = true
 postgresdb = postgres://postgres:testing@testing-postgres.postgres.database.azure.com:5432/olakedb
 
 # Session configuration
@@ -45,7 +44,7 @@ CREATE TABLE session (
 
 ```bash
 go mod tidy
-bee run
+go run .
 # or
 make run
 ```
@@ -119,5 +118,5 @@ For production deployment:
 
 1. Set `runmode = prod` in `conf/app.conf`
 2. Configure a secure database connection
-3. Set up proper CORS settings in `routers/router.go`
+3. Set up proper CORS settings in `internal/httpserver/server.go`
 4. Enable authentication middleware

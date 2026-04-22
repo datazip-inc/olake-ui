@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 // TrackDestinationCreation tracks the creation of a new destination with relevant properties

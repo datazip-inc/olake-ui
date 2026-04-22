@@ -2,6 +2,7 @@ package etl
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -9,8 +10,8 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 )
 
 // Source-related methods on AppService
@@ -19,6 +20,9 @@ import (
 func (s Service) GetSource(ctx context.Context, projectID string, sourceID int) (*dto.SourceDataItem, error) {
 	source, err := s.db.GetSourceByID(sourceID)
 	if err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to get source: %s", err)
 	}
 
@@ -75,9 +79,7 @@ func (s Service) ListSources(ctx context.Context, projectID string) ([]dto.Sourc
 
 	jobsBySourceID := make(map[int][]*models.Job)
 	for _, job := range allJobs {
-		if job.SourceID != nil {
-			jobsBySourceID[job.SourceID.ID] = append(jobsBySourceID[job.SourceID.ID], job)
-		}
+		jobsBySourceID[job.SourceID] = append(jobsBySourceID[job.SourceID], job)
 	}
 
 	// Batch fetch workflow info for all jobs
@@ -130,6 +132,8 @@ func (s Service) CreateSource(ctx context.Context, req *dto.CreateSourceRequest,
 	}
 
 	user := &models.User{ID: *userID}
+	src.CreatedByID = user.ID
+	src.UpdatedByID = user.ID
 	src.CreatedBy = user
 	src.UpdatedBy = user
 
@@ -144,6 +148,9 @@ func (s Service) CreateSource(ctx context.Context, req *dto.CreateSourceRequest,
 func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req *dto.UpdateSourceRequest, userID *int) error {
 	existing, err := s.db.GetSourceByID(id)
 	if err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
 		return fmt.Errorf("failed to get source: %s", err)
 	}
 
@@ -153,6 +160,7 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 	existing.Version = req.Version
 
 	user := &models.User{ID: *userID}
+	existing.UpdatedByID = user.ID
 	existing.UpdatedBy = user
 
 	jobs, err := s.db.GetJobsBySourceID([]int{existing.ID})
@@ -175,6 +183,9 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 func (s Service) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceResponse, error) {
 	src, err := s.db.GetSourceByID(id)
 	if err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to find source: %s", err)
 	}
 
@@ -185,16 +196,11 @@ func (s Service) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceRes
 	if len(jobs) > 0 {
 		return nil, fmt.Errorf("cannot delete source '%s' id[%d] because it is used in %d jobs; please delete the associated jobs first", src.Name, id, len(jobs))
 	}
-	jobIDs := make([]int, 0, len(jobs))
-	for _, job := range jobs {
-		jobIDs = append(jobIDs, job.ID)
-	}
-
-	if err := s.db.DeactivateJobs(jobIDs); err != nil {
-		return nil, fmt.Errorf("failed to update jobs for source deletion: %s", err)
-	}
 
 	if err := s.db.DeleteSource(id); err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to delete source: %s", err)
 	}
 
