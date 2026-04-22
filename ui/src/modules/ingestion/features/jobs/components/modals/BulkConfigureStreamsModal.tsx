@@ -29,7 +29,11 @@ import NormalizationSectionBulk from "../streams/NormalizationSectionBulk"
 import PartitionRegexSectionBulk from "../streams/PartitionRegexSectionBulk"
 import SyncModeSectionBulk from "../streams/SyncModeSectionBulk"
 
-type BulkConfigureStep = "select-streams" | "apply-configurations" | "success"
+type BulkConfigureStep =
+	| "select-streams"
+	| "apply-configurations"
+	| "summary"
+	| "success"
 type BulkConfigurationTab = "config" | "partitioning"
 
 type BulkConfig = {
@@ -193,6 +197,17 @@ const BulkConfigureStreamsModal = ({
 	const getStepTitle = () => {
 		if (step === "select-streams") return "Select Streams"
 		if (step === "apply-configurations") return "Apply Configurations"
+		if (step === "summary") return "Summary of Changes"
+		return ""
+	}
+
+	const getStepSubtitle = () => {
+		if (step === "select-streams")
+			return "Select streams you wish to bulk configure"
+		if (step === "apply-configurations")
+			return "Set the properties to be applied across selected streams"
+		if (step === "summary")
+			return "Review the configurations that will be applied to selected streams"
 		return ""
 	}
 
@@ -263,6 +278,23 @@ const BulkConfigureStreamsModal = ({
 			)
 		}
 
+		if (step === "summary") {
+			return (
+				<div className="flex h-20 items-center justify-between border-t border-olake-border px-8">
+					<Button onClick={() => setStep("apply-configurations")}>Back</Button>
+					<div className="flex items-center gap-3">
+						<Button onClick={onClose}>Cancel</Button>
+						<Button
+							type="primary"
+							onClick={handleApplyChanges}
+						>
+							Apply Changes
+						</Button>
+					</div>
+				</div>
+			)
+		}
+
 		return (
 			<div className="flex h-20 items-center justify-between border-t border-olake-border px-8">
 				<Button onClick={() => setStep("select-streams")}>Back</Button>
@@ -270,13 +302,13 @@ const BulkConfigureStreamsModal = ({
 					<Button onClick={onClose}>Cancel</Button>
 					<Button
 						type="primary"
-						onClick={handleApplyChanges}
+						onClick={() => setStep("summary")}
 						disabled={
 							bulkSelectedStreams.length === 0 ||
 							!Object.values(dirtyFields).some(Boolean)
 						}
 					>
-						Apply Changes
+						Review Changes
 					</Button>
 				</div>
 			</div>
@@ -327,9 +359,7 @@ const BulkConfigureStreamsModal = ({
 							Bulk Streams Configure
 						</h2>
 						<p className="mt-2 text-sm leading-5 text-olake-text">
-							{step === "select-streams"
-								? "Select streams you wish to bulk configure"
-								: "Set the properties to be applied across selected streams"}
+							{getStepSubtitle()}
 						</p>
 					</div>
 
@@ -345,6 +375,90 @@ const BulkConfigureStreamsModal = ({
 									bulkSelectedStreams={bulkSelectedStreams}
 									onChange={setBulkSelectedStreams}
 								/>
+							</div>
+						) : step === "summary" ? (
+							<div className="h-full overflow-y-auto px-8 py-5">
+								<div className="flex flex-col gap-4">
+									{/* Selected streams */}
+									<div className={CARD_STYLE}>
+										<div className="mb-3 flex items-center gap-2">
+											<TableIcon className="size-4 text-olake-text-secondary" />
+											<span className="text-sm font-medium text-olake-text">
+												Streams to Configure ({bulkSelectedStreams.length})
+											</span>
+										</div>
+										<div className="flex flex-wrap gap-2">
+											{bulkSelectedStreams.map(stream => {
+												const streamId = `${stream.namespace}__${stream.streamName}`
+												return (
+													<div
+														key={streamId}
+														className="flex h-7 items-center gap-1.5 rounded bg-olake-surface-muted px-3 py-0.5"
+													>
+														<TableIcon className="size-3.5 shrink-0 text-olake-text-secondary" />
+														<span className="text-xs text-olake-text">
+															{stream.namespace ? `${stream.namespace} / ` : ""}
+															{stream.streamName}
+														</span>
+													</div>
+												)
+											})}
+										</div>
+									</div>
+
+									{/* Changes to apply — same components as configure step, read-only. */}
+									<div className="relative">
+										<div className="absolute inset-0 z-10 cursor-not-allowed" />
+										<div className="pointer-events-none flex flex-col gap-4 opacity-60">
+											{(dirtyFields[BulkDirtyFieldKey.SyncMode] ||
+												dirtyFields[BulkDirtyFieldKey.AppendMode]) && (
+												<div className={CARD_STYLE}>
+													<span className="mb-2 block text-sm font-medium text-olake-text">
+														Ingestion Settings
+													</span>
+													{dirtyFields[BulkDirtyFieldKey.SyncMode] && (
+														<SyncModeSectionBulk
+															bulkStream={bulkStream}
+															bulkSyncMode={bulkConfig.syncMode}
+															bulkCursorField={bulkConfig.cursorField}
+															onBulkSyncModeChange={() => {}}
+														/>
+													)}
+													{dirtyFields[BulkDirtyFieldKey.AppendMode] && (
+														<IngestionModeSectionBulk
+															sourceType={sourceType}
+															destinationType={destinationType}
+															bulkAppendMode={bulkConfig.appendMode}
+															onBulkIngestionModeChange={() => {}}
+														/>
+													)}
+												</div>
+											)}
+											{dirtyFields[BulkDirtyFieldKey.Normalization] && (
+												<NormalizationSectionBulk
+													normalization={bulkConfig.normalization}
+													onChange={() => {}}
+												/>
+											)}
+											{dirtyFields[BulkDirtyFieldKey.Filter] && (
+												<DataFilterSectionBulk
+													bulkStream={bulkStream}
+													bulkFilter={bulkConfig.filter}
+													onBulkFilterChange={() => {}}
+													bulkFilterConfig={bulkConfig.filterConfig}
+													onBulkFilterConfigChange={() => {}}
+												/>
+											)}
+											{dirtyFields[BulkDirtyFieldKey.PartitionRegex] && (
+												<PartitionRegexSectionBulk
+													destinationType={destinationType}
+													bulkPartitionRegex={bulkConfig.partitionRegex}
+													onBulkPartitionRegexChange={() => {}}
+												/>
+											)}
+										</div>
+									</div>
+								</div>
 							</div>
 						) : (
 							<div className={clsx("h-full", "overflow-y-auto px-8 py-5")}>

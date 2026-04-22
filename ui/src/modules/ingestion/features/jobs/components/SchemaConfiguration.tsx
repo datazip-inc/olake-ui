@@ -325,7 +325,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			</div>
 
 			<div
-				className={clsx("relative flex", !isLoading && "rounded-[4px] border")}
+				className={clsx(
+					"relative flex min-h-[720px]",
+					!isLoading && "rounded-[4px] border",
+				)}
 			>
 				<div
 					className={clsx(

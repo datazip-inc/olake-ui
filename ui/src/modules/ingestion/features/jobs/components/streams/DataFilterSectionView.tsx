@@ -88,7 +88,8 @@ const DataFilterSectionView = ({
 					conditions: [{ column: "", operator: "=", value: null }],
 					logicalOperator: "and",
 				})
-				const savedFilterState = streamFilterState || false
+				const savedFilterState =
+					currentFilterConfig !== undefined || streamFilterState
 				setIsFilterEnabled(savedFilterState)
 			}
 			return
