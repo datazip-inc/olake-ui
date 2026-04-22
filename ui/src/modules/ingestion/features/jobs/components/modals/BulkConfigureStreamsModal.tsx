@@ -103,6 +103,8 @@ const BulkConfigureStreamsModal = ({
 		useState<boolean>(true)
 	const [isSelectedStreamsExpanded, setIsSelectedStreamsExpanded] =
 		useState<boolean>(false)
+	const [isSummaryStreamsExpanded, setIsSummaryStreamsExpanded] =
+		useState<boolean>(false)
 
 	const [bulkSelectedStreams, setBulkSelectedStreams] = useState<
 		StreamIdentifier[]
@@ -192,6 +194,7 @@ const BulkConfigureStreamsModal = ({
 		setDirtyFields(INITIAL_DIRTY_FIELDS)
 		setIsSyncIngestionCollapsed(true)
 		setIsSelectedStreamsExpanded(false)
+		setIsSummaryStreamsExpanded(false)
 	}, [selectionKey])
 
 	const getStepTitle = () => {
@@ -388,7 +391,13 @@ const BulkConfigureStreamsModal = ({
 											</span>
 										</div>
 										<div className="flex flex-wrap gap-2">
-											{bulkSelectedStreams.map(stream => {
+											{(isSummaryStreamsExpanded
+												? bulkSelectedStreams
+												: bulkSelectedStreams.slice(
+														0,
+														MAX_VISIBLE_SELECTED_STREAMS,
+													)
+											).map(stream => {
 												const streamId = `${stream.namespace}__${stream.streamName}`
 												return (
 													<div
@@ -403,6 +412,35 @@ const BulkConfigureStreamsModal = ({
 													</div>
 												)
 											})}
+											{bulkSelectedStreams.length >
+												MAX_VISIBLE_SELECTED_STREAMS &&
+												!isSummaryStreamsExpanded && (
+													<button
+														type="button"
+														onClick={() => setIsSummaryStreamsExpanded(true)}
+														className="flex h-7 items-center gap-2 rounded bg-olake-surface-muted px-3 py-0.5 text-olake-text"
+													>
+														<span className="text-xs font-medium">
+															+
+															{bulkSelectedStreams.length -
+																MAX_VISIBLE_SELECTED_STREAMS}{" "}
+															more
+														</span>
+													</button>
+												)}
+											{isSummaryStreamsExpanded &&
+												bulkSelectedStreams.length >
+													MAX_VISIBLE_SELECTED_STREAMS && (
+													<button
+														type="button"
+														onClick={() => setIsSummaryStreamsExpanded(false)}
+														className="flex h-7 items-center gap-2 rounded bg-olake-surface-muted px-3 py-0.5 text-olake-text"
+													>
+														<span className="text-xs font-medium">
+															View less
+														</span>
+													</button>
+												)}
 										</div>
 									</div>
 
