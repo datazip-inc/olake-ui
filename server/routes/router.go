@@ -1,137 +1,122 @@
 package routes
 
 import (
-	"net/http"
-
-	"github.com/beego/beego/v2/server/web"
-	"github.com/beego/beego/v2/server/web/context"
-	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
-	"github.com/datazip-inc/olake-ui/server/internal/handlers/middleware"
+	"github.com/gin-gonic/gin"
 )
 
-// writeDefaultCorsHeaders sets common CORS headers
-func writeDefaultCorsHeaders(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, Authorization, Content-Type, Accept")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Max-Age", "86400")
-}
+func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
+	// core routes
+	engine.POST("/signup", h.Signup)
+	engine.POST("/login", h.Login)
+	engine.GET("/auth/check", h.CheckAuth)
+	engine.GET("/telemetry-id", h.TelemetryID)
+	engine.GET("/swagger/*any", h.ServeSwagger)
 
-// CustomCorsFilter handles CORS for different route patterns
-func CustomCorsFilter(ctx *context.Context) {
-	r := ctx.Request
-	w := ctx.ResponseWriter
-	writeDefaultCorsHeaders(w)
-	requestOrigin := r.Header.Get("Origin")
-	// API and auth routes - reflect origin
-	w.Header().Set("Access-Control-Allow-Origin", requestOrigin)
-	// Handle preflight OPTIONS requests
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-}
+	api := engine.Group("/api")
+	api.Use(h.AuthMiddleware())
 
-func Init(h *handlers.Handler) {
 	etlHandler := h.ETL
+	etl := api.Group("/v1")
 
-	if runmode, err := web.AppConfig.String(constants.ConfRunMode); err == nil && runmode == "localdev" {
-		web.InsertFilter("*", web.BeforeRouter, CustomCorsFilter)
-	} else {
-		// Serve static frontend files
-		web.SetStaticPath("", "/opt/frontend/dist") // Vite assets are in /assets
+	// users routes
+	etl.POST("/users", etlHandler.CreateUser)
+	etl.GET("/users", etlHandler.GetAllUsers)
+	etl.PUT("/users/:id", etlHandler.UpdateUser)
+	etl.DELETE("/users/:id", etlHandler.DeleteUser)
 
-		// Serve index.html for React frontend
-		web.Router("/*", etlHandler, "get:ServeFrontend") // any other frontend route
-	}
+	// sources routes
+	etl.GET("/project/:projectid/sources", etlHandler.ListSources)
+	etl.POST("/project/:projectid/sources", etlHandler.CreateSource)
+	etl.GET("/project/:projectid/sources/:id", etlHandler.GetSource)
+	etl.PUT("/project/:projectid/sources/:id", etlHandler.UpdateSource)
+	etl.DELETE("/project/:projectid/sources/:id", etlHandler.DeleteSource)
+	etl.POST("/project/:projectid/sources/test", etlHandler.TestSourceConnection)
+	etl.POST("/project/:projectid/sources/streams", etlHandler.GetSourceCatalog)
+	etl.GET("/project/:projectid/sources/versions", etlHandler.GetSourceVersions)
+	etl.POST("/project/:projectid/sources/spec", etlHandler.GetSourceSpec)
 
-	// Swagger routes
-	web.Router("/swagger/*", etlHandler, "get:ServeSwagger")
+	// destinations routes
+	etl.GET("/project/:projectid/destinations", etlHandler.ListDestinations)
+	etl.POST("/project/:projectid/destinations", etlHandler.CreateDestination)
+	etl.PUT("/project/:projectid/destinations/:id", etlHandler.UpdateDestination)
+	etl.GET("/project/:projectid/destinations/:id", etlHandler.GetDestination)
+	etl.DELETE("/project/:projectid/destinations/:id", etlHandler.DeleteDestination)
+	etl.POST("/project/:projectid/destinations/test", etlHandler.TestDestinationConnection)
+	etl.GET("/project/:projectid/destinations/versions", etlHandler.GetDestinationVersions)
+	etl.POST("/project/:projectid/destinations/spec", etlHandler.GetDestinationSpec)
 
-	// Apply auth middleware to protected routes
-	web.InsertFilter("/api/*", web.BeforeRouter, middleware.AuthMiddleware)
-	// Auth routes
-	web.Router("/login", etlHandler, "post:Login")
-	web.Router("/signup", etlHandler, "post:Signup")
-	web.Router("/auth/check", etlHandler, "get:CheckAuth")
-	web.Router("/telemetry-id", etlHandler, "get:GetTelemetryID")
-
-	// User routes
-	web.Router("/api/v1/users", etlHandler, "post:CreateUser")
-	web.Router("/api/v1/users", etlHandler, "get:GetAllUsers")
-	web.Router("/api/v1/users/:id", etlHandler, "put:UpdateUser")
-	web.Router("/api/v1/users/:id", etlHandler, "delete:DeleteUser")
-
-	// Source routes
-	web.Router("/api/v1/project/:projectid/sources", etlHandler, "get:ListSources")
-	web.Router("/api/v1/project/:projectid/sources", etlHandler, "post:CreateSource")
-	web.Router("/api/v1/project/:projectid/sources/:id", etlHandler, "get:GetSource")
-	web.Router("/api/v1/project/:projectid/sources/:id", etlHandler, "put:UpdateSource")
-	web.Router("/api/v1/project/:projectid/sources/:id", etlHandler, "delete:DeleteSource")
-	web.Router("/api/v1/project/:projectid/sources/test", etlHandler, "post:TestSourceConnection")
-	web.Router("/api/v1/project/:projectid/sources/streams", etlHandler, "post:GetSourceCatalog")
-	web.Router("/api/v1/project/:projectid/sources/versions", etlHandler, "get:GetSourceVersions")
-	web.Router("/api/v1/project/:projectid/sources/spec", etlHandler, "post:GetSourceSpec")
-
-	// Destination routes
-	web.Router("/api/v1/project/:projectid/destinations", etlHandler, "get:ListDestinations")
-	web.Router("/api/v1/project/:projectid/destinations", etlHandler, "post:CreateDestination")
-	web.Router("/api/v1/project/:projectid/destinations/:id", etlHandler, "get:GetDestination")
-	web.Router("/api/v1/project/:projectid/destinations/:id", etlHandler, "put:UpdateDestination")
-	web.Router("/api/v1/project/:projectid/destinations/:id", etlHandler, "delete:DeleteDestination")
-	web.Router("/api/v1/project/:projectid/destinations/test", etlHandler, "post:TestDestinationConnection")
-	web.Router("/api/v1/project/:projectid/destinations/versions", etlHandler, "get:GetDestinationVersions")
-	web.Router("/api/v1/project/:projectid/destinations/spec", etlHandler, "post:GetDestinationSpec")
-
-	// Job routes
-	web.Router("/api/v1/project/:projectid/jobs", etlHandler, "get:ListJobs")
-	web.Router("/api/v1/project/:projectid/jobs", etlHandler, "post:CreateJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id", etlHandler, "get:GetJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id", etlHandler, "put:UpdateJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id", etlHandler, "delete:DeleteJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id/sync", etlHandler, "post:SyncJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id/activate", etlHandler, "post:ActivateJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id/tasks", etlHandler, "get:GetJobTasks")
-	web.Router("/api/v1/project/:projectid/jobs/:id/cancel", etlHandler, "get:CancelJobRun")
-	web.Router("/api/v1/project/:projectid/jobs/:id/tasks/:taskid/logs", etlHandler, "post:GetTaskLogs")
-	web.Router("/api/v1/project/:projectid/jobs/:id/logs/download", etlHandler, "get:DownloadTaskLogs")
-	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", etlHandler, "post:ClearDestination")
-	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", etlHandler, "get:GetClearDestinationStatus")
-	web.Router("/api/v1/project/:projectid/jobs/:id/stream-difference", etlHandler, "post:GetStreamDifference")
+	// jobs routes
+	etl.GET("/project/:projectid/jobs", etlHandler.ListJobs)
+	etl.POST("/project/:projectid/jobs", etlHandler.CreateJob)
+	etl.GET("/project/:projectid/jobs/:id", etlHandler.GetJob)
+	etl.PUT("/project/:projectid/jobs/:id", etlHandler.UpdateJob)
+	etl.DELETE("/project/:projectid/jobs/:id", etlHandler.DeleteJob)
+	etl.POST("/project/:projectid/jobs/:id/sync", etlHandler.SyncJob)
+	etl.POST("/project/:projectid/jobs/:id/activate", etlHandler.ActivateJob)
+	etl.GET("/project/:projectid/jobs/:id/tasks", etlHandler.GetJobTasks)
+	etl.GET("/project/:projectid/jobs/:id/cancel", etlHandler.CancelJobRun)
+	etl.POST("/project/:projectid/jobs/:id/tasks/:taskid/logs", etlHandler.GetTaskLogs)
+	etl.GET("/project/:projectid/jobs/:id/logs/download", etlHandler.DownloadTaskLogs)
+	etl.POST("/project/:projectid/jobs/:id/clear-destination", etlHandler.ClearDestination)
+	etl.GET("/project/:projectid/jobs/:id/clear-destination", etlHandler.GetClearDestinationStatus)
+	etl.POST("/project/:projectid/jobs/:id/stream-difference", etlHandler.GetStreamDifference)
 
 	// Project settings routes
-	web.Router("/api/v1/project/:projectid/settings", etlHandler, "put:UpsertProjectSettings")
-	web.Router("/api/v1/project/:projectid/settings", etlHandler, "get:GetProjectSettings")
+	etl.PUT("/project/:projectid/settings", etlHandler.UpsertProjectSettings)
+	etl.GET("/project/:projectid/settings", etlHandler.GetProjectSettings)
 
 	// validation routes
-	web.Router("/api/v1/project/:projectid/check-unique", etlHandler, "post:CheckUniqueName")
+	etl.POST("/project/:projectid/check-unique", etlHandler.CheckUniqueName)
 
 	// platform routes
-	web.Router("/api/v1/platform/releases", etlHandler, "get:GetReleaseUpdates")
-	web.Router("/api/v1/platform/opt/status", h, "get:GetoptimizationStatus")
+	etl.GET("/platform/releases", etlHandler.GetReleaseUpdates)
+
+	// module gate routes
+	etl.GET("/platform/opt/status", h.GetOptimizationStatus)
 
 	// internal routes
-	web.Router("/internal/worker/callback/sync-telemetry", etlHandler, "post:UpdateSyncTelemetry")
-	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", etlHandler, "post:RecoverClearDestination")
-	web.Router("/internal/project/:projectid/jobs/:id/statefile", etlHandler, "put:UpdateStateFile")
+	engine.POST("/internal/worker/callback/sync-telemetry", etlHandler.UpdateSyncTelemetry)
+	engine.POST("/internal/project/:projectid/jobs/:id/clear-destination/recover", etlHandler.RecoverClearDestination)
+	engine.PUT("/internal/project/:projectid/jobs/:id/statefile", etlHandler.UpdateStateFile)
 
 	if h.Optimization != nil {
 		optHandler := h.Optimization
+		opt := api.Group("/opt/v1")
 
 		// catalogs: crud
-		web.Router("/api/opt/v1/catalog", optHandler, "post:CreateCatalog")
-		web.Router("/api/opt/v1/catalog/:catalog", optHandler, "get:GetCatalog")
-		web.Router("/api/opt/v1/catalog/:catalog", optHandler, "put:UpdateCatalog")
-		web.Router("/api/opt/v1/catalog/:catalog", optHandler, "delete:DeleteCatalog")
+		opt.POST("/catalog", optHandler.CreateCatalog)
+		opt.GET("/catalog/:catalog", optHandler.GetCatalog)
+		opt.PUT("/catalog/:catalog", optHandler.UpdateCatalog)
+		opt.DELETE("/catalog/:catalog", optHandler.DeleteCatalog)
 
 		// terminal: cron, enable/disable optimization
-		web.Router("/api/opt/v1/:catalog/:database/:table/config", optHandler, "put:SetProperties")
+		opt.PUT("/:catalog/:database/:table/config", optHandler.SetProperties)
 
 		// tables: view
-		web.Router("/api/opt/v1/:catalog/:database/tables", optHandler, "get:GetTablesWithDetails")
-
-		// piggy backing
-		web.Router("/api/opt/v1/*", optHandler, "get:PiggyBacking;post:PiggyBacking;put:PiggyBacking;delete:PiggyBacking")
+		opt.GET("/:catalog/:database/tables", optHandler.GetTablesWithDetails)
 	}
+}
+
+type ModuleNoRouteHandler struct {
+	// PathPrefix decides which unmatched paths belong to this module fallback.
+	PathPrefix string
+	// Middleware is optional and runs before forwarding.
+	Middleware gin.HandlerFunc
+	// Forward handles the unmatched request (proxy/handler/catch-all).
+	Forward gin.HandlerFunc
+}
+
+func ModuleNoRouteHandlers(h *handlers.Handler) []ModuleNoRouteHandler {
+	moduleHandlers := make([]ModuleNoRouteHandler, 0, 1)
+	if h.Optimization != nil {
+		// Register optimization as a module fallback for unmatched /api/opt/v1/*.
+		// This avoids route tree conflicts from wildcard catch-all registration.
+		moduleHandlers = append(moduleHandlers, ModuleNoRouteHandler{
+			PathPrefix: "/api/opt/v1/",
+			Middleware: h.AuthMiddleware(),
+			Forward:    h.Optimization.PiggyBacking,
+		})
+	}
+	return moduleHandlers
 }

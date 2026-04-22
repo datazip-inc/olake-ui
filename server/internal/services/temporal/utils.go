@@ -8,7 +8,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"go.temporal.io/sdk/client"
 )
 
@@ -24,8 +24,8 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) *ExecutionRequ
 
 	return &ExecutionRequest{
 		Command:       Sync,
-		ConnectorType: job.SourceID.Type,
-		Version:       job.SourceID.Version,
+		ConnectorType: job.Source.Type,
+		Version:       job.Source.Version,
 		Args:          args,
 		Configs:       nil,
 		WorkflowID:    workflowID,
@@ -60,8 +60,8 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 
 	return &ExecutionRequest{
 		Command:       ClearDestination,
-		ConnectorType: job.SourceID.Type,
-		Version:       job.SourceID.Version,
+		ConnectorType: job.Source.Type,
+		Version:       job.Source.Version,
 		Args:          args,
 		Configs:       nil,
 		WorkflowID:    workflowID,

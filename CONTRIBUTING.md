@@ -91,10 +91,6 @@ You can also change the local PostgreSQL connection or any other settings based 
 - **Go** ≥ 1.20  
 - **Node.js** and **pnpm**  
 - **Docker** and **Docker Compose**  
-- **Beego CLI**:  
-  ```bash
-  go install github.com/beego/bee/v2@latest
-  ```
 
 ### Start Services
 1. **Temporal Services**  

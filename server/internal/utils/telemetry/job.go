@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 // TrackJobCreation tracks the creation of a new job with relevant properties
@@ -24,20 +24,20 @@ func TrackJobCreation(ctx context.Context, job *models.Job) {
 		}
 
 		// Safely add source properties
-		if job.SourceID != nil {
-			properties["source_type"] = job.SourceID.Type
-			properties["source_name"] = job.SourceID.Name
-			if job.SourceID.Version != "" {
-				properties["source_olake_version"] = job.SourceID.Version
+		if job.Source != nil {
+			properties["source_type"] = job.Source.Type
+			properties["source_name"] = job.Source.Name
+			if job.Source.Version != "" {
+				properties["source_olake_version"] = job.Source.Version
 			}
 		}
 
 		// Safely add destination properties
-		if job.DestID != nil {
-			properties["destination_type"] = job.DestID.DestType
-			properties["destination_name"] = job.DestID.Name
-			if job.DestID.Version != "" {
-				properties["destination_olake_version"] = job.DestID.Version
+		if job.Destination != nil {
+			properties["destination_type"] = job.Destination.DestType
+			properties["destination_name"] = job.Destination.Name
+			if job.Destination.Version != "" {
+				properties["destination_olake_version"] = job.Destination.Version
 			}
 		}
 

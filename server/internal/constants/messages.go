@@ -11,7 +11,9 @@ var (
 	ErrPasswordProcessing = errors.New("failed to process password")
 
 	// Source related errors
-	ErrSourceNotFound = errors.New("source not found")
+	ErrSourceNotFound      = errors.New("source not found")
+	ErrDestinationNotFound = errors.New("destination not found")
+	ErrJobNotFound         = errors.New("job not found")
 )
 
 // Validation messages
