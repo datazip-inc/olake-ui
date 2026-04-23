@@ -15,8 +15,10 @@ import {
 import { GroupedStreamsCollapsibleListProps } from "../../types"
 import {
 	getIngestionMode,
+	hasGroupedStreamsStructureChanged,
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
+	sortGroupedStreamsByCheckedState,
 } from "../../utils/streams"
 import IngestionModeChangeModal from "../modals/IngestionModeChangeModal"
 
@@ -55,6 +57,11 @@ const StreamsCollapsibleList = ({
 	>([])
 
 	const prevGroupedStreams = useRef(groupedStreams)
+	const prevBulkApplyVersion = useRef(0)
+
+	const bulkApplyVersion = useStreamSelectionStore(
+		state => state.bulkApplyVersion,
+	)
 
 	useEffect(() => {
 		setIngestionMode(getIngestionMode(selectedStreams, sourceType))
@@ -80,24 +87,6 @@ const StreamsCollapsibleList = ({
 			})
 		}
 	}, [groupedStreams])
-
-	// Detects if groupedStreams changed by comparing namespace keys and stream counts.
-	const dataHasChanged = () => {
-		const prev = prevGroupedStreams.current
-		const current = groupedStreams
-
-		const prevKeys = Object.keys(prev)
-		const currentKeys = Object.keys(current)
-
-		if (prevKeys.length !== currentKeys.length) return true
-
-		for (const key of currentKeys) {
-			if (!prev[key]) return true
-			if (prev[key].length !== current[key].length) return true
-		}
-
-		return false
-	}
 
 	// Update local checked status based on selectedStreams
 	useEffect(() => {
@@ -132,45 +121,27 @@ const StreamsCollapsibleList = ({
 
 		setCheckedStatus(newCheckedStatus)
 
-		// sort the namespaces and streams inside it alphabetically on the basis of checked and unchecked status.
-		if (sortedGroupedNamespaces.length === 0 || dataHasChanged()) {
-			const sortByStreamName = (a: StreamData, b: StreamData) =>
-				a.stream.name.localeCompare(b.stream.name)
-			const sortByNamespaceName = (
-				a: [string, StreamData[]],
-				b: [string, StreamData[]],
-			) => a[0].localeCompare(b[0])
-
-			const withChecked: [string, StreamData[]][] = []
-			const withoutChecked: [string, StreamData[]][] = []
-
-			Object.entries(groupedStreams).forEach(([ns, streams]) => {
-				const checked: StreamData[] = []
-				const unchecked: StreamData[] = []
-				streams.forEach(s => {
-					if (newCheckedStatus.streams[ns]?.[s.stream.name]) {
-						checked.push(s)
-					} else {
-						unchecked.push(s)
-					}
-				})
-				checked.sort(sortByStreamName)
-				unchecked.sort(sortByStreamName)
-				const sorted: [string, StreamData[]] = [ns, [...checked, ...unchecked]]
-
-				if (streams.some(s => newCheckedStatus.streams[ns]?.[s.stream.name])) {
-					withChecked.push(sorted)
-				} else {
-					withoutChecked.push(sorted)
-				}
-			})
-
-			withChecked.sort(sortByNamespaceName)
-			withoutChecked.sort(sortByNamespaceName)
-			setSortedGroupedNamespaces([...withChecked, ...withoutChecked])
+		// Sort namespaces and streams alphabetically by checked/unchecked status.
+		// Re-sort on first render, structure change, or after a bulk apply.
+		const isBulkApply = bulkApplyVersion !== prevBulkApplyVersion.current
+		if (
+			sortedGroupedNamespaces.length === 0 ||
+			hasGroupedStreamsStructureChanged(
+				prevGroupedStreams.current,
+				groupedStreams,
+			) ||
+			isBulkApply
+		) {
+			setSortedGroupedNamespaces(
+				sortGroupedStreamsByCheckedState(
+					groupedStreams,
+					newCheckedStatus.streams,
+				),
+			)
 			prevGroupedStreams.current = groupedStreams
+			prevBulkApplyVersion.current = bulkApplyVersion
 		}
-	}, [selectedStreams, groupedStreams])
+	}, [selectedStreams, groupedStreams, bulkApplyVersion])
 
 	// Auto-select first stream once sortedGroupedNamespaces is populated
 	useEffect(() => {
@@ -182,7 +153,7 @@ const StreamsCollapsibleList = ({
 		) {
 			const first = sortedGroupedNamespaces[0][1][0]
 			setActiveStreamKey({
-				name: first.stream.name,
+				streamName: first.stream.name,
 				namespace: first.stream.namespace ?? "",
 			})
 		}
@@ -210,7 +181,14 @@ const StreamsCollapsibleList = ({
 
 		const streamsInNamespace = groupedStreams[ns] || []
 		streamsInNamespace.forEach(streamData => {
-			toggleStream(streamData.stream.name, ns, checked, ingestionMode)
+			toggleStream(
+				{
+					streamName: streamData.stream.name,
+					namespace: ns,
+				},
+				checked,
+				ingestionMode,
+			)
 		})
 	}
 
@@ -237,7 +215,14 @@ const StreamsCollapsibleList = ({
 
 		Object.entries(groupedStreams).forEach(([ns, streams]) => {
 			streams.forEach(streamData => {
-				toggleStream(streamData.stream.name, ns, checked, ingestionMode)
+				toggleStream(
+					{
+						streamName: streamData.stream.name,
+						namespace: ns,
+					},
+					checked,
+					ingestionMode,
+				)
 			})
 		})
 	}
@@ -273,7 +258,14 @@ const StreamsCollapsibleList = ({
 			}
 		})
 
-		toggleStream(streamName, ns, checked, ingestionMode)
+		toggleStream(
+			{
+				streamName,
+				namespace: ns,
+			},
+			checked,
+			ingestionMode,
+		)
 	}
 
 	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(

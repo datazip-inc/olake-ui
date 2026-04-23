@@ -1,57 +1,47 @@
-import { ArrowSquareOutIcon, InfoIcon } from "@phosphor-icons/react"
+import {
+	ArrowSquareOutIcon,
+	InfoIcon,
+	WarningIcon,
+} from "@phosphor-icons/react"
 import { Button, Input, Tooltip } from "antd"
 import { useState } from "react"
 
 import { DESTINATION_INTERNAL_TYPES } from "@/modules/ingestion/common/constants"
 
 import { PartitioningRegexTooltip } from "../../constants"
-import { useStreamSelectionStore } from "../../stores"
-import {
-	selectActiveStreamData,
-	selectActiveSelectedStream,
-	selectIsStreamEnabled,
-} from "../../stores"
 
-interface PartitionRegexSectionProps {
+interface PartitionRegexSectionViewProps {
 	destinationType?: string
+	isSelected: boolean
+	isDirty?: boolean
+	activePartitionRegex: string
+	onChange?: (regex: string) => void
 }
 
-const PartitionRegexSection = ({
+const PartitionRegexSectionView = ({
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
-}: PartitionRegexSectionProps) => {
-	const updatePartitionRegex = useStreamSelectionStore(
-		state => state.updatePartitionRegex,
-	)
-	const stream = useStreamSelectionStore(selectActiveStreamData)
-	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
-	const isSelected = useStreamSelectionStore(state =>
-		selectIsStreamEnabled(state, stream),
-	)
-
+	isSelected,
+	isDirty,
+	activePartitionRegex,
+	onChange,
+}: PartitionRegexSectionViewProps) => {
 	const [partitionRegex, setPartitionRegex] = useState("")
-
-	if (!stream || !selectedStream) return null
-
-	const activePartitionRegex = selectedStream.partition_regex || ""
 
 	const handleSetPartitionRegex = () => {
 		if (partitionRegex) {
-			updatePartitionRegex(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				partitionRegex,
-			)
+			onChange?.(partitionRegex)
 			setPartitionRegex("")
 		}
 	}
 
 	const handleClearPartitionRegex = () => {
-		updatePartitionRegex(stream.stream.name, stream.stream.namespace || "", "")
+		onChange?.("")
 	}
 
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="flex items-center gap-0.5">
+				{isDirty && <WarningIcon className="size-4 text-orange-500" />}
 				<div className="text-neutral-text">Partitioning regex:</div>
 
 				<Tooltip title={PartitioningRegexTooltip}>
@@ -117,4 +107,4 @@ const PartitionRegexSection = ({
 	)
 }
 
-export default PartitionRegexSection
+export default PartitionRegexSectionView

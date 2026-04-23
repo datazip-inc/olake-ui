@@ -25,8 +25,7 @@ const ClearDestinationModal = () => {
 				setShowClearDestinationModal(false)
 				navigate(`/jobs/${selectedJobId}/history`)
 			},
-			onError: (error: Error) => {
-				message.error(`Failed to clear destination: ${error.message}`)
+			onError: () => {
 				setShowClearDestinationModal(false)
 			},
 		})
