@@ -460,7 +460,6 @@ const BulkConfigureStreamsModal = ({
 															bulkStream={bulkStream}
 															bulkSyncMode={bulkConfig.syncMode}
 															bulkCursorField={bulkConfig.cursorField}
-															onBulkSyncModeChange={() => {}}
 														/>
 													)}
 													{dirtyFields[BulkDirtyFieldKey.AppendMode] && (
@@ -468,7 +467,6 @@ const BulkConfigureStreamsModal = ({
 															sourceType={sourceType}
 															destinationType={destinationType}
 															bulkAppendMode={bulkConfig.appendMode}
-															onBulkIngestionModeChange={() => {}}
 														/>
 													)}
 												</div>
@@ -476,23 +474,19 @@ const BulkConfigureStreamsModal = ({
 											{dirtyFields[BulkDirtyFieldKey.Normalization] && (
 												<NormalizationSectionBulk
 													normalization={bulkConfig.normalization}
-													onChange={() => {}}
 												/>
 											)}
 											{dirtyFields[BulkDirtyFieldKey.Filter] && (
 												<DataFilterSectionBulk
 													bulkStream={bulkStream}
 													bulkFilter={bulkConfig.filter}
-													onBulkFilterChange={() => {}}
 													bulkFilterConfig={bulkConfig.filterConfig}
-													onBulkFilterConfigChange={() => {}}
 												/>
 											)}
 											{dirtyFields[BulkDirtyFieldKey.PartitionRegex] && (
 												<PartitionRegexSectionBulk
 													destinationType={destinationType}
 													bulkPartitionRegex={bulkConfig.partitionRegex}
-													onBulkPartitionRegexChange={() => {}}
 												/>
 											)}
 										</div>
@@ -575,10 +569,10 @@ const BulkConfigureStreamsModal = ({
 													Info
 												</span>
 											</div>
-											<p className="font-medium leading-5">
+											<p className="text-xs font-normal leading-5">
 												Changes will be applied only to properties marked with{" "}
 												<span className="inline-block align-baseline">
-													<WarningIcon className="relative top-[1px] size-4 text-amber-600" />
+													<WarningIcon className="relative top-[4px] size-5 text-amber-600" />
 												</span>
 												<br />
 												Any existing configuration for those properties will be

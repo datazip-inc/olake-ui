@@ -15,7 +15,7 @@ interface PartitionRegexSectionViewProps {
 	isSelected: boolean
 	isDirty?: boolean
 	activePartitionRegex: string
-	onChange: (regex: string) => void
+	onChange?: (regex: string) => void
 }
 
 const PartitionRegexSectionView = ({
@@ -29,13 +29,13 @@ const PartitionRegexSectionView = ({
 
 	const handleSetPartitionRegex = () => {
 		if (partitionRegex) {
-			onChange(partitionRegex)
+			onChange?.(partitionRegex)
 			setPartitionRegex("")
 		}
 	}
 
 	const handleClearPartitionRegex = () => {
-		onChange("")
+		onChange?.("")
 	}
 
 	return (

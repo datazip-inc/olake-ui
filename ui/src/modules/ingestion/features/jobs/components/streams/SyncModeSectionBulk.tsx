@@ -7,7 +7,7 @@ interface SyncModeSectionBulkProps {
 	bulkStream: StreamData
 	bulkSyncMode: SyncMode | undefined
 	bulkCursorField: string | undefined
-	onBulkSyncModeChange: (syncMode: SyncMode, cursorField?: string) => void
+	onBulkSyncModeChange?: (syncMode: SyncMode, cursorField?: string) => void
 }
 
 const SyncModeSectionBulk = ({

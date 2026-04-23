@@ -19,7 +19,7 @@ const PartitionRegexSectionBulk = ({
 			isSelected={true}
 			isDirty={isDirty}
 			activePartitionRegex={bulkPartitionRegex ?? ""}
-			onChange={onBulkPartitionRegexChange ?? (() => {})}
+			onChange={onBulkPartitionRegexChange}
 		/>
 	)
 }

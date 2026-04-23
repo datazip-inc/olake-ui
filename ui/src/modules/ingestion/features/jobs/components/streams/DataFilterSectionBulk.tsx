@@ -7,9 +7,9 @@ interface DataFilterSectionBulkProps {
 	isDirty?: boolean
 	bulkStream: StreamData
 	bulkFilter: string
-	onBulkFilterChange: (filterString: string) => void
+	onBulkFilterChange?: (filterString: string) => void
 	bulkFilterConfig: FilterConfig | undefined
-	onBulkFilterConfigChange: (filterConfig: FilterConfig | undefined) => void
+	onBulkFilterConfigChange?: (filterConfig: FilterConfig | undefined) => void
 }
 
 const DataFilterSectionBulk = ({

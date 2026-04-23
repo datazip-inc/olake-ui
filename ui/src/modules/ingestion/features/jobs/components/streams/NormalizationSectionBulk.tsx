@@ -3,7 +3,7 @@ import NormalizationSectionView from "./NormalizationSectionView"
 interface NormalizationSectionBulkProps {
 	isDirty?: boolean
 	normalization: boolean
-	onChange: (value: boolean) => void
+	onChange?: (value: boolean) => void
 }
 
 const NormalizationSectionBulk = ({

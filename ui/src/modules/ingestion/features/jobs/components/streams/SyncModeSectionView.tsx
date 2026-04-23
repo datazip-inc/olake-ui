@@ -18,7 +18,7 @@ export interface SyncModeSectionViewProps {
 	cursorField: string | undefined
 	isDirty?: boolean
 	isBulkMode?: boolean
-	onChange: (mode: SyncMode, cursorField?: string) => void
+	onChange?: (mode: SyncMode, cursorField?: string) => void
 }
 
 const SyncModeSectionView = ({
@@ -53,9 +53,9 @@ const SyncModeSectionView = ({
 		// Auto-select first available cursor field for incremental mode
 		if (selectedRadioValue === "incremental") {
 			const cursor = cursorField || getColumnOptionsForCursor()[0]?.value
-			onChange(SyncMode.INCREMENTAL, cursor)
+			onChange?.(SyncMode.INCREMENTAL, cursor)
 		} else {
-			onChange(newApiSyncMode, undefined)
+			onChange?.(newApiSyncMode, undefined)
 		}
 	}
 
@@ -63,18 +63,18 @@ const SyncModeSectionView = ({
 		const newCursorField = fallBackCursorField
 			? `${value}:${fallBackCursorField}`
 			: value
-		onChange(SyncMode.INCREMENTAL, newCursorField)
+		onChange?.(SyncMode.INCREMENTAL, newCursorField)
 	}
 
 	const handleFallbackCursorChange = (value: string) => {
 		const { primary } = getCursorFieldValues(cursorField)
 		const newCursorField = value ? `${primary}:${value}` : primary
-		onChange(SyncMode.INCREMENTAL, newCursorField)
+		onChange?.(SyncMode.INCREMENTAL, newCursorField)
 	}
 
 	const handleFallbackCursorClear = () => {
 		setShowFallbackSelector(false)
-		onChange(SyncMode.INCREMENTAL, getCursorFieldValues(cursorField).primary)
+		onChange?.(SyncMode.INCREMENTAL, getCursorFieldValues(cursorField).primary)
 	}
 
 	const getColumnOptionsForCursor = (

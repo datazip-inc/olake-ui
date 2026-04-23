@@ -8,7 +8,7 @@ export interface NormalizationSectionViewProps {
 	normalization: boolean
 	isSelected: boolean
 	isDirty?: boolean
-	onChange: (value: boolean) => void
+	onChange?: (value: boolean) => void
 }
 
 const NormalizationSectionView = ({
@@ -32,7 +32,7 @@ const NormalizationSectionView = ({
 					</div>
 					<Switch
 						checked={normalization}
-						onChange={onChange}
+						onChange={onChange ?? (() => {})}
 						disabled={!isSelected}
 					/>
 				</div>

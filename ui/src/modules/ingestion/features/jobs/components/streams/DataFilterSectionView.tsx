@@ -30,8 +30,8 @@ export interface DataFilterSectionViewProps {
 	filterConfig: FilterConfig | undefined
 	useFilterConfig: boolean
 	streamFilterState: boolean
-	onFilterChange: (filterString: string) => void
-	onFilterConfigChange: (filterConfig: FilterConfig | undefined) => void
+	onFilterChange?: (filterString: string) => void
+	onFilterConfigChange?: (filterConfig: FilterConfig | undefined) => void
 	onSetStreamFilterState?: (enabled: boolean) => void
 }
 
@@ -228,11 +228,11 @@ const DataFilterSectionView = ({
 		isLocalFilterUpdateRef.current = true
 
 		if (useFilterConfig) {
-			onFilterConfigChange(
+			onFilterConfigChange?.(
 				checked ? { logical_operator: "and", conditions: [] } : undefined,
 			)
 		} else {
-			onFilterChange(checked ? "=" : "")
+			onFilterChange?.(checked ? "=" : "")
 		}
 	}
 
@@ -256,7 +256,7 @@ const DataFilterSectionView = ({
 				logical_operator: newMultiCondition.logicalOperator,
 				conditions: newConditions,
 			}
-			onFilterConfigChange(filterConfig)
+			onFilterConfigChange?.(filterConfig)
 		} else {
 			const filterString = newConditions
 				.map(
@@ -264,7 +264,7 @@ const DataFilterSectionView = ({
 						`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
 				)
 				.join(` ${newMultiCondition.logicalOperator} `)
-			onFilterChange(filterString)
+			onFilterChange?.(filterString)
 		}
 	}
 
@@ -287,7 +287,7 @@ const DataFilterSectionView = ({
 					logical_operator: value,
 					conditions: filledConditions,
 				}
-				onFilterConfigChange(filterConfig)
+				onFilterConfigChange?.(filterConfig)
 			} else {
 				const filterString = filledConditions
 					.map(
@@ -295,7 +295,7 @@ const DataFilterSectionView = ({
 							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
 					)
 					.join(` ${value} `)
-				onFilterChange(filterString)
+				onFilterChange?.(filterString)
 			}
 		}
 	}
@@ -326,7 +326,7 @@ const DataFilterSectionView = ({
 				logical_operator: multiFilterCondition.logicalOperator,
 				conditions: newConditions,
 			}
-			onFilterConfigChange(filterConfig)
+			onFilterConfigChange?.(filterConfig)
 		} else {
 			const filterString =
 				conditions
@@ -335,7 +335,7 @@ const DataFilterSectionView = ({
 							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
 					)
 					.join(` ${multiFilterCondition.logicalOperator} `) + " = "
-			onFilterChange(filterString)
+			onFilterChange?.(filterString)
 		}
 	}
 
@@ -360,17 +360,17 @@ const DataFilterSectionView = ({
 						logical_operator: newMultiCondition.logicalOperator,
 						conditions: newConditions,
 					}
-					onFilterConfigChange(filterConfig)
+					onFilterConfigChange?.(filterConfig)
 				} else {
 					// Remaining condition is incomplete — clear filter_config
-					onFilterConfigChange(undefined)
+					onFilterConfigChange?.(undefined)
 				}
 			} else {
 				if (condition.column && condition.operator) {
 					const filterString = `${condition.column} ${condition.operator} ${formatFilterValue(condition.column, condition.value as string)}`
-					onFilterChange(filterString)
+					onFilterChange?.(filterString)
 				} else {
-					onFilterChange("")
+					onFilterChange?.("")
 				}
 			}
 		}
