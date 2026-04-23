@@ -11,6 +11,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 type sessionPayload struct {
@@ -20,7 +21,6 @@ type sessionPayload struct {
 type sessionStore struct {
 	db      *database.Database
 	enabled bool
-	secure  bool
 }
 
 const (
@@ -32,7 +32,6 @@ func newSessionStore(cfg *appconfig.Config, db *database.Database) *sessionStore
 	return &sessionStore{
 		db:      db,
 		enabled: cfg.SessionOn,
-		secure:  cfg.RunMode != "localdev",
 	}
 }
 
@@ -55,8 +54,17 @@ func (s *sessionStore) SetUserSession(c *gin.Context, userID int) error {
 	}
 
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie(sessionCookieName, sessionID, sessionMaxAgeDays*24*60*60, "/", "", s.secure, true)
+	c.SetCookie(sessionCookieName, sessionID, sessionMaxAgeDays*24*60*60, "/", "", isSecureRequest(c), true)
 	return nil
+}
+
+func isSecureRequest(c *gin.Context) bool {
+	// Direct HTTPS connection to this server.
+	if c.Request.TLS != nil {
+		return true
+	}
+	// HTTPS terminated at a reverse proxy/load balancer.
+	return c.GetHeader("X-Forwarded-Proto") == "https"
 }
 
 func (s *sessionStore) GetUserID(c *gin.Context) (int, bool) {
@@ -66,16 +74,19 @@ func (s *sessionStore) GetUserID(c *gin.Context) (int, bool) {
 
 	sessionID, err := c.Cookie(sessionCookieName)
 	if err != nil || sessionID == "" {
+		logger.Errorf("failed to get session cookie: %s", utils.Ternary(err != nil, err, "no session cookie found"))
 		return 0, false
 	}
 
 	rawPayload, err := s.db.GetActiveSessionData(sessionID)
 	if err != nil {
+		logger.Errorf("failed to get active session data: %s", err)
 		return 0, false
 	}
 
 	var payload sessionPayload
 	if err := json.Unmarshal(rawPayload, &payload); err != nil || payload.UserID == 0 {
+		logger.Errorf("failed to unmarshal session payload: %s", err)
 		return 0, false
 	}
 
