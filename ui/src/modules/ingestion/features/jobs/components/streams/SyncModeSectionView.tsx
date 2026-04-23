@@ -1,70 +1,49 @@
-import { ArrowSquareOutIcon, InfoIcon, PlusIcon } from "@phosphor-icons/react"
+import {
+	ArrowSquareOutIcon,
+	InfoIcon,
+	PlusIcon,
+	WarningIcon,
+} from "@phosphor-icons/react"
 import { Radio, Select, Tooltip, Button } from "antd"
 import { useEffect, useState } from "react"
 
-import { SyncMode } from "@/modules/ingestion/common/types"
+import { SyncMode, StreamData } from "@/modules/ingestion/common/types"
 
 import { SYNC_MODE_MAP } from "../../constants"
-import {
-	selectActiveStreamData,
-	selectActiveSelectedStream,
-	useStreamSelectionStore,
-} from "../../stores"
 import { getCursorFieldValues } from "../../utils/streams"
 
-const SyncModeSection = () => {
-	const updateSyncMode = useStreamSelectionStore(state => state.updateSyncMode)
-	const stream = useStreamSelectionStore(selectActiveStreamData)
-	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
+export interface SyncModeSectionViewProps {
+	stream: StreamData
+	syncMode: SyncMode | undefined
+	cursorField: string | undefined
+	isDirty?: boolean
+	isBulkMode?: boolean
+	onChange?: (mode: SyncMode, cursorField?: string) => void
+}
 
-	const [syncMode, setSyncMode] = useState(stream?.stream.sync_mode)
-	const [cursorField, setCursorField] = useState<string | undefined>(
-		stream?.stream.cursor_field,
-	)
+const SyncModeSectionView = ({
+	stream,
+	syncMode,
+	cursorField,
+	isDirty,
+	isBulkMode,
+	onChange,
+}: SyncModeSectionViewProps) => {
 	const [showFallbackSelector, setShowFallbackSelector] = useState(false)
 	const [fallBackCursorField, setFallBackCursorField] = useState<string>("")
 
-	// Re-sync sync/cursor state when the active stream changes
+	// Parse fallback cursor field whenever the cursor field prop changes
 	useEffect(() => {
-		if (!stream || !selectedStream) return
-
-		const initialApiSyncMode = stream.stream.sync_mode
-		const initialCursorField = stream.stream.cursor_field
-
-		// Parse cursor field for default value
-		// cursor field and default will be in a:b form where a is the cursor field and b is the default field
 		const { fallback: initialFallbackCursor } =
-			getCursorFieldValues(initialCursorField)
-
+			getCursorFieldValues(cursorField)
 		setFallBackCursorField(initialFallbackCursor)
 		setShowFallbackSelector(!!initialFallbackCursor)
-
-		setSyncMode(initialApiSyncMode ?? "full_refresh")
-		setCursorField(initialCursorField)
-		// Auto-select first available cursor field if default sync mode is incremental and no cursor field is set
-		if (initialApiSyncMode === "incremental" && !initialCursorField) {
-			const cursor = getColumnOptionsForCursor()[0]?.value
-			if (cursor) {
-				setCursorField(getCursorFieldValues(cursor).primary)
-				setFallBackCursorField(getCursorFieldValues(cursor).fallback)
-				updateSyncMode(
-					stream.stream.name,
-					stream.stream.namespace || "",
-					SyncMode.INCREMENTAL,
-					cursor,
-				)
-			}
-		}
-	}, [stream?.stream.name, stream?.stream.namespace])
-
-	if (!stream || !selectedStream) return null
+	}, [cursorField])
 
 	const isSyncModeSupported = (mode: string): boolean =>
 		stream.stream.supported_sync_modes?.some(m => m === mode) ?? false
 
 	const handleSyncModeChange = (selectedRadioValue: string) => {
-		setSyncMode(selectedRadioValue)
-
 		const newApiSyncMode = (
 			Object.entries(SYNC_MODE_MAP).find(
 				([, value]) => value === selectedRadioValue,
@@ -74,22 +53,9 @@ const SyncModeSection = () => {
 		// Auto-select first available cursor field for incremental mode
 		if (selectedRadioValue === "incremental") {
 			const cursor = cursorField || getColumnOptionsForCursor()[0]?.value
-			if (cursor) {
-				setCursorField(getCursorFieldValues(cursor).primary)
-				setFallBackCursorField(getCursorFieldValues(cursor).fallback)
-				updateSyncMode(
-					stream.stream.name,
-					stream.stream.namespace || "",
-					SyncMode.INCREMENTAL,
-					cursor,
-				)
-			}
+			onChange?.(SyncMode.INCREMENTAL, cursor)
 		} else {
-			updateSyncMode(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				newApiSyncMode,
-			)
+			onChange?.(newApiSyncMode, undefined)
 		}
 	}
 
@@ -97,43 +63,18 @@ const SyncModeSection = () => {
 		const newCursorField = fallBackCursorField
 			? `${value}:${fallBackCursorField}`
 			: value
-		setCursorField(newCursorField)
-		setFallBackCursorField("")
-		updateSyncMode(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			SyncMode.INCREMENTAL,
-			newCursorField,
-		)
+		onChange?.(SyncMode.INCREMENTAL, newCursorField)
 	}
 
 	const handleFallbackCursorChange = (value: string) => {
-		const cursorFieldValues = getCursorFieldValues(cursorField)
-		const newCursorField = value
-			? `${cursorFieldValues.primary}:${value}`
-			: cursorFieldValues.primary
-		setCursorField(newCursorField)
-		setFallBackCursorField(value)
-		updateSyncMode(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			SyncMode.INCREMENTAL,
-			newCursorField,
-		)
+		const { primary } = getCursorFieldValues(cursorField)
+		const newCursorField = value ? `${primary}:${value}` : primary
+		onChange?.(SyncMode.INCREMENTAL, newCursorField)
 	}
 
 	const handleFallbackCursorClear = () => {
 		setShowFallbackSelector(false)
-		setFallBackCursorField("")
-		const cursorFieldValues = getCursorFieldValues(cursorField)
-		const newCursorField = cursorFieldValues.primary
-		setCursorField(newCursorField)
-		updateSyncMode(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			SyncMode.INCREMENTAL,
-			newCursorField,
-		)
+		onChange?.(SyncMode.INCREMENTAL, getCursorFieldValues(cursorField).primary)
 	}
 
 	const getColumnOptionsForCursor = (
@@ -172,6 +113,7 @@ const SyncModeSection = () => {
 		<>
 			<div className="mb-4">
 				<div className="mb-3 flex w-full items-center gap-1 font-medium text-neutral-text">
+					{isDirty && <WarningIcon className="size-4 text-orange-500" />}
 					<label>Sync mode:</label>
 					<a
 						href="https://olake.io/docs/understanding/terminologies/olake/#2-sync-modes"
@@ -196,9 +138,22 @@ const SyncModeSection = () => {
 					</Radio>
 					<Radio
 						value="incremental"
-						disabled={!isSyncModeSupported(SyncMode.INCREMENTAL)}
+						disabled={
+							!isSyncModeSupported(SyncMode.INCREMENTAL) ||
+							(isBulkMode &&
+								(stream.stream.available_cursor_fields || []).length === 0)
+						}
 					>
-						Full Refresh + Incremental
+						<Tooltip
+							title={
+								isBulkMode &&
+								(stream.stream.available_cursor_fields || []).length === 0
+									? "No common cursor fields across selected streams"
+									: ""
+							}
+						>
+							Full Refresh + Incremental
+						</Tooltip>
 					</Radio>
 					<Radio
 						value="cdc"
@@ -294,4 +249,4 @@ const SyncModeSection = () => {
 	)
 }
 
-export default SyncModeSection
+export default SyncModeSectionView

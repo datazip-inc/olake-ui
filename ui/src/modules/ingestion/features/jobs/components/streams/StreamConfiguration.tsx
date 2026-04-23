@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { DESTINATION_INTERNAL_TYPES } from "@/modules/ingestion/common/constants/constants"
 
 import ConfigTab from "./ConfigTab"
-import PartitionRegexSection from "./PartitionRegexSection"
+import PartitionRegexSectionSingle from "./PartitionRegexSectionSingle"
 import StreamConfigHeader from "./StreamConfigHeader"
 import StreamsSchema from "./StreamsSchema"
 import {
@@ -46,7 +46,7 @@ const StreamConfiguration = ({
 			)}
 			{activeTab === "schema" && streamsData && <StreamsSchema />}
 			{activeTab === "partitioning" && (
-				<PartitionRegexSection destinationType={destinationType} />
+				<PartitionRegexSectionSingle destinationType={destinationType} />
 			)}
 		</div>
 	)

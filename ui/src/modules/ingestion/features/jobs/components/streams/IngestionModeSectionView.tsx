@@ -1,37 +1,30 @@
-import { InfoIcon } from "@phosphor-icons/react"
+import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
 import { Radio, Tooltip } from "antd"
 import clsx from "clsx"
 
 import { IngestionMode } from "../../enums"
-import { useStreamSelectionStore } from "../../stores"
-import {
-	selectActiveStreamData,
-	selectActiveSelectedStream,
-	selectIsStreamEnabled,
-} from "../../stores"
 import {
 	isSourceIngestionModeSupported,
 	isDestinationIngestionModeSupported,
 } from "../../utils/streams"
 
-interface IngestionModeSectionProps {
+interface IngestionModeSectionViewProps {
 	sourceType?: string
 	destinationType?: string
+	isSelected: boolean
+	isDirty?: boolean
+	appendMode: boolean
+	onChange: (ingestionMode: IngestionMode) => void
 }
 
-const IngestionModeSection = ({
+const IngestionModeSectionView = ({
 	sourceType,
 	destinationType,
-}: IngestionModeSectionProps) => {
-	const updateIngestionMode = useStreamSelectionStore(
-		state => state.updateIngestionMode,
-	)
-	const stream = useStreamSelectionStore(selectActiveStreamData)
-	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
-	const isSelected = useStreamSelectionStore(state =>
-		selectIsStreamEnabled(state, stream),
-	)
-
+	isSelected,
+	isDirty,
+	appendMode,
+	onChange,
+}: IngestionModeSectionViewProps) => {
 	const isSourceUpsertSupported = isSourceIngestionModeSupported(
 		IngestionMode.UPSERT,
 		sourceType,
@@ -47,22 +40,16 @@ const IngestionModeSection = ({
 		destinationType,
 	)
 
-	if (!stream || !selectedStream) return null
-
 	// Don't render if destination doesn't support upsert mode
 	if (!isDestUpsertModeSupported) return null
 
 	// Ingestion mode is Append if:
 	// 1. Source doesn't support Upsert (forced Append)
 	// 2. OR user selected Append mode
-	const isAppendMode = !isSourceUpsertSupported || !!selectedStream.append_mode
+	const isAppendMode = !isSourceUpsertSupported || !!appendMode
 
 	const handleIngestionModeChange = (ingestionMode: IngestionMode) => {
-		updateIngestionMode(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			ingestionMode === IngestionMode.APPEND,
-		)
+		onChange(ingestionMode)
 	}
 
 	return (
@@ -75,7 +62,10 @@ const IngestionModeSection = ({
 			)}
 		>
 			<div className="mb-3">
-				<label className="block w-full">Ingestion Mode:</label>
+				<div className="flex items-center gap-1">
+					{isDirty && <WarningIcon className="size-4 text-orange-500" />}
+					<label className="block w-full">Ingestion Mode:</label>
+				</div>
 				<div
 					className={clsx(
 						"text-xs",
@@ -132,4 +122,4 @@ const IngestionModeSection = ({
 	)
 }
 
-export default IngestionModeSection
+export default IngestionModeSectionView
