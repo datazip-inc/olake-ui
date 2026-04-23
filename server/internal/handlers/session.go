@@ -11,6 +11,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 type sessionPayload struct {
@@ -66,16 +67,19 @@ func (s *sessionStore) GetUserID(c *gin.Context) (int, bool) {
 
 	sessionID, err := c.Cookie(sessionCookieName)
 	if err != nil || sessionID == "" {
+		logger.Errorf("failed to get session cookie: %s", utils.Ternary(err != nil, err, "no session cookie found"))
 		return 0, false
 	}
 
 	rawPayload, err := s.db.GetActiveSessionData(sessionID)
 	if err != nil {
+		logger.Errorf("failed to get active session data: %s", err)
 		return 0, false
 	}
 
 	var payload sessionPayload
 	if err := json.Unmarshal(rawPayload, &payload); err != nil || payload.UserID == 0 {
+		logger.Errorf("failed to unmarshal session payload: %s", err)
 		return 0, false
 	}
 
