@@ -1,0 +1,729 @@
+import {
+	CaretDownIcon,
+	CaretRightIcon,
+	CheckIcon,
+	FadersHorizontalIcon,
+	InfoIcon,
+	RowsIcon,
+	TableIcon,
+	WarningIcon,
+	XIcon,
+} from "@phosphor-icons/react"
+import { Button, Modal } from "antd"
+import clsx from "clsx"
+import { useEffect, useMemo, useState } from "react"
+
+import {
+	FilterConfig,
+	StreamIdentifier,
+	SyncMode,
+} from "@/modules/ingestion/common/types"
+import { BulkConfigureStreamsModalProps } from "@/modules/ingestion/features/jobs/types"
+
+import { CARD_STYLE } from "../../constants"
+import { useStreamSelectionStore } from "../../stores"
+import { buildBulkStreamsData } from "../../utils/streams"
+import BulkStreamSelectorList from "../streams/BulkStreamSelectorList"
+import DataFilterSectionBulk from "../streams/DataFilterSectionBulk"
+import IngestionModeSectionBulk from "../streams/IngestionModeSectionBulk"
+import NormalizationSectionBulk from "../streams/NormalizationSectionBulk"
+import PartitionRegexSectionBulk from "../streams/PartitionRegexSectionBulk"
+import SyncModeSectionBulk from "../streams/SyncModeSectionBulk"
+
+type BulkConfigureStep =
+	| "select-streams"
+	| "apply-configurations"
+	| "summary"
+	| "success"
+type BulkConfigurationTab = "config" | "partitioning"
+
+type BulkConfig = {
+	syncMode: SyncMode | undefined
+	cursorField: string | undefined
+	appendMode: boolean
+	normalization: boolean
+	filter: string
+	filterConfig: FilterConfig | undefined
+	partitionRegex: string
+}
+
+enum BulkDirtyFieldKey {
+	SyncMode = "syncMode",
+	AppendMode = "appendMode",
+	Normalization = "normalization",
+	Filter = "filter",
+	PartitionRegex = "partitionRegex",
+}
+
+type BulkDirtyFields = Record<BulkDirtyFieldKey, boolean>
+
+const INITIAL_DIRTY_FIELDS: BulkDirtyFields = {
+	[BulkDirtyFieldKey.SyncMode]: false,
+	[BulkDirtyFieldKey.AppendMode]: false,
+	[BulkDirtyFieldKey.Normalization]: false,
+	[BulkDirtyFieldKey.Filter]: false,
+	[BulkDirtyFieldKey.PartitionRegex]: false,
+}
+
+const INITIAL_BULK_CONFIG: BulkConfig = {
+	syncMode: SyncMode.FULL_REFRESH,
+	cursorField: undefined,
+	appendMode: false,
+	normalization: false,
+	filter: "",
+	filterConfig: undefined,
+	partitionRegex: "",
+}
+
+const CLOSE_COUNTDOWN = 3
+const MAX_VISIBLE_SELECTED_STREAMS = 5
+
+const sortCursorFields = (
+	availableCursors: string[],
+	primaryKeys: string[],
+): string[] =>
+	[...availableCursors].sort((a, b) => {
+		const aIsPK = primaryKeys.includes(a)
+		const bIsPK = primaryKeys.includes(b)
+		if (aIsPK && !bIsPK) return -1
+		if (!aIsPK && bIsPK) return 1
+		return a.localeCompare(b)
+	})
+
+const BulkConfigureStreamsModal = ({
+	open,
+	onClose,
+	streamsData,
+	sourceType,
+	destinationType,
+}: BulkConfigureStreamsModalProps) => {
+	const [step, setStep] = useState<BulkConfigureStep>("select-streams")
+	const [activeTab, setActiveTab] = useState<BulkConfigurationTab>("config")
+	const [closeCountdown, setCloseCountdown] = useState(CLOSE_COUNTDOWN)
+	const [isSyncIngestionCollapsed, setIsSyncIngestionCollapsed] =
+		useState<boolean>(true)
+	const [isSelectedStreamsExpanded, setIsSelectedStreamsExpanded] =
+		useState<boolean>(false)
+	const [isSummaryStreamsExpanded, setIsSummaryStreamsExpanded] =
+		useState<boolean>(false)
+
+	const [bulkSelectedStreams, setBulkSelectedStreams] = useState<
+		StreamIdentifier[]
+	>([])
+
+	// Local bulk config state
+	const [bulkConfig, setBulkConfig] = useState<BulkConfig>(INITIAL_BULK_CONFIG)
+	const setBulkConfigField = <K extends keyof BulkConfig>(
+		key: K,
+		value: BulkConfig[K],
+	) => setBulkConfig(prev => ({ ...prev, [key]: value }))
+
+	// Tracks which sections the user has explicitly modified.
+	// Only dirty sections are included in the apply payload.
+	const [dirtyFields, setDirtyFields] =
+		useState<BulkDirtyFields>(INITIAL_DIRTY_FIELDS)
+
+	const markDirty = (key: BulkDirtyFieldKey) =>
+		setDirtyFields(prev => ({ ...prev, [key]: true }))
+
+	const selectionKey = useMemo(
+		() =>
+			[...bulkSelectedStreams]
+				.map(s => `${s.namespace}__${s.streamName}`)
+				.sort()
+				.join(","),
+		[bulkSelectedStreams],
+	)
+
+	const { stream: bulkStream, defaults: bulkStreamDefaults } = useMemo(
+		() =>
+			buildBulkStreamsData(
+				bulkSelectedStreams,
+				streamsData,
+				sourceType,
+				destinationType,
+			),
+		[selectionKey, streamsData, sourceType, destinationType],
+	)
+
+	useEffect(() => {
+		if (open) {
+			setStep("select-streams")
+			setActiveTab("config")
+			setCloseCountdown(CLOSE_COUNTDOWN)
+			setBulkSelectedStreams([])
+			setBulkConfig(INITIAL_BULK_CONFIG)
+			setDirtyFields(INITIAL_DIRTY_FIELDS)
+			setIsSyncIngestionCollapsed(true)
+			setIsSelectedStreamsExpanded(false)
+		}
+	}, [open])
+
+	useEffect(() => {
+		if (!open || step !== "success") return
+
+		if (closeCountdown <= 0) {
+			setStep("select-streams")
+			setCloseCountdown(CLOSE_COUNTDOWN)
+			onClose()
+			return
+		}
+
+		const timeoutId = window.setTimeout(() => {
+			setCloseCountdown(prev => prev - 1)
+		}, 1000)
+
+		return () => window.clearTimeout(timeoutId)
+	}, [open, step, closeCountdown, onClose])
+
+	useEffect(() => {
+		// Reset all config state to defaults on selection change.
+		const syncMode = bulkStream.stream.sync_mode
+		const availableCursors = bulkStream.stream.available_cursor_fields ?? []
+		const primaryKeys = bulkStream.stream.source_defined_primary_key ?? []
+		const sortedCursors = sortCursorFields(availableCursors, primaryKeys)
+		setBulkConfig({
+			syncMode,
+			cursorField:
+				syncMode === SyncMode.INCREMENTAL ? sortedCursors[0] : undefined,
+			appendMode: bulkStreamDefaults.append_mode ?? false,
+			normalization: bulkStreamDefaults.normalization,
+			filter: "",
+			filterConfig: undefined,
+			partitionRegex: "",
+		})
+		setDirtyFields(INITIAL_DIRTY_FIELDS)
+		setIsSyncIngestionCollapsed(true)
+		setIsSelectedStreamsExpanded(false)
+		setIsSummaryStreamsExpanded(false)
+	}, [selectionKey])
+
+	const getStepTitle = () => {
+		if (step === "select-streams") return "Select Streams"
+		if (step === "apply-configurations") return "Apply Configurations"
+		if (step === "summary") return "Summary of Changes"
+		return ""
+	}
+
+	const getStepSubtitle = () => {
+		if (step === "select-streams")
+			return "Select streams you wish to bulk configure"
+		if (step === "apply-configurations")
+			return "Set the properties to be applied across selected streams"
+		if (step === "summary")
+			return "Review the configurations that will be applied to selected streams"
+		return ""
+	}
+
+	const bulkUpdateStreams = useStreamSelectionStore(
+		state => state.bulkUpdateStreams,
+	)
+
+	const handleApplyChanges = () => {
+		bulkUpdateStreams(bulkSelectedStreams, {
+			...(dirtyFields[BulkDirtyFieldKey.SyncMode] && {
+				syncMode: bulkConfig.syncMode,
+				cursorField: bulkConfig.cursorField,
+			}),
+			...(dirtyFields[BulkDirtyFieldKey.AppendMode] && {
+				appendMode: bulkConfig.appendMode,
+			}),
+			...(dirtyFields[BulkDirtyFieldKey.Normalization] && {
+				normalization: bulkConfig.normalization,
+			}),
+			...(dirtyFields[BulkDirtyFieldKey.Filter] && {
+				filterValue: bulkConfig.filter,
+				filterConfig: bulkConfig.filterConfig,
+			}),
+			...(dirtyFields[BulkDirtyFieldKey.PartitionRegex] && {
+				partitionRegex: bulkConfig.partitionRegex,
+			}),
+		})
+
+		setCloseCountdown(CLOSE_COUNTDOWN)
+		setStep("success")
+	}
+
+	const handleRemoveSelectedStream = (streamToRemove: StreamIdentifier) => {
+		setBulkSelectedStreams(prev =>
+			prev.filter(
+				stream =>
+					!(
+						stream.namespace === streamToRemove.namespace &&
+						stream.streamName === streamToRemove.streamName
+					),
+			),
+		)
+	}
+
+	const visibleSelectedStreams = isSelectedStreamsExpanded
+		? bulkSelectedStreams
+		: bulkSelectedStreams.slice(0, MAX_VISIBLE_SELECTED_STREAMS)
+	const hiddenSelectedStreamsCount = Math.max(
+		0,
+		bulkSelectedStreams.length - MAX_VISIBLE_SELECTED_STREAMS,
+	)
+
+	const getFooter = () => {
+		if (step === "success") return null
+
+		if (step === "select-streams") {
+			return (
+				<div className="flex h-20 items-center justify-end gap-3 border-t border-olake-border px-8">
+					<Button onClick={onClose}>Cancel</Button>
+					<Button
+						type="primary"
+						onClick={() => setStep("apply-configurations")}
+						disabled={bulkSelectedStreams.length === 0}
+					>
+						Configure Streams
+					</Button>
+				</div>
+			)
+		}
+
+		if (step === "summary") {
+			return (
+				<div className="flex h-20 items-center justify-between border-t border-olake-border px-8">
+					<Button onClick={() => setStep("apply-configurations")}>Back</Button>
+					<div className="flex items-center gap-3">
+						<Button onClick={onClose}>Cancel</Button>
+						<Button
+							type="primary"
+							onClick={handleApplyChanges}
+						>
+							Apply Changes
+						</Button>
+					</div>
+				</div>
+			)
+		}
+
+		return (
+			<div className="flex h-20 items-center justify-between border-t border-olake-border px-8">
+				<Button onClick={() => setStep("select-streams")}>Back</Button>
+				<div className="flex items-center gap-3">
+					<Button onClick={onClose}>Cancel</Button>
+					<Button
+						type="primary"
+						onClick={() => setStep("summary")}
+						disabled={
+							bulkSelectedStreams.length === 0 ||
+							!Object.values(dirtyFields).some(Boolean)
+						}
+					>
+						Review Changes
+					</Button>
+				</div>
+			</div>
+		)
+	}
+
+	return (
+		<Modal
+			open={open}
+			onCancel={onClose}
+			destroyOnHidden
+			footer={getFooter()}
+			closable={false}
+			centered
+			width={983}
+			classNames={{
+				content: "!overflow-hidden !rounded-[20px] !p-0",
+				body: "!p-0",
+				footer: "!m-0 !p-0",
+			}}
+		>
+			{step === "success" ? (
+				<div className="relative h-[808px] bg-background-primary">
+					<div className="absolute left-1/2 top-1/2 flex w-[374px] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-5 text-center">
+						<div className="rounded-xl bg-primary-100 p-3">
+							<CheckIcon
+								weight="bold"
+								className="size-8 text-primary"
+							/>
+						</div>
+						<div className="w-full">
+							<div className="text-xl font-medium leading-7 text-olake-text">
+								{`${bulkSelectedStreams.length} streams configured successfully`}
+							</div>
+							<div className="mt-1 text-base leading-6 text-olake-text">
+								You are free to edit the stream separately if you wish
+							</div>
+						</div>
+					</div>
+					<div className="absolute left-1/2 top-[683px] -translate-x-1/2">
+						<Button onClick={onClose}>Closing in {closeCountdown}...</Button>
+					</div>
+				</div>
+			) : (
+				<div className="flex h-[728px] flex-col">
+					<div className="border-b border-olake-border px-8 pb-5 pt-8">
+						<h2 className="text-xl font-medium leading-7 text-olake-text">
+							Bulk Streams Configure
+						</h2>
+						<p className="mt-2 text-sm leading-5 text-olake-text">
+							{getStepSubtitle()}
+						</p>
+					</div>
+
+					<div className="border-b border-olake-border px-8 py-4 text-base font-medium leading-7 text-olake-text">
+						{getStepTitle()}
+					</div>
+
+					<div className="min-h-0 flex-1">
+						{step === "select-streams" ? (
+							<div className="h-full">
+								<BulkStreamSelectorList
+									streamsData={streamsData}
+									bulkSelectedStreams={bulkSelectedStreams}
+									onChange={setBulkSelectedStreams}
+								/>
+							</div>
+						) : step === "summary" ? (
+							<div className="h-full overflow-y-auto px-8 py-5">
+								<div className="flex flex-col gap-4">
+									{/* Selected streams */}
+									<div className={CARD_STYLE}>
+										<div className="mb-3 flex items-center gap-2">
+											<TableIcon className="size-4 text-olake-text-secondary" />
+											<span className="text-sm font-medium text-olake-text">
+												Streams to Configure ({bulkSelectedStreams.length})
+											</span>
+										</div>
+										<div className="flex flex-wrap gap-2">
+											{(isSummaryStreamsExpanded
+												? bulkSelectedStreams
+												: bulkSelectedStreams.slice(
+														0,
+														MAX_VISIBLE_SELECTED_STREAMS,
+													)
+											).map(stream => {
+												const streamId = `${stream.namespace}__${stream.streamName}`
+												return (
+													<div
+														key={streamId}
+														className="flex h-7 items-center gap-1.5 rounded bg-olake-surface-muted px-3 py-0.5"
+													>
+														<TableIcon className="size-3.5 shrink-0 text-olake-text-secondary" />
+														<span className="text-xs text-olake-text">
+															{stream.namespace ? `${stream.namespace} / ` : ""}
+															{stream.streamName}
+														</span>
+													</div>
+												)
+											})}
+											{bulkSelectedStreams.length >
+												MAX_VISIBLE_SELECTED_STREAMS &&
+												!isSummaryStreamsExpanded && (
+													<button
+														type="button"
+														onClick={() => setIsSummaryStreamsExpanded(true)}
+														className="flex h-7 items-center gap-2 rounded bg-olake-surface-muted px-3 py-0.5 text-olake-text"
+													>
+														<span className="text-xs font-medium">
+															+
+															{bulkSelectedStreams.length -
+																MAX_VISIBLE_SELECTED_STREAMS}{" "}
+															more
+														</span>
+													</button>
+												)}
+											{isSummaryStreamsExpanded &&
+												bulkSelectedStreams.length >
+													MAX_VISIBLE_SELECTED_STREAMS && (
+													<button
+														type="button"
+														onClick={() => setIsSummaryStreamsExpanded(false)}
+														className="flex h-7 items-center gap-2 rounded bg-olake-surface-muted px-3 py-0.5 text-olake-text"
+													>
+														<span className="text-xs font-medium">
+															View less
+														</span>
+													</button>
+												)}
+										</div>
+									</div>
+
+									{/* Changes to apply — same components as configure step, read-only. */}
+									<div className="relative">
+										<div className="absolute inset-0 z-10 cursor-not-allowed" />
+										<div className="pointer-events-none flex flex-col gap-4 opacity-60">
+											{(dirtyFields[BulkDirtyFieldKey.SyncMode] ||
+												dirtyFields[BulkDirtyFieldKey.AppendMode]) && (
+												<div className={CARD_STYLE}>
+													<span className="mb-2 block text-sm font-medium text-olake-text">
+														Ingestion Settings
+													</span>
+													{dirtyFields[BulkDirtyFieldKey.SyncMode] && (
+														<SyncModeSectionBulk
+															bulkStream={bulkStream}
+															bulkSyncMode={bulkConfig.syncMode}
+															bulkCursorField={bulkConfig.cursorField}
+														/>
+													)}
+													{dirtyFields[BulkDirtyFieldKey.AppendMode] && (
+														<IngestionModeSectionBulk
+															sourceType={sourceType}
+															destinationType={destinationType}
+															bulkAppendMode={bulkConfig.appendMode}
+														/>
+													)}
+												</div>
+											)}
+											{dirtyFields[BulkDirtyFieldKey.Normalization] && (
+												<NormalizationSectionBulk
+													normalization={bulkConfig.normalization}
+												/>
+											)}
+											{dirtyFields[BulkDirtyFieldKey.Filter] && (
+												<DataFilterSectionBulk
+													bulkStream={bulkStream}
+													bulkFilter={bulkConfig.filter}
+													bulkFilterConfig={bulkConfig.filterConfig}
+												/>
+											)}
+											{dirtyFields[BulkDirtyFieldKey.PartitionRegex] && (
+												<PartitionRegexSectionBulk
+													destinationType={destinationType}
+													bulkPartitionRegex={bulkConfig.partitionRegex}
+												/>
+											)}
+										</div>
+									</div>
+								</div>
+							</div>
+						) : (
+							<div className={clsx("h-full", "overflow-y-auto px-8 py-5")}>
+								<div className="text-base leading-6 text-olake-text">
+									Streams Selected ({bulkSelectedStreams.length})
+								</div>
+								{bulkSelectedStreams.length === 0 ? (
+									<div className="flex h-full items-center justify-center">
+										<div className="max-w-[420px] text-center">
+											<div className="text-base font-medium text-olake-text">
+												No Streams Selected
+											</div>
+											<div className="mt-2 text-sm leading-5 text-olake-text-secondary">
+												No streams are selected for bulk configuration. Please
+												Go back and select one or more streams to continue.
+											</div>
+										</div>
+									</div>
+								) : (
+									<>
+										<div className="mt-2 flex flex-wrap gap-2">
+											{visibleSelectedStreams.map(stream => {
+												const streamId = `${stream.namespace}__${stream.streamName}`
+												return (
+													<div
+														key={streamId}
+														className="flex h-7 items-center gap-2 rounded bg-olake-surface-muted px-3.5 py-0.5"
+													>
+														<TableIcon className="size-4 text-olake-text" />
+														<span className="text-sm text-olake-text">
+															{stream.namespace ? `${stream.namespace} / ` : ""}
+															{stream.streamName}
+														</span>
+														<button
+															type="button"
+															onClick={() => handleRemoveSelectedStream(stream)}
+															aria-label={`Remove ${stream.streamName}`}
+															className="inline-flex items-center text-olake-text-tertiary hover:text-olake-text"
+														>
+															<XIcon className="size-4" />
+														</button>
+													</div>
+												)
+											})}
+											{hiddenSelectedStreamsCount > 0 &&
+												!isSelectedStreamsExpanded && (
+													<button
+														type="button"
+														onClick={() => setIsSelectedStreamsExpanded(true)}
+														className="flex h-7 items-center gap-2 rounded bg-olake-surface-muted px-3.5 py-0.5 text-olake-text"
+													>
+														<span className="text-sm font-medium">
+															+{hiddenSelectedStreamsCount} more
+														</span>
+													</button>
+												)}
+											{isSelectedStreamsExpanded &&
+												bulkSelectedStreams.length >
+													MAX_VISIBLE_SELECTED_STREAMS && (
+													<button
+														type="button"
+														onClick={() => setIsSelectedStreamsExpanded(false)}
+														className="flex h-7 items-center gap-2 rounded bg-olake-surface-muted px-3.5 py-0.5 text-olake-text"
+													>
+														<span className="text-sm font-medium">
+															View less
+														</span>
+													</button>
+												)}
+										</div>
+										<div className="mt-4 rounded-md border border-l-4 border-olake-border border-l-primary bg-primary-100 px-3 py-2 text-sm text-olake-text-secondary">
+											<div className="mb-1 flex items-center gap-1.5">
+												<InfoIcon className="size-4 text-primary" />
+												<span className="text-xs font-semibold uppercase tracking-wide text-olake-text">
+													Info
+												</span>
+											</div>
+											<p className="text-xs font-normal leading-5">
+												Changes will be applied only to properties marked with{" "}
+												<span className="inline-block align-baseline">
+													<WarningIcon className="relative top-[4px] size-5 text-amber-600" />
+												</span>
+												<br />
+												Any existing configuration for those properties will be
+												overridden
+											</p>
+										</div>
+
+										<div className="mt-8 rounded-md bg-olake-surface-muted p-0.5">
+											<div className="grid grid-cols-2 gap-1">
+												<button
+													type="button"
+													onClick={() => setActiveTab("config")}
+													className={clsx(
+														"flex h-7 items-center justify-center gap-2 rounded-md border px-3 text-sm leading-5",
+														activeTab === "config"
+															? "border-primary bg-white text-primary shadow-sm"
+															: "border-transparent text-olake-text",
+													)}
+												>
+													<FadersHorizontalIcon className="size-4" />
+													Config
+												</button>
+												<button
+													type="button"
+													onClick={() => setActiveTab("partitioning")}
+													className={clsx(
+														"flex h-7 items-center justify-center gap-2 rounded-md border px-3 text-sm leading-5",
+														activeTab === "partitioning"
+															? "border-primary bg-white text-primary shadow-sm"
+															: "border-transparent text-olake-text",
+													)}
+												>
+													<RowsIcon className="size-4" />
+													Partitioning
+												</button>
+											</div>
+										</div>
+										<div className="mt-4">
+											{activeTab === "config" ? (
+												<div
+													key={selectionKey}
+													className="flex flex-col gap-4"
+												>
+													{/* Sync Mode and Ingestion Mode Sections */}
+													<div className={CARD_STYLE}>
+														<button
+															type="button"
+															onClick={() =>
+																setIsSyncIngestionCollapsed(prev => !prev)
+															}
+															className={clsx(
+																`flex w-full items-center justify-between text-left text-sm font-medium text-olake-text`,
+																!isSyncIngestionCollapsed && "mb-2",
+															)}
+															aria-expanded={!isSyncIngestionCollapsed}
+															aria-label="Toggle sync and ingestion settings"
+														>
+															<span>Ingestion Settings</span>
+															{isSyncIngestionCollapsed ? (
+																<CaretRightIcon className="size-4 text-olake-text-tertiary" />
+															) : (
+																<CaretDownIcon className="size-4 text-olake-text-tertiary" />
+															)}
+														</button>
+														{!isSyncIngestionCollapsed && (
+															<>
+																<SyncModeSectionBulk
+																	isDirty={
+																		dirtyFields[BulkDirtyFieldKey.SyncMode]
+																	}
+																	bulkStream={bulkStream}
+																	bulkSyncMode={bulkConfig.syncMode}
+																	bulkCursorField={bulkConfig.cursorField}
+																	onBulkSyncModeChange={(mode, cursor) => {
+																		setBulkConfigField("syncMode", mode)
+																		setBulkConfigField("cursorField", cursor)
+																		markDirty(BulkDirtyFieldKey.SyncMode)
+																	}}
+																/>
+																<IngestionModeSectionBulk
+																	isDirty={
+																		dirtyFields[BulkDirtyFieldKey.AppendMode]
+																	}
+																	sourceType={sourceType}
+																	destinationType={destinationType}
+																	bulkAppendMode={bulkConfig.appendMode}
+																	onBulkIngestionModeChange={value => {
+																		setBulkConfigField("appendMode", value)
+																		markDirty(BulkDirtyFieldKey.AppendMode)
+																	}}
+																/>
+															</>
+														)}
+													</div>
+
+													{/* Normalization Section */}
+													<NormalizationSectionBulk
+														isDirty={
+															dirtyFields[BulkDirtyFieldKey.Normalization]
+														}
+														normalization={bulkConfig.normalization}
+														onChange={(value: boolean) => {
+															setBulkConfigField("normalization", value)
+															markDirty(BulkDirtyFieldKey.Normalization)
+														}}
+													/>
+
+													{/* Data Filter Section */}
+													<DataFilterSectionBulk
+														isDirty={dirtyFields[BulkDirtyFieldKey.Filter]}
+														bulkStream={bulkStream}
+														bulkFilter={bulkConfig.filter}
+														onBulkFilterChange={value => {
+															setBulkConfigField("filter", value)
+															markDirty(BulkDirtyFieldKey.Filter)
+														}}
+														bulkFilterConfig={bulkConfig.filterConfig}
+														onBulkFilterConfigChange={value => {
+															setBulkConfigField("filterConfig", value)
+															markDirty(BulkDirtyFieldKey.Filter)
+														}}
+													/>
+												</div>
+											) : (
+												<div
+													key={selectionKey}
+													className="flex flex-col gap-4"
+												>
+													<PartitionRegexSectionBulk
+														isDirty={
+															dirtyFields[BulkDirtyFieldKey.PartitionRegex]
+														}
+														destinationType={destinationType}
+														bulkPartitionRegex={bulkConfig.partitionRegex}
+														onBulkPartitionRegexChange={value => {
+															setBulkConfigField("partitionRegex", value)
+															markDirty(BulkDirtyFieldKey.PartitionRegex)
+														}}
+													/>
+												</div>
+											)}
+										</div>
+									</>
+								)}
+							</div>
+						)}
+					</div>
+				</div>
+			)}
+		</Modal>
+	)
+}
+
+export default BulkConfigureStreamsModal

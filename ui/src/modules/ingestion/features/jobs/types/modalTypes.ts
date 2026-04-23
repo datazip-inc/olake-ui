@@ -28,3 +28,11 @@ export interface IngestionModeChangeModalProps {
 	onConfirm: (ingestionMode: IngestionMode) => void
 	ingestionMode: IngestionMode
 }
+
+export interface BulkConfigureStreamsModalProps {
+	open: boolean
+	onClose: () => void
+	streamsData: StreamsDataStructure | null
+	sourceType?: string
+	destinationType?: string
+}

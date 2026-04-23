@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/apache/spark-connect-go/v35/spark/sql"
-	"github.com/docker/docker/api/types/container"
 	"github.com/jmoiron/sqlx"
+	"github.com/moby/moby/api/types/container"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
+	testcontainers "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 

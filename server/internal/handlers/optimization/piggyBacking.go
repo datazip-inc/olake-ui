@@ -6,20 +6,22 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
 // PiggyBacking forwards any /api/opt/v1/* request to optimization service.
 // Returns standardized JSON response format for consistency with other APIs.
-func (h *Handler) PiggyBacking() {
-	req := h.Ctx.Request
+func (h *Handler) PiggyBacking(c *gin.Context) {
+	req := c.Request
 
 	var body json.RawMessage
 	if req.ContentLength > 0 {
 		raw, err := io.ReadAll(req.Body)
 		if err != nil {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "failed to read request body", err)
+			utils.ErrorResponse(c, http.StatusBadRequest, "failed to read request body", err)
 			return
 		}
 
@@ -30,7 +32,7 @@ func (h *Handler) PiggyBacking() {
 
 	data, statusCode, headers, err := h.opt.PiggyBacking(req.Context(), req.Method, transformedPath, req.URL.Query(), body)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, statusCode, "upstream request failed", err)
+		utils.ErrorResponse(c, statusCode, "upstream request failed", err)
 		return
 	}
 
@@ -46,31 +48,34 @@ func (h *Handler) PiggyBacking() {
 	if isFileDownload {
 		// Stream file directly without JSON wrapping
 		if contentType != "" {
-			h.Ctx.Output.Header("Content-Type", contentType)
+			c.Header("Content-Type", contentType)
 		}
 		if contentDisposition != "" {
-			h.Ctx.Output.Header("Content-Disposition", contentDisposition)
+			c.Header("Content-Disposition", contentDisposition)
 		}
-		h.Ctx.Output.SetStatus(statusCode)
-		_ = h.Ctx.Output.Body(data)
+		c.Data(statusCode, contentType, data)
 		return
 	}
 
 	// Parse upstream response to re-wrap in standard format
 	var upstreamResponse interface{}
 	if err := json.Unmarshal(data, &upstreamResponse); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "failed to parse upstream response", err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to parse upstream response", err)
 		return
 	}
 
 	var optResp dto.OptimizationResponse
 	if jsonErr := json.Unmarshal(data, &optResp); jsonErr != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "failed to parse upstream response envelope", jsonErr)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to parse upstream response envelope", jsonErr)
 		return
-	} else if optResp.Code != 200 {
-		utils.ErrorResponse(&h.Controller, optResp.Code, optResp.Message, nil)
+	} else if optResp.Code != 0 && optResp.Code != 200 {
+		utils.ErrorResponse(c, optResp.Code, optResp.Message, nil)
 		return
 	}
 
-	utils.RespondJSON(&h.Controller, statusCode, true, "fetched successfully", upstreamResponse)
+	c.JSON(statusCode, dto.JSONResponse{
+		Success: true,
+		Message: "request forwarded successfully",
+		Data:    upstreamResponse,
+	})
 }

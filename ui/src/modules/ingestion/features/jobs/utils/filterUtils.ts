@@ -1,6 +1,7 @@
 import {
 	FilterConfig,
 	FilterConfigCondition,
+	StreamIdentifier,
 } from "@/modules/ingestion/common/types"
 
 import { FILTER_REGEX } from "../constants"
@@ -105,10 +106,10 @@ export const isValueValidForTypes = (value: any, type: string[]): boolean => {
 // Returns null if valid, or a descriptive error string.
 export const validateFilterConfig = (
 	filterConfig: FilterConfig,
-	streamName: string,
-	namespace: string,
+	stream: StreamIdentifier,
 	typeSchemaProperties?: Record<string, { type: string[] }>,
 ): string | null => {
+	const { streamName, namespace } = stream
 	const streamPrefix = `[${namespace}.${streamName}]`
 
 	if (!filterConfig.conditions || filterConfig.conditions.length === 0) {

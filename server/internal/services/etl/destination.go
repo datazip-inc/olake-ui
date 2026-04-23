@@ -2,6 +2,7 @@ package etl
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -9,8 +10,8 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 )
 
 // Destination-related methods on AppService
@@ -19,6 +20,9 @@ import (
 func (s Service) GetDestination(ctx context.Context, projectID string, destinationID int) (*dto.DestinationDataItem, error) {
 	destination, err := s.db.GetDestinationByID(destinationID)
 	if err != nil {
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrDestinationNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to get destination: %s", err)
 	}
 
@@ -75,7 +79,7 @@ func (s Service) ListDestinations(ctx context.Context, projectID string) ([]dto.
 
 	jobsByDestID := make(map[int][]*models.Job)
 	for _, job := range allJobs {
-		jobsByDestID[job.DestID.ID] = append(jobsByDestID[job.DestID.ID], job)
+		jobsByDestID[job.DestID] = append(jobsByDestID[job.DestID], job)
 	}
 
 	// Batch fetch workflow info for all jobs
@@ -126,6 +130,8 @@ func (s Service) CreateDestination(ctx context.Context, req *dto.CreateDestinati
 		ProjectID: projectID,
 	}
 	user := &models.User{ID: *userID}
+	destination.CreatedByID = user.ID
+	destination.UpdatedByID = user.ID
 	destination.CreatedBy = user
 	destination.UpdatedBy = user
 
@@ -140,6 +146,9 @@ func (s Service) CreateDestination(ctx context.Context, req *dto.CreateDestinati
 func (s Service) UpdateDestination(ctx context.Context, id int, projectID string, req *dto.UpdateDestinationRequest, userID *int) error {
 	existingDest, err := s.db.GetDestinationByID(id)
 	if err != nil {
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			return fmt.Errorf("%w: %v", constants.ErrDestinationNotFound, err)
+		}
 		return fmt.Errorf("failed to get destination: %s", err)
 	}
 
@@ -149,6 +158,7 @@ func (s Service) UpdateDestination(ctx context.Context, id int, projectID string
 	existingDest.Config = req.Config
 
 	user := &models.User{ID: *userID}
+	existingDest.UpdatedByID = user.ID
 	existingDest.UpdatedBy = user
 
 	jobs, err := s.db.GetJobsByDestinationID([]int{existingDest.ID})
@@ -171,6 +181,9 @@ func (s Service) UpdateDestination(ctx context.Context, id int, projectID string
 func (s Service) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDestinationResponse, error) {
 	dest, err := s.db.GetDestinationByID(id)
 	if err != nil {
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrDestinationNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to find destination: %s", err)
 	}
 
@@ -181,17 +194,11 @@ func (s Service) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDest
 	if len(jobs) > 0 {
 		return nil, fmt.Errorf("cannot delete destination '%s' id[%d] because it is used in %d jobs; please delete the associated jobs first", dest.Name, id, len(jobs))
 	}
-	var jobIDs []int
-	for _, job := range jobs {
-		job.Active = false
-		jobIDs = append(jobIDs, job.ID)
-	}
-
-	if err := s.db.DeactivateJobs(jobIDs); err != nil {
-		return nil, fmt.Errorf("failed to deactivate jobs for destination deletion: %s", err)
-	}
 
 	if err := s.db.DeleteDestination(id); err != nil {
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrDestinationNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to delete destination: %s", err)
 	}
 

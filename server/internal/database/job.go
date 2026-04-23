@@ -2,101 +2,79 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	"github.com/beego/beego/v2/client/orm"
+	"gorm.io/gorm"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
-// JobListFields defines the subset of Job fields fetched for list views
-var JobListFields = []string{
-	"ID",
-	"Name",
-	"Frequency",
-	"Active",
-	"CreatedAt",
-	"UpdatedAt",
-	"SourceID",
-	"DestID",
-	"CreatedBy",
-	"UpdatedBy",
+// jobListColumns is the minimal Job projection needed by job list responses.
+// It intentionally omits heavy fields like streams_config and state.
+var jobListColumns = []string{
+	"id",
+	"name",
+	"frequency",
+	"active",
+	"created_at",
+	"updated_at",
+	"source_id",
+	"dest_id",
+	"created_by_id",
+	"updated_by_id",
+	"project_id",
+	"advanced_settings",
 }
 
 // decryptJobConfig decrypts Config fields in related Source and Destination
 func (db *Database) decryptJobConfig(job *models.Job) error {
 	// Decrypt Source Config if loaded
 	// TODO: verify why source_id and dest_id coming nil, it must not nil
-	if job.SourceID != nil {
-		decryptedConfig, err := utils.Decrypt(job.SourceID.Config)
+	if job.Source != nil {
+		decryptedConfig, err := utils.Decrypt(job.Source.Config)
 		if err != nil {
-			return fmt.Errorf("failed to decrypt source config job_id[%d] source_id[%d]: %s", job.ID, job.SourceID.ID, err)
+			return fmt.Errorf("failed to decrypt source config job_id[%d] source_id[%d]: %s", job.ID, job.Source.ID, err)
 		}
-		job.SourceID.Config = decryptedConfig
+		job.Source.Config = decryptedConfig
 	}
 
 	// Decrypt Destination Config if loaded
-	if job.DestID != nil {
-		decryptedConfig, err := utils.Decrypt(job.DestID.Config)
+	if job.Destination != nil {
+		decryptedConfig, err := utils.Decrypt(job.Destination.Config)
 		if err != nil {
-			return fmt.Errorf("failed to decrypt destination config job_id[%d] dest_id[%d]: %s", job.ID, job.DestID.ID, err)
+			return fmt.Errorf("failed to decrypt destination config job_id[%d] dest_id[%d]: %s", job.ID, job.Destination.ID, err)
 		}
-		job.DestID.Config = decryptedConfig
+		job.Destination.Config = decryptedConfig
 	}
 
-	return nil
-}
-
-// decryptJobSliceConfig decrypts related entities for a slice of jobs
-func (db *Database) decryptJobSliceConfig(jobs []*models.Job) error {
-	for _, job := range jobs {
-		if err := db.decryptJobConfig(job); err != nil {
-			return fmt.Errorf("failed to decrypt job config job_id[%d]: %s", job.ID, err)
-		}
-	}
 	return nil
 }
 
 // Create a new job
 func (db *Database) CreateJob(job *models.Job) error {
-	_, err := db.ormer.Insert(job)
-	return err
-}
-
-// GetAll retrieves all jobs
-func (db *Database) ListJobs() ([]*models.Job, error) {
-	var jobs []*models.Job
-	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&jobs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list jobs: %s", err)
-	}
-
-	// Decrypt related Source and Destination configs
-	if err := db.decryptJobSliceConfig(jobs); err != nil {
-		return nil, err
-	}
-
-	return jobs, nil
+	return db.conn.Create(job).Error
 }
 
 // GetAllJobsByProjectID retrieves all jobs belonging to a specific project,
 // including related Source and Destination, sorted by latest update time.
-// Only fetches columns needed for JobResponse: id, name, frequency, active,
-// created_at, updated_at, source_id, dest_id, created_by, updated_by.
+// Only fetches columns needed for JobResponse
 // Excludes: streams_config, state (not needed for JobResponse).
 func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
-	// Use All() with field selection to fetch only specific columns from Job table
-	// Field names must match struct field names (not database column names)
-	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
-		Filter("project_id", projectID).
-		RelatedSel().
-		OrderBy(constants.OrderByUpdatedAtDesc).
-		All(&jobs, JobListFields...)
-
+	err := db.conn.
+		Model(&models.Job{}).
+		Select(jobListColumns).
+		Where("project_id = ?", projectID).
+		Preload("Source").
+		Preload("Destination").
+		Preload("CreatedBy").
+		Preload("UpdatedBy").
+		Order("updated_at DESC").
+		Find(&jobs).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to list jobs project_id[%s]: %s", projectID, err)
 	}
@@ -111,21 +89,19 @@ func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error)
 
 // GetByID retrieves a job by ID
 func (db *Database) GetJobByID(id int, decrypt bool) (*models.Job, error) {
-	job := &models.Job{ID: id}
-	err := db.ormer.Read(job)
+	job := &models.Job{}
+	err := db.conn.
+		Where("id = ?", id).
+		Preload("Source").
+		Preload("Destination").
+		Preload("CreatedBy").
+		Preload("UpdatedBy").
+		First(job).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: job not found id[%d]", constants.ErrJobNotFound, id)
+		}
 		return nil, fmt.Errorf("failed to get job id[%d]: %s", id, err)
-	}
-
-	// Load related entities (Source, Destination, etc.)
-	_, err = db.ormer.LoadRelated(job, "SourceID")
-	if err != nil {
-		return nil, fmt.Errorf("failed to load source entities job_id[%d]: %s", id, err)
-	}
-
-	_, err = db.ormer.LoadRelated(job, "DestID")
-	if err != nil {
-		return nil, fmt.Errorf("failed to load destination entities job_id[%d]: %s", id, err)
 	}
 
 	// Decrypt related Source and Destination configs
@@ -143,7 +119,13 @@ func (db *Database) GetJobsBySourceID(sourceIDs []int) ([]*models.Job, error) {
 	if len(sourceIDs) == 0 {
 		return jobs, nil
 	}
-	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).Filter("source_id__in", sourceIDs).RelatedSel().All(&jobs)
+
+	// TODO: add context to all database queries
+	err := db.conn.
+		Where("source_id IN ?", sourceIDs).
+		Preload("Source").
+		Preload("Destination").
+		Find(&jobs).Error
 	if err != nil {
 		return nil, err
 	}
@@ -155,36 +137,22 @@ func (db *Database) GetJobsByDestinationID(destIDs []int) ([]*models.Job, error)
 	if len(destIDs) == 0 {
 		return jobs, nil
 	}
-	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).Filter("dest_id__in", destIDs).RelatedSel().All(&jobs)
+	err := db.conn.
+		Where("dest_id IN ?", destIDs).
+		Preload("Source").
+		Preload("Destination").
+		Find(&jobs).Error
 	if err != nil {
 		return nil, err
 	}
 	return jobs, nil
 }
 
-// UpdateJob updates a job with the given params (non-transactional)
-func (db *Database) UpdateJob(jobID int, params orm.Params) error {
-	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
-		Filter("id", jobID).
-		Update(params)
-	return err
-}
-
-// UpdateJobWithTx updates a job within a transaction with the given params
-func (db *Database) UpdateJobWithTx(tx orm.TxOrmer, jobID int, params orm.Params) error {
-	_, err := tx.QueryTable(constants.TableNameMap[constants.JobTable]).
-		Filter("id", jobID).
-		Update(params)
-	return err
-}
-
-// BeginTx starts a new transaction
-func (db *Database) BeginTx() (orm.TxOrmer, error) {
-	tx, err := db.ormer.Begin()
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %s", err)
-	}
-	return tx, nil
+// UpdateJob updates a job with the given params.
+func (db *Database) UpdateJob(jobID int, params map[string]any) error {
+	return db.conn.Model(&models.Job{}).
+		Where("id = ?", jobID).
+		Updates(params).Error
 }
 
 // BulkDeactivate deactivates multiple jobs by their IDs in a single query
@@ -193,18 +161,21 @@ func (db *Database) DeactivateJobs(ids []int) error {
 		return nil
 	}
 
-	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
-		Filter("id__in", ids).
-		Update(orm.Params{
-			"active": false,
-		})
-	return err
+	return db.conn.Model(&models.Job{}).
+		Where("id IN ?", ids).
+		Updates(map[string]any{"active": false}).Error
 }
 
 // Delete a job
 func (db *Database) DeleteJob(id int) error {
-	_, err := db.ormer.Delete(&models.Job{ID: id})
-	return err
+	result := db.conn.Delete(&models.Job{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return constants.ErrJobNotFound
+	}
+	return nil
 }
 
 // IsNameUniqueInProject checks if a name is unique within a project for a given table.
@@ -214,10 +185,11 @@ func (db *Database) IsNameUniqueInProject(ctx context.Context, projectID, name s
 		return false, fmt.Errorf("invalid table type: %v", tableType)
 	}
 
-	count, err := db.ormer.QueryTableWithCtx(ctx, tableName).
-		Filter("name", name).
-		Filter("project_id", projectID).
-		Count()
+	var count int64
+	err := db.conn.Table(tableName).WithContext(ctx).
+		Where("name = ?", name).
+		Where("project_id = ?", projectID).
+		Count(&count).Error
 	if err != nil {
 		return false, fmt.Errorf("failed to check name uniqueness project_id[%s] name[%s] table[%s]: %s", projectID, name, tableName, err)
 	}

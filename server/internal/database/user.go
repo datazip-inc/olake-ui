@@ -1,7 +1,10 @@
 package database
 
 import (
+	"errors"
 	"fmt"
+
+	"gorm.io/gorm"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -11,8 +14,14 @@ import (
 
 func (db *Database) GetUserByUsername(username string) (*models.User, error) {
 	var user models.User
-	err := db.ormer.QueryTable(constants.TableNameMap[constants.UserTable]).Filter("username", username).One(&user)
-	return &user, err
+	err := db.conn.Where("username = ?", username).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrUserNotFound, err)
+		}
+		return nil, err
+	}
+	return &user, nil
 }
 
 func (db *Database) CompareUserPassword(hashedPassword, plainPassword string) error {
@@ -20,34 +29,52 @@ func (db *Database) CompareUserPassword(hashedPassword, plainPassword string) er
 }
 
 func (db *Database) CreateUser(user *models.User) error {
-	exists := db.ormer.QueryTable(constants.TableNameMap[constants.UserTable]).Filter("username", user.Username).Exist()
-	if exists {
-		return fmt.Errorf("username already exists")
+	var count int64
+	if err := db.conn.Model(&models.User{}).Where("username = ?", user.Username).Count(&count).Error; err != nil {
+		return err
 	}
-
-	_, err := db.ormer.Insert(user)
-	return err
+	if count > 0 {
+		return fmt.Errorf("%w", constants.ErrUserAlreadyExists)
+	}
+	if err := db.conn.Create(user).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (db *Database) ListUsers() ([]*models.User, error) {
 	var users []*models.User
-	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.UserTable]).All(&users)
+	err := db.conn.Find(&users).Error
 	return users, err
 }
 
 func (db *Database) GetUserByID(id int) (*models.User, error) {
-	user := &models.User{ID: id}
-	err := db.ormer.Read(user)
-	return user, err
+	user := &models.User{}
+	err := db.conn.First(user, "id = ?", id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: user not found id[%d]", constants.ErrUserNotFound, id)
+		}
+		return nil, err
+	}
+	return user, nil
 }
 
 func (db *Database) UpdateUser(user *models.User) error {
-	_, err := db.ormer.Update(user)
-	return err
+	return db.conn.
+		Model(&models.User{}).
+		Where("id = ?", user.ID).
+		Select("username", "email").
+		Updates(user).Error
 }
 
 func (db *Database) DeleteUser(id int) error {
-	user := &models.User{ID: id}
-	_, err := db.ormer.Delete(user)
-	return err
+	result := db.conn.Delete(&models.User{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return constants.ErrUserNotFound
+	}
+	return nil
 }

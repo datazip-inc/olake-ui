@@ -4,117 +4,111 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/gin-gonic/gin"
+
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
 const badRequestStatusCode = http.StatusBadRequest
 
-func (h *Handler) GetCatalog() {
-	catalogName, ok := h.requiredCatalog()
+func (h *Handler) GetCatalog(c *gin.Context) {
+	catalogName, ok := h.requiredCatalog(c)
 	if !ok {
 		return
 	}
 
-	olakeConfig, err := h.opt.GetCatalog(h.Ctx.Request.Context(), catalogName)
+	olakeConfig, err := h.opt.GetCatalog(c.Request.Context(), catalogName)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, upstreamStatus(err), err.Error(), err)
+		utils.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, "catalog details retrieved successfully", olakeConfig)
+	utils.SuccessResponse(c, "catalog details retrieved successfully", olakeConfig)
 }
 
-func (h *Handler) CreateCatalog() {
+func (h *Handler) CreateCatalog(c *gin.Context) {
 	var req map[string]interface{}
-	if err := h.bindJSON(&req); err != nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body for catalog creation", err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), "invalid request body for catalog creation", err)
 		return
 	}
 
 	if req == nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "catalog config is required during creation", nil)
+		utils.ErrorResponse(c, badRequestStatusCode, "catalog config is required during creation", nil)
 		return
 	}
 
 	// Convert config to JSON string
 	configJSON, err := utils.MarshalToString(req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid config format for create catalog", err)
+		utils.ErrorResponse(c, badRequestStatusCode, "invalid config format for create catalog", err)
 		return
 	}
 
-	result, err := h.opt.CreateCatalog(h.Ctx.Request.Context(), configJSON)
+	result, err := h.opt.CreateCatalog(c.Request.Context(), configJSON)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, upstreamStatus(err), err.Error(), err)
+		utils.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("catalog %s created successfully", result), nil)
+	utils.SuccessResponse(c, result, nil)
 }
 
 // updates an existing catalog
-func (h *Handler) UpdateCatalog() {
-	_, ok := h.requiredCatalog()
+func (h *Handler) UpdateCatalog(c *gin.Context) {
+	_, ok := h.requiredCatalog(c)
 	if !ok {
 		return
 	}
 
 	var req map[string]interface{}
-	if err := h.bindJSON(&req); err != nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body for updating catalog", err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), "invalid request body for updating catalog", err)
 		return
 	}
 
 	if req == nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "catalog config is required during updation", nil)
+		utils.ErrorResponse(c, badRequestStatusCode, "catalog config is required during updation", nil)
 		return
 	}
 
 	// Convert config to JSON string
 	configJSON, err := utils.MarshalToString(req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid config format for updating catalog", err)
+		utils.ErrorResponse(c, badRequestStatusCode, "invalid config format for updating catalog", err)
 		return
 	}
 
-	result, err := h.opt.UpdateCatalog(h.Ctx.Request.Context(), configJSON)
+	result, err := h.opt.UpdateCatalog(c.Request.Context(), configJSON)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, upstreamStatus(err), err.Error(), err)
+		utils.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("catalog %s updated successfully", result), nil)
+	utils.SuccessResponse(c, fmt.Sprintf("catalog %s updated successfully", result), nil)
 }
 
 // deletes a catalog
-func (h *Handler) DeleteCatalog() {
-	catalogName, ok := h.requiredCatalog()
+func (h *Handler) DeleteCatalog(c *gin.Context) {
+	catalogName, ok := h.requiredCatalog(c)
 	if !ok {
 		return
 	}
 
-	result, err := h.opt.DeleteCatalog(h.Ctx.Request.Context(), catalogName)
+	result, err := h.opt.DeleteCatalog(c.Request.Context(), catalogName)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, upstreamStatus(err), err.Error(), err)
+		utils.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("catalog %s deleted successfully", result), nil)
+	utils.SuccessResponse(c, fmt.Sprintf("catalog %s deleted successfully", result), nil)
 }
 
-func (h *Handler) requiredCatalog() (string, bool) {
-	catalog := h.Ctx.Input.Param(":catalog")
+func (h *Handler) requiredCatalog(c *gin.Context) (string, bool) {
+	catalog := c.Param("catalog")
 	if catalog == "" {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "catalog name is not present in query params", nil)
+		utils.ErrorResponse(c, badRequestStatusCode, "catalog name is required", nil)
 		return "", false
 	}
 	return catalog, true
-}
-
-func (h *Handler) bindJSON(dst interface{}) error {
-	if err := h.Ctx.BindJSON(dst); err != nil {
-		return err
-	}
-
-	return nil
 }
