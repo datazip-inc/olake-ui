@@ -119,6 +119,8 @@ func (db *Database) GetJobsBySourceID(sourceIDs []int) ([]*models.Job, error) {
 	if len(sourceIDs) == 0 {
 		return jobs, nil
 	}
+
+	// TODO: add context to all database queries
 	err := db.conn.
 		Where("source_id IN ?", sourceIDs).
 		Preload("Source").

@@ -78,22 +78,15 @@ func BuildPostgresURIFromConfig() (string, error) {
 		return cfg.PostgresDSN, nil
 	}
 
-	user := cfg.OlakePostgresUser
-	password := cfg.OlakePostgresPassword
-	host := cfg.OlakePostgresHost
-	port := cfg.OlakePostgresPort
-	dbName := cfg.OlakePostgresDBName
-	sslMode := cfg.OlakePostgresSSLMode
-
 	u := &url.URL{
 		Scheme: "postgres",
-		User:   url.UserPassword(user, password),
-		Host:   fmt.Sprintf("%s:%s", host, port),
-		Path:   "/" + url.PathEscape(dbName),
+		User:   url.UserPassword(cfg.OlakePostgresUser, cfg.OlakePostgresPassword),
+		Host:   fmt.Sprintf("%s:%s", cfg.OlakePostgresHost, cfg.OlakePostgresPort),
+		Path:   "/" + url.PathEscape(cfg.OlakePostgresDBName),
 	}
 
 	query := u.Query()
-	query.Set("sslmode", sslMode)
+	query.Set("sslmode", cfg.OlakePostgresSSLMode)
 	u.RawQuery = query.Encode()
 
 	return u.String(), nil
