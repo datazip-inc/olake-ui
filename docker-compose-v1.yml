@@ -215,7 +215,7 @@ services:
     restart: "no"
 
   fusion:
-    image: olakego/fusion:v0.1.0
+    image: olakego/fusion:latest
     container_name: olake-fusion
     profiles:
       - fusion
@@ -403,8 +403,8 @@ services:
       - -c
       - |
         set -e
-        IMAGE="olakego/fusion-spark:v0.1.0"
-        IMAGE_REF="docker.io/olakego/fusion-spark:v0.1.0"
+        IMAGE="olakego/fusion-spark:latest"
+        IMAGE_REF="docker.io/olakego/fusion-spark:latest"
 
         if ! docker image inspect $$IMAGE >/dev/null 2>&1; then
           echo "==> Image $$IMAGE not found locally — skipping."
@@ -450,7 +450,7 @@ services:
         echo "==> Done — image available on all workers."
 
   spark-copy:
-    image: olakego/fusion-spark:v0.1.0
+    image: olakego/fusion-spark:latest
     container_name: fusion-spark-copy
     profiles:
       - fusion
