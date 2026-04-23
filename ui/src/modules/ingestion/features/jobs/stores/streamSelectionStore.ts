@@ -6,6 +6,7 @@ import {
 	SelectedStream,
 	SelectedStreamsByNamespace,
 	SelectedColumns,
+	StreamIdentifier,
 	SyncMode,
 	FilterConfig,
 } from "@/modules/ingestion/common/types"
@@ -14,6 +15,16 @@ import { IngestionMode } from "@/modules/ingestion/features/jobs/enums"
 import { STREAM_DEFAULTS } from "../constants"
 import { extractNamespaceFromDestination } from "../utils"
 
+export interface BulkStreamConfig {
+	syncMode?: SyncMode
+	cursorField?: string
+	appendMode?: boolean
+	normalization?: boolean
+	partitionRegex?: string
+	filterValue?: string
+	filterConfig?: FilterConfig
+}
+
 interface StreamSelectionState {
 	streamsData: StreamsDataStructure | null
 
@@ -21,13 +32,17 @@ interface StreamSelectionState {
 	initialStreamsSnapshot: StreamsDataStructure | null
 	isDiscovering: boolean
 	discoverError: string | null
-	activeStreamKey: { name: string; namespace: string } | null
+	activeStreamKey: StreamIdentifier | null
 
 	// Per-stream filter toggle keyed by `${namespace}_${name}`.
 	streamFilterStates: Record<string, boolean>
 
 	// Whether to use structured filter_config (new) vs legacy filter string.
 	useFilterConfig: boolean
+
+	// Incremented each time bulkUpdateStreams successfully applies changes.
+	// used to trigger a re-sort only after bulk apply.
+	bulkApplyVersion: number
 
 	initializeFromDiscovery: (data: StreamsDataStructure) => void
 	setDiscovering: (loading: boolean) => void
@@ -36,51 +51,40 @@ interface StreamSelectionState {
 	// Toggles a stream on (disabled:false) or off (disabled:true).
 	// Inserts a default entry if the stream has never been in selected_streams.
 	toggleStream: (
-		streamName: string,
-		namespace: string,
+		stream: StreamIdentifier,
 		checked: boolean,
 		ingestionMode: IngestionMode,
 	) => void
 
 	// Updates sync_mode and optional cursor_field; no-op if unchanged.
 	updateSyncMode: (
-		streamName: string,
-		namespace: string,
+		stream: StreamIdentifier,
 		syncMode: SyncMode,
 		cursorField?: string,
 	) => void
 
 	updateNormalization: (
-		streamName: string,
-		namespace: string,
+		stream: StreamIdentifier,
 		normalization: boolean,
 	) => void
 
-	updatePartitionRegex: (
-		streamName: string,
-		namespace: string,
-		regex: string,
-	) => void
+	updatePartitionRegex: (stream: StreamIdentifier, regex: string) => void
 
 	// Empty string removes the `filter` key entirely.
-	updateFilter: (
-		streamName: string,
-		namespace: string,
-		filterValue: string,
-	) => void
+	updateFilter: (stream: StreamIdentifier, filterValue: string) => void
 
 	updateFilterConfig: (
-		streamName: string,
-		namespace: string,
+		stream: StreamIdentifier,
 		filterConfig: FilterConfig | undefined,
 	) => void
 
 	setUseFilterConfig: (value: boolean) => void
 
-	updateIngestionMode: (
-		streamName: string,
-		namespace: string,
-		appendMode: boolean,
+	updateIngestionMode: (stream: StreamIdentifier, appendMode: boolean) => void
+
+	bulkUpdateStreams: (
+		streamsToUpdate: StreamIdentifier[],
+		config: BulkStreamConfig,
 	) => void
 
 	// Applies append_mode to every stream in selected_streams.
@@ -90,13 +94,12 @@ interface StreamSelectionState {
 	updateDestinationDatabase: (format: string, databaseName: string) => void
 
 	updateSelectedColumns: (
-		streamName: string,
-		namespace: string,
+		stream: StreamIdentifier,
 		columns: SelectedColumns,
 	) => void
 
 	setStreamFilterState: (streamKey: string, value: boolean) => void
-	setActiveStreamKey: (key: { name: string; namespace: string } | null) => void
+	setActiveStreamKey: (key: StreamIdentifier | null) => void
 	reset: () => void
 }
 
@@ -108,6 +111,7 @@ const initialState = {
 	activeStreamKey: null,
 	streamFilterStates: {} as Record<string, boolean>,
 	useFilterConfig: false,
+	bulkApplyVersion: 0,
 }
 
 export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
@@ -124,9 +128,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 	setDiscovering: loading => set({ isDiscovering: loading }),
 	setDiscoverError: error => set({ discoverError: error }),
 
-	toggleStream: (streamName, namespace, checked, ingestionMode) =>
+	toggleStream: (stream, checked, ingestionMode) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const updated = {
@@ -176,9 +181,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			return changed ? { streamsData: updated } : state
 		}),
 
-	updateSyncMode: (streamName, namespace, newSyncMode, cursorField) =>
+	updateSyncMode: (stream, newSyncMode, cursorField) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const streamIndex = prev.streams.findIndex(
@@ -219,9 +225,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
-	updateNormalization: (streamName, namespace, normalization) =>
+	updateNormalization: (stream, normalization) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const streamExists = prev.selected_streams[namespace]?.some(
@@ -242,9 +249,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
-	updatePartitionRegex: (streamName, namespace, regex) =>
+	updatePartitionRegex: (stream, regex) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const streamExists = prev.selected_streams[namespace]?.some(
@@ -267,9 +275,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
-	updateFilter: (streamName, namespace, filterValue) =>
+	updateFilter: (stream, filterValue) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const streamExists = prev.selected_streams[namespace]?.some(
@@ -296,9 +305,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
-	updateFilterConfig: (streamName, namespace, filterConfig) =>
+	updateFilterConfig: (stream, filterConfig) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const streamExists = prev.selected_streams[namespace]?.some(
@@ -328,9 +338,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 
 	setUseFilterConfig: value => set({ useFilterConfig: value }),
 
-	updateIngestionMode: (streamName, namespace, appendMode) =>
+	updateIngestionMode: (stream, appendMode) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			const streamExists = prev.selected_streams[namespace]?.some(
@@ -351,6 +362,104 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 					},
 				},
 			}
+		}),
+
+	bulkUpdateStreams: (streamsToUpdate, config) =>
+		set(state => {
+			if (!state.streamsData) return state
+
+			const prev = state.streamsData
+			const updatedStreams = [...prev.streams]
+			const updatedSelected = { ...prev.selected_streams }
+			const updatedFilterStates = { ...state.streamFilterStates }
+			let changed = false
+
+			streamsToUpdate.forEach(({ streamName, namespace }) => {
+				// Update generic stream data (sync_mode, cursor_field)
+				const globalStreamIndex = updatedStreams.findIndex(
+					s => s.stream.name === streamName && s.stream.namespace === namespace,
+				)
+
+				if (globalStreamIndex !== -1 && config.syncMode !== undefined) {
+					const nextStream: StreamData = {
+						...updatedStreams[globalStreamIndex],
+						stream: {
+							...updatedStreams[globalStreamIndex].stream,
+							sync_mode: config.syncMode,
+						},
+					}
+
+					if (
+						config.cursorField !== undefined &&
+						config.syncMode === SyncMode.INCREMENTAL
+					) {
+						nextStream.stream.cursor_field = config.cursorField
+					} else if (config.syncMode !== SyncMode.INCREMENTAL) {
+						delete nextStream.stream.cursor_field
+					}
+
+					updatedStreams[globalStreamIndex] = nextStream
+					changed = true
+				}
+
+				// Update selected properties (append_mode, normalization, filtering)
+				const streamList = updatedSelected[namespace] || []
+				const streamIndex = streamList.findIndex(
+					s => s.stream_name === streamName,
+				)
+
+				if (streamIndex !== -1) {
+					const newStream = { ...streamList[streamIndex] }
+
+					if (config.appendMode !== undefined)
+						newStream.append_mode = config.appendMode
+					if (config.normalization !== undefined)
+						newStream.normalization = config.normalization
+					if (config.partitionRegex !== undefined)
+						newStream.partition_regex = config.partitionRegex
+					newStream.disabled = false
+
+					// Only touch filter fields if filter was explicitly included in the config
+					if (
+						config.filterValue !== undefined ||
+						config.filterConfig !== undefined
+					) {
+						// Clear both first to ensure only one is ever set at a time
+						delete newStream.filter
+						delete newStream.filter_config
+
+						if (config.filterConfig) {
+							newStream.filter_config = config.filterConfig
+						} else if (config.filterValue) {
+							newStream.filter = config.filterValue
+						}
+
+						const streamKey = `${namespace}_${streamName}`
+						updatedFilterStates[streamKey] = !!(
+							config.filterConfig || config.filterValue
+						)
+					}
+
+					updatedSelected[namespace] = [
+						...streamList.slice(0, streamIndex),
+						newStream,
+						...streamList.slice(streamIndex + 1),
+					]
+					changed = true
+				}
+			})
+
+			return changed
+				? {
+						streamsData: {
+							...prev,
+							streams: updatedStreams,
+							selected_streams: updatedSelected,
+						},
+						streamFilterStates: updatedFilterStates,
+						bulkApplyVersion: state.bulkApplyVersion + 1,
+					}
+				: state
 		}),
 
 	updateAllIngestionMode: appendMode =>
@@ -431,9 +540,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
-	updateSelectedColumns: (streamName, namespace, columns) =>
+	updateSelectedColumns: (stream, columns) =>
 		set(state => {
 			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
 			return {
@@ -489,7 +599,7 @@ export const selectActiveStreamData = (
 		state.streamsData.streams.find(
 			s =>
 				s.stream.namespace === state.activeStreamKey!.namespace &&
-				s.stream.name === state.activeStreamKey!.name,
+				s.stream.name === state.activeStreamKey!.streamName,
 		) ?? null
 	)
 }
@@ -502,7 +612,7 @@ export const selectActiveSelectedStream = (
 		return null
 	return (
 		state.streamsData.selected_streams[state.activeStreamKey.namespace]?.find(
-			s => s.stream_name === state.activeStreamKey!.name,
+			s => s.stream_name === state.activeStreamKey!.streamName,
 		) ?? null
 	)
 }

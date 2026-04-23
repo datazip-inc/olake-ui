@@ -3,6 +3,7 @@ import {
 	InfoIcon,
 	LightningIcon,
 	PlusIcon,
+	WarningIcon,
 	XIcon,
 } from "@phosphor-icons/react"
 import { Button, Divider, Input, message, Select, Switch, Tooltip } from "antd"
@@ -15,41 +16,38 @@ import {
 	FilterOperator,
 	LogicalOperator,
 	MultiFilterCondition,
+	StreamData,
 } from "@/modules/ingestion/common/types"
 
 import { CARD_STYLE, operatorOptions } from "../../constants"
-import {
-	selectActiveStreamData,
-	selectActiveSelectedStream,
-	selectIsStreamEnabled,
-	selectStreamFilterState,
-	selectUseFilterConfig,
-	useStreamSelectionStore,
-} from "../../stores"
 
-const DataFilterSection = () => {
-	const updateFilter = useStreamSelectionStore(state => state.updateFilter)
-	const updateFilterConfig = useStreamSelectionStore(
-		state => state.updateFilterConfig,
-	)
-	const setStreamFilterState = useStreamSelectionStore(
-		state => state.setStreamFilterState,
-	)
-	const useFilterConfig = useStreamSelectionStore(selectUseFilterConfig)
-	const stream = useStreamSelectionStore(selectActiveStreamData)
-	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
-	const isSelected = useStreamSelectionStore(state =>
-		selectIsStreamEnabled(state, stream),
-	)
+export interface DataFilterSectionViewProps {
+	stream: StreamData
+	isSelected: boolean
+	isBulkDisabled: boolean
+	isDirty?: boolean
+	filter: string
+	filterConfig: FilterConfig | undefined
+	useFilterConfig: boolean
+	streamFilterState: boolean
+	onFilterChange?: (filterString: string) => void
+	onFilterConfigChange?: (filterConfig: FilterConfig | undefined) => void
+	onSetStreamFilterState?: (enabled: boolean) => void
+}
 
-	// Unique stream key to differentiate a stream with same name and different namespace
-	const streamKey = stream
-		? `${stream.stream.namespace || ""}_${stream.stream.name}`
-		: ""
-	const streamFilterState = useStreamSelectionStore(
-		selectStreamFilterState(streamKey),
-	)
-
+const DataFilterSectionView = ({
+	stream,
+	isSelected,
+	isBulkDisabled,
+	isDirty,
+	filter,
+	filterConfig,
+	useFilterConfig,
+	streamFilterState,
+	onFilterChange,
+	onFilterConfigChange,
+	onSetStreamFilterState,
+}: DataFilterSectionViewProps) => {
 	const [isFilterEnabled, setIsFilterEnabled] = useState<boolean>(false)
 	const [multiFilterCondition, setMultiFilterCondition] =
 		useState<MultiFilterCondition>({
@@ -66,9 +64,9 @@ const DataFilterSection = () => {
 	// Guard to prevent prop-driven effect from clobbering local edits
 	const isLocalFilterUpdateRef = useRef(false)
 
-	// Filter parsing effect — re-runs when the active stream changes or its filter/filter_config changes
-	const currentFilter = selectedStream?.filter || ""
-	const currentFilterConfig = selectedStream?.filter_config
+	// Filter parsing effect — re-runs when filter/filterConfig props change
+	const currentFilter = filter
+	const currentFilterConfig = filterConfig
 
 	useEffect(() => {
 		// Skip when change originated from local user action
@@ -84,13 +82,14 @@ const DataFilterSection = () => {
 					logicalOperator: currentFilterConfig.logical_operator,
 				})
 				setIsFilterEnabled(true)
-				setStreamFilterState(streamKey, true)
+				onSetStreamFilterState?.(true)
 			} else {
 				setMultiFilterCondition({
 					conditions: [{ column: "", operator: "=", value: null }],
 					logicalOperator: "and",
 				})
-				const savedFilterState = streamFilterState || false
+				const savedFilterState =
+					currentFilterConfig !== undefined || streamFilterState
 				setIsFilterEnabled(savedFilterState)
 			}
 			return
@@ -129,8 +128,7 @@ const DataFilterSection = () => {
 			if (conditions.length > 0) {
 				setMultiFilterCondition({ conditions, logicalOperator })
 				setIsFilterEnabled(true)
-				// Persist the filter enabled state for this stream
-				setStreamFilterState(streamKey, true)
+				onSetStreamFilterState?.(true)
 			}
 		} else {
 			setMultiFilterCondition({
@@ -142,10 +140,9 @@ const DataFilterSection = () => {
 		}
 	}, [currentFilter, currentFilterConfig])
 
-	if (!stream || !selectedStream) return null
-
 	// get columns based on primary keys and cursor fields and their properties
 	const getColumnOptions = () => {
+		if (!stream) return []
 		const properties = stream.stream.type_schema?.properties || {}
 		const primaryKeys = (stream.stream.source_defined_primary_key ||
 			[]) as string[]
@@ -191,7 +188,8 @@ const DataFilterSection = () => {
 
 	// when the type is either string or timestamp we wrap the value in quotes
 	const formatFilterValue = (columnName: string, value: string) => {
-		if (!value) return value ?? ""
+		if (!value) return ""
+		if (!stream) return value
 
 		const properties = stream.stream.type_schema?.properties || {}
 		const columnType = properties[columnName]?.type
@@ -215,8 +213,7 @@ const DataFilterSection = () => {
 	// Handlers
 	const handleFilterEnabledChange = (checked: boolean) => {
 		setIsFilterEnabled(checked)
-		// Persist the filter state for this stream
-		setStreamFilterState(streamKey, checked)
+		onSetStreamFilterState?.(checked)
 
 		setMultiFilterCondition({
 			conditions: [
@@ -231,17 +228,11 @@ const DataFilterSection = () => {
 		isLocalFilterUpdateRef.current = true
 
 		if (useFilterConfig) {
-			updateFilterConfig(
-				stream.stream.name,
-				stream.stream.namespace || "",
+			onFilterConfigChange?.(
 				checked ? { logical_operator: "and", conditions: [] } : undefined,
 			)
 		} else {
-			updateFilter(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				checked ? "=" : "",
-			)
+			onFilterChange?.(checked ? "=" : "")
 		}
 	}
 
@@ -265,11 +256,7 @@ const DataFilterSection = () => {
 				logical_operator: newMultiCondition.logicalOperator,
 				conditions: newConditions,
 			}
-			updateFilterConfig(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				filterConfig,
-			)
+			onFilterConfigChange?.(filterConfig)
 		} else {
 			const filterString = newConditions
 				.map(
@@ -277,11 +264,7 @@ const DataFilterSection = () => {
 						`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
 				)
 				.join(` ${newMultiCondition.logicalOperator} `)
-			updateFilter(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				filterString,
-			)
+			onFilterChange?.(filterString)
 		}
 	}
 
@@ -304,11 +287,7 @@ const DataFilterSection = () => {
 					logical_operator: value,
 					conditions: filledConditions,
 				}
-				updateFilterConfig(
-					stream.stream.name,
-					stream.stream.namespace || "",
-					filterConfig,
-				)
+				onFilterConfigChange?.(filterConfig)
 			} else {
 				const filterString = filledConditions
 					.map(
@@ -316,11 +295,7 @@ const DataFilterSection = () => {
 							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
 					)
 					.join(` ${value} `)
-				updateFilter(
-					stream.stream.name,
-					stream.stream.namespace || "",
-					filterString,
-				)
+				onFilterChange?.(filterString)
 			}
 		}
 	}
@@ -351,11 +326,7 @@ const DataFilterSection = () => {
 				logical_operator: multiFilterCondition.logicalOperator,
 				conditions: newConditions,
 			}
-			updateFilterConfig(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				filterConfig,
-			)
+			onFilterConfigChange?.(filterConfig)
 		} else {
 			const filterString =
 				conditions
@@ -364,11 +335,7 @@ const DataFilterSection = () => {
 							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
 					)
 					.join(` ${multiFilterCondition.logicalOperator} `) + " = "
-			updateFilter(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				filterString,
-			)
+			onFilterChange?.(filterString)
 		}
 	}
 
@@ -393,29 +360,17 @@ const DataFilterSection = () => {
 						logical_operator: newMultiCondition.logicalOperator,
 						conditions: newConditions,
 					}
-					updateFilterConfig(
-						stream.stream.name,
-						stream.stream.namespace || "",
-						filterConfig,
-					)
+					onFilterConfigChange?.(filterConfig)
 				} else {
 					// Remaining condition is incomplete — clear filter_config
-					updateFilterConfig(
-						stream.stream.name,
-						stream.stream.namespace || "",
-						undefined,
-					)
+					onFilterConfigChange?.(undefined)
 				}
 			} else {
 				if (condition.column && condition.operator) {
 					const filterString = `${condition.column} ${condition.operator} ${formatFilterValue(condition.column, condition.value as string)}`
-					updateFilter(
-						stream.stream.name,
-						stream.stream.namespace || "",
-						filterString,
-					)
+					onFilterChange?.(filterString)
 				} else {
-					updateFilter(stream.stream.name, stream.stream.namespace || "", "")
+					onFilterChange?.("")
 				}
 			}
 		}
@@ -425,13 +380,16 @@ const DataFilterSection = () => {
 		<>
 			<div
 				className={clsx(
-					!isSelected ? "font-normal text-text-disabled" : "font-medium",
+					!isSelected || isBulkDisabled
+						? "font-normal text-text-disabled"
+						: "font-medium",
 					CARD_STYLE,
 					"!p-0",
 				)}
 			>
 				<div className="flex items-center justify-between !p-3">
 					<div className="flex items-center gap-1">
+						{isDirty && <WarningIcon className="size-4 text-orange-500" />}
 						<label>Data Filter</label>
 						<Tooltip title="Filters the stream to include only records that match conditions on specific columns.">
 							<InfoIcon
@@ -452,7 +410,7 @@ const DataFilterSection = () => {
 					<Switch
 						checked={isFilterEnabled}
 						onChange={handleFilterEnabledChange}
-						disabled={!isSelected}
+						disabled={!isSelected || isBulkDisabled}
 					/>
 				</div>
 				{isFilterEnabled && (
@@ -588,14 +546,20 @@ const DataFilterSection = () => {
 					</>
 				)}
 			</div>
-			{!isSelected && (
+			{!isSelected && !isBulkDisabled && (
 				<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
 					<InfoIcon className="size-4" />
 					Select the stream to configure Data Filter
+				</div>
+			)}
+			{isBulkDisabled && (
+				<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
+					<InfoIcon className="size-4" />
+					No common columns across selected streams
 				</div>
 			)}
 		</>
 	)
 }
 
-export default DataFilterSection
+export default DataFilterSectionView
