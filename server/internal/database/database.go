@@ -1,109 +1,92 @@
 package database
 
 import (
-	"encoding/gob"
 	"fmt"
 	"net/url"
 
-	"github.com/beego/beego/v2/client/orm"
-	"github.com/beego/beego/v2/server/web"
-	_ "github.com/beego/beego/v2/server/web/session/postgres" // required for session
-	_ "github.com/lib/pq"                                     // required for registering driver
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 
-	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 type Database struct {
-	ormer orm.Ormer
+	conn *gorm.DB
 }
 
 func Init() (*Database, error) {
-	// register driver
+	cfg := appconfig.Load()
+
 	uri, err := BuildPostgresURIFromConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build postgres uri: %s", err)
 	}
 
-	err = orm.RegisterDriver("postgres", orm.DRPostgres)
+	logLevel := gormlogger.Warn
+	if cfg.RunMode == "localdev" {
+		logLevel = gormlogger.Info
+	}
+
+	conn, err := gorm.Open(postgres.Open(uri), &gorm.Config{
+		Logger: gormlogger.Default.LogMode(logLevel),
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to register postgres driver: %s", err)
+		return nil, fmt.Errorf("failed to connect to postgres: %s", err)
 	}
 
-	// register database
-	err = orm.RegisterDataBase("default", "postgres", uri)
-	if err != nil {
-		return nil, fmt.Errorf("failed to register postgres database: %s", err)
-	}
-
-	// enable session by default
-	if web.BConfig.WebConfig.Session.SessionOn {
-		web.BConfig.WebConfig.Session.SessionName = "olake-session"
-		web.BConfig.WebConfig.Session.SessionProvider = "postgresql"
-		web.BConfig.WebConfig.Session.SessionProviderConfig = uri
-		web.BConfig.WebConfig.Session.SessionCookieLifeTime = 30 * 24 * 60 * 60 // 30 days
-	}
-
-	// register session user
-	gob.Register(constants.SessionUserID)
-	// register models in order of dependency or foreign key constraints
-	orm.RegisterModel(
+	// migration for database tables
+	if err := conn.AutoMigrate(
 		new(models.ProjectSettings),
 		new(models.Source),
 		new(models.Destination),
 		new(models.Job),
 		new(models.User),
 		new(models.Catalog),
-	)
-
-	// Create tables if they do not exist
-	err = orm.RunSyncdb("default", false, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sync database schema: %s", err)
+	); err != nil {
+		return nil, fmt.Errorf("failed to run automigrate: %s", err)
 	}
 
 	// Add session table if sessions are enabled
-	if web.BConfig.WebConfig.Session.SessionOn {
-		_, err = orm.NewOrm().Raw(`CREATE TABLE IF NOT EXISTS session (
-    session_key VARCHAR(64) PRIMARY KEY,
-    session_data BYTEA,
-    session_expiry TIMESTAMP WITH TIME ZONE
-);`).Exec()
-
+	if cfg.SessionOn {
+		err = conn.Exec(`CREATE TABLE IF NOT EXISTS session (
+			session_key VARCHAR(64) PRIMARY KEY,
+			session_data BYTEA,
+			session_expiry TIMESTAMP WITH TIME ZONE);`).Error
 		if err != nil {
 			return nil, fmt.Errorf("failed to create session table: %s", err)
 		}
+
+		// cleanup expired sessions
+		if err := conn.Exec(`DELETE FROM session WHERE session_expiry <= NOW()`).Error; err != nil {
+			return nil, fmt.Errorf("failed to cleanup expired sessions: %s", err)
+		}
 	}
-	return &Database{ormer: orm.NewOrm()}, nil
+	return &Database{conn: conn}, nil
 }
 
 // BuildPostgresURIFromConfig reads POSTGRES_DB_HOST, POSTGRES_DB_PORT, etc. from app.conf
 // and constructs the Postgres connection URI.
 func BuildPostgresURIFromConfig() (string, error) {
 	logger.Info("Building Postgres URI from config")
+	cfg := appconfig.Load()
 
 	// First, check if postgresdb is set directly
-	if dsn, err := web.AppConfig.String(constants.ConfPostgresDB); err == nil && dsn != "" {
-		return dsn, nil
+	if cfg.PostgresDSN != "" {
+		return cfg.PostgresDSN, nil
 	}
-
-	user, _ := web.AppConfig.String(constants.ConfOLakePostgresUser)
-	password, _ := web.AppConfig.String(constants.ConfOLakePostgresPassword)
-	host, _ := web.AppConfig.String(constants.ConfOLakePostgresHost)
-	port, _ := web.AppConfig.String(constants.ConfOLakePostgresPort)
-	dbName, _ := web.AppConfig.String(constants.ConfOLakePostgresDBname)
-	sslMode, _ := web.AppConfig.String(constants.ConfOLakePostgresSslmode)
 
 	u := &url.URL{
 		Scheme: "postgres",
-		User:   url.UserPassword(user, password),
-		Host:   fmt.Sprintf("%s:%s", host, port),
-		Path:   "/" + url.PathEscape(dbName),
+		User:   url.UserPassword(cfg.OlakePostgresUser, cfg.OlakePostgresPassword),
+		Host:   fmt.Sprintf("%s:%s", cfg.OlakePostgresHost, cfg.OlakePostgresPort),
+		Path:   "/" + url.PathEscape(cfg.OlakePostgresDBName),
 	}
 
 	query := u.Query()
-	query.Set("sslmode", sslMode)
+	query.Set("sslmode", cfg.OlakePostgresSSLMode)
 	u.RawQuery = query.Encode()
 
 	return u.String(), nil

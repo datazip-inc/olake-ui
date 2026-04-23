@@ -65,8 +65,10 @@ const StreamsSchema = () => {
 		}
 
 		updateSelectedColumns(
-			streamData.stream.name,
-			streamData.stream.namespace || "",
+			{
+				streamName: streamData.stream.name,
+				namespace: streamData.stream.namespace || "",
+			},
 			{ ...current, columns: newColumns },
 		)
 	}
@@ -85,8 +87,10 @@ const StreamsSchema = () => {
 			: current.columns.filter(c => c !== columnName)
 
 		updateSelectedColumns(
-			streamData.stream.name,
-			streamData.stream.namespace || "",
+			{
+				streamName: streamData.stream.name,
+				namespace: streamData.stream.namespace || "",
+			},
 			{ ...current, columns: newColumns },
 		)
 	}
@@ -94,8 +98,10 @@ const StreamsSchema = () => {
 	const handleSyncNewColumnsChange = (checked: boolean) => {
 		if (!isEditable || !selectedStream.selected_columns) return
 		updateSelectedColumns(
-			streamData.stream.name,
-			streamData.stream.namespace || "",
+			{
+				streamName: streamData.stream.name,
+				namespace: streamData.stream.namespace || "",
+			},
 			{
 				...selectedStream.selected_columns,
 				sync_new_columns: checked,

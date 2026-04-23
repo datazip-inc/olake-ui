@@ -49,7 +49,6 @@ BACKEND_ENV_VARS = \
       APP_NAME=olake-server \
       HTTP_PORT=8000 \
       RUN_MODE=localdev \
-      COPY_REQUEST_BODY=true \
       OLAKE_POSTGRES_USER=temporal \
       OLAKE_POSTGRES_PASSWORD=temporal \
       OLAKE_POSTGRES_HOST=localhost \
@@ -75,7 +74,7 @@ start-frontend:
 # Start backend server with env vars
 start-backend:
 	cd $(SERVER_DIR) && \
-	$(BACKEND_ENV_VARS) bee run
+	$(BACKEND_ENV_VARS) go run .
 
 
 # Start Temporal services using Docker Compose

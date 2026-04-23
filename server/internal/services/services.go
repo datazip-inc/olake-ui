@@ -1,8 +1,7 @@
 package services
 
 import (
-	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/services/optimization"
@@ -27,7 +26,7 @@ func InitAppService(db *database.Database) (*AppService, error) {
 		opt: nil,
 	}
 
-	enableOptimization := web.AppConfig.DefaultBool(constants.ConfEnableOptimization, false)
+	enableOptimization := appconfig.Load().EnableOptimization
 	if enableOptimization {
 		optSvc, err := optimization.InitService()
 		if err != nil {

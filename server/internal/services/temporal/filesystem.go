@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
 var (
@@ -37,7 +38,7 @@ func createDirectory(dirPath string, perm os.FileMode) error {
 func writeConfigFiles(workDir string, configs []JobConfig) error {
 	for _, config := range configs {
 		filePath := filepath.Join(workDir, config.Name)
-		if err := os.WriteFile(filePath, []byte(config.Data), 0644); err != nil {
+		if err := utils.WriteFile(filePath, []byte(config.Data), 0644); err != nil {
 			return fmt.Errorf("failed to write %s: %s", config.Name, err)
 		}
 	}

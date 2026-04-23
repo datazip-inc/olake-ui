@@ -2,15 +2,27 @@ package etl
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // User-related methods on AppService
 
 func (s Service) CreateUser(_ context.Context, req *models.User) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("%w: %v", constants.ErrPasswordProcessing, err)
+	}
+	req.Password = string(hashedPassword)
+
 	if err := s.db.CreateUser(req); err != nil {
+		if errors.Is(err, constants.ErrUserAlreadyExists) {
+			return err
+		}
 		return fmt.Errorf("failed to create user: %s", err)
 	}
 
@@ -28,6 +40,9 @@ func (s Service) GetAllUsers(_ context.Context) ([]*models.User, error) {
 func (s Service) UpdateUser(_ context.Context, id int, req *models.User) (*models.User, error) {
 	existingUser, err := s.db.GetUserByID(id)
 	if err != nil {
+		if errors.Is(err, constants.ErrUserNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrUserNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to find user: %s", err)
 	}
 
@@ -43,6 +58,9 @@ func (s Service) UpdateUser(_ context.Context, id int, req *models.User) (*model
 
 func (s Service) DeleteUser(_ context.Context, id int) error {
 	if err := s.db.DeleteUser(id); err != nil {
+		if errors.Is(err, constants.ErrUserNotFound) {
+			return fmt.Errorf("%w: %v", constants.ErrUserNotFound, err)
+		}
 		return fmt.Errorf("failed to delete user: %s", err)
 	}
 	return nil

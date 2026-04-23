@@ -5,94 +5,123 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
+	"github.com/gin-gonic/gin"
 )
 
 // @Summary Create a new user
 // @Tags Users
 // @Description Create a new user record with the provided details.
-// @Param   body    body    models.User true    "user info"
-// @Success 200 {object} dto.JSONResponse "user created successfully"
+// @Param   body    body    dto.CreateUserRequest true    "user info"
+// @Success 200 {object} dto.JSONResponse{data=dto.UserResponse} "user created successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 409 {object} dto.Error409Response "user already exists"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to create user"
 // @Router /api/v1/users [post]
-func (h *Handler) CreateUser() {
-	var req models.User
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+func (h *Handler) CreateUser(c *gin.Context) {
+	var req dto.CreateUserRequest
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
-	if req.Username == "" || req.Email == "" || req.Password == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", errors.New("missing required user fields")), errors.New("missing required user fields"))
-		return
-	}
-
 	logger.Infof("Create user initiated username[%s] email[%s]", req.Username, req.Email)
 
-	if err := h.etl.CreateUser(h.Ctx.Request.Context(), &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create user: %s", err), err)
+	user := &models.User{
+		Username: req.Username,
+		Password: req.Password,
+		Email:    req.Email,
+	}
+	if err := h.etl.CreateUser(c.Request.Context(), user); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrUserAlreadyExists) {
+			status = http.StatusConflict
+		}
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to create user: %s", err), err)
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, "user created successfully", req)
+	utils.SuccessResponse(c, "user created successfully", dto.UserResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+	})
 }
 
 // @Summary List all users
 // @Tags Users
 // @Description Retrieve a list of all registered users.
-// @Success 200 {array}  dto.JSONResponse{data=models.User}
+// @Success 200 {array}  dto.JSONResponse{data=dto.UserResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get users"
 // @Router /api/v1/users [get]
-func (h *Handler) GetAllUsers() {
+func (h *Handler) GetAllUsers(c *gin.Context) {
 	logger.Info("Get all users initiated")
-
-	users, err := h.etl.GetAllUsers(h.Ctx.Request.Context())
+	users, err := h.etl.GetAllUsers(c.Request.Context())
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get users: %s", err), err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get users: %s", err), err)
 		return
 	}
-
-	utils.SuccessResponse(&h.Controller, "users listed successfully", users)
+	resp := make([]dto.UserResponse, 0, len(users))
+	for _, user := range users {
+		resp = append(resp, dto.UserResponse{
+			ID:       user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+		})
+	}
+	utils.SuccessResponse(c, "users listed successfully", resp)
 }
 
 // @Summary Update user details
 // @Tags Users
 // @Description Update the details of an existing user identified by their unique ID.
 // @Param   id      path    int true    "user id"
-// @Param   body    body    models.User true    "user info"
-// @Success 200 {object} dto.JSONResponse{data=models.User}
+// @Param   body    body    dto.UpdateUserRequest true    "user info"
+// @Success 200 {object} dto.JSONResponse{data=dto.UserResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "user not found"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to update user"
 // @Router /api/v1/users/{id} [put]
-func (h *Handler) UpdateUser() {
-	id, err := GetIDFromPath(&h.Controller)
+func (h *Handler) UpdateUser(c *gin.Context) {
+	id, err := utils.GetIDParam(c)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	var req models.User
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+	var req dto.UpdateUserRequest
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
 	logger.Infof("Update user initiated user_id[%d] username[%s]", id, req.Username)
 
-	updatedUser, err := h.etl.UpdateUser(h.Ctx.Request.Context(), id, &req)
+	updatedUser, err := h.etl.UpdateUser(c.Request.Context(), id, &models.User{
+		Username: req.Username,
+		Email:    req.Email,
+	})
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update user: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrUserNotFound) {
+			status = http.StatusNotFound
+		}
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to update user: %s", err), err)
 		return
 	}
-
-	utils.SuccessResponse(&h.Controller, "user updated successfully", updatedUser)
+	utils.SuccessResponse(c, "user updated successfully", dto.UserResponse{
+		ID:       updatedUser.ID,
+		Username: updatedUser.Username,
+		Email:    updatedUser.Email,
+	})
 }
 
 // @Summary Delete a user
@@ -102,21 +131,24 @@ func (h *Handler) UpdateUser() {
 // @Success 200 {object} dto.JSONResponse "user deleted successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "user not found"
 // @Failure 500 {object} dto.Error500Response "failed to delete user"
 // @Router /api/v1/users/{id} [delete]
-func (h *Handler) DeleteUser() {
-	id, err := GetIDFromPath(&h.Controller)
+func (h *Handler) DeleteUser(c *gin.Context) {
+	id, err := utils.GetIDParam(c)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
 	logger.Infof("Delete user initiated user_id[%d]", id)
 
-	if err := h.etl.DeleteUser(h.Ctx.Request.Context(), id); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete user: %s", err), err)
+	if err := h.etl.DeleteUser(c.Request.Context(), id); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrUserNotFound) {
+			status = http.StatusNotFound
+		}
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to delete user: %s", err), err)
 		return
 	}
-
-	utils.SuccessResponse(&h.Controller, "user deleted successfully", nil)
+	utils.SuccessResponse(c, "user deleted successfully", nil)
 }
