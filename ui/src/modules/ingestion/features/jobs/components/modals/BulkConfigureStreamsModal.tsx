@@ -3,6 +3,7 @@ import {
 	CaretRightIcon,
 	CheckIcon,
 	FadersHorizontalIcon,
+	InfoIcon,
 	RowsIcon,
 	TableIcon,
 	WarningIcon,
@@ -567,13 +568,22 @@ const BulkConfigureStreamsModal = ({
 													</button>
 												)}
 										</div>
-										<div className="mt-4 flex items-center gap-2 rounded-md border border-olake-border bg-primary-100 px-3 py-2 text-sm text-olake-text-secondary">
-											<WarningIcon className="size-4 text-orange-500" />
-											<span className="font-medium">
-												Properties configured through this bulk edit will be
-												applied to the selected streams, overriding any existing
-												values
-											</span>
+										<div className="mt-4 rounded-md border border-l-4 border-olake-border border-l-primary bg-primary-100 px-3 py-2 text-sm text-olake-text-secondary">
+											<div className="mb-1 flex items-center gap-1.5">
+												<InfoIcon className="size-4 text-primary" />
+												<span className="text-xs font-semibold uppercase tracking-wide text-olake-text">
+													Info
+												</span>
+											</div>
+											<p className="font-medium leading-5">
+												Changes will be applied only to properties marked with{" "}
+												<span className="inline-block align-baseline">
+													<WarningIcon className="relative top-[1px] size-4 text-amber-600" />
+												</span>
+												<br />
+												Any existing configuration for those properties will be
+												overridden
+											</p>
 										</div>
 
 										<div className="mt-8 rounded-md bg-olake-surface-muted p-0.5">
