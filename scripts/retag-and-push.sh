@@ -22,19 +22,17 @@ LATEST_IMAGE="${DOCKER_IMAGE}:${LATEST_TAG}"
 echo "Logging in to Docker registry as ${DOCKER_USERNAME}"
 echo "${DOCKER_PASSWORD}" | docker login --username "${DOCKER_USERNAME}" --password-stdin
 
-echo "Pulling source image ${SOURCE_IMAGE}"
-docker pull "${SOURCE_IMAGE}"
+echo "Inspecting source multi-arch manifest ${SOURCE_IMAGE}"
+docker buildx imagetools inspect "${SOURCE_IMAGE}" >/dev/null
 
-echo "Tagging ${SOURCE_IMAGE} as ${TARGET_IMAGE}"
-docker tag "${SOURCE_IMAGE}" "${TARGET_IMAGE}"
+echo "Copying manifest to ${TARGET_IMAGE} and ${LATEST_IMAGE}"
+docker buildx imagetools create \
+  --tag "${TARGET_IMAGE}" \
+  --tag "${LATEST_IMAGE}" \
+  "${SOURCE_IMAGE}"
 
-echo "Tagging ${SOURCE_IMAGE} as ${LATEST_IMAGE}"
-docker tag "${SOURCE_IMAGE}" "${LATEST_IMAGE}"
-
-echo "Pushing ${TARGET_IMAGE}"
-docker push "${TARGET_IMAGE}"
-
-echo "Pushing ${LATEST_IMAGE}"
-docker push "${LATEST_IMAGE}"
+echo "Verifying target manifests"
+docker buildx imagetools inspect "${TARGET_IMAGE}" >/dev/null
+docker buildx imagetools inspect "${LATEST_IMAGE}" >/dev/null
 
 echo "Retag and push completed successfully."
