@@ -1,0 +1,40 @@
+name: Olake UI Image Retag
+
+on:
+  push:
+    branches:
+      - "chore/retag"
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: "Source Docker tag to retag"
+        required: true
+        default: "v0.4.1"
+        type: string
+      target_tag:
+        description: "New Docker version tag"
+        required: true
+        default: "v0.4.2"
+        type: string
+
+jobs:
+  retag_and_push:
+    name: Retag and push UI image
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      SOURCE_TAG: ${{ inputs.source_tag }}
+      TARGET_TAG: ${{ inputs.target_tag }}
+      LATEST_TAG: latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make retag script executable
+        run: chmod +x ./scripts/retag-and-push.sh
+
+      - name: Retag and push image as version and latest
+        run: ./scripts/retag-and-push.sh
+        shell: bash
