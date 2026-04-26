@@ -1,6 +1,7 @@
 package appconfig
 
 import (
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -39,6 +40,15 @@ func Load() Config {
 
 func loadConfig() Config {
 	v := viper.New()
+
+	// Auto-detect RUN_MODE default based on execution environment.
+	// KUBERNETES_SERVICE_HOST is automatically injected into every pod by Kubernetes.
+	// Priority: RUN_MODE env var > app.yaml > this default.
+	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		v.SetDefault("RUN_MODE", "staging")
+	} else {
+		v.SetDefault("RUN_MODE", "dev")
+	}
 
 	// Note: config priority: env variables -> file (app.yaml)
 	v.SetConfigFile("./config/app.yaml")
