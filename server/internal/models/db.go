@@ -17,9 +17,9 @@ type BaseModel struct {
 type User struct {
 	BaseModel
 	ID       int    `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
-	Username string `json:"username" gorm:"column:username;size:100;unique"`
+	Username string `json:"username" gorm:"column:username;size:100;uniqueIndex"`
 	Password string `json:"password" gorm:"column:password;size:100"`
-	Email    string `json:"email" gorm:"column:email;size:100;unique"`
+	Email    string `json:"email" gorm:"column:email;size:100;uniqueIndex"`
 }
 
 func (u *User) TableName() string {
@@ -30,7 +30,7 @@ func (u *User) TableName() string {
 type ProjectSettings struct {
 	BaseModel
 	ID              int    `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
-	ProjectID       string `json:"project_id" gorm:"column:project_id;size:255;unique"`
+	ProjectID       string `json:"project_id" gorm:"column:project_id;size:255;uniqueIndex"`
 	WebhookAlertURL string `json:"webhook_alert_url" gorm:"column:webhook_alert_url;size:512"`
 }
 

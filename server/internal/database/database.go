@@ -9,6 +9,7 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -31,20 +32,28 @@ func Init() (*Database, error) {
 	}
 
 	conn, err := gorm.Open(postgres.Open(uri), &gorm.Config{
-		Logger: gormlogger.Default.LogMode(logLevel),
+		Logger:                                   gormlogger.Default.LogMode(logLevel),
+		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgres: %s", err)
 	}
 
-	// migration for database tables
+	// Clean up constraints left by beego-orm and early GORM versions before
+	// AutoMigrate runs, so upgrades from <= 0.4.1 don't fail on duplicates.
+	if err := dropLegacyConstraints(conn); err != nil {
+		return nil, fmt.Errorf("failed to drop legacy constraints: %s", err)
+	}
+
+	// Order matters for fresh installs: tables with no FK dependencies first,
+	// then tables that reference them. Source/Destination/Job all FK → User.
 	if err := conn.AutoMigrate(
+		new(models.User),
 		new(models.ProjectSettings),
+		new(models.Catalog),
 		new(models.Source),
 		new(models.Destination),
 		new(models.Job),
-		new(models.User),
-		new(models.Catalog),
 	); err != nil {
 		return nil, fmt.Errorf("failed to run automigrate: %s", err)
 	}
@@ -65,6 +74,60 @@ func Init() (*Database, error) {
 		}
 	}
 	return &Database{conn: conn}, nil
+}
+
+// dropLegacyConstraints cleans up constraints left behind by previous ORM versions
+// (beego-orm and early GORM) that conflict with the current GORM AutoMigrate:
+//
+//   - "uni_*" unique constraints (GORM `unique` tag, non-idempotent) → replaced by `uniqueIndex`
+//   - "*_fkey" foreign key constraints (beego-orm naming) → GORM recreates with "fk_*" names,
+//     causing duplicate constraints that are harmless but add clutter.
+//
+// All DROP statements use IF EXISTS so this is a no-op on fresh installs.
+func dropLegacyConstraints(conn *gorm.DB) error {
+	userTable := constants.TableNameMap[constants.UserTable]
+	projectSettingsTable := constants.TableNameMap[constants.ProjectSettingsTable]
+	sourceTable := constants.TableNameMap[constants.SourceTable]
+	destTable := constants.TableNameMap[constants.DestinationTable]
+	jobTable := constants.TableNameMap[constants.JobTable]
+
+	constraints := []struct {
+		table      string
+		constraint string
+	}{
+		// Legacy GORM unique constraints (non-idempotent `unique` tag → now `uniqueIndex`)
+		{projectSettingsTable, fmt.Sprintf("uni_%s_project_id", projectSettingsTable)},
+		{userTable, fmt.Sprintf("uni_%s_username", userTable)},
+		{userTable, fmt.Sprintf("uni_%s_email", userTable)},
+
+		// Legacy beego-orm unique constraints (PostgreSQL default naming: <table>_<column>_key)
+		{projectSettingsTable, fmt.Sprintf("%s_project_id_key", projectSettingsTable)},
+		{userTable, fmt.Sprintf("%s_username_key", userTable)},
+		{userTable, fmt.Sprintf("%s_email_key", userTable)},
+
+		// GORM FK constraints (fk_<table>_<assoc> naming). FK creation is now disabled
+		// via DisableForeignKeyConstraintWhenMigrating because GORM's HasConstraint
+		// queries information_schema, which filters by table ownership — if the DB
+		// user doesn't own the tables (common with external RDS), GORM can't see
+		// existing FK constraints and tries to recreate them, causing "already exists"
+		// errors. The app enforces referential integrity in code.
+		{sourceTable, fmt.Sprintf("fk_%s_created_by", sourceTable)},
+		{sourceTable, fmt.Sprintf("fk_%s_updated_by", sourceTable)},
+		{destTable, fmt.Sprintf("fk_%s_created_by", destTable)},
+		{destTable, fmt.Sprintf("fk_%s_updated_by", destTable)},
+		{jobTable, fmt.Sprintf("fk_%s_source", jobTable)},
+		{jobTable, fmt.Sprintf("fk_%s_destination", jobTable)},
+		{jobTable, fmt.Sprintf("fk_%s_created_by", jobTable)},
+		{jobTable, fmt.Sprintf("fk_%s_updated_by", jobTable)},
+	}
+
+	for _, c := range constraints {
+		sql := fmt.Sprintf(`ALTER TABLE IF EXISTS %q DROP CONSTRAINT IF EXISTS %q`, c.table, c.constraint)
+		if err := conn.Exec(sql).Error; err != nil {
+			return fmt.Errorf("failed to drop constraint %s on %s: %w", c.constraint, c.table, err)
+		}
+	}
+	return nil
 }
 
 // BuildPostgresURIFromConfig reads POSTGRES_DB_HOST, POSTGRES_DB_PORT, etc. from app.conf
