@@ -14,7 +14,7 @@ on:
       target_tag:
         description: "New Docker version tag"
         required: true
-        default: "v0.4.2"
+        default: "v0.4.3"
         type: string
 
 jobs:
