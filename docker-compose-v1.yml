@@ -190,7 +190,6 @@ services:
       PGPASSWORD: temporal
     volumes:
       - fusion-config:/fusion-config
-      # - ./optimization:/local-optimization:ro
     entrypoint:
       - /bin/sh
       - -c
@@ -213,7 +212,7 @@ services:
                 v = ENVIRON[k]
                 gsub(/"/, "\\\"", v)
                 env_lines = env_lines sprintf("      spark-conf.spark.kubernetes.driverEnv.%s: \"%s\"\n", k, v)
-                env_lines = env_lines sprintf("      spark-conf.spark.kubernetes.executorEnv.%s: \"%s\"\n", k, v)
+                env_lines = env_lines sprintf("      spark-conf.spark.executorEnv.%s: \"%s\"\n", k, v)
               }
             }
             /SPARK_POD_ENVS_PLACEHOLDER/ { printf "%s", env_lines; next }
@@ -230,12 +229,6 @@ services:
         curl -fsSL "$${BASE}/kind-config.yaml" -o /fusion-config/kind-config.yaml
         curl -fsSL "$${BASE}/spark-rbac.yaml"  -o /fusion-config/spark-rbac.yaml
         inject_pod_envs /tmp/config.yaml /fusion-config/config.yaml
-
-        # TODO: remove kept for local testing
-        # echo "==> Copying local Fusion config files..."
-        # inject_pod_envs /local-optimization/config.yaml /fusion-config/config.yaml
-        # cp /local-optimization/kind-config.yaml /fusion-config/kind-config.yaml
-        # cp /local-optimization/spark-rbac.yaml  /fusion-config/spark-rbac.yaml
 
         echo "==> fusion-db-init complete."
     restart: "no"
@@ -366,7 +359,6 @@ services:
     networks:
       - olake-network
     environment:
-      <<: *sharedEnvs
       AMORO_LOG_DIR: *amoroLogPersistencePath
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
