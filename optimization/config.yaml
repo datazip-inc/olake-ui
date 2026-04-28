@@ -129,6 +129,7 @@ containers:
       spark-conf.spark.kubernetes.namespace: spark
       spark-conf.spark.kubernetes.authenticate.driver.serviceAccountName: spark
       spark-conf.spark.kubernetes.authenticate.executor.serviceAccountName: spark
+      SPARK_POD_ENVS_PLACEHOLDER
       spark-conf.spark.dynamicAllocation.enabled: "true"
       spark-conf.spark.shuffle.service.enabled: "false"
       spark-conf.spark.dynamicAllocation.shuffleTracking.enabled: "true"
