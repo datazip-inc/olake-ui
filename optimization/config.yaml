@@ -129,7 +129,6 @@ containers:
       spark-conf.spark.kubernetes.namespace: spark
       spark-conf.spark.kubernetes.authenticate.driver.serviceAccountName: spark
       spark-conf.spark.kubernetes.authenticate.executor.serviceAccountName: spark
-      SPARK_POD_ENVS_PLACEHOLDER
       spark-conf.spark.dynamicAllocation.enabled: "true"
       spark-conf.spark.shuffle.service.enabled: "false"
       spark-conf.spark.dynamicAllocation.shuffleTracking.enabled: "true"
@@ -152,3 +151,5 @@ containers:
       # Force Log4j2 to use the routing config (belt-and-suspenders with the Dockerfile COPY)
       spark-conf.spark.driver.extraJavaOptions: "-Dlog4j2.configurationFile=file:///opt/spark/conf/log4j2.xml"
       spark-conf.spark.executor.extraJavaOptions: "-Dlog4j2.configurationFile=file:///opt/spark/conf/log4j2.xml"
+      # Placeholder for environment variables to be injected into Spark driver/executor pods, e.g. for credentials
+      SPARK_POD_ENVS_PLACEHOLDER
