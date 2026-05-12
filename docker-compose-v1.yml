@@ -35,6 +35,10 @@ services:
       # Request body size limits (64 MB in bytes)
       MAX_MEMORY: 67108864
       MAX_UPLOAD_SIZE: 67108864
+      HTTP_READ_HEADER_TIMEOUT: 10s
+      HTTP_READ_TIMEOUT: 600s
+      HTTP_WRITE_TIMEOUT: 600s
+      HTTP_IDLE_TIMEOUT: 600s
       USERNAME: *defaultUsername
       PASSWORD: *defaultPassword
       OPTIMIZATION_BASE_URL: http://fusion.olake.internal:1630

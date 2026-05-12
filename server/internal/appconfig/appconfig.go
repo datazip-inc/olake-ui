@@ -3,6 +3,7 @@ package appconfig
 import (
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -10,6 +11,10 @@ import (
 type Config struct {
 	AppName               string
 	HTTPPort              string
+	HTTPReadHeaderTimeout time.Duration
+	HTTPReadTimeout       time.Duration
+	HTTPWriteTimeout      time.Duration
+	HTTPIdleTimeout       time.Duration
 	RunMode               string
 	MaxMemory             int64
 	MaxUploadSize         int64
@@ -62,6 +67,10 @@ func loadConfig() Config {
 	return Config{
 		AppName:               strings.TrimSpace(v.GetString("APP_NAME")),
 		HTTPPort:              strings.TrimSpace(v.GetString("HTTP_PORT")),
+		HTTPReadHeaderTimeout: v.GetDuration("HTTP_READ_HEADER_TIMEOUT"),
+		HTTPReadTimeout:       v.GetDuration("HTTP_READ_TIMEOUT"),
+		HTTPWriteTimeout:      v.GetDuration("HTTP_WRITE_TIMEOUT"),
+		HTTPIdleTimeout:       v.GetDuration("HTTP_IDLE_TIMEOUT"),
 		RunMode:               strings.TrimSpace(v.GetString("RUN_MODE")),
 		ContainerRegistryBase: strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_BASE")),
 		LogsDir:               strings.TrimSpace(v.GetString("LOGS_DIR")),
