@@ -1,5 +1,9 @@
 APP_NAME: olake-server
 HTTP_PORT: "8000"
+HTTP_READ_HEADER_TIMEOUT: "10s"
+HTTP_READ_TIMEOUT: "600s"
+HTTP_WRITE_TIMEOUT: "600s"
+HTTP_IDLE_TIMEOUT: "600s"
 # RUN_MODE is auto-detected: "dev" for Docker, "staging" for Kubernetes (via KUBERNETES_SERVICE_HOST).
 # Override explicitly via RUN_MODE env var or uncomment below if needed.
 # RUN_MODE: dev
