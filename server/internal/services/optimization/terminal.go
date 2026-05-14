@@ -70,11 +70,6 @@ func createAlterQuery(database string, table string, properties map[string]strin
 
 // BulkSetProperties runs one AMS terminal session that executes ALTER TABLE ... SET TBLPROPERTIES
 // for every table in req.Tables (same property set on each).
-//
-// Product behavior:
-//   - Every selected table gets the same ALTER (all selected streams updated).
-//   - Only properties present in req.SQLInput are included (Iceberg merges TBLPROPERTIES; others unchanged).
-//   - self-optimizing.enabled is always set to "true" for bulk apply (all selected streams enabled).
 func (s *Service) BulkSetProperties(ctx context.Context, catalog, database string, req dto.BulkSQLInput) (*dto.BulkTableProperties, error) {
 	tables := req.Tables
 	properties := SetPropertiesMap(req.SQLInput)
