@@ -108,7 +108,12 @@ var (
 	OptFullCron            = "self-optimizing.full.trigger.cron"
 	OptTargetFileSize      = "self-optimizing.target-size"
 	OptEnableOptimization  = "self-optimizing.enabled"
-	OptSQLCommand          = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
+	// OptSQLCommand is a single-table Iceberg/Spark DDL. For multiple tables, the server
+	// concatenates several of these with "; " and sends one SQL string to the AMS terminal
+	// execute API. Staging must confirm the terminal runs the full multi-statement script.
+	OptSQLCommand = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
+	// MaxBulkTables caps how many distinct tables a single bulk config request may target.
+	MaxBulkTables = 100
 	// properties
 	OptCreatedAt    = "created-at"
 	OptCacheEnabled = "cache-enabled"

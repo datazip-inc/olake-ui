@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -13,9 +14,8 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
-func (s *Service) SetProperties(ctx context.Context, catalog, database, table string, config dto.SQLInput) (*dto.TableProperties, error) {
+func SetPropertiesMap(config dto.SQLInput) map[string]string {
 	properties := make(map[string]string)
-
 	if config.MinorCron != nil {
 		properties[constants.OptMinorCron] = *config.MinorCron
 	}
@@ -31,7 +31,11 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database, table st
 	if config.TargetFileSize != nil {
 		properties[constants.OptTargetFileSize] = utils.ConvertMBToBytes(*config.TargetFileSize)
 	}
+	return properties
+}
 
+func (s *Service) SetProperties(ctx context.Context, catalog, database, table string, config dto.SQLInput) (*dto.TableProperties, error) {
+	properties := SetPropertiesMap(config)
 	// sql query
 	sqlResult, err := s.SetTableProperties(ctx, dto.SetTablePropertiesRequest{
 		Catalog:    catalog,
@@ -47,14 +51,86 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database, table st
 	return sqlResult, nil
 }
 
-// sets table properties using the SQL query
-func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTablePropertiesRequest) (*dto.TableProperties, error) {
-	var propsSQL []string
-	for key, value := range req.Properties {
-		propsSQL = append(propsSQL, fmt.Sprintf("'%s' = '%s'", key, value))
+// createAlterQuery returns one ALTER TABLE ... SET TBLPROPERTIES (...) statement for database.table, ending with ';'.
+func createAlterQuery(database string, table string, properties map[string]string) string {
+	keys := make([]string, 0, len(properties))
+	for k := range properties {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("'%s'='%s'", k, properties[k]))
+	}
+	propsJoined := strings.Join(parts, ", ")
+
+	return fmt.Sprintf(constants.OptSQLCommand, database, table, propsJoined) + ";"
+}
+
+// BulkSetProperties runs one AMS terminal session that executes ALTER TABLE ... SET TBLPROPERTIES
+// for every table in req.Tables (same property set on each).
+//
+// Product behavior:
+//   - Every selected table gets the same ALTER (all selected streams updated).
+//   - Only properties present in req.SQLInput are included (Iceberg merges TBLPROPERTIES; others unchanged).
+//   - self-optimizing.enabled is always set to "true" for bulk apply (all selected streams enabled).
+func (s *Service) BulkSetProperties(ctx context.Context, catalog, database string, req dto.BulkSQLInput) (*dto.BulkTableProperties, error) {
+	tables := req.Tables
+	properties := SetPropertiesMap(req.SQLInput)
+	// Bulk apply always enables self-optimizing on every selected table.
+	properties[constants.OptEnableOptimization] = "true"
+
+	stmts := make([]string, 0, len(tables))
+	for _, t := range tables {
+		stmts = append(stmts, createAlterQuery(database, t, properties))
+	}
+	// One AMS terminal execute body: multiple statements, one Spark session (AMS splits on ';' per line).
+	sqlScript := strings.Join(stmts, "\n")
+
+	path := fmt.Sprintf(constants.OptPathTerminalExecute, catalog)
+	requestBody := dto.TerminalExecuteRequest{
+		SQL: sqlScript,
 	}
 
-	sql := fmt.Sprintf(constants.OptSQLCommand, req.Database, req.Table, strings.Join(propsSQL, ", "))
+	var sessionResult dto.TerminalSessionResponse
+	if err := s.DoInto(ctx, http.MethodPost, path, url.Values{}, requestBody, &sessionResult); err != nil {
+		return nil, fmt.Errorf("failed to execute bulk ALTER TABLE for catalog %s: %w", catalog, err)
+	}
+
+	logInfo, err := s.pollForCompletion(ctx, catalog, sessionResult.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to poll for completion: %w", err)
+	}
+
+	success := logInfo.LogStatus == "Finished"
+	var message string
+	if success {
+		message = fmt.Sprintf(
+			"bulk optimization sql command completed successfully for %d table(s), session ID: %s",
+			len(tables),
+			sessionResult.SessionID,
+		)
+	} else {
+		message = fmt.Sprintf(
+			"bulk optimization sql command failed for catalog %s, session ID: %s",
+			catalog,
+			sessionResult.SessionID,
+		)
+	}
+
+	return &dto.BulkTableProperties{
+		SessionID: sessionResult.SessionID,
+		Success:   success,
+		Message:   message,
+		Logs:      logInfo.Logs,
+		Tables:    tables,
+	}, nil
+}
+
+// sets table properties using the SQL query
+func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTablePropertiesRequest) (*dto.TableProperties, error) {
+	sql := createAlterQuery(req.Database, req.Table, req.Properties)
 
 	// execute via Terminal API
 	path := fmt.Sprintf(constants.OptPathTerminalExecute, req.Catalog)
