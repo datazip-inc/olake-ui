@@ -181,3 +181,9 @@ type SQLInput struct {
 	TargetFileSize         *int64  `json:"target_file_size"`
 	EnabledForOptimization *string `json:"enabled_for_optimization"`
 }
+
+// BulkSQLInput configures optimization properties for multiple tables in one AMS terminal session.
+type BulkSQLInput struct {
+	Tables                 []string `json:"tables" binding:"required,min=1,dive,required"`
+	SQLInput               SQLInput `json:"sql_input"`
+}

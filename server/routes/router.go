@@ -91,6 +91,7 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 		opt.DELETE("/catalog/:catalog", optHandler.DeleteCatalog)
 
 		// terminal: cron, enable/disable optimization
+		opt.PUT("/:catalog/:database/config/bulk", optHandler.SetBulkProperties)
 		opt.PUT("/:catalog/:database/:table/config", optHandler.SetProperties)
 
 		// tables: view
