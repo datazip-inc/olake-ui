@@ -184,6 +184,6 @@ type SQLInput struct {
 
 // BulkSQLInput configures optimization properties for multiple tables in one AMS terminal session.
 type BulkSQLInput struct {
-	Tables                 []string `json:"tables" binding:"required,min=1,dive,required"`
-	SQLInput               SQLInput `json:"sql_input"`
+	Tables   []string `json:"tables" binding:"required"`
+	SQLInput SQLInput `json:"sql_input"`
 }

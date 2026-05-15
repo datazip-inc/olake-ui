@@ -51,7 +51,7 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database, table st
 }
 
 // createAlterQuery returns one ALTER TABLE ... SET TBLPROPERTIES (...) statement for database.table, ending with ';'.
-func createAlterQuery(database string, table string, properties map[string]string) string {
+func createAlterQuery(database, table string, properties map[string]string) string {
 	keys := make([]string, 0, len(properties))
 	for k := range properties {
 		keys = append(keys, k)
@@ -76,14 +76,14 @@ func (s *Service) BulkSetProperties(ctx context.Context, catalog, database strin
 
 	sql := make([]string, 0, len(tables))
 	for _, t := range tables {
-		sql= append(sql, createAlterQuery(database, t, properties))
+		sql = append(sql, createAlterQuery(database, t, properties))
 	}
 	// One AMS terminal execute body: multiple statements, one Spark session (AMS splits on ';' per line).
-	bulkSqlScript := strings.Join(sql, "\n")
+	bulkSQLScript := strings.Join(sql, "\n")
 
 	path := fmt.Sprintf(constants.OptPathTerminalExecute, catalog)
 	requestBody := dto.TerminalExecuteRequest{
-		SQL: bulkSqlScript,
+		SQL: bulkSQLScript,
 	}
 
 	var sessionResult dto.TerminalSessionResponse
