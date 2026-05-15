@@ -57,11 +57,11 @@ func createAlterQuery(database string, table string, properties map[string]strin
 		keys = append(keys, k)
 	}
 
-	parts := make([]string, 0, len(keys))
+	props := make([]string, 0, len(keys))
 	for _, k := range keys {
-		parts = append(parts, fmt.Sprintf("'%s'='%s'", k, properties[k]))
+		props = append(props, fmt.Sprintf("'%s'='%s'", k, properties[k]))
 	}
-	propsJoined := strings.Join(parts, ", ")
+	propsJoined := strings.Join(props, ", ")
 
 	return fmt.Sprintf(constants.OptSQLCommand, database, table, propsJoined) + ";"
 }
@@ -74,16 +74,16 @@ func (s *Service) BulkSetProperties(ctx context.Context, catalog, database strin
 	// Bulk apply always enables self-optimizing on every selected table.
 	properties[constants.OptEnableOptimization] = "true"
 
-	stmts := make([]string, 0, len(tables))
+	sql := make([]string, 0, len(tables))
 	for _, t := range tables {
-		stmts = append(stmts, createAlterQuery(database, t, properties))
+		sql= append(sql, createAlterQuery(database, t, properties))
 	}
 	// One AMS terminal execute body: multiple statements, one Spark session (AMS splits on ';' per line).
-	sqlScript := strings.Join(stmts, "\n")
+	bulkSqlScript := strings.Join(sql, "\n")
 
 	path := fmt.Sprintf(constants.OptPathTerminalExecute, catalog)
 	requestBody := dto.TerminalExecuteRequest{
-		SQL: sqlScript,
+		SQL: bulkSqlScript,
 	}
 
 	var sessionResult dto.TerminalSessionResponse
@@ -178,9 +178,7 @@ func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*
 			if err := s.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &logInfo); err != nil {
 				return nil, fmt.Errorf("failed to get logs for session %s: %w", sessionID, err)
 			}
-			if logInfo.LogStatus == "Finished" {
-				return &logInfo, nil
-			}
+			return &logInfo, nil
 		}
 	}
 }
