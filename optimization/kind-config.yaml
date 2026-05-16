@@ -9,8 +9,8 @@ nodes:
   - role: control-plane
     image: kindest/node:v1.28.0
     extraMounts:
-      - hostPath: AMORO_LOG_PLACEHOLDER
-        containerPath: /mnt/amoro-logs
+      - hostPath: FUSION_LOG_PLACEHOLDER
+        containerPath: /mnt/fusion-logs
     kubeadmConfigPatches:
       - |
         kind: InitConfiguration
@@ -28,8 +28,8 @@ nodes:
   - role: worker
     image: kindest/node:v1.28.0
     extraMounts:
-      - hostPath: AMORO_LOG_PLACEHOLDER
-        containerPath: /mnt/amoro-logs
+      - hostPath: FUSION_LOG_PLACEHOLDER
+        containerPath: /mnt/fusion-logs
     kubeadmConfigPatches:
       - |
         kind: JoinConfiguration
@@ -39,8 +39,8 @@ nodes:
   - role: worker
     image: kindest/node:v1.28.0
     extraMounts:
-      - hostPath: AMORO_LOG_PLACEHOLDER
-        containerPath: /mnt/amoro-logs
+      - hostPath: FUSION_LOG_PLACEHOLDER
+        containerPath: /mnt/fusion-logs
     kubeadmConfigPatches:
       - |
         kind: JoinConfiguration
