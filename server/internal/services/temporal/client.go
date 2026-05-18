@@ -2,6 +2,7 @@ package temporal
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -21,23 +22,42 @@ type Temporal struct {
 
 // NewClient creates a new Temporal client
 func NewClient() (*Temporal, error) {
-	temporalAddress := appconfig.Load().TemporalAddress
-	if temporalAddress == "" {
+	cfg := appconfig.Load()
+
+	if cfg.TemporalAddress == "" {
 		return nil, fmt.Errorf("failed to get temporal address")
+	}
+
+	taskQueue := constants.TemporalTaskQueue
+	if cfg.TemporalExternal && cfg.TemporalTaskQueue != "" {
+		taskQueue = cfg.TemporalTaskQueue
 	}
 
 	var temporalClient *Temporal
 	err := utils.RetryWithBackoff(func() error {
-		client, dialErr := client.Dial(client.Options{
-			HostPort: temporalAddress,
-		})
+		clientOptions := client.Options{
+			HostPort:  cfg.TemporalAddress,
+			Namespace: cfg.TemporalNamespace,
+		}
+
+		if cfg.TemporalEnableTLS {
+			clientOptions.ConnectionOptions = client.ConnectionOptions{
+				TLS: &tls.Config{},
+			}
+		}
+
+		if cfg.TemporalAPIKey != "" {
+			clientOptions.Credentials = client.NewAPIKeyStaticCredentials(cfg.TemporalAPIKey)
+		}
+
+		c, dialErr := client.Dial(clientOptions)
 		if dialErr != nil {
 			return fmt.Errorf("failed to create temporal client: %s", dialErr)
 		}
 
 		temporalClient = &Temporal{
-			Client:    client,
-			taskQueue: constants.TemporalTaskQueue,
+			Client:    c,
+			taskQueue: taskQueue,
 		}
 		return nil
 	}, 3, time.Second)
