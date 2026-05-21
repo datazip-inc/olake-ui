@@ -19,6 +19,15 @@ x-envs:
     OLAKE_SECRET_KEY: *encryptionKey
     PERSISTENT_DIR: *hostPersistencePath
 
+x-db-envs:
+  DB_HOST: &DBHost postgresql
+  DB_PORT: &DBPort 5432
+  DB_USER: &DBUser temporal
+  DB_PASSWORD: &DBPassword temporal
+  DB_SSLMODE: &DBSSLMode disable
+  OLAKE_DB_NAME: &olakeDBName postgres
+  TEMPORAL_DB_NAME: &temporalDBName temporal
+
 services:
   olake-ui:
     image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
@@ -26,9 +35,16 @@ services:
     container_name: olake-ui
     environment:
       <<: *sharedEnvs
+      OLAKE_POSTGRES_USER: *DBUser
+      OLAKE_POSTGRES_PASSWORD: *DBPassword
+      OLAKE_POSTGRES_HOST: *DBHost
+      OLAKE_POSTGRES_PORT: *DBPort
+      OLAKE_POSTGRES_DBNAME: *olakeDBName
+      OLAKE_POSTGRES_SSLMODE: *DBSSLMode
       # Request body size limits (64 MB in bytes)
       MAX_MEMORY: 67108864
       MAX_UPLOAD_SIZE: 67108864
+
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
     volumes:
@@ -104,6 +120,13 @@ services:
     environment:
       <<: *sharedEnvs
       OLAKE_CALLBACK_URL: "http://olake-ui:8000/internal/worker/callback"
+      DB_HOST: *DBHost
+      DB_PORT: *DBPort
+      DB_USER: *DBUser
+      DB_PASSWORD: *DBPassword
+      DB_NAME: *olakeDBName
+      DB_SSLMODE: *DBSSLMode
+
     depends_on:
       temporal:
         condition: service_started # Or service_healthy if temporal has a healthcheck
@@ -137,16 +160,23 @@ services:
       elasticsearch:
         condition: service_healthy # Wait for elasticsearch to be healthy
     environment:
-      - DB=postgres12
-      - DB_PORT=5432
-      - POSTGRES_USER=temporal
-      - POSTGRES_PWD=temporal
-      - POSTGRES_SEEDS=postgresql
-      - ENABLE_ES=true
-      - ES_SEEDS=elasticsearch
-      - ES_VERSION=v7
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CLI_ADDRESS=temporal:7233
+      DB: postgres12
+      POSTGRES_SEEDS: *DBHost
+      DB_PORT: *DBPort
+      POSTGRES_USER: *DBUser
+      POSTGRES_PWD: *DBPassword
+      DBNAME: *temporalDBName
+      ENABLE_ES: true
+      ES_SEEDS: elasticsearch
+      ES_VERSION: v7
+      TEMPORAL_ADDRESS: temporal:7233 # temporal service address
+      TEMPORAL_CLI_ADDRESS: temporal:7233 # temporal cli address
+
+      # for external postgres database
+      # SQL_TLS: true
+      # SQL_TLS_DISABLE_HOST_VERIFICATION: true
+      # SQL_TLS_ENABLED: true
+      # SQL_HOST_VERIFICATION: false
     networks:
       - olake-network
     restart: unless-stopped
