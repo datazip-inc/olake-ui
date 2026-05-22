@@ -27,6 +27,16 @@ SESSION_ON: true
 TEMPORAL_ADDRESS: temporal:7233
 CONTAINER_REGISTRY_BASE: registry-1.docker.io
 
+# Set to false in Fusion-only or air-gapped deployments to disable upstream
+# container registry queries (Docker Hub / ECR / GCR) for connector version
+# discovery. When false, /versions and /spec return DEFAULT_CONNECTOR_VERSION
+# instead of polling the registry.
+CONNECTOR_DISCOVERY_ENABLED: true
+
+# Fallback connector version used when CONNECTOR_DISCOVERY_ENABLED is false.
+# Ignored when discovery is enabled. Example: "v0.3.18".
+DEFAULT_CONNECTOR_VERSION: ""
+
 # Prefer setting this via environment.
 OLAKE_SECRET_KEY: ""
 

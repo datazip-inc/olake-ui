@@ -35,6 +35,17 @@ type Config struct {
 	OptimizationBaseURL   string
 	OptimizationUsername  string
 	OptimizationPassword  string
+
+	// ConnectorDiscoveryEnabled controls whether the server queries the
+	// upstream container registry (Docker Hub / ECR / GCR Artifact Registry)
+	// to enumerate available connector image tags. Defaults to true.
+	// Disable in Fusion-only or air-gapped deployments that don't need
+	// CDC connector discovery and want to avoid registry rate limits.
+	ConnectorDiscoveryEnabled bool
+
+	// DefaultConnectorVersion is returned by /versions and used by /spec
+	// when ConnectorDiscoveryEnabled is false. Ignored when discovery is on.
+	DefaultConnectorVersion string
 }
 
 var cfg = loadConfig()
@@ -93,5 +104,8 @@ func loadConfig() Config {
 		OptimizationBaseURL:  strings.TrimSpace(v.GetString("OPTIMIZATION_BASE_URL")),
 		OptimizationUsername: strings.TrimSpace(v.GetString("USERNAME")),
 		OptimizationPassword: strings.TrimSpace(v.GetString("PASSWORD")),
+
+		ConnectorDiscoveryEnabled: v.GetBool("CONNECTOR_DISCOVERY_ENABLED"),
+		DefaultConnectorVersion:   strings.TrimSpace(v.GetString("DEFAULT_CONNECTOR_VERSION")),
 	}
 }
