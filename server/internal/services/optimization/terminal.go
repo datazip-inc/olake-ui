@@ -13,7 +13,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
-func SetPropertiesMap(config dto.SQLInput) map[string]string {
+func setPropertiesMap(config dto.SQLInput) map[string]string {
 	properties := make(map[string]string)
 	if config.MinorCron != nil {
 		properties[constants.OptMinorCron] = *config.MinorCron
@@ -34,7 +34,7 @@ func SetPropertiesMap(config dto.SQLInput) map[string]string {
 }
 
 func (s *Service) SetProperties(ctx context.Context, catalog, database, table string, config dto.SQLInput) (*dto.TableProperties, error) {
-	properties := SetPropertiesMap(config)
+	properties := setPropertiesMap(config)
 	// sql query
 	sqlResult, err := s.SetTableProperties(ctx, dto.SetTablePropertiesRequest{
 		Catalog:    catalog,
@@ -52,25 +52,19 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database, table st
 
 // createAlterQuery returns one ALTER TABLE ... SET TBLPROPERTIES (...) statement for database.table, ending with ';'.
 func createAlterQuery(database, table string, properties map[string]string) string {
-	keys := make([]string, 0, len(properties))
-	for k := range properties {
-		keys = append(keys, k)
-	}
-
-	props := make([]string, 0, len(keys))
-	for _, k := range keys {
-		props = append(props, fmt.Sprintf("'%s'='%s'", k, properties[k]))
+	props := make([]string, 0, len(properties))
+	for k, value := range properties {
+		props = append(props, fmt.Sprintf("'%s'='%s'", k, value))
 	}
 	propsJoined := strings.Join(props, ", ")
 
 	return fmt.Sprintf(constants.OptSQLCommand, database, table, propsJoined) + ";"
 }
 
-// BulkSetProperties runs one AMS terminal session that executes ALTER TABLE ... SET TBLPROPERTIES
-// for every table in req.Tables (same property set on each).
+// BulkSetProperties runs one terminal session that executes ALTER TABLE ... SET TBLPROPERTIES
 func (s *Service) BulkSetProperties(ctx context.Context, catalog, database string, req dto.BulkSQLInput) (*dto.BulkTableProperties, error) {
 	tables := req.Tables
-	properties := SetPropertiesMap(req.SQLInput)
+	properties := setPropertiesMap(req.SQLInput)
 	// Bulk apply always enables self-optimizing on every selected table.
 	properties[constants.OptEnableOptimization] = "true"
 
@@ -78,7 +72,6 @@ func (s *Service) BulkSetProperties(ctx context.Context, catalog, database strin
 	for _, t := range tables {
 		sql = append(sql, createAlterQuery(database, t, properties))
 	}
-	// One AMS terminal execute body: multiple statements, one Spark session (AMS splits on ';' per line).
 	bulkSQLScript := strings.Join(sql, "\n")
 
 	path := fmt.Sprintf(constants.OptPathTerminalExecute, catalog)
@@ -88,12 +81,12 @@ func (s *Service) BulkSetProperties(ctx context.Context, catalog, database strin
 
 	var sessionResult dto.TerminalSessionResponse
 	if err := s.DoInto(ctx, http.MethodPost, path, url.Values{}, requestBody, &sessionResult); err != nil {
-		return nil, fmt.Errorf("failed to execute bulk ALTER TABLE for catalog %s: %w", catalog, err)
+		return nil, fmt.Errorf("failed to execute bulk ALTER TABLE for catalog %s, database %s: %w", catalog, database, err)
 	}
 
 	logInfo, err := s.pollForCompletion(ctx, catalog, sessionResult.SessionID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to poll for completion: %w", err)
+		return nil, fmt.Errorf("failed to poll for completion for selected %d table(s): %w", len(tables), err)
 	}
 
 	success := logInfo.LogStatus == "Finished"
@@ -106,8 +99,9 @@ func (s *Service) BulkSetProperties(ctx context.Context, catalog, database strin
 		)
 	} else {
 		message = fmt.Sprintf(
-			"bulk optimization sql command failed for catalog %s, session ID: %s",
+			"bulk optimization sql command failed for catalog %s, database %s, session ID: %s",
 			catalog,
+			database,
 			sessionResult.SessionID,
 		)
 	}
@@ -163,7 +157,7 @@ func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTableProper
 // pollForCompletion polls the terminal API for SQL execution completion
 func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*dto.LogInfo, error) {
 	path := fmt.Sprintf(constants.OptPathTerminalLogs, sessionID)
-	timeoutCtx, cancel := context.WithTimeout(ctx, constants.OptMaxTimeout)
+	timeoutCtx, cancel := context.WithTimeout(ctx, constants.OptSessionTimeout)
 	defer cancel()
 
 	ticker := time.NewTicker(constants.OptQueryResultPollTime)
