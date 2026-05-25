@@ -42,7 +42,9 @@ func NewClient() (*Temporal, error) {
 
 		if cfg.TemporalEnableTLS {
 			clientOptions.ConnectionOptions = client.ConnectionOptions{
-				TLS: &tls.Config{}, // #nosec G402 -- Temporal SDK handles TLS negotiation internally
+				TLS: &tls.Config{
+					MinVersion: tls.VersionTLS12,
+				},
 			}
 		}
 
