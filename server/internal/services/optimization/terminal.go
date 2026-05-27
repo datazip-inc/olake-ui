@@ -83,9 +83,6 @@ func createAlterQuery(database, table string, properties map[string]string) stri
 // set properties for multiple tables using sql query
 func (s *Service) BulkSetProperties(ctx context.Context, catalog, database string, req dto.BulkSQLInput) (*dto.TableProperties, error) {
 	tables := req.Tables
-	if len(tables) <= 1 {
-		return nil, fmt.Errorf("select more than one table to bulk configure")
-	}
 	properties := setPropertiesMap(req.SQLInput)
 	// Bulk apply always enables self-optimizing on every selected table.
 	properties[constants.OptEnableOptimization] = "true"
