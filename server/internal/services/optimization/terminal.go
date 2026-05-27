@@ -46,7 +46,7 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database, table st
 	if err := s.DoInto(ctx, http.MethodPost, path, url.Values{}, requestBody, &sessionResult); err != nil {
 		return nil, fmt.Errorf("failed to execute ALTER TABLE for %s.%s.%s: %w", catalog, database, table, err)
 	}
-	//poll for execution completion
+	// poll for execution completion
 	logInfo, err := s.pollForCompletion(ctx, sessionResult.SessionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to poll for completion: %w", err)
