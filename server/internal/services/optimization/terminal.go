@@ -50,7 +50,6 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database, table st
 	return sqlResult, nil
 }
 
-// createAlterQuery returns one ALTER TABLE ... SET TBLPROPERTIES (...) statement for database.table, ending with ';'.
 func createAlterQuery(database, table string, properties map[string]string) string {
 	props := make([]string, 0, len(properties))
 	for k, value := range properties {
