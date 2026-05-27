@@ -56,6 +56,10 @@ func (h *Handler) SetBulkProperties(c *gin.Context) {
 		utils.ErrorResponse(c, utils.StatusFromBindError(err), "invalid request body for bulk table properties", err)
 		return
 	}
+	if len(req.Tables) <= 1 {
+		utils.ErrorResponse(c, badRequestStatusCode, "select more than one table to bulk configure", nil)
+		return
+	}
 
 	result, err := h.opt.BulkSetProperties(c.Request.Context(), catalog, database, req)
 	if err != nil {
