@@ -35,19 +35,39 @@ func setPropertiesMap(config dto.SQLInput) map[string]string {
 
 func (s *Service) SetProperties(ctx context.Context, catalog, database, table string, config dto.SQLInput) (*dto.TableProperties, error) {
 	properties := setPropertiesMap(config)
-	// sql query
-	sqlResult, err := s.SetTableProperties(ctx, dto.SetTablePropertiesRequest{
-		Catalog:    catalog,
-		Database:   database,
-		Table:      table,
-		Properties: properties,
-	})
+	sql := createAlterQuery(database, table, properties)
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to set optimization properties: %w", err)
+	path := fmt.Sprintf(constants.OptPathTerminalExecute, catalog)
+	requestBody := dto.TerminalExecuteRequest{
+		SQL: sql,
 	}
 
-	return sqlResult, nil
+	var sessionResult dto.TerminalSessionResponse
+	if err := s.DoInto(ctx, http.MethodPost, path, url.Values{}, requestBody, &sessionResult); err != nil {
+		return nil, fmt.Errorf("failed to execute ALTER TABLE for %s.%s.%s: %w", catalog, database, table, err)
+	}
+	//poll for execution completion
+	logInfo, err := s.pollForCompletion(ctx, sessionResult.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to poll for completion: %w", err)
+	}
+
+	// TODO: Fusion may return "Finished" even if the query fails (e.g., syntax error).
+	// Solution: validate execution status by checking logs for "Finished" vs "Failed".
+	success := logInfo.LogStatus == "Finished"
+	var message string
+	if success {
+		message = fmt.Sprintf("optimization sql command completed successfully with session ID: %s", sessionResult.SessionID)
+	} else {
+		message = fmt.Sprintf("optimization sql command failed with session ID: %s", sessionResult.SessionID)
+	}
+
+	return &dto.TableProperties{
+		SessionID: sessionResult.SessionID,
+		Success:   success,
+		Message:   message,
+		Logs:      logInfo.Logs,
+	}, nil
 }
 
 func createAlterQuery(database, table string, properties map[string]string) string {
@@ -60,8 +80,8 @@ func createAlterQuery(database, table string, properties map[string]string) stri
 	return fmt.Sprintf(constants.OptSQLCommand, database, table, propsJoined) + ";"
 }
 
-// BulkSetProperties runs one terminal session that executes ALTER TABLE ... SET TBLPROPERTIES
-func (s *Service) BulkSetProperties(ctx context.Context, catalog, database string, req dto.BulkSQLInput) (*dto.BulkTableProperties, error) {
+// set properties for multiple tables using sql query
+func (s *Service) BulkSetProperties(ctx context.Context, catalog, database string, req dto.BulkSQLInput) (*dto.TableProperties, error) {
 	tables := req.Tables
 	properties := setPropertiesMap(req.SQLInput)
 	// Bulk apply always enables self-optimizing on every selected table.
@@ -103,46 +123,6 @@ func (s *Service) BulkSetProperties(ctx context.Context, catalog, database strin
 			database,
 			sessionResult.SessionID,
 		)
-	}
-
-	return &dto.BulkTableProperties{
-		SessionID: sessionResult.SessionID,
-		Success:   success,
-		Message:   message,
-		Logs:      logInfo.Logs,
-		Tables:    tables,
-	}, nil
-}
-
-// sets table properties using the SQL query
-func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTablePropertiesRequest) (*dto.TableProperties, error) {
-	sql := createAlterQuery(req.Database, req.Table, req.Properties)
-
-	// execute via Terminal API
-	path := fmt.Sprintf(constants.OptPathTerminalExecute, req.Catalog)
-	requestBody := dto.TerminalExecuteRequest{
-		SQL: sql,
-	}
-
-	var sessionResult dto.TerminalSessionResponse
-	if err := s.DoInto(ctx, http.MethodPost, path, url.Values{}, requestBody, &sessionResult); err != nil {
-		return nil, fmt.Errorf("failed to execute ALTER TABLE for %s.%s.%s: %w", req.Catalog, req.Database, req.Table, err)
-	}
-
-	// Poll for execution completion
-	logInfo, err := s.pollForCompletion(ctx, sessionResult.SessionID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to poll for completion: %w", err)
-	}
-
-	// TODO: Fusion may return "Finished" even if the query fails (e.g., syntax error).
-	// Solution: validate execution status by checking logs for "Finished" vs "Failed".
-	success := logInfo.LogStatus == "Finished"
-	var message string
-	if success {
-		message = fmt.Sprintf("optimization sql command completed successfully with session ID: %s", sessionResult.SessionID)
-	} else {
-		message = fmt.Sprintf("optimization sql command failed with session ID: %s", sessionResult.SessionID)
 	}
 
 	return &dto.TableProperties{

@@ -252,15 +252,6 @@ type TableProperties struct {
 	Logs      []string `json:"logs,omitempty"`
 }
 
-// BulkTableProperties is the response from bulk-setting optimization properties.
-type BulkTableProperties struct {
-	SessionID string   `json:"sessionId"`
-	Success   bool     `json:"success"`
-	Message   string   `json:"message"`
-	Logs      []string `json:"logs,omitempty"`
-	Tables    []string `json:"tables"`
-}
-
 // TerminalSessionResponse represents the response from terminal execute
 type TerminalSessionResponse struct {
 	SessionID string `json:"sessionId"`

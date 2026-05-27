@@ -162,13 +162,6 @@ type LogInfo struct {
 	Logs      []string `json:"logs"`
 }
 
-type SetTablePropertiesRequest struct {
-	Catalog    string            `json:"catalog"`
-	Database   string            `json:"database"`
-	Table      string            `json:"table"`
-	Properties map[string]string `json:"properties"`
-}
-
 // TerminalExecuteRequest represents the request body for terminal SQL execution
 type TerminalExecuteRequest struct {
 	SQL string `json:"sql"`
