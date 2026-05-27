@@ -84,7 +84,7 @@ func (s *Service) BulkSetProperties(ctx context.Context, catalog, database strin
 		return nil, fmt.Errorf("failed to execute bulk ALTER TABLE for catalog %s, database %s: %w", catalog, database, err)
 	}
 
-	logInfo, err := s.pollForCompletion(ctx, catalog, sessionResult.SessionID)
+	logInfo, err := s.pollForCompletion(ctx, sessionResult.SessionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to poll for completion for selected %d table(s): %w", len(tables), err)
 	}
@@ -131,7 +131,7 @@ func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTableProper
 	}
 
 	// Poll for execution completion
-	logInfo, err := s.pollForCompletion(ctx, req.Catalog, sessionResult.SessionID)
+	logInfo, err := s.pollForCompletion(ctx, sessionResult.SessionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to poll for completion: %w", err)
 	}
@@ -155,7 +155,7 @@ func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTableProper
 }
 
 // pollForCompletion polls the terminal API for SQL execution completion
-func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*dto.LogInfo, error) {
+func (s *Service) pollForCompletion(ctx context.Context, sessionID string) (*dto.LogInfo, error) {
 	path := fmt.Sprintf(constants.OptPathTerminalLogs, sessionID)
 	timeoutCtx, cancel := context.WithTimeout(ctx, constants.OptSessionTimeout)
 	defer cancel()
