@@ -127,12 +127,12 @@ export const catalogService = {
 	getCatalogSpec: async (version: string, signal?: AbortSignal) => {
 		try {
 			const response = await api.post<SpecResponse>(
-				`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
+				API_CONFIG.ENDPOINTS.OPT.CATALOG_SPEC,
 				{
 					type: DESTINATION_TYPE,
 					version: version,
 				},
-				{ timeout: 300000, signal, disableErrorNotification: true },
+				{ timeout: 30000, signal, disableErrorNotification: true },
 			)
 			return response.data
 		} catch (error: any) {

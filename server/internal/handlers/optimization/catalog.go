@@ -1,13 +1,18 @@
 package optimization
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
+
+const icebergCatalogSpecFile = "internal/handlers/optimization/specs/iceberg.json"
 
 const badRequestStatusCode = http.StatusBadRequest
 
@@ -111,4 +116,24 @@ func (h *Handler) requiredCatalog(c *gin.Context) (string, bool) {
 		return "", false
 	}
 	return catalog, true
+}
+
+func (h *Handler) GetCatalogSpec(c *gin.Context) {
+	data, err := os.ReadFile(icebergCatalogSpecFile)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to read catalog spec", err)
+		return
+	}
+
+	var spec map[string]interface{}
+	if err := json.Unmarshal(data, &spec); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "invalid catalog spec JSON", err)
+		return
+	}
+
+	utils.SuccessResponse(c, "catalog spec fetched successfully", dto.SpecResponse{
+		Version: "v0.7.3",
+		Type:    "iceberg",
+		Spec:    spec,
+	})
 }

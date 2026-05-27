@@ -86,6 +86,7 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 
 		// catalogs: crud
 		opt.POST("/catalog", optHandler.CreateCatalog)
+		opt.POST("/catalog/spec", optHandler.GetCatalogSpec)
 		opt.GET("/catalog/:catalog", optHandler.GetCatalog)
 		opt.PUT("/catalog/:catalog", optHandler.UpdateCatalog)
 		opt.DELETE("/catalog/:catalog", optHandler.DeleteCatalog)

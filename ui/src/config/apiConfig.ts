@@ -33,6 +33,7 @@ export const API_CONFIG = {
 				`/api/opt/v1/${encodeURIComponent(catalog)}/${encodeURIComponent(database)}/tables`,
 			PROCESS: (processId: string) =>
 				`/api/opt/v1/logs/process/${encodeURIComponent(processId)}`,
+			CATALOG_SPEC: `/api/opt/v1/catalog/spec`,
 		},
 		PLATFORM: `/api/v1/platform`,
 	},
