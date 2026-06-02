@@ -98,14 +98,14 @@ func (s *Service) pollAndBuild(ctx context.Context, sessionID, catalog, database
 	var message string
 	if success {
 		message = fmt.Sprintf(
-			"optimization sql command completed successfully for catalog %s, database %s, session ID: %s",
+			"optimization sql command completed successfully for catalog %v, database %v, session ID: %v",
 			catalog,
 			database,
 			sessionID,
 		)
 	} else {
 		message = fmt.Sprintf(
-			"optimization sql command failed for catalog %s, database %s, session ID: %s",
+			"optimization sql command failed for catalog %v, database %v, session ID: %v",
 			catalog,
 			database,
 			sessionID,
