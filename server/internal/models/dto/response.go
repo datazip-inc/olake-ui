@@ -265,7 +265,7 @@ type TerminalSessionResponse struct {
 	SessionID string `json:"sessionId"`
 }
 
-// CatalogSpecResponse represents the spec response for catalog (hardcoded spec from JSON file)
+// CatalogSpecResponse represents the spec response for catalog
 type CatalogSpecResponse struct {
 	Spec interface{} `json:"spec" swaggertype:"object"`
 }
