@@ -51,10 +51,11 @@ type Error500Response struct {
 }
 
 type SpecResponse struct {
-	Version string      `json:"version,omitempty" example:"0.2.3"`
-	Type    string      `json:"type,omitempty" example:"postgres"`
+	Version string      `json:"version" example:"0.2.7"`
+	Type    string      `json:"type" example:"postgres"`
 	Spec    interface{} `json:"spec" orm:"type(jsonb)" swaggertype:"object"`
 }
+
 
 type SpecOutput struct {
 	Spec map[string]interface{} `json:"spec"`
@@ -262,4 +263,9 @@ type TableProperties struct {
 // TerminalSessionResponse represents the response from terminal execute
 type TerminalSessionResponse struct {
 	SessionID string `json:"sessionId"`
+}
+
+// CatalogSpecResponse represents the spec response for catalog (hardcoded spec from JSON file)
+type CatalogSpecResponse struct {
+	Spec interface{} `json:"spec" swaggertype:"object"`
 }

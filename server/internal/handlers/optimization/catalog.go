@@ -161,7 +161,7 @@ func (h *Handler) GetCatalogSpec(c *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(c, "catalog spec fetched successfully", dto.SpecResponse{
+	utils.SuccessResponse(c, "catalog spec fetched successfully", dto.CatalogSpecResponse{
 		Spec: spec,
 	})
 }
