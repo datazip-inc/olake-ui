@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
@@ -157,14 +156,12 @@ func (h *Handler) GetCatalogSpec(c *gin.Context) {
 	}
 
 	var spec map[string]interface{}
-	if err := json.Unmarshal(data, &spec); err != nil {
+	if err := json.Unmarshal(data, &pspec); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "invalid catalog spec JSON", err)
 		return
 	}
 
 	utils.SuccessResponse(c, "catalog spec fetched successfully", dto.SpecResponse{
-		Version: constants.CatalogSpecVersion,
-		Type:    constants.CatalogSpecType,
 		Spec:    spec,
 	})
 }
