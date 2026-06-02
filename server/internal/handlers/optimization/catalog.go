@@ -12,7 +12,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
-const icebergCatalogSpecFile = "internal/handlers/optimization/specs/spec.json"
+const catalogSpecFilePath = "internal/models/specs/catalog-specs.json"
 
 const badRequestStatusCode = http.StatusBadRequest
 
@@ -156,7 +156,7 @@ func (h *Handler) GetCatalogSpec(c *gin.Context) {
 	}
 
 	var spec map[string]interface{}
-	if err := json.Unmarshal(data, &pspec); err != nil {
+	if err := json.Unmarshal(data, &spec); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "invalid catalog spec JSON", err)
 		return
 	}
