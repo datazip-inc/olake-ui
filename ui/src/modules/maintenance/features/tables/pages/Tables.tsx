@@ -30,6 +30,8 @@ import type { Table, ToggleTableOptimizingRequest } from "../types"
 import type { TableActions } from "../utils"
 import { getCancelRunID, getTableColumns } from "../utils"
 
+const EMPTY_TABLES: Table[] = []
+
 const tableSearchFn = (row: Table, term: string): boolean =>
 	row.name.toLowerCase().includes(term)
 
@@ -94,7 +96,7 @@ const Tables: React.FC = () => {
 		databaseOptions.includes(selectedDatabase)
 
 	const {
-		data: tables = [],
+		data: tables = EMPTY_TABLES,
 		isFetching: isTablesFetching,
 		isError: isTablesError,
 		refetch: refetchTables,
@@ -124,6 +126,7 @@ const Tables: React.FC = () => {
 
 	const handleBulkConfigure = () => {
 		if (selectedTables.length < 2) {
+			message.destroy()
 			message.info("Please select more than 1 table to bulk configure.")
 			return
 		}
