@@ -51,8 +51,11 @@ type Error500Response struct {
 }
 
 type SpecResponse struct {
+	Version string      `json:"version,omitempty" example:"0.2.3"`
+	Type    string      `json:"type,omitempty" example:"postgres"`
 	Spec    interface{} `json:"spec" orm:"type(jsonb)" swaggertype:"object"`
 }
+
 type SpecOutput struct {
 	Spec map[string]interface{} `json:"spec"`
 }

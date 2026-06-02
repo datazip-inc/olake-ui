@@ -149,7 +149,7 @@ func (h *Handler) requiredCatalog(c *gin.Context) (string, bool) {
 }
 
 func (h *Handler) GetCatalogSpec(c *gin.Context) {
-	data, err := os.ReadFile(icebergCatalogSpecFile)
+	data, err := os.ReadFile(catalogSpecFilePath)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to read catalog spec", err)
 		return
@@ -162,6 +162,6 @@ func (h *Handler) GetCatalogSpec(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, "catalog spec fetched successfully", dto.SpecResponse{
-		Spec:    spec,
+		Spec: spec,
 	})
 }
