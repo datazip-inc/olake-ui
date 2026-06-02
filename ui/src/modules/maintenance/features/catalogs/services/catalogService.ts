@@ -116,8 +116,9 @@ export const catalogService = {
 
 	getCatalogVersions: async () => {
 		const response = await api.get<{ version: string[] }>(
-			`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/versions/?type=${DESTINATION_TYPE}`,
+			`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/versions`,
 			{
+				params: { type: DESTINATION_TYPE },
 				timeout: 0,
 			},
 		)

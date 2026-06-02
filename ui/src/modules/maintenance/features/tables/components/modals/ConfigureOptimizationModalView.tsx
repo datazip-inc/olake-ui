@@ -1,4 +1,4 @@
-import { CaretUpIcon, QuestionIcon, TableIcon } from "@phosphor-icons/react"
+import { CaretUpIcon, QuestionIcon } from "@phosphor-icons/react"
 import { Button, Input, Modal, Select, Spin, Tooltip } from "antd"
 import clsx from "clsx"
 import { useEffect, useState } from "react"
@@ -13,21 +13,30 @@ import {
 	RUN_TYPE_LABEL,
 } from "../../constants"
 import { DEFAULT_TABLE_MODAL_STYLES } from "../../constants"
-import { useTableDetails, useUpdateTableCronConfig } from "../../hooks"
 import type {
 	CronConfigOption,
 	ScheduleSectionProps,
+	TableCronFormModel,
 	UpdateTableCronApiRequest,
 } from "../../types"
 import { getCronFromConfig, getEarliestNextRun, getNextRuns } from "../../utils"
 
-type ConfigureOptimizationModalProps = {
+export type SaveCallbacks = {
+	onSuccess: () => void
+	onError: (logs: string[]) => void
+}
+
+export type ConfigureOptimizationModalViewProps = {
 	open: boolean
 	onClose: () => void
-	catalog: string
-	database: string
-	tableName: string
-	tableSize: string
+	title?: string
+	headerChip?: React.ReactNode
+	isConfigLoading?: boolean
+	isConfigError?: boolean
+	onRetryConfig?: () => void
+	initialConfig?: TableCronFormModel
+	onSave: (payload: UpdateTableCronApiRequest, callbacks: SaveCallbacks) => void
+	isSaving: boolean
 }
 
 const ScheduleSection: React.FC<ScheduleSectionProps> = ({
@@ -120,15 +129,20 @@ enum ActiveOptimizationModalState {
 	ERROR_LOGS = "error-logs",
 }
 
-const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
+const ConfigureOptimizationModalView: React.FC<
+	ConfigureOptimizationModalViewProps
+> = ({
 	open,
 	onClose,
-	catalog,
-	database,
-	tableName,
-	tableSize,
+	title = "Configure Optimization",
+	headerChip,
+	isConfigLoading = false,
+	isConfigError = false,
+	onRetryConfig,
+	initialConfig,
+	onSave,
+	isSaving,
 }) => {
-	const isTableIdentified = !!catalog && !!database && !!tableName
 	const [minorCron, setMinorCron] =
 		useState<CronConfigOption>(DEFAULT_CRON_CONFIG)
 	const [majorCron, setMajorCron] =
@@ -140,51 +154,45 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 	const [activeModal, setActiveModal] =
 		useState<ActiveOptimizationModalState | null>(null)
 	const [errorLogs, setErrorLogs] = useState<string[]>([])
-	const {
-		data: tableCronConfig,
-		isLoading: isConfigLoading,
-		isError: isConfigError,
-		refetch: refetchConfig,
-	} = useTableDetails(catalog, database, tableName, open)
-	const { mutate: updateTableCronConfig, isPending: isSaveLoading } =
-		useUpdateTableCronConfig(catalog, database, tableName)
 
+	// Populate form when config loads.
 	useEffect(() => {
-		if (!tableCronConfig || !open) return
-
-		const config = tableCronConfig
-		setMinorCron(config.minorCron)
-		setMajorCron(config.majorCron)
-		setFullCron(config.fullCron)
-		if (config.targetFileSize !== undefined && config.targetFileSize > 0) {
-			setTargetFileSize(config.targetFileSize)
+		if (!initialConfig || !open) return
+		setMinorCron(initialConfig.minorCron)
+		setMajorCron(initialConfig.majorCron)
+		setFullCron(initialConfig.fullCron)
+		if (initialConfig.targetFileSize) {
+			setTargetFileSize(initialConfig.targetFileSize)
 		}
-	}, [tableCronConfig, open])
+	}, [initialConfig, open])
 
+	// Reset all form and sub-modal state on close.
 	useEffect(() => {
 		if (!open) {
 			setActiveModal(null)
+			setMinorCron(DEFAULT_CRON_CONFIG)
+			setMajorCron(DEFAULT_CRON_CONFIG)
+			setFullCron(DEFAULT_CRON_CONFIG)
+			setTargetFileSize(DEFAULT_TARGET_FILE_SIZE)
+			setAdvancedOpen(true)
+			setErrorLogs([])
 		}
 	}, [open])
 
 	const handleSave = () => {
-		if (!catalog || !database || !tableName) return
-
 		const payload: UpdateTableCronApiRequest = {
 			minor_cron: getCronFromConfig(minorCron),
 			major_cron: getCronFromConfig(majorCron),
 			full_cron: getCronFromConfig(fullCron),
 			target_file_size: targetFileSize,
+			enabled_for_optimization: "true",
 		}
 
-		updateTableCronConfig(payload, {
-			onSuccess: result => {
-				if (!result.success) {
-					setErrorLogs(result.logs ?? [])
-					setActiveModal(ActiveOptimizationModalState.ERROR_LOGS)
-				} else {
-					setActiveModal(ActiveOptimizationModalState.SUCCESS)
-				}
+		onSave(payload, {
+			onSuccess: () => setActiveModal(ActiveOptimizationModalState.SUCCESS),
+			onError: logs => {
+				setErrorLogs(logs)
+				setActiveModal(ActiveOptimizationModalState.ERROR_LOGS)
 			},
 		})
 	}
@@ -213,24 +221,9 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 					{/* Header */}
 					<div className="px-8 pt-10">
 						<h2 className="text-xl font-medium leading-7 text-olake-text">
-							Configure Optimization
+							{title}
 						</h2>
-
-						{/* Table chip */}
-						<div className="mt-4 flex h-7 items-center justify-between rounded-[4px] bg-olake-surface-muted pl-3 pr-3">
-							<div className="flex items-center gap-2">
-								<TableIcon
-									size={16}
-									className="text-olake-text"
-								/>
-								<span className="text-sm leading-[22px] text-olake-text">
-									{tableName}
-								</span>
-							</div>
-							<span className="text-sm leading-[22px] text-olake-text">
-								{tableSize}
-							</span>
-						</div>
+						{headerChip}
 					</div>
 
 					{/* Scrollable content */}
@@ -246,7 +239,7 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 								<Button
 									type="primary"
 									className="mt-3"
-									onClick={() => void refetchConfig()}
+									onClick={onRetryConfig}
 								>
 									Retry
 								</Button>
@@ -339,19 +332,16 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 						<Button
 							type="primary"
 							onClick={handleSave}
-							loading={isSaveLoading}
+							loading={isSaving}
 							disabled={
-								!isTableIdentified ||
-								isConfigLoading ||
-								isConfigError ||
-								!isTargetFileSizeValid
+								isConfigLoading || isConfigError || !isTargetFileSizeValid
 							}
 						>
 							Save
 						</Button>
 						<Button
 							onClick={handleClose}
-							disabled={isSaveLoading}
+							disabled={isSaving}
 						>
 							Cancel
 						</Button>
@@ -380,4 +370,4 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 	)
 }
 
-export default ConfigureOptimizationModal
+export default ConfigureOptimizationModalView

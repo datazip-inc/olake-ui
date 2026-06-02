@@ -99,6 +99,17 @@ export interface UpdateTableCronApiRequest {
 	target_file_size?: number
 }
 
+export interface BulkUpdateTableCronApiRequest {
+	tables: string[]
+	sql_input: UpdateTableCronApiRequest
+}
+
+export interface BulkUpdateTableConfigApiResponse {
+	success: boolean
+	message: string
+	logs?: string[]
+}
+
 // Frontend Domain Types
 export type FilterKey = "all" | "olake" | "external"
 
