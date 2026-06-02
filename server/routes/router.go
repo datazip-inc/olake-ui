@@ -85,8 +85,9 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 		opt := api.Group("/opt/v1")
 
 		// catalogs: crud
-		opt.POST("/catalog", optHandler.CreateCatalog)
 		opt.POST("/catalog/spec", optHandler.GetCatalogSpec)
+		opt.POST("/catalog/test", optHandler.TestCatalogConnection)
+		opt.POST("/catalog", optHandler.CreateCatalog)
 		opt.GET("/catalog/:catalog", optHandler.GetCatalog)
 		opt.PUT("/catalog/:catalog", optHandler.UpdateCatalog)
 		opt.DELETE("/catalog/:catalog", optHandler.DeleteCatalog)

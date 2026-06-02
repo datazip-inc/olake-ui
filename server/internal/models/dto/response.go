@@ -82,6 +82,12 @@ type TestConnectionResponse struct {
 	Logs             []map[string]interface{} `json:"logs" swaggertype:"array,object"`
 }
 
+// CatalogConnectionTestResult
+type CatalogConnectionTestResult struct {
+	Connected bool     `json:"connection_result"`
+	Message   string   `json:"message"`
+}
+
 type StreamDifferenceResponse struct {
 	DifferenceStreams map[string]interface{} `json:"difference_streams" swaggertype:"object"`
 }

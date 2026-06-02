@@ -28,6 +28,9 @@ x-envs:
 services:
   olake-ui:
     image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     pull_policy: always
     container_name: olake-ui
     environment:
@@ -41,7 +44,7 @@ services:
       HTTP_IDLE_TIMEOUT: 600s
       USERNAME: *defaultUsername
       PASSWORD: *defaultPassword
-      OPTIMIZATION_BASE_URL: http://fusion.olake.internal:1630
+      OPTIMIZATION_BASE_URL: http://host.docker.internal:1630
       OPTIMIZATION_GROUP: spark-container
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
@@ -264,7 +267,7 @@ services:
       JVM_XMX: "2048"
       KUBECONFIG: /root/.kube/config
       LOG_DIR: /mnt/amoro-logs/compaction
-    volumes:
+    volumes:  
       - fusion-config:/fusion-config:ro
       - kind-kubeconfig:/root/.kube:ro
       - spark-home:/opt/spark:ro

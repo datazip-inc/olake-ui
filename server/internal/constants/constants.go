@@ -94,6 +94,7 @@ var (
 	ConfOptimizationGroup    = "OPTIMIZATION_GROUP"
 	// api paths
 	OptPathCatalogs                 = "/api/ams/v1/catalogs"
+	OptPathCatalogTest              = "/api/ams/v1/catalogs/test"
 	OptPathCatalogDetail            = "/api/ams/v1/catalogs/%s"
 	OptPathCatalogTables            = "/api/ams/v1/catalogs/%s/databases/%s/tables"
 	OptPathTableDetails             = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/details"
