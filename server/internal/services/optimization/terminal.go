@@ -46,28 +46,9 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database, table st
 	if err := s.DoInto(ctx, http.MethodPost, path, url.Values{}, requestBody, &sessionResult); err != nil {
 		return nil, fmt.Errorf("failed to execute ALTER TABLE for %s.%s.%s: %w", catalog, database, table, err)
 	}
-	// poll for execution completion
-	logInfo, err := s.pollForCompletion(ctx, sessionResult.SessionID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to poll for completion: %w", err)
-	}
-
 	// TODO: Fusion may return "Finished" even if the query fails (e.g., syntax error).
 	// Solution: validate execution status by checking logs for "Finished" vs "Failed".
-	success := logInfo.LogStatus == "Finished"
-	var message string
-	if success {
-		message = fmt.Sprintf("optimization sql command completed successfully with session ID: %s", sessionResult.SessionID)
-	} else {
-		message = fmt.Sprintf("optimization sql command failed with session ID: %s", sessionResult.SessionID)
-	}
-
-	return &dto.TableProperties{
-		SessionID: sessionResult.SessionID,
-		Success:   success,
-		Message:   message,
-		Logs:      logInfo.Logs,
-	}, nil
+	return s.pollAndBuild(ctx, sessionResult.SessionID, catalog, database)
 }
 
 func createAlterQuery(database, table string, properties map[string]string) string {
@@ -103,30 +84,35 @@ func (s *Service) BulkSetProperties(ctx context.Context, catalog, database strin
 		return nil, fmt.Errorf("failed to execute bulk ALTER TABLE for catalog %s, database %s: %w", catalog, database, err)
 	}
 
-	logInfo, err := s.pollForCompletion(ctx, sessionResult.SessionID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to poll for completion for selected %d table(s): %w", len(tables), err)
-	}
+	return s.pollAndBuild(ctx, sessionResult.SessionID, catalog, database)
+}
 
+//  polls for SQL execution completion and constructs a TableProperties response.
+func (s *Service) pollAndBuild(ctx context.Context, sessionID, catalog, database string) (*dto.TableProperties, error) {
+	logInfo, err := s.pollForCompletion(ctx, sessionID)
+	
+	if err != nil {
+		return nil, fmt.Errorf("failed to poll for completion: %w", err)
+	}
 	success := logInfo.LogStatus == "Finished"
 	var message string
 	if success {
 		message = fmt.Sprintf(
-			"bulk optimization sql command completed successfully for %d table(s), session ID: %s",
-			len(tables),
-			sessionResult.SessionID,
+			"optimization sql command completed successfully for catalog %s, database %s, session ID: %s",
+			catalog,
+			database,
+			sessionID,
 		)
 	} else {
 		message = fmt.Sprintf(
-			"bulk optimization sql command failed for catalog %s, database %s, session ID: %s",
+			"optimization sql command failed for catalog %s, database %s, session ID: %s",
 			catalog,
 			database,
-			sessionResult.SessionID,
+			sessionID,
 		)
 	}
-
 	return &dto.TableProperties{
-		SessionID: sessionResult.SessionID,
+		SessionID: sessionID,
 		Success:   success,
 		Message:   message,
 		Logs:      logInfo.Logs,
