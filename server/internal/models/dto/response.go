@@ -84,8 +84,8 @@ type TestConnectionResponse struct {
 
 // CatalogConnectionTestResult
 type CatalogConnectionTestResult struct {
-	Connected bool     `json:"connected"`
-	Message   string   `json:"message"`
+	Connected bool   `json:"connected"`
+	Message   string `json:"message"`
 }
 
 type StreamDifferenceResponse struct {

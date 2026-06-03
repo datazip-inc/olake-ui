@@ -46,7 +46,7 @@ func (s *Service) TestCatalogConnection(ctx context.Context, configJSON string, 
 	if err := validateCatalog(req); err != nil {
 		return nil, fmt.Errorf("failed to validate catalog config during catalog test connection: %s", err)
 	}
-	
+
 	var result dto.CatalogConnectionTestResult
 	if err := s.DoInto(ctx, http.MethodPost, constants.OptPathCatalogTest, url.Values{}, req, &result); err != nil {
 		return nil, fmt.Errorf("failed to test catalog connection for %s: %w", req.Name, err)
