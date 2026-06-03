@@ -36,7 +36,7 @@ func (s *Service) getCatalogInOpt(ctx context.Context, catalogName string) (*dto
 	return &result, nil
 }
 
-func (s *Service) TestCatalogConnection(ctx context.Context, configJSON string, updateQuery string) (*dto.CatalogConnectionTestResult, error) {
+func (s *Service) TestCatalogConnection(ctx context.Context, configJSON, updateQuery string) (*dto.CatalogConnectionTestResult, error) {
 	isUpdate := updateQuery == "true"
 	req, err := s.createOptConfig(configJSON, isUpdate)
 	if err != nil {
