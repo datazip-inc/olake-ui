@@ -56,7 +56,6 @@ type SpecResponse struct {
 	Spec    interface{} `json:"spec" orm:"type(jsonb)" swaggertype:"object"`
 }
 
-
 type SpecOutput struct {
 	Spec map[string]interface{} `json:"spec"`
 }
@@ -263,9 +262,4 @@ type TableProperties struct {
 // TerminalSessionResponse represents the response from terminal execute
 type TerminalSessionResponse struct {
 	SessionID string `json:"sessionId"`
-}
-
-// CatalogSpecResponse represents the spec response for catalog
-type CatalogSpecResponse struct {
-	Spec interface{} `json:"spec" swaggertype:"object"`
 }

@@ -10,9 +10,9 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 )
 
-const catalogSpecFilePath = "internal/models/specs/catalog-specs.json"
 
 const badRequestStatusCode = http.StatusBadRequest
 
@@ -49,10 +49,8 @@ func (h *Handler) TestCatalogConnection(c *gin.Context) {
 		return
 	}
 
-	// checks if there is any changes in the config 
-	isUpdate := c.Query("update") == "true"
-
-	result, err := h.opt.TestCatalogConnection(c.Request.Context(), configJSON, isUpdate)
+	// checks if there is any changes in the config
+	result, err := h.opt.TestCatalogConnection(c.Request.Context(), configJSON)
 	if err != nil {
 		utils.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
 		return
@@ -149,7 +147,7 @@ func (h *Handler) requiredCatalog(c *gin.Context) (string, bool) {
 }
 
 func (h *Handler) GetCatalogSpec(c *gin.Context) {
-	data, err := os.ReadFile(catalogSpecFilePath)
+	data, err := os.ReadFile(constants.CatalogSpecFilePath)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to read catalog spec", err)
 		return
@@ -161,7 +159,9 @@ func (h *Handler) GetCatalogSpec(c *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(c, "catalog spec fetched successfully", dto.CatalogSpecResponse{
-		Spec: spec,
+	utils.SuccessResponse(c, "catalog spec fetched successfully", dto.SpecResponse{
+		Version: constants.CatalogSpecVersion,
+		Type:    constants.CatalogTypeIceberg,
+		Spec:    spec,
 	})
 }

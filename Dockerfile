@@ -60,8 +60,8 @@ COPY --from=go-builder /app/olake-server ./olake-server
 COPY server/conf/app.yaml ./config/app.yaml
 COPY --from=node-builder /app/ui/dist /opt/frontend/dist
 
-# Copy catalog specs folder for GetCatalogSpec API
-COPY server/internal/models/specs/ ./internal/models/specs/
+# Copy catalog spec file for GetCatalogSpec API
+COPY resources/spec.json ./resources/spec.json
 
 # Expose the Go backend port (which serves both API and frontend)
 EXPOSE 8000

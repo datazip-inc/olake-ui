@@ -92,6 +92,9 @@ var (
 	ConfOptimizationUsername = "USERNAME"
 	ConfOptimizationPassword = "PASSWORD"
 	ConfOptimizationGroup    = "OPTIMIZATION_GROUP"
+	CatalogSpecFilePath      = "resources/spec.json"
+	CatalogSpecVersion       = "v0.2.7"
+	CatalogType              = "iceberg"
 	// api paths
 	OptPathCatalogs                 = "/api/ams/v1/catalogs"
 	OptPathCatalogTest              = "/api/ams/v1/catalogs/test"
