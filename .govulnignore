@@ -1,0 +1,6 @@
+# TODO: Remove all entries below once Go 1.25.11 is available in https://storage.googleapis.com/golang/go1.25.11.linux-amd64.tar.gz
+#
+# GO-2026-5037: Inefficient candidate hostname parsing in crypto/x509
+GO-2026-5037
+# GO-2026-5039: Arbitrary inputs are included in errors without any escaping in net/textproto
+GO-2026-5039

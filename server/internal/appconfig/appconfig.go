@@ -29,6 +29,11 @@ type Config struct {
 	LogsDir               string
 	SessionOn             bool
 	TemporalAddress       string
+	TemporalNamespace     string
+	TemporalEnableTLS     bool
+	TemporalAPIKey        string
+	TemporalExternal      bool
+	TemporalTaskQueue     string
 	ContainerRegistryBase string
 	EnableOptimization    bool
 	OptimizationGroup     string
@@ -75,6 +80,11 @@ func loadConfig() Config {
 		ContainerRegistryBase: strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_BASE")),
 		LogsDir:               strings.TrimSpace(v.GetString("LOGS_DIR")),
 		TemporalAddress:       strings.TrimSpace(v.GetString("TEMPORAL_ADDRESS")),
+		TemporalNamespace:     strings.TrimSpace(v.GetString("TEMPORAL_NAMESPACE")),
+		TemporalEnableTLS:     v.GetBool("TEMPORAL_ENABLE_TLS"),
+		TemporalAPIKey:        strings.TrimSpace(v.GetString("TEMPORAL_API_KEY")),
+		TemporalExternal:      v.GetBool("TEMPORAL_EXTERNAL"),
+		TemporalTaskQueue:     strings.TrimSpace(v.GetString("TEMPORAL_TASK_QUEUE")),
 		MaxMemory:             v.GetInt64("MAX_MEMORY"),
 		MaxUploadSize:         v.GetInt64("MAX_UPLOAD_SIZE"),
 		SessionOn:             v.GetBool("SESSION_ON"),
