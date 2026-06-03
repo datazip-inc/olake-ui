@@ -94,7 +94,7 @@ var (
 	ConfOptimizationGroup    = "OPTIMIZATION_GROUP"
 	CatalogSpecFilePath      = "resources/spec.json"
 	CatalogSpecVersion       = "v0.2.7"
-	CatalogType              = "iceberg"
+	CatalogTypeIceberg       = "iceberg"
 	// api paths
 	OptPathCatalogs                 = "/api/ams/v1/catalogs"
 	OptPathCatalogTest              = "/api/ams/v1/catalogs/test"
