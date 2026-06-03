@@ -50,7 +50,7 @@ func (h *Handler) TestCatalogConnection(c *gin.Context) {
 	}
 
 	// checks if there is any changes in the config
-	result, err := h.opt.TestCatalogConnection(c.Request.Context(), configJSON)
+	result, err := h.opt.TestCatalogConnection(c.Request.Context(), configJSON, c.Query("update"))
 	if err != nil {
 		utils.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
 		return

@@ -36,8 +36,8 @@ func (s *Service) getCatalogInOpt(ctx context.Context, catalogName string) (*dto
 	return &result, nil
 }
 
-func (s *Service) TestCatalogConnection(ctx context.Context, configJSON string) (*dto.CatalogConnectionTestResult, error) {
-	isUpdate := c.Query("update") == "true"
+func (s *Service) TestCatalogConnection(ctx context.Context, configJSON string, updateQuery string) (*dto.CatalogConnectionTestResult, error) {
+	isUpdate := updateQuery == "true"
 	req, err := s.createOptConfig(configJSON, isUpdate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create optimization config during catalog test connection: %s", err)
