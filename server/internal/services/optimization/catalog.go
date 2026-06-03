@@ -65,10 +65,6 @@ func (s *Service) CreateCatalog(ctx context.Context, configJSON string) (string,
 		return "", fmt.Errorf("failed to validate catalog config during catalog creation: %s", err)
 	}
 
-	// set default catalog properties
-	// createOptConfig calls setDefaultCatalogProperties internally then why we need it here
-	setDefaultCatalogProperties(req)
-
 	path := constants.OptPathCatalogs
 	if err := s.DoExec(ctx, http.MethodPost, path, url.Values{}, req); err != nil {
 		return "", fmt.Errorf("failed to create catalog %s: %w", req.Name, err)
