@@ -94,6 +94,7 @@ var (
 	ConfOptimizationGroup    = "OPTIMIZATION_GROUP"
 	// api paths
 	OptPathCatalogs                 = "/api/ams/v1/catalogs"
+	OptPathCatalogTest              = "/api/ams/v1/catalogs/test"
 	OptPathCatalogDetail            = "/api/ams/v1/catalogs/%s"
 	OptPathCatalogTables            = "/api/ams/v1/catalogs/%s/databases/%s/tables"
 	OptPathTableDetails             = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/details"
@@ -118,6 +119,9 @@ var (
 	// hard-coding to S3 now, as the other options are "hadoop" & "OSS" for optimization
 	// GCS & ADLS are supported, given the catalog manages the sdk (eg, Lakekeeper with GCS flavour)
 	DefaultOptimizationStorageType = "S3"
+	CatalogSpecVersion             = "v0.2.7"
+	CatalogSpecType                = "iceberg"
+	IcebergCatalogSpecFile         = "resources/spec.json"
 
 	ContextUserIDKey = "user_id"
 	ProjectIDParam   = "projectid"

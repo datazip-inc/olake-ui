@@ -36,6 +36,25 @@ func (s *Service) getCatalogInOpt(ctx context.Context, catalogName string) (*dto
 	return &result, nil
 }
 
+func (s *Service) TestCatalogConnection(ctx context.Context, configJSON string, update string) (*dto.CatalogConnectionTestResult, error) {
+	isUpdate := update == "true"
+	req, err := s.createOptConfig(configJSON, isUpdate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create optimization config during catalog test connection: %s", err)
+	}
+
+	if err := validateCatalog(req); err != nil {
+		return nil, fmt.Errorf("failed to validate catalog config during catalog test connection: %s", err)
+	}
+	
+	var result dto.CatalogConnectionTestResult
+	if err := s.DoInto(ctx, http.MethodPost, constants.OptPathCatalogTest, url.Values{}, req, &result); err != nil {
+		return nil, fmt.Errorf("failed to test catalog connection for %s: %w", req.Name, err)
+	}
+
+	return &result, nil
+}
+
 func (s *Service) CreateCatalog(ctx context.Context, configJSON string) (string, error) {
 	req, err := s.createOptConfig(configJSON, false)
 	if err != nil {
@@ -47,6 +66,7 @@ func (s *Service) CreateCatalog(ctx context.Context, configJSON string) (string,
 	}
 
 	// set default catalog properties
+	// createOptConfig calls setDefaultCatalogProperties internally then why we need it here
 	setDefaultCatalogProperties(req)
 
 	path := constants.OptPathCatalogs
