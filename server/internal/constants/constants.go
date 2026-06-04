@@ -119,9 +119,9 @@ var (
 	// hard-coding to S3 now, as the other options are "hadoop" & "OSS" for optimization
 	// GCS & ADLS are supported, given the catalog manages the sdk (eg, Lakekeeper with GCS flavour)
 	DefaultOptimizationStorageType = "S3"
-	CatalogSpecVersion             = "v0.2.7"
+	CatalogSpecVersion             = "v0.7.2"
 	CatalogSpecType                = "iceberg"
-	IcebergCatalogSpecFile         = "resources/spec.json"
+	IcebergCatalogSpecFile         = "server/internal/handlers/optimization/resources/spec.json"
 
 	ContextUserIDKey = "user_id"
 	ProjectIDParam   = "projectid"

@@ -58,7 +58,7 @@ RUN mkdir -p conf config /opt/frontend/dist
 # Copy built artifacts from builder stages
 COPY --from=go-builder /app/olake-server ./olake-server
 COPY server/conf/app.yaml ./config/app.yaml
-# COPY resources/spec.json ./resources/spec.json
+COPY server/internal/handlers/optimization/resources/spec.json ./server/internal/handlers/optimization/resources/spec.json
 COPY --from=node-builder /app/ui/dist /opt/frontend/dist
 
 # Expose the Go backend port (which serves both API and frontend)

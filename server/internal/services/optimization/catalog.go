@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -175,4 +176,22 @@ func validateCatalog(req *dto.CatalogRequest) error {
 	}
 
 	return nil
+}
+
+func (s *Service) GetCatalogSpec() (*dto.SpecResponse, error) {
+	data, err := os.ReadFile(constants.IcebergCatalogSpecFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read catalog spec: %w", err)
+	}
+
+	var spec map[string]any
+	if err := json.Unmarshal(data, &spec); err != nil {
+		return nil, fmt.Errorf("invalid catalog spec JSON: %w", err)
+	}
+    specRes := &dto.SpecResponse{
+		Type:    constants.CatalogSpecType,
+		Version: constants.CatalogSpecVersion,
+		Spec:    spec,
+	}
+	return specRes, nil
 }
