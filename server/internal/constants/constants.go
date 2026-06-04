@@ -121,7 +121,7 @@ var (
 	DefaultOptimizationStorageType = "S3"
 	CatalogSpecVersion             = "v0.7.2"
 	CatalogSpecType                = "iceberg"
-	IcebergCatalogSpecFile         = "server/internal/handlers/optimization/resources/spec.json"
+	IcebergCatalogSpecFile         = "server/internal/services/optimization/resources/spec.json"
 
 	ContextUserIDKey = "user_id"
 	ProjectIDParam   = "projectid"
