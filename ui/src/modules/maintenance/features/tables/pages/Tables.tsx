@@ -1,5 +1,6 @@
 import { useIsFetching } from "@tanstack/react-query"
-import { useMemo, useState } from "react"
+import { Button, message } from "antd"
+import { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import { DataTable, PageErrorState } from "@/common/components"
@@ -10,7 +11,8 @@ import { useCatalogs } from "@/modules/maintenance/features/catalogs/hooks"
 
 import {
 	CatalogNotAvailableModal,
-	ConfigureOptimizationModal,
+	ConfigureOptimizationModalBulk,
+	ConfigureOptimizationModalSingle,
 	DatabaseNotAvailableModal,
 	TableEmptyState,
 	TableFilterBar,
@@ -27,6 +29,8 @@ import {
 import type { Table, ToggleTableOptimizingRequest } from "../types"
 import type { TableActions } from "../utils"
 import { getCancelRunID, getTableColumns } from "../utils"
+
+const EMPTY_TABLES: Table[] = []
 
 const tableSearchFn = (row: Table, term: string): boolean =>
 	row.name.toLowerCase().includes(term)
@@ -55,6 +59,8 @@ const Tables: React.FC = () => {
 	)
 	const [lastToggleRequest, setLastToggleRequest] =
 		useState<ToggleTableOptimizingRequest | null>(null)
+	const [selectedTables, setSelectedTables] = useState<string[]>([])
+	const [bulkModalOpen, setBulkModalOpen] = useState(false)
 
 	const {
 		data: catalogs = [],
@@ -90,7 +96,7 @@ const Tables: React.FC = () => {
 		databaseOptions.includes(selectedDatabase)
 
 	const {
-		data: tables = [],
+		data: tables = EMPTY_TABLES,
 		isFetching: isTablesFetching,
 		isError: isTablesError,
 		refetch: refetchTables,
@@ -103,6 +109,7 @@ const Tables: React.FC = () => {
 		setActiveFilter,
 		currentPage,
 		setCurrentPage,
+		filteredRows,
 		paginatedRows,
 		totalPages,
 	} = usePaginatedSearch<Table, "all" | "olake" | "external">({
@@ -112,6 +119,19 @@ const Tables: React.FC = () => {
 		filterFn: tableFilterFn,
 		initialFilter: "all",
 	})
+
+	useEffect(() => {
+		setSelectedTables([])
+	}, [tables])
+
+	const handleBulkConfigure = () => {
+		if (selectedTables.length < 2) {
+			message.destroy()
+			message.info("Please select more than 1 table to bulk configure.")
+			return
+		}
+		setBulkModalOpen(true)
+	}
 
 	const {
 		mutate: toggleTableOptimizing,
@@ -266,16 +286,32 @@ const Tables: React.FC = () => {
 								/>
 							) : (
 								<div className="flex flex-col gap-6">
-									<TableFilterBar
-										searchTerm={searchTerm}
-										onSearchChange={setSearchTerm}
-										activeFilter={activeFilter}
-										onFilterChange={setActiveFilter}
-									/>
+									<div className="grid w-full grid-cols-[1fr_auto] items-center gap-4">
+										<div className="min-w-0 overflow-x-auto">
+											<TableFilterBar
+												searchTerm={searchTerm}
+												onSearchChange={setSearchTerm}
+												activeFilter={activeFilter}
+												onFilterChange={setActiveFilter}
+											/>
+										</div>
+										<Button
+											type="primary"
+											size="middle"
+											className="shrink-0"
+											onClick={handleBulkConfigure}
+										>
+											Bulk Configure
+										</Button>
+									</div>
 									<DataTable
 										columns={columns}
 										rows={paginatedRows}
-										rowKey={row => row.id}
+										rowKey={row => row.name}
+										checkboxSelection
+										selectedRowKeys={selectedTables}
+										allSelectableRows={filteredRows}
+										onSelectionChange={setSelectedTables}
 										loading={loading}
 										emptyStateConfig={{
 											title:
@@ -300,7 +336,7 @@ const Tables: React.FC = () => {
 				)}
 			</div>
 
-			<ConfigureOptimizationModal
+			<ConfigureOptimizationModalSingle
 				open={configureModalOpen}
 				onClose={() => {
 					setConfigureModalOpen(false)
@@ -310,6 +346,16 @@ const Tables: React.FC = () => {
 				database={selectedDatabase ?? ""}
 				tableName={configureTable?.name ?? ""}
 				tableSize={configureTable?.totalSize ?? ""}
+			/>
+			<ConfigureOptimizationModalBulk
+				open={bulkModalOpen}
+				onClose={() => setBulkModalOpen(false)}
+				catalog={selectedCatalog ?? ""}
+				database={selectedDatabase ?? ""}
+				tables={selectedTables}
+				onRemoveTable={table =>
+					setSelectedTables(prev => prev.filter(tab => tab !== table))
+				}
 			/>
 			<TableMetricsModal
 				open={metricsModalOpen}

@@ -4,6 +4,8 @@ import { API_CONFIG } from "@/config"
 import { api } from "@/core/api"
 
 import type {
+	BulkUpdateTableConfigApiResponse,
+	BulkUpdateTableCronApiRequest,
 	GetProcessLogsApiResponse,
 	GetTableRunsApiResponse,
 	TableDetailsApiResponse,
@@ -77,6 +79,29 @@ export const tableService = {
 			{ showNotification: true },
 		)
 		return response.data
+	},
+
+	bulkUpdateTableConfig: async (
+		catalog: string,
+		database: string,
+		payload: BulkUpdateTableCronApiRequest,
+	): Promise<BulkUpdateTableConfigApiResponse> => {
+		try {
+			const response = await api.put<BulkUpdateTableConfigApiResponse>(
+				`${API_CONFIG.ENDPOINTS.OPT.TABLES(catalog, database)}/config`,
+				payload,
+				{ disableErrorNotification: true },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error bulk updating table config:", error)
+			const errorMessage =
+				error instanceof AxiosError
+					? (error.response?.data?.message ??
+						"Network error - please check your connection")
+					: "Unknown error occurred"
+			return { success: false, message: errorMessage }
+		}
 	},
 
 	updateTableConfig: async (

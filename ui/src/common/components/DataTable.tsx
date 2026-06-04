@@ -1,6 +1,7 @@
-import { Button } from "antd"
+import { Button, Checkbox } from "antd"
 import clsx from "clsx"
 import type React from "react"
+import { useMemo } from "react"
 
 export type ColumnAlignment = "left" | "center" | "right"
 
@@ -41,7 +42,7 @@ export type DataTableProps<TRow> = {
 	/** Number of skeleton rows to show while loading. Defaults to 6. */
 	loadingRowCount?: number
 
-	/**  empty State COnfiguration for table. Optional. */
+	/** Empty state configuration for table. Optional. */
 	emptyStateConfig?: EmptyStateConfig
 
 	/** Omit to disable pagination. */
@@ -51,6 +52,18 @@ export type DataTableProps<TRow> = {
 	pageSize?: number
 
 	className?: string
+
+	/** Enable checkbox column for row selection. */
+	checkboxSelection?: boolean
+
+	/** Controlled list of selected row keys. */
+	selectedRowKeys?: string[]
+
+	/** Rows the header "select all" checkbox operates on. Defaults to current page; pass all filtered rows for cross-page select-all. */
+	allSelectableRows?: TRow[]
+
+	/** Callback to sync the updated selection state to the parent. */
+	onSelectionChange?: (newSelectedKeys: string[]) => void
 }
 
 const EmptyState: React.FC<EmptyStateConfig> = ({
@@ -179,6 +192,10 @@ function DataTable<TRow>({
 	pagination,
 	pageSize = 6,
 	className,
+	checkboxSelection = false,
+	selectedRowKeys = [],
+	allSelectableRows,
+	onSelectionChange,
 }: DataTableProps<TRow>) {
 	const getAlignmentClass = (align: ColumnAlignment = "left") => {
 		switch (align) {
@@ -192,15 +209,40 @@ function DataTable<TRow>({
 		}
 	}
 
-	const gridTemplateColumns = columns
-		.map(col => {
-			// default to 1fr if width is invalid or not set
-			if (col.width === undefined) return "1fr"
-			if (col.width <= 0 || col.width > 100) return "1fr"
+	// Checkbox gets a fixed 4%; each data column uses its declared % or 1fr if unsized.
+	const gridTemplateColumns = useMemo(() => {
+		const colWidths = checkboxSelection ? ["4%"] : []
+		columns.forEach(col =>
+			colWidths.push(
+				col.width === undefined || col.width <= 0 || col.width > 100
+					? "1fr"
+					: `${col.width}%`,
+			),
+		)
+		return colWidths.join(" ")
+	}, [columns, checkboxSelection])
 
-			return `${col.width}%`
-		})
-		.join(" ")
+	const selectableRows = allSelectableRows ?? rows
+
+	const allRowsSelected =
+		checkboxSelection &&
+		selectableRows.length > 0 &&
+		selectableRows.every(row => selectedRowKeys.includes(rowKey(row)))
+
+	const handleToggleRow = (key: string, checked: boolean) => {
+		const next = checked
+			? [...selectedRowKeys, key]
+			: selectedRowKeys.filter(k => k !== key)
+		onSelectionChange?.(next)
+	}
+
+	const handleToggleAll = (checked: boolean) => {
+		const keys = selectableRows.map(rowKey)
+		const next = checked
+			? [...new Set([...selectedRowKeys, ...keys])]
+			: selectedRowKeys.filter(k => !keys.includes(k))
+		onSelectionChange?.(next)
+	}
 
 	const gridStyle: React.CSSProperties = { gridTemplateColumns }
 
@@ -221,6 +263,14 @@ function DataTable<TRow>({
 						className="grid h-12 items-center gap-4 bg-olake-surface-subtle px-6 text-xs font-medium leading-5 text-olake-text-secondary"
 						style={gridStyle}
 					>
+						{checkboxSelection && (
+							<div>
+								<Checkbox
+									checked={allRowsSelected}
+									onChange={e => handleToggleAll(e.target.checked)}
+								/>
+							</div>
+						)}
 						{columns.map(col => (
 							<div
 								key={`header-${col.key}`}
@@ -248,6 +298,16 @@ function DataTable<TRow>({
 								className="grid h-14 items-center gap-4 border-t border-olake-border px-6 text-sm leading-[22px] text-olake-text hover:bg-olake-surface-subtle/50"
 								style={gridStyle}
 							>
+								{checkboxSelection && (
+									<div>
+										<Checkbox
+											checked={selectedRowKeys.includes(rowKey(row))}
+											onChange={e =>
+												handleToggleRow(rowKey(row), e.target.checked)
+											}
+										/>
+									</div>
+								)}
 								{columns.map(col => (
 									<div
 										key={`cell-${col.key}`}

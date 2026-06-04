@@ -12,6 +12,7 @@ import {
 } from "../../constants"
 import { tableService } from "../../services"
 import type {
+	BulkUpdateTableCronApiRequest,
 	CancelRunRequest,
 	ToggleTableOptimizingRequest,
 	UpdateTableCronApiRequest,
@@ -65,6 +66,17 @@ export const useToggleTableOptimizing = () => {
 	})
 }
 
+export const useBulkUpdateTableCronConfig = (
+	catalog: string,
+	database: string,
+) => {
+	return useMutation({
+		mutationKey: tableKeys.list(catalog, database),
+		mutationFn: (payload: BulkUpdateTableCronApiRequest) =>
+			tableService.bulkUpdateTableConfig(catalog, database, payload),
+	})
+}
+
 /** Scoped to the specific table — only its cron/metrics/runs queries are invalidated on success. */
 export const useUpdateTableCronConfig = (
 	catalog: string,
@@ -72,7 +84,7 @@ export const useUpdateTableCronConfig = (
 	tableName: string,
 ) => {
 	return useMutation({
-		mutationKey: tableKeys.table(catalog, database, tableName),
+		mutationKey: tableKeys.list(catalog, database),
 		mutationFn: (payload: UpdateTableCronApiRequest) =>
 			tableService.updateTableConfig(catalog, database, tableName, payload),
 	})
