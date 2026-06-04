@@ -34,7 +34,7 @@
 		"@rjsf/validator-ajv8": "^5.24.12",
 		"@tanstack/react-query": "^5.90.21",
 		"antd": "^5.24.3",
-		"axios": "1.15.2",
+		"axios": "1.16.0",
 		"clsx": "^2.1.1",
 		"croner": "^10.0.1",
 		"date-fns": "^4.1.0",
