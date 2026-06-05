@@ -83,7 +83,7 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 	if h.Optimization != nil {
 		optHandler := h.Optimization
 		opt := api.Group("/opt/v1")
-		//catalogs
+		// catalogs
 		opt.GET("/catalog/resources/spec", optHandler.GetCatalogSpec)
 		opt.POST("/catalog/test", optHandler.TestCatalogConnection)
 		// catalogs: crud

@@ -161,23 +161,7 @@ func (s *Service) createOptConfig(configJSON string, update bool) (*dto.CatalogR
 
 	return optimizationReq, nil
 }
-
-// validates the necessary requirements for creating or updating a catalog
-func validateCatalog(req *dto.CatalogRequest) error {
-	if req.Name == "" {
-		return fmt.Errorf("catalog name is required")
-	}
-	if req.Type == "" {
-		return fmt.Errorf("catalog type is required")
-	}
-
-	if len(req.OptimizeTableFormatList) == 0 {
-		req.OptimizeTableFormatList = constants.OptimizeTableFormatList
-	}
-
-	return nil
-}
-
+// GetCatalogSpec returns the catalog specification
 func (s *Service) GetCatalogSpec() (*dto.SpecResponse, error) {
 	data, err := os.ReadFile(constants.IcebergCatalogSpecFile)
 	if err != nil {
@@ -195,3 +179,21 @@ func (s *Service) GetCatalogSpec() (*dto.SpecResponse, error) {
 	}
 	return specRes, nil
 }
+
+// validates the necessary requirements for creating or updating a catalog
+func validateCatalog(req *dto.CatalogRequest) error {
+	if req.Name == "" {
+		return fmt.Errorf("catalog name is required")
+	}
+	if req.Type == "" {
+		return fmt.Errorf("catalog type is required")
+	}
+
+	if len(req.OptimizeTableFormatList) == 0 {
+		req.OptimizeTableFormatList = constants.OptimizeTableFormatList
+	}
+
+	return nil
+}
+
+
