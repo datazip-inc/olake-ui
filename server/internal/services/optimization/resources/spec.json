@@ -38,7 +38,7 @@
                   },
                   "s3_path_style": {
                     "default": true,
-                    "description": "Specifies whether path-style access is used for S3",
+                    "description": "Specifies whether path-style access is used for S3; 'true' enables path-style addressing instead of the default virtual-hosted style",
                     "title": "Use Path Style for S3",
                     "type": "boolean"
                   },
@@ -61,23 +61,23 @@
                     "const": "hive"
                   },
                   "hive_clients": {
-                    "description": "Specifies the number of Hive clients",
+                    "description": "Specifies the number of Hive clients allocated to handle interactions with the Hive Metastore",
                     "title": "Hive Clients",
                     "type": "integer"
                   },
                   "hive_sasl_enabled": {
                     "default": false,
-                    "description": "Indicates if SASL authentication is enabled",
+                    "description": "Indicates if SASL authentication is enabled for the Hive connection; 'false' means SASL is disabled",
                     "title": "Enable SASL for Hive",
                     "type": "boolean"
                   },
                   "hive_uri": {
-                    "description": "Specifies the URI of the Hive Metastore service",
+                    "description": "Specifies the URI of the Hive Metastore service used for catalog interactions by the writer",
                     "title": "Hive URI",
                     "type": "string"
                   },
                   "s3_endpoint": {
-                    "description": "Specifies the endpoint URL for S3 compatible services",
+                    "description": "Specifies the endpoint URL for S3 compatible services (e.g., MinIO)",
                     "title": "S3 Endpoint",
                     "type": "string"
                   },
@@ -110,7 +110,7 @@
                   },
                   "no_identifier_fields": {
                     "default": false,
-                    "description": "To create iceberg table without identifier fields",
+                    "description": "To create iceberg table without identifier fields. (Unity catalog only support tables with no identifier)",
                     "title": "Disable Identifier Field For Tables",
                     "type": "boolean"
                   },
@@ -120,17 +120,17 @@
                     "type": "string"
                   },
                   "rest_auth_type": {
-                    "description": "Authentication type (e.g., oauth2)",
+                    "description": "Authentication type (e.g., 'oauth2')",
                     "title": "REST Auth Type",
                     "type": "string"
                   },
                   "rest_catalog_url": {
-                    "description": "Endpoint URI for the REST catalog service",
+                    "description": "Specifies the endpoint URI for the REST catalog service the writer will connect to",
                     "title": "REST Catalog URI",
                     "type": "string"
                   },
                   "rest_signing_name": {
-                    "description": "Service name for AWS Signature V4 (e.g., s3tables)",
+                    "description": "Service name for AWS Signature V4 (e.g., 's3tables')",
                     "title": "REST Signing Name",
                     "type": "string"
                   },
@@ -141,12 +141,12 @@
                   },
                   "rest_signing_v_4": {
                     "default": true,
-                    "description": "Enable AWS Signature V4 signing",
+                    "description": "Enable AWS Signature V4 signing (boolean)",
                     "title": "REST Enable Signature V4",
                     "type": "boolean"
                   },
                   "s3_endpoint": {
-                    "description": "Specifies the endpoint URL for S3 compatible services",
+                    "description": "Specifies the endpoint URL for S3 compatible services (e.g., MinIO)",
                     "title": "S3 Endpoint",
                     "type": "string"
                   },
@@ -173,7 +173,7 @@
                       {
                         "properties": {
                           "glue_access_key": {
-                            "description": "Access key for authenticating Glue catalog requests",
+                            "description": "Access key for authenticating Glue catalog requests, required when Glue credentials differ from S3 credentials",
                             "format": "password",
                             "title": "Glue Access Key",
                             "type": "string"
@@ -187,17 +187,17 @@
                             "type": "string"
                           },
                           "glue_endpoint": {
-                            "description": "Custom endpoint URL for AWS Glue",
+                            "description": "Custom endpoint URL for AWS Glue or a Glue-compatible catalog service",
                             "title": "Glue Endpoint",
                             "type": "string"
                           },
                           "glue_region": {
-                            "description": "AWS region for the Glue catalog",
+                            "description": "AWS region for the Glue catalog, if different from the S3 region. Falls back to AWS Region if not set",
                             "title": "Glue Region",
                             "type": "string"
                           },
                           "glue_secret_key": {
-                            "description": "Secret key for authenticating Glue catalog requests",
+                            "description": "Secret key for authenticating Glue catalog requests, required when Glue credentials differ from S3 credentials",
                             "format": "password",
                             "title": "Glue Secret Key",
                             "type": "string"
@@ -220,7 +220,7 @@
                   },
                   "glue_additional_config": {
                     "default": false,
-                    "description": "Enable separate credentials, endpoint, and region for the Glue catalog",
+                    "description": "Enable separate credentials (access key and secret key), endpoint, and region for the Glue catalog",
                     "title": "Custom Glue Endpoint Configuration",
                     "type": "boolean"
                   },
@@ -242,7 +242,7 @@
             "type": "boolean"
           },
           "aws_access_key": {
-            "description": "The AWS access key for authenticating S3 requests",
+            "description": "The AWS access key for authenticating S3 requests, typically a 20-character alphanumeric string",
             "format": "password",
             "title": "AWS Access Key",
             "type": "string"
@@ -253,13 +253,13 @@
             "type": "string"
           },
           "aws_secret_key": {
-            "description": "The AWS secret key for S3 authentication",
+            "description": "The AWS secret key for S3 authentication—typically 40+ characters long",
             "format": "password",
             "title": "AWS Secret Key",
             "type": "string"
           },
           "catalog_name": {
-            "description": "User defined catalog name. Only lowercase letters and underscores are allowed.",
+            "description": "User defined catalog name, if left blank defaults to olake_iceberg. Only lowercase letters and underscores are allowed.",
             "pattern": "^[a-z_]+$",
             "title": "Catalog Name",
             "type": "string"
@@ -295,5 +295,5 @@
     ],
     "type": "object"
   },
-  "uischema": "{\n  \"type\": {\n    \"ui:widget\": \"hidden\"\n  },\n  \"writer\": {\n    \"ui:grid\": [\n      { \"catalog_type\": 12, \"catalog_name\": 12 },\n      { \"rest_catalog_url\": 12, \"hive_uri\": 12 },\n      { \"jdbc_url\": 12, \"jdbc_username\": 12, \"jdbc_password\": 12 },\n      { \"iceberg_s3_path\": 12, \"hive_clients\": 12 },\n      { \"s3_use_ssl\": 12, \"hive_sasl_enabled\": 12 },\n      { \"s3_path_style\": 12, \"rest_auth_type\": 12 },\n      { \"token\": 12, \"oauth2_uri\": 12 },\n      { \"credential\": 12, \"no_identifier_fields\": 12 },\n      { \"rest_signing_name\": 12, \"rest_signing_region\": 12 },\n      { \"rest_signing_v_4\": 12, \"scope\": 12, \"s3_endpoint\": 12 },\n      { \"aws_access_key\": 12, \"aws_secret_key\": 12 },\n      { \"aws_region\": 12, \"glue_additional_config\": 12 },\n      { \"glue_catalog_id\": 12, \"glue_access_key\": 12, \"glue_secret_key\": 12 },\n      { \"glue_endpoint\": 12, \"glue_region\": 12 },\n      { \"arrow_writes\": 12 }\n    ],\n    \"no_identifier_fields\": { \"ui:widget\": \"boolean\" },\n    \"rest_signing_v_4\": { \"ui:widget\": \"boolean\" },\n    \"s3_use_ssl\": { \"ui:widget\": \"boolean\" },\n    \"hive_sasl_enabled\": { \"ui:widget\": \"boolean\" },\n    \"s3_path_style\": { \"ui:widget\": \"boolean\" },\n    \"arrow_writes\": { \"ui:widget\": \"boolean\" },\n    \"glue_additional_config\": { \"ui:widget\": \"boolean\" },\n    \"catalog_type\": {\n      \"ui:enumNames\": [\"AWS Glue\", \"JDBC\", \"Hive\", \"REST\"]\n    },\n    \"ui:options\": { \"label\": false }\n  }\n}"
+  "uischema": "{\n  \"type\": {\n    \"ui:widget\": \"hidden\"\n  },\n  \"writer\": {\n    \"ui:grid\": [\n      { \"catalog_type\": 12, \"catalog_name\": 12 },\n      { \"rest_catalog_url\": 12, \"hive_uri\": 12 },\n      { \"jdbc_url\": 12, \"jdbc_username\": 12, \"jdbc_password\": 12 },\n      { \"iceberg_s3_path\": 12, \"hive_clients\": 12 },\n      { \"s3_use_ssl\": 12, \"hive_sasl_enabled\": 12 },\n      { \"s3_path_style\": 12, \"rest_auth_type\": 12 },\n      { \"token\": 12, \"oauth2_uri\": 12 },\n      { \"credential\": 12, \"no_identifier_fields\": 12 },\n      { \"rest_signing_name\": 12, \"rest_signing_region\": 12 },\n      { \"rest_signing_v_4\": 12, \"scope\": 12, \"s3_endpoint\": 12 },\n      { \"aws_access_key\": 12, \"aws_secret_key\": 12 },\n      { \"aws_region\": 12, \"glue_additional_config\": 12 },\n\t { \"glue_catalog_id\": 12, \"glue_access_key\": 12, \"glue_secret_key\": 12 },\n      { \"glue_endpoint\": 12, \"glue_region\": 12 },\n      { \"arrow_writes\": 12 }\n    ],\n    \"no_identifier_fields\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"rest_signing_v_4\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"s3_use_ssl\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"hive_sasl_enabled\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"s3_path_style\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"arrow_writes\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"glue_additional_config\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"catalog_type\": {\n      \"ui:enumNames\": [\n        \"AWS Glue\",\n        \"JDBC\",\n        \"Hive\",\n        \"REST\"\n      ]\n    },\n    \"ui:options\": {\n      \"label\": false\n    }\n  }\n}"
 }
