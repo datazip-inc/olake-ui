@@ -161,24 +161,6 @@ func (s *Service) createOptConfig(configJSON string, update bool) (*dto.CatalogR
 
 	return optimizationReq, nil
 }
-// GetCatalogSpec returns the catalog specification
-func (s *Service) GetCatalogSpec() (*dto.SpecResponse, error) {
-	data, err := os.ReadFile(constants.IcebergCatalogSpecFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read catalog spec: %w", err)
-	}
-
-	var spec map[string]any
-	if err := json.Unmarshal(data, &spec); err != nil {
-		return nil, fmt.Errorf("invalid catalog spec JSON: %w", err)
-	}
-    specRes := &dto.SpecResponse{
-		Type:    constants.CatalogSpecType,
-		Version: constants.CatalogSpecVersion,
-		Spec:    spec,
-	}
-	return specRes, nil
-}
 
 // validates the necessary requirements for creating or updating a catalog
 func validateCatalog(req *dto.CatalogRequest) error {
@@ -196,4 +178,20 @@ func validateCatalog(req *dto.CatalogRequest) error {
 	return nil
 }
 
+func (s *Service) GetCatalogSpec() (*dto.SpecResponse, error) {
+	data, err := os.ReadFile(constants.IcebergCatalogSpecFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read catalog spec: %w", err)
+	}
 
+	var spec map[string]any
+	if err := json.Unmarshal(data, &spec); err != nil {
+		return nil, fmt.Errorf("invalid catalog spec JSON: %w", err)
+	}
+
+	return &dto.SpecResponse{
+		Type:    constants.CatalogSpecType,
+		Version: constants.CatalogSpecVersion,
+		Spec:    spec,
+	}, nil
+}
