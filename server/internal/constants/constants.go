@@ -103,6 +103,7 @@ var (
 	OptPathTerminalLogs             = "/api/ams/v1/terminal/%s/logs"
 	// others
 	OptMaxTimeout          = 30 * time.Second
+	OptTestCatalogTimeout  = 10 * time.Minute
 	OptQueryResultPollTime = 1500 * time.Millisecond
 	OptMinorCron           = "self-optimizing.minor.trigger.cron"
 	OptMajorCron           = "self-optimizing.major.trigger.cron"

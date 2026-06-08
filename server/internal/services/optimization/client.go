@@ -50,9 +50,8 @@ func NewClient() (*Service, error) {
 		apiSecret: apiSecret,
 		username:  username,
 		password:  password,
-		client: &http.Client{
-			Timeout: constants.OptMaxTimeout,
-		},
+		client:     &http.Client{Timeout: constants.OptMaxTimeout},
+		testClient: &http.Client{Timeout: constants.OptTestCatalogTimeout},
 	}, nil
 }
 
@@ -146,7 +145,7 @@ func (s *Service) sendRequest(ctx context.Context, method, path string, queryPar
 	if bodyBytes != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-
+	s.clientForTimeout(path)
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, 0, nil, fmt.Errorf("failed to send request: %s", err)
@@ -267,4 +266,14 @@ func getCredentials() (string, string, string, error) {
 	}
 
 	return baseURL, username, password, nil
+}
+
+
+func (s *Service) clientForTimeout(path string) {
+	switch path {
+	case constants.OptPathCatalogTest:
+		s.client.Timeout = constants.OptTestCatalogTimeout
+	default:
+		s.client.Timeout = constants.OptMaxTimeout
+	}
 }
