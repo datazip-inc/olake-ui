@@ -51,7 +51,6 @@ func NewClient() (*Service, error) {
 		username:  username,
 		password:  password,
 		client:     &http.Client{Timeout: constants.OptMaxTimeout},
-		testClient: &http.Client{Timeout: constants.OptTestCatalogTimeout},
 	}, nil
 }
 
