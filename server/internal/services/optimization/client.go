@@ -268,7 +268,7 @@ func getCredentials() (string, string, string, error) {
 }
 
 
-func (s *Service) setClientTimeout(path string) *http.Client {
+func (s *Service) setClientTimeout(path string) {
 	switch path {
 	case constants.OptPathCatalogTest:
 		s.client.Timeout = constants.OptTestCatalogTimeout
