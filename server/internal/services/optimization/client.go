@@ -267,7 +267,6 @@ func getCredentials() (string, string, string, error) {
 	return baseURL, username, password, nil
 }
 
-
 func (s *Service) setClientTimeout(path string) {
 	switch path {
 	case constants.OptPathCatalogTest:
