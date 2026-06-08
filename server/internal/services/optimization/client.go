@@ -144,7 +144,7 @@ func (s *Service) sendRequest(ctx context.Context, method, path string, queryPar
 	if bodyBytes != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	s.clientForTimeout(path)
+	s.setClientTimeout(path)
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, 0, nil, fmt.Errorf("failed to send request: %s", err)
@@ -268,7 +268,7 @@ func getCredentials() (string, string, string, error) {
 }
 
 
-func (s *Service) clientForTimeout(path string) {
+func (s *Service) setClientTimeout(path string) *http.Client {
 	switch path {
 	case constants.OptPathCatalogTest:
 		s.client.Timeout = constants.OptTestCatalogTimeout
