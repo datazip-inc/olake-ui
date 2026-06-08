@@ -108,7 +108,7 @@ var (
 	OptFullCron            = "self-optimizing.full.trigger.cron"
 	OptTargetFileSize      = "self-optimizing.target-size"
 	OptEnableOptimization  = "self-optimizing.enabled"
-	OptSQLCommand          = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
+	OptSQLCommand          = "ALTER TABLE %s.%s.%s SET TBLPROPERTIES (%s)"
 	// properties
 	OptCreatedAt    = "created-at"
 	OptCacheEnabled = "cache-enabled"
