@@ -145,7 +145,6 @@ func (s *Service) sendRequest(ctx context.Context, method, path string, queryPar
 	if bodyBytes != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	s.setClientTimeout(path)
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, 0, nil, fmt.Errorf("failed to send request: %s", err)
