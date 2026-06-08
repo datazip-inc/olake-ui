@@ -136,7 +136,7 @@ func (s *Service) sendRequest(ctx context.Context, method, path string, queryPar
 	if bodyBytes != nil {
 		bodyReader = bytes.NewReader(bodyBytes)
 	}
-	ctx, cancel := context.WithTimeout(ctx, requestTimeout(path));
+	ctx, cancel := context.WithTimeout(ctx, requestTimeout(path))
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
 	if err != nil {
