@@ -26,33 +26,6 @@ func (h *Handler) GetCatalog(c *gin.Context) {
 	utils.SuccessResponse(c, "catalog details retrieved successfully", olakeConfig)
 }
 
-func (h *Handler) TestCatalogConnection(c *gin.Context) {
-	var req map[string]interface{}
-	if err := utils.BindAndValidate(c, &req); err != nil {
-		utils.ErrorResponse(c, utils.StatusFromBindError(err), "invalid request body for catalog test connection", err)
-		return
-	}
-
-	if req == nil {
-		utils.ErrorResponse(c, badRequestStatusCode, "catalog config is required for test connection", nil)
-		return
-	}
-
-	configJSON, err := utils.MarshalToString(req)
-	if err != nil {
-		utils.ErrorResponse(c, badRequestStatusCode, "invalid config format for catalog test connection", err)
-		return
-	}
-
-	result, err := h.opt.TestCatalogConnection(c.Request.Context(), configJSON, c.Query("update"))
-	if err != nil {
-		utils.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
-		return
-	}
-
-	utils.SuccessResponse(c, "catalog connection tested successfully", result)
-}
-
 func (h *Handler) CreateCatalog(c *gin.Context) {
 	var req map[string]interface{}
 	if err := utils.BindAndValidate(c, &req); err != nil {

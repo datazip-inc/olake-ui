@@ -50,7 +50,9 @@ func NewClient() (*Service, error) {
 		apiSecret: apiSecret,
 		username:  username,
 		password:  password,
-		client:    &http.Client{},
+		client:    &http.Client{
+			Timeout: constants.OptMaxTimeout,
+		},
 	}, nil
 }
 
@@ -136,8 +138,6 @@ func (s *Service) sendRequest(ctx context.Context, method, path string, queryPar
 	if bodyBytes != nil {
 		bodyReader = bytes.NewReader(bodyBytes)
 	}
-	ctx, cancel := context.WithTimeout(ctx, requestTimeout(path))
-	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
 	if err != nil {
 		return nil, 0, nil, fmt.Errorf("failed to create request to optimization: %s", err)
@@ -265,13 +265,4 @@ func getCredentials() (string, string, string, error) {
 	}
 
 	return baseURL, username, password, nil
-}
-
-func requestTimeout(path string) time.Duration {
-	switch path {
-	case constants.OptPathCatalogTest:
-		return constants.OptTestCatalogTimeout
-	default:
-		return constants.OptMaxTimeout
-	}
 }

@@ -235,12 +235,6 @@
           }
         },
         "properties": {
-          "arrow_writes": {
-            "default": false,
-            "description": "Enable Apache Arrow-based Writer for Iceberg",
-            "title": "Enable Arrow Writes",
-            "type": "boolean"
-          },
           "aws_access_key": {
             "description": "The AWS access key for authenticating S3 requests, typically a 20-character alphanumeric string",
             "format": "password",
@@ -283,6 +277,7 @@
           }
         },
         "required": [
+          "catalog_name",
           "catalog_type",
           "aws_region",
           "iceberg_s3_path"
@@ -295,5 +290,5 @@
     ],
     "type": "object"
   },
-  "uischema": "{\n  \"type\": {\n    \"ui:widget\": \"hidden\"\n  },\n  \"writer\": {\n    \"ui:grid\": [\n      { \"catalog_type\": 12, \"catalog_name\": 12 },\n      { \"rest_catalog_url\": 12, \"hive_uri\": 12 },\n      { \"jdbc_url\": 12, \"jdbc_username\": 12, \"jdbc_password\": 12 },\n      { \"iceberg_s3_path\": 12, \"hive_clients\": 12 },\n      { \"s3_use_ssl\": 12, \"hive_sasl_enabled\": 12 },\n      { \"s3_path_style\": 12, \"rest_auth_type\": 12 },\n      { \"token\": 12, \"oauth2_uri\": 12 },\n      { \"credential\": 12, \"no_identifier_fields\": 12 },\n      { \"rest_signing_name\": 12, \"rest_signing_region\": 12 },\n      { \"rest_signing_v_4\": 12, \"scope\": 12, \"s3_endpoint\": 12 },\n      { \"aws_access_key\": 12, \"aws_secret_key\": 12 },\n      { \"aws_region\": 12, \"glue_additional_config\": 12 },\n\t { \"glue_catalog_id\": 12, \"glue_access_key\": 12, \"glue_secret_key\": 12 },\n      { \"glue_endpoint\": 12, \"glue_region\": 12 },\n      { \"arrow_writes\": 12 }\n    ],\n    \"no_identifier_fields\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"rest_signing_v_4\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"s3_use_ssl\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"hive_sasl_enabled\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"s3_path_style\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"arrow_writes\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"glue_additional_config\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"catalog_type\": {\n      \"ui:enumNames\": [\n        \"AWS Glue\",\n        \"JDBC\",\n        \"Hive\",\n        \"REST\"\n      ]\n    },\n    \"ui:options\": {\n      \"label\": false\n    }\n  }\n}"
+  "uischema": "{\n  \"type\": {\n    \"ui:widget\": \"hidden\"\n  },\n  \"writer\": {\n    \"ui:grid\": [\n      { \"catalog_type\": 12, \"catalog_name\": 12 },\n      { \"rest_catalog_url\": 12, \"hive_uri\": 12 },\n      { \"jdbc_url\": 12, \"jdbc_username\": 12, \"jdbc_password\": 12 },\n      { \"iceberg_s3_path\": 12, \"hive_clients\": 12 },\n      { \"s3_use_ssl\": 12, \"hive_sasl_enabled\": 12 },\n      { \"s3_path_style\": 12, \"rest_auth_type\": 12 },\n      { \"token\": 12, \"oauth2_uri\": 12 },\n      { \"credential\": 12, \"no_identifier_fields\": 12 },\n      { \"rest_signing_name\": 12, \"rest_signing_region\": 12 },\n      { \"rest_signing_v_4\": 12, \"scope\": 12, \"s3_endpoint\": 12 },\n      { \"aws_access_key\": 12, \"aws_secret_key\": 12 },\n      { \"aws_region\": 12, \"glue_additional_config\": 12 },\n\t { \"glue_catalog_id\": 12, \"glue_access_key\": 12, \"glue_secret_key\": 12 },\n      { \"glue_endpoint\": 12, \"glue_region\": 12 }\n        ],\n    \"no_identifier_fields\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"rest_signing_v_4\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"s3_use_ssl\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"hive_sasl_enabled\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"s3_path_style\": {\n      \"ui:widget\": \"boolean\"\n    },\n       \"glue_additional_config\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"catalog_type\": {\n      \"ui:enumNames\": [\n        \"AWS Glue\",\n        \"JDBC\",\n        \"Hive\",\n        \"REST\"\n      ]\n    },\n    \"ui:options\": {\n      \"label\": false\n    }\n  }\n}"
 }
