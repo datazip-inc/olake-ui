@@ -101,14 +101,14 @@ var (
 	OptPathTerminalExecute          = "/api/ams/v1/terminal/catalogs/%s/execute"
 	OptPathTerminalLogs             = "/api/ams/v1/terminal/%s/logs"
 	// others
-	OptMaxTimeout          = 30 * time.Second
-	OptQueryResultPollTime = 1500 * time.Millisecond
-	OptMinorCron           = "self-optimizing.minor.trigger.cron"
-	OptMajorCron           = "self-optimizing.major.trigger.cron"
-	OptFullCron            = "self-optimizing.full.trigger.cron"
-	OptTargetFileSize      = "self-optimizing.target-size"
-	OptEnableOptimization  = "self-optimizing.enabled"
-	OptSQLCommand          = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
+	OptMaxTimeout         = 30 * time.Second
+	OptSessionTimeout     = 5 * time.Minute // used for fusion poll (terminal query execution)
+	OptMinorCron          = "self-optimizing.minor.trigger.cron"
+	OptMajorCron          = "self-optimizing.major.trigger.cron"
+	OptFullCron           = "self-optimizing.full.trigger.cron"
+	OptTargetFileSize     = "self-optimizing.target-size"
+	OptEnableOptimization = "self-optimizing.enabled"
+	OptSQLCommand         = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
 	// properties
 	OptCreatedAt    = "created-at"
 	OptCacheEnabled = "cache-enabled"
