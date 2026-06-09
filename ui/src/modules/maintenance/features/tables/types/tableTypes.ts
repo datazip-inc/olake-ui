@@ -99,6 +99,11 @@ export interface UpdateTableCronApiRequest {
 	target_file_size?: number
 }
 
+export interface UpdateTablesConfigApiRequest {
+	tables: string[]
+	sql_input: UpdateTableCronApiRequest
+}
+
 // Frontend Domain Types
 export type FilterKey = "all" | "olake" | "external"
 
@@ -191,8 +196,9 @@ export interface CancelRunRequest {
 }
 
 export interface UpdateTableConfigApiResponse {
+	sessionId?: string
 	success: boolean
-	message: string
+	message?: string
 	logs?: string[]
 }
 

@@ -11,6 +11,7 @@ import type {
 	TableMetricsApiResponse,
 	UpdateTableCronApiRequest,
 	UpdateTableConfigApiResponse,
+	UpdateTablesConfigApiRequest,
 } from "../types"
 
 export const tableService = {
@@ -86,9 +87,14 @@ export const tableService = {
 		payload: UpdateTableCronApiRequest,
 	): Promise<UpdateTableConfigApiResponse> => {
 		try {
+			const request: UpdateTablesConfigApiRequest = {
+				tables: [tableName],
+				sql_input: payload,
+			}
+
 			const response = await api.put<UpdateTableConfigApiResponse>(
-				`${API_CONFIG.ENDPOINTS.OPT.TABLE_CONFIG(catalog, database, tableName)}/config`,
-				payload,
+				API_CONFIG.ENDPOINTS.OPT.TABLE_CONFIG(catalog, database),
+				request,
 				{ disableErrorNotification: true },
 			)
 			return response.data
