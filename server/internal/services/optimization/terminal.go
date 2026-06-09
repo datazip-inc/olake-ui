@@ -68,6 +68,7 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database string, c
 		return nil, fmt.Errorf("failed to poll for completion: %w", err)
 	}
 
+	// TODO: Fusion may return "Finished" even if the query fails, but query logs will contain error message
 	return &dto.TableProperties{
 		SessionID: sessionResult.SessionID,
 		Success:   logInfo.LogStatus == "Finished",
