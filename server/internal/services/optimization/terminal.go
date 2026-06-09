@@ -89,7 +89,7 @@ func (s *Service) BulkSetProperties(ctx context.Context, catalog, database strin
 
 func (s *Service) pollAndBuild(ctx context.Context, sessionID, catalog, database string) (*dto.TableProperties, error) {
 	logInfo, err := s.pollForCompletion(ctx, sessionID)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to poll for completion: %w", err)
 	}
