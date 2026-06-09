@@ -50,7 +50,7 @@ func NewClient() (*Service, error) {
 		apiSecret: apiSecret,
 		username:  username,
 		password:  password,
-		client:    &http.Client{
+		client: &http.Client{
 			Timeout: constants.OptMaxTimeout,
 		},
 	}, nil
