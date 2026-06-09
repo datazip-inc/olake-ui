@@ -13,42 +13,24 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
-func setPropertiesMap(config dto.SQLInput) map[string]string {
+func convertConfigToMap(config dto.OptimizationTableConfig) map[string]string {
 	properties := make(map[string]string)
-	if config.MinorCron != nil {
-		properties[constants.OptMinorCron] = *config.MinorCron
+	if config.SQLInput.MinorCron != nil {
+		properties[constants.OptMinorCron] = *config.SQLInput.MinorCron
 	}
-	if config.MajorCron != nil {
-		properties[constants.OptMajorCron] = *config.MajorCron
+	if config.SQLInput.MajorCron != nil {
+		properties[constants.OptMajorCron] = *config.SQLInput.MajorCron
 	}
-	if config.FullCron != nil {
-		properties[constants.OptFullCron] = *config.FullCron
+	if config.SQLInput.FullCron != nil {
+		properties[constants.OptFullCron] = *config.SQLInput.FullCron
 	}
-	if config.EnabledForOptimization != nil {
-		properties[constants.OptEnableOptimization] = *config.EnabledForOptimization
+	if config.SQLInput.EnabledForOptimization != nil {
+		properties[constants.OptEnableOptimization] = *config.SQLInput.EnabledForOptimization
 	}
-	if config.TargetFileSize != nil {
-		properties[constants.OptTargetFileSize] = utils.ConvertMBToBytes(*config.TargetFileSize)
+	if config.SQLInput.TargetFileSize != nil {
+		properties[constants.OptTargetFileSize] = utils.ConvertMBToBytes(*config.SQLInput.TargetFileSize)
 	}
 	return properties
-}
-
-func (s *Service) SetProperties(ctx context.Context, catalog, database, table string, config dto.SQLInput) (*dto.TableProperties, error) {
-	properties := setPropertiesMap(config)
-	sql := createAlterQuery(database, table, properties)
-
-	path := fmt.Sprintf(constants.OptPathTerminalExecute, catalog)
-	requestBody := dto.TerminalExecuteRequest{
-		SQL: sql,
-	}
-
-	var sessionResult dto.TerminalSessionResponse
-	if err := s.DoInto(ctx, http.MethodPost, path, url.Values{}, requestBody, &sessionResult); err != nil {
-		return nil, fmt.Errorf("failed to execute ALTER TABLE for %s.%s.%s: %w", catalog, database, table, err)
-	}
-	// TODO: Fusion may return "Finished" even if the query fails (e.g., syntax error).
-	// Solution: validate execution status by checking logs for "Finished" vs "Failed".
-	return s.pollAndBuild(ctx, sessionResult.SessionID, catalog, database)
 }
 
 func createAlterQuery(database, table string, properties map[string]string) string {
@@ -62,58 +44,34 @@ func createAlterQuery(database, table string, properties map[string]string) stri
 }
 
 // set properties for multiple tables using sql query
-func (s *Service) BulkSetProperties(ctx context.Context, catalog, database string, req dto.BulkSQLInput) (*dto.TableProperties, error) {
-	tables := req.Tables
-	properties := setPropertiesMap(req.SQLInput)
-	// Bulk apply always enables self-optimizing on every selected table.
-	properties[constants.OptEnableOptimization] = "true"
+func (s *Service) SetProperties(ctx context.Context, catalog, database string, config dto.OptimizationTableConfig) (*dto.TableProperties, error) {
+	tables := config.Tables
+	properties := convertConfigToMap(config)
 
-	sql := make([]string, 0, len(tables))
-	for _, t := range tables {
-		sql = append(sql, createAlterQuery(database, t, properties))
-	}
-	bulkSQLScript := strings.Join(sql, "\n")
-
-	path := fmt.Sprintf(constants.OptPathTerminalExecute, catalog)
-	requestBody := dto.TerminalExecuteRequest{
-		SQL: bulkSQLScript,
+	alterTableQuery := make([]string, 0, len(tables))
+	for _, tableName := range tables {
+		alterTableQuery = append(alterTableQuery, createAlterQuery(database, tableName, properties))
 	}
 
 	var sessionResult dto.TerminalSessionResponse
-	if err := s.DoInto(ctx, http.MethodPost, path, url.Values{}, requestBody, &sessionResult); err != nil {
+	requestBody := dto.TerminalExecuteRequest{
+		SQL: strings.Join(alterTableQuery, "\n"),
+	}
+
+	if err := s.DoInto(ctx, http.MethodPost, fmt.Sprintf(constants.OptPathTerminalExecute, catalog), url.Values{}, requestBody, &sessionResult); err != nil {
 		return nil, fmt.Errorf("failed to execute bulk ALTER TABLE for catalog %s, database %s: %w", catalog, database, err)
 	}
 
-	return s.pollAndBuild(ctx, sessionResult.SessionID, catalog, database)
-}
-
-func (s *Service) pollAndBuild(ctx context.Context, sessionID, catalog, database string) (*dto.TableProperties, error) {
-	logInfo, err := s.pollForCompletion(ctx, sessionID)
+	logInfo, err := s.pollForCompletion(ctx, sessionResult.SessionID)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to poll for completion: %w", err)
 	}
-	success := logInfo.LogStatus == "Finished"
-	var message string
-	if success {
-		message = fmt.Sprintf(
-			"optimization sql command completed successfully for catalog %v, database %v, session ID: %v",
-			catalog,
-			database,
-			sessionID,
-		)
-	} else {
-		message = fmt.Sprintf(
-			"optimization sql command failed for catalog %v, database %v, session ID: %v",
-			catalog,
-			database,
-			sessionID,
-		)
-	}
+
+	// TODO: Fusion may return "Finished" even if the query fails, but query logs will contain error message
 	return &dto.TableProperties{
-		SessionID: sessionID,
-		Success:   success,
-		Message:   message,
+		SessionID: sessionResult.SessionID,
+		Success:   logInfo.LogStatus == "Finished",
 		Logs:      logInfo.Logs,
 	}, nil
 }
@@ -124,18 +82,20 @@ func (s *Service) pollForCompletion(ctx context.Context, sessionID string) (*dto
 	timeoutCtx, cancel := context.WithTimeout(ctx, constants.OptSessionTimeout)
 	defer cancel()
 
-	ticker := time.NewTicker(constants.OptQueryResultPollTime)
-	defer ticker.Stop()
-
 	for {
 		select {
 		case <-timeoutCtx.Done():
 			return nil, fmt.Errorf("timeout waiting for SQL execution to complete")
-		case <-ticker.C:
+		case <-time.After(1 * time.Second):
 			var logInfo dto.LogInfo
 			if err := s.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &logInfo); err != nil {
 				return nil, fmt.Errorf("failed to get logs for session %s: %w", sessionID, err)
 			}
+
+			if logInfo.LogStatus == "Running" {
+				continue
+			}
+
 			return &logInfo, nil
 		}
 	}
