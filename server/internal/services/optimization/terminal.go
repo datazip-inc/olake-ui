@@ -87,7 +87,6 @@ func (s *Service) BulkSetProperties(ctx context.Context, catalog, database strin
 	return s.pollAndBuild(ctx, sessionResult.SessionID, catalog, database)
 }
 
-//  polls for SQL execution completion and constructs a TableProperties response.
 func (s *Service) pollAndBuild(ctx context.Context, sessionID, catalog, database string) (*dto.TableProperties, error) {
 	logInfo, err := s.pollForCompletion(ctx, sessionID)
 	
