@@ -14,5 +14,5 @@ export const catalogKeys = {
 		[...catalogKeys.detail(catalogName), "databases", catalogName] as const,
 
 	// Separate root — not nested under catalogKeys.all() so catalog mutations never invalidate it
-	spec: (type: string) => ["spec", "catalogs", type] as const,
+	spec: () => ["spec", "catalogs"] as const,
 }
