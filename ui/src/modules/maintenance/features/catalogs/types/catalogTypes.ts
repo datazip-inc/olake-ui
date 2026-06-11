@@ -17,11 +17,6 @@ export type GetCatalogsResponse = {
 	result: FusionCatalog[]
 }
 
-export interface CatalogTestRequest {
-	version: string
-	config: string
-}
-
 export interface GetCatalogDatabasesResponse {
 	result: string[]
 }
