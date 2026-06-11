@@ -32,4 +32,3 @@ export const useDeleteCatalog = () => {
 			catalogService.deleteCatalog(catalogName),
 	})
 }
-
