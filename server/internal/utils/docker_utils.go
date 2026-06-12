@@ -78,8 +78,24 @@ func GetWorkerEnvVars() map[string]string {
 
 // GetDriverImageTags returns image tags from ECR, Artifact Registry, or Docker Hub with fallback to cached images
 func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, string, error) {
+	cfg := appconfig.Load()
+
+	// Short-circuit when connector discovery is disabled (e.g. Fusion-only or
+	// air-gapped deployments). Return the configured default version without
+	// contacting any container registry.
+	if !cfg.ConnectorDiscoveryEnabled {
+		if cfg.DefaultConnectorVersion == "" {
+			return nil, "", fmt.Errorf("connector discovery is disabled (CONNECTOR_DISCOVERY_ENABLED=false) and DEFAULT_CONNECTOR_VERSION is unset")
+		}
+		driverImage := imageName
+		if driverImage == "" {
+			driverImage = defaultImages[0]
+		}
+		return []string{cfg.DefaultConnectorVersion}, strings.TrimPrefix(driverImage, "olakego/source-"), nil
+	}
+
 	// TODO: make constants file and validate all env vars in start of server
-	repositoryBase := appconfig.Load().ContainerRegistryBase
+	repositoryBase := cfg.ContainerRegistryBase
 	if repositoryBase == "" {
 		return nil, "", fmt.Errorf("failed to get CONTAINER_REGISTRY_BASE")
 	}
@@ -105,7 +121,7 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 		// Fallback to cached if online fetch fails or explicitly requested
 		if err != nil && cachedTags {
 			if constants.ExecutorEnvironment == "kubernetes" {
-				logger.Warn("failed to fetch image tags online for %s: %s. Cached fallback unavailable on Kubernetes (no Docker daemon)", imageName, err)
+				logger.Warn("failed to fetch image tags online for %s: %s. No local image cache is available on Kubernetes; set CONNECTOR_DISCOVERY_ENABLED=false with DEFAULT_CONNECTOR_VERSION to skip registry queries if connectors are unused", imageName, err)
 				continue
 			}
 			logger.Warn("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
