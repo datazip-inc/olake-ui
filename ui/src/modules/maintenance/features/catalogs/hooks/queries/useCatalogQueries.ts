@@ -8,8 +8,6 @@ import {
 	mapCatalogSpecResponse,
 } from "../../utils"
 
-const CATALOG_TYPE = "iceberg"
-
 export const useCatalogs = (enabled = true) => {
 	return useQuery({
 		queryKey: catalogKeys.list(),
@@ -50,26 +48,13 @@ export const useCatalogDetails = (catalogName: string) => {
 	})
 }
 
-export const useCatalogVersions = (enabled = true) => {
+/** Cached forever in-memory; evicted from cache after 24h of non-use */
+export const useCatalogSpec = (isEditMode: boolean, enabled = true) => {
 	return useQuery({
-		queryKey: catalogKeys.versions(CATALOG_TYPE),
-		queryFn: () => catalogService.getCatalogVersions(),
-		enabled,
-		refetchOnWindowFocus: false,
-	})
-}
-
-/** Cached per (type, version) forever in-memory; evicted from cache after 24h of non-use */
-export const useCatalogSpec = (
-	version: string,
-	isEditMode: boolean,
-	enabled = true,
-) => {
-	return useQuery({
-		queryKey: catalogKeys.spec(CATALOG_TYPE, version),
-		queryFn: ({ signal }) => catalogService.getCatalogSpec(version, signal),
+		queryKey: catalogKeys.spec(),
+		queryFn: ({ signal }) => catalogService.getCatalogSpec(signal),
 		select: data => mapCatalogSpecResponse(data, isEditMode),
-		enabled: enabled && !!version,
+		enabled,
 		staleTime: Infinity,
 		gcTime: 24 * 60 * 60 * 1000, // 24 hours
 	})
