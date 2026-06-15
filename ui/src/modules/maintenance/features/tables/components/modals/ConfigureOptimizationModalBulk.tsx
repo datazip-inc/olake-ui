@@ -1,10 +1,12 @@
-import { TableIcon, XIcon } from "@phosphor-icons/react"
+import { TableIcon, WarningIcon, XIcon } from "@phosphor-icons/react"
 import { useState } from "react"
 
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
 import { useBulkUpdateTableCronConfig } from "../../hooks"
 
 const MAX_VISIBLE_TABLES = 5
+
+const MIN_BULK_TABLES = 2
 
 const SelectedTablesHeader: React.FC<{
 	tables: string[]
@@ -63,6 +65,12 @@ const SelectedTablesHeader: React.FC<{
 					</button>
 				)}
 			</div>
+			{tables.length < MIN_BULK_TABLES && (
+				<p className="mt-2 flex items-center gap-1 text-xs leading-5 text-olake-text-secondary">
+					<WarningIcon className="size-3.5 shrink-0" />
+					Select 2 or more tables to enable bulk configure.
+				</p>
+			)}
 		</div>
 	)
 }
@@ -94,6 +102,11 @@ const ConfigureOptimizationModalBulk: React.FC<
 					tables={tables}
 					onRemoveTable={onRemoveTable}
 				/>
+			}
+			disableSaveReason={
+				tables.length < MIN_BULK_TABLES
+					? "Select at least 2 tables to save"
+					: undefined
 			}
 			isSaving={isSaving}
 			onSave={(payload, { onSuccess, onError }) =>

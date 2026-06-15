@@ -121,8 +121,10 @@ const Tables: React.FC = () => {
 	})
 
 	useEffect(() => {
-		setSelectedTables([])
-	}, [tables])
+		if (isTablesFetching) {
+			setSelectedTables([])
+		}
+	}, [isTablesFetching])
 
 	const handleBulkConfigure = () => {
 		if (selectedTables.length < 2) {

@@ -64,6 +64,9 @@ export type DataTableProps<TRow> = {
 
 	/** Callback to sync the updated selection state to the parent. */
 	onSelectionChange?: (newSelectedKeys: string[]) => void
+
+	/** Minimum width of the table in pixels before horizontal scrolling kicks in. Defaults to 720. */
+	minWidth?: number
 }
 
 const EmptyState: React.FC<EmptyStateConfig> = ({
@@ -196,6 +199,7 @@ function DataTable<TRow>({
 	selectedRowKeys = [],
 	allSelectableRows,
 	onSelectionChange,
+	minWidth = 720,
 }: DataTableProps<TRow>) {
 	const getAlignmentClass = (align: ColumnAlignment = "left") => {
 		switch (align) {
@@ -209,9 +213,9 @@ function DataTable<TRow>({
 		}
 	}
 
-	// Checkbox gets a fixed 4%; each data column uses its declared % or 1fr if unsized.
+	// Checkbox column: at least 32px, up to 4%; data columns use declared % or 1fr.
 	const gridTemplateColumns = useMemo(() => {
-		const colWidths = checkboxSelection ? ["4%"] : []
+		const colWidths = checkboxSelection ? ["minmax(32px, 4%)"] : []
 		columns.forEach(col =>
 			colWidths.push(
 				col.width === undefined || col.width <= 0 || col.width > 100
@@ -254,14 +258,14 @@ function DataTable<TRow>({
 			<div style={{ minHeight: `${tableMinHeight}px` }}>
 				<div
 					className={clsx(
-						"overflow-hidden rounded-lg border border-olake-border",
+						"overflow-x-auto rounded-lg border border-olake-border",
 						className,
 					)}
 				>
 					{/* Header */}
 					<div
 						className="grid h-12 items-center gap-4 bg-olake-surface-subtle px-6 text-xs font-medium leading-5 text-olake-text-secondary"
-						style={gridStyle}
+						style={{ ...gridStyle, minWidth }}
 					>
 						{checkboxSelection && (
 							<div>
@@ -296,7 +300,7 @@ function DataTable<TRow>({
 							<div
 								key={rowKey(row)}
 								className="grid h-14 items-center gap-4 border-t border-olake-border px-6 text-sm leading-[22px] text-olake-text hover:bg-olake-surface-subtle/50"
-								style={gridStyle}
+								style={{ ...gridStyle, minWidth }}
 							>
 								{checkboxSelection && (
 									<div>

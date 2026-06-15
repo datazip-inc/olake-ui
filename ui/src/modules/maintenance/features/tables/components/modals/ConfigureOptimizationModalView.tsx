@@ -31,6 +31,7 @@ export type ConfigureOptimizationModalViewProps = {
 	onClose: () => void
 	title?: string
 	headerChip?: React.ReactNode
+	disableSaveReason?: string
 	isConfigLoading?: boolean
 	isConfigError?: boolean
 	onRetryConfig?: () => void
@@ -136,6 +137,7 @@ const ConfigureOptimizationModalView: React.FC<
 	onClose,
 	title = "Configure Optimization",
 	headerChip,
+	disableSaveReason,
 	isConfigLoading = false,
 	isConfigError = false,
 	onRetryConfig,
@@ -329,16 +331,21 @@ const ConfigureOptimizationModalView: React.FC<
 
 					{/* Footer */}
 					<div className="flex h-20 shrink-0 items-center gap-3 border-t border-olake-border pl-8">
-						<Button
-							type="primary"
-							onClick={handleSave}
-							loading={isSaving}
-							disabled={
-								isConfigLoading || isConfigError || !isTargetFileSizeValid
-							}
-						>
-							Save
-						</Button>
+						<Tooltip title={disableSaveReason}>
+							<Button
+								type="primary"
+								onClick={handleSave}
+								loading={isSaving}
+								disabled={
+									!!disableSaveReason ||
+									isConfigLoading ||
+									isConfigError ||
+									!isTargetFileSizeValid
+								}
+							>
+								Save
+							</Button>
+						</Tooltip>
 						<Button
 							onClick={handleClose}
 							disabled={isSaving}
