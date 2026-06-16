@@ -38,7 +38,6 @@ func (h *Handler) CreateCatalog(c *gin.Context) {
 		return
 	}
 
-	// Convert config to JSON string
 	configJSON, err := utils.MarshalToString(req)
 	if err != nil {
 		utils.ErrorResponse(c, badRequestStatusCode, "invalid config format for create catalog", err)
@@ -72,7 +71,6 @@ func (h *Handler) UpdateCatalog(c *gin.Context) {
 		return
 	}
 
-	// Convert config to JSON string
 	configJSON, err := utils.MarshalToString(req)
 	if err != nil {
 		utils.ErrorResponse(c, badRequestStatusCode, "invalid config format for updating catalog", err)
@@ -111,4 +109,14 @@ func (h *Handler) requiredCatalog(c *gin.Context) (string, bool) {
 		return "", false
 	}
 	return catalog, true
+}
+
+func (h *Handler) GetCatalogSpec(c *gin.Context) {
+	resp, err := h.opt.GetCatalogSpec()
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), err)
+		return
+	}
+
+	utils.SuccessResponse(c, "catalog spec fetched successfully", resp)
 }

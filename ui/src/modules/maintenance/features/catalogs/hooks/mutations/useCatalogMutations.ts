@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query"
 
 import { catalogKeys } from "../../constants"
 import { catalogService } from "../../services"
-import type { CatalogFormData, CatalogTestRequest } from "../../types"
+import type { CatalogFormData } from "../../types"
 
 export const useCreateCatalog = () => {
 	return useMutation({
@@ -30,17 +30,5 @@ export const useDeleteCatalog = () => {
 		mutationKey: catalogKeys.all(),
 		mutationFn: (catalogName: string) =>
 			catalogService.deleteCatalog(catalogName),
-	})
-}
-
-export const useTestCatalogConnection = () => {
-	return useMutation({
-		mutationFn: ({
-			catalog,
-			existing = false,
-		}: {
-			catalog: CatalogTestRequest
-			existing?: boolean
-		}) => catalogService.testCatalogConnection(catalog, existing),
 	})
 }
