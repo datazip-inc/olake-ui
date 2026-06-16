@@ -72,6 +72,8 @@ const Tables: React.FC = () => {
 		selectedCatalog,
 		selectedDatabase,
 		databaseOptions,
+		isDatabasesError,
+		refetchDatabases,
 		handleCatalogChange,
 		handleDatabaseChange,
 		catalogParam,
@@ -150,10 +152,19 @@ const Tables: React.FC = () => {
 	const showPageError = isCatalogsError || isTablesError
 	const showCatalogEmptyState =
 		!isCatalogsPending && !isCatalogsError && catalogs.length === 0
+	const showDatabaseError =
+		!isCatalogsPending &&
+		!isCatalogsError &&
+		!isDatabasesPending &&
+		catalogs.length > 0 &&
+		!!selectedCatalog &&
+		isDatabasesError
+
 	const showDatabaseEmptyState =
 		!isCatalogsPending &&
 		!isCatalogsError &&
 		!isDatabasesPending &&
+		!isDatabasesError &&
 		catalogs.length > 0 &&
 		!!selectedCatalog &&
 		databaseOptions.length === 0
@@ -245,6 +256,8 @@ const Tables: React.FC = () => {
 	const handleRetry = () => {
 		if (isCatalogsError) {
 			void refetchCatalogs()
+		} else if (isDatabasesError) {
+			void refetchDatabases()
 		} else {
 			void refetchTables()
 		}
@@ -280,7 +293,13 @@ const Tables: React.FC = () => {
 							onRefresh={refetchTables}
 						/>
 						<div className="mt-8 w-full">
-							{showDatabaseEmptyState ? (
+							{showDatabaseError ? (
+								<PageErrorState
+									title="Failed to load databases"
+									description="Please check your connection and try again."
+									onRetry={() => void refetchDatabases()}
+								/>
+							) : showDatabaseEmptyState ? (
 								<PageErrorState
 									title="No Database Found"
 									description="There are no databases in the selected catalog."
@@ -350,7 +369,10 @@ const Tables: React.FC = () => {
 			/>
 			<ConfigureOptimizationModalBulk
 				open={bulkModalOpen}
-				onClose={() => setBulkModalOpen(false)}
+				onClose={() => {
+					setBulkModalOpen(false)
+					setSelectedTables([])
+				}}
 				catalog={selectedCatalog ?? ""}
 				database={selectedDatabase ?? ""}
 				tables={selectedTables}
