@@ -54,7 +54,7 @@ func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTableProper
 		propsSQL = append(propsSQL, fmt.Sprintf("'%s' = '%s'", key, value))
 	}
 
-	sql := fmt.Sprintf(constants.OptSQLCommand, req.Database, req.Table, strings.Join(propsSQL, ", "))
+	sql := fmt.Sprintf(constants.OptSQLCommand, req.Catalog, req.Database, req.Table, strings.Join(propsSQL, ", "))
 
 	// execute via Terminal API
 	path := fmt.Sprintf(constants.OptPathTerminalExecute, req.Catalog)
