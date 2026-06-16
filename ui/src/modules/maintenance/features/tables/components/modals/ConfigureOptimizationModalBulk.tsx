@@ -1,5 +1,5 @@
 import { TableIcon, WarningIcon, XIcon } from "@phosphor-icons/react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
 import { useBulkUpdateTableCronConfig } from "../../hooks"
@@ -91,6 +91,12 @@ const ConfigureOptimizationModalBulk: React.FC<
 		catalog,
 		database,
 	)
+
+	useEffect(() => {
+		if (open && tables.length === 0) {
+			onClose()
+		}
+	}, [open, tables.length, onClose])
 
 	return (
 		<ConfigureOptimizationModalView
