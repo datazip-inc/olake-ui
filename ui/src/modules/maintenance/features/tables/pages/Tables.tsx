@@ -121,10 +121,10 @@ const Tables: React.FC = () => {
 	})
 
 	useEffect(() => {
-		if (isTablesFetching) {
+		if (isTablesFetching && !bulkModalOpen) {
 			setSelectedTables([])
 		}
-	}, [isTablesFetching])
+	}, [isTablesFetching, bulkModalOpen])
 
 	const handleBulkConfigure = () => {
 		if (selectedTables.length < 2) {
@@ -321,9 +321,8 @@ const Tables: React.FC = () => {
 											subtitle:
 												tables.length > 0
 													? "Try a different search or filter."
-													: "There are no tables in the selected catalog.",
+													: "There are no tables in the selected database.",
 											onRefetch: () => navigate("/maintenance/catalogs"),
-											refetchLabel: "Add Catalog",
 										}}
 										pagination={{
 											currentPage,
