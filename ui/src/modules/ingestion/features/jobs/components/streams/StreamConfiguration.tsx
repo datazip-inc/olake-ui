@@ -17,6 +17,7 @@ import { StreamConfigurationProps } from "../../types"
 const StreamConfiguration = ({
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 	sourceType,
+	sourceVersion,
 }: StreamConfigurationProps) => {
 	const streamsData = useStreamSelectionStore(selectStreamsData)
 	const stream = useStreamSelectionStore(selectActiveStreamData)
@@ -44,7 +45,9 @@ const StreamConfiguration = ({
 					destinationType={destinationType}
 				/>
 			)}
-			{activeTab === "schema" && streamsData && <StreamsSchema />}
+			{activeTab === "schema" && streamsData && (
+				<StreamsSchema sourceVersion={sourceVersion} />
+			)}
 			{activeTab === "partitioning" && (
 				<PartitionRegexSectionSingle destinationType={destinationType} />
 			)}

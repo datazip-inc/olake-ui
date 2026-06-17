@@ -3,15 +3,24 @@ import { Checkbox, Input, Switch, Tooltip } from "antd"
 import { CheckboxChangeEvent } from "antd/es/checkbox/Checkbox"
 import { useState, useEffect } from "react"
 
+import SourceNamingConventionSectionSingle from "./SourceNamingConventionSectionSingle"
 import {
 	selectActiveSelectedStream,
 	selectActiveStreamData,
 	useStreamSelectionStore,
 } from "../../stores"
-import { isColumnSelectionSupported, isColumnEnabled } from "../../utils"
+import {
+	isColumnSelectionSupported,
+	isColumnEnabled,
+	supportsSourceNamingConvention,
+} from "../../utils"
 import RenderTypeItems from "../RenderTypeItems"
 
-const StreamsSchema = () => {
+interface StreamsSchemaProps {
+	sourceVersion: string
+}
+
+const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 	const streamData = useStreamSelectionStore(selectActiveStreamData)
 	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
 	const updateSelectedColumns = useStreamSelectionStore(
@@ -151,6 +160,12 @@ const StreamsSchema = () => {
 						onChange={handleSyncNewColumnsChange}
 						disabled={!isEditable}
 					/>
+				</div>
+			)}
+
+			{supportsSourceNamingConvention(sourceVersion) && (
+				<div className="mb-3">
+					<SourceNamingConventionSectionSingle />
 				</div>
 			)}
 

@@ -23,6 +23,7 @@ export interface BulkStreamConfig {
 	partitionRegex?: string
 	filterValue?: string
 	filterConfig?: FilterConfig
+	useSourceColumnNames?: boolean
 }
 
 interface StreamSelectionState {
@@ -66,6 +67,11 @@ interface StreamSelectionState {
 	updateNormalization: (
 		stream: StreamIdentifier,
 		normalization: boolean,
+	) => void
+
+	updateUseSourceColumnNames: (
+		stream: StreamIdentifier,
+		useSourceColumnNames: boolean,
 	) => void
 
 	updatePartitionRegex: (stream: StreamIdentifier, regex: string) => void
@@ -249,6 +255,32 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
+	updateUseSourceColumnNames: (stream, useSourceColumnNames) =>
+		set(state => {
+			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
+
+			const prev = state.streamsData
+			const streamExists = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+			if (!streamExists) return state
+
+			return {
+				streamsData: {
+					...prev,
+					selected_streams: {
+						...prev.selected_streams,
+						[namespace]: prev.selected_streams[namespace].map(s =>
+							s.stream_name === streamName
+								? { ...s, use_source_column_names: useSourceColumnNames }
+								: s,
+						),
+					},
+				},
+			}
+		}),
+
 	updatePartitionRegex: (stream, regex) =>
 		set(state => {
 			if (!state.streamsData) return state
@@ -417,6 +449,8 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 						newStream.normalization = config.normalization
 					if (config.partitionRegex !== undefined)
 						newStream.partition_regex = config.partitionRegex
+					if (config.useSourceColumnNames !== undefined)
+						newStream.use_source_column_names = config.useSourceColumnNames
 					newStream.disabled = false
 
 					// Only touch filter fields if filter was explicitly included in the config

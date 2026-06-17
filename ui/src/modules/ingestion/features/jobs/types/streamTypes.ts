@@ -19,6 +19,7 @@ export type StreamHeaderProps = {
 export type StreamConfigurationProps = {
 	destinationType?: string
 	sourceType?: string
+	sourceVersion: string
 }
 
 export interface SchemaConfigurationProps {
