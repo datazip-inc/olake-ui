@@ -12,7 +12,7 @@ import {
 import {
 	isColumnSelectionSupported,
 	isColumnEnabled,
-	supportsSourceNamingConvention,
+	isUseSourceColumnNamesSupported,
 } from "../../utils"
 import RenderTypeItems from "../RenderTypeItems"
 
@@ -163,7 +163,7 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 				</div>
 			)}
 
-			{supportsSourceNamingConvention(sourceVersion) && (
+			{isUseSourceColumnNamesSupported(sourceVersion) && (
 				<div className="mb-3">
 					<SourceNamingConventionSectionSingle />
 				</div>

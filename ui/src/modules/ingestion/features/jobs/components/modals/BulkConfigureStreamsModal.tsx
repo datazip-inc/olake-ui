@@ -25,7 +25,7 @@ import { CARD_STYLE } from "../../constants"
 import { useStreamSelectionStore } from "../../stores"
 import {
 	buildBulkStreamsData,
-	supportsSourceNamingConvention,
+	isUseSourceColumnNamesSupported,
 } from "../../utils/streams"
 import BulkStreamSelectorList from "../streams/BulkStreamSelectorList"
 import DataFilterSectionBulk from "../streams/DataFilterSectionBulk"
@@ -107,7 +107,7 @@ const BulkConfigureStreamsModal = ({
 	sourceVersion,
 	destinationType,
 }: BulkConfigureStreamsModalProps) => {
-	const schemaTabVisible = supportsSourceNamingConvention(sourceVersion)
+	const schemaTabVisible = isUseSourceColumnNamesSupported(sourceVersion)
 	const [step, setStep] = useState<BulkConfigureStep>("select-streams")
 	const [activeTab, setActiveTab] = useState<BulkConfigurationTab>("config")
 	const [closeCountdown, setCloseCountdown] = useState(CLOSE_COUNTDOWN)

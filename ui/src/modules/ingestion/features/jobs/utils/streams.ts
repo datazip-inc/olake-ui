@@ -128,8 +128,8 @@ export function isColumnEnabled(
 	return selectedStream.selected_columns!.columns.includes(columnName)
 }
 
-// Returns true if the source version supports the source naming convention feature.
-export function supportsSourceNamingConvention(
+// Returns true if the source version supports the use_source_column_names flag.
+export function isUseSourceColumnNamesSupported(
 	sourceVersion?: string,
 ): boolean {
 	return (
