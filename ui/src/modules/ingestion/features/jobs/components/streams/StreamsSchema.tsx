@@ -198,7 +198,7 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 
 			<div className="max-h-[400px] overflow-auto rounded border border-[#d9d9d9]">
 				{/* Table Header */}
-				<div className="flex items-center border-b border-gray-400 bg-gray-50 px-4 py-3">
+				<div className="sticky top-0 z-10 flex items-center border-b border-gray-400 bg-gray-50 px-4 py-3">
 					<div className="flex w-16 items-center justify-center">
 						<Checkbox
 							checked={isAllSelected}
