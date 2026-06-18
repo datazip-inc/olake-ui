@@ -76,6 +76,8 @@ func mapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
 				config.RestSigningV4 = true
 				config.RestSigningName = catalog.Properties["rest.signing-name"]
 				config.RestSigningRegion = catalog.Properties["rest.signing-region"]
+			} else {
+				config.RestSigningV4 = false
 			}
 		}
 	}
@@ -199,6 +201,8 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 				signingRegion = olakeConfig.Region
 			}
 			utils.SetIfNotEmpty(properties, "rest.signing-region", signingRegion)
+		} else {
+			utils.SetIfNotEmpty(properties, "rest.sigv4-enabled", "false")
 		}
 	}
 }

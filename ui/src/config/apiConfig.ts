@@ -25,6 +25,7 @@ export const API_CONFIG = {
 				catalogName
 					? `/api/opt/v1/catalog/${encodeURIComponent(catalogName)}`
 					: `/api/opt/v1/catalog`,
+			CATALOG_SPEC: "/api/opt/v1/catalog/resources/spec",
 			TABLE_CONFIG: (catalog: string, database: string, tableName: string) =>
 				`/api/opt/v1/${encodeURIComponent(catalog)}/${encodeURIComponent(database)}/${encodeURIComponent(tableName)}`,
 			TABLE: (catalog: string, database: string, tableName: string) =>

@@ -63,7 +63,7 @@ type Config struct {
 	RestCatalogURL    string `json:"rest_catalog_url,omitempty"`
 	RestSigningName   string `json:"rest_signing_name,omitempty"`
 	RestSigningRegion string `json:"rest_signing_region,omitempty"`
-	RestSigningV4     bool   `json:"rest_signing_v_4,omitempty"`
+	RestSigningV4     bool   `json:"rest_signing_v_4"`
 	RestToken         string `json:"token,omitempty"`
 	RestOAuthURI      string `json:"oauth2_uri,omitempty"`
 	RestAuthType      string `json:"rest_auth_type,omitempty"`
