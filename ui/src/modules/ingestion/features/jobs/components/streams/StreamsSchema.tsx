@@ -261,13 +261,20 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 							</div>
 							{hasDestinationColumns && (
 								<div className="flex-1 px-2 text-left">
-									<Tooltip title={destinationColumnName}>
-										<span className="block">
-											{destinationColumnName.length > 13
-												? `${destinationColumnName.substring(0, 13)}...`
-												: destinationColumnName}
-										</span>
-									</Tooltip>
+									{(() => {
+										const displayName = selectedStream.use_source_column_names
+											? item
+											: destinationColumnName
+										return (
+											<Tooltip title={displayName}>
+												<span className="block">
+													{displayName.length > 13
+														? `${displayName.substring(0, 13)}...`
+														: displayName}
+												</span>
+											</Tooltip>
+										)
+									})()}
 								</div>
 							)}
 							<div className="flex-1 px-2 text-left">
