@@ -42,8 +42,8 @@ const SourceNamingConventionSectionView = ({
 					/>
 				</div>
 				<p className="mt-1 text-xs font-normal text-gray-500">
-					When enabled, the source naming convention will be applied to
-					destination table names.
+					When enabled, the source column naming convention will be applied to
+					destination column names.
 				</p>
 			</div>
 		</>
