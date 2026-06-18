@@ -2,6 +2,8 @@ package utils
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -19,6 +21,9 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/spf13/viper"
 	"golang.org/x/mod/semver"
 	"google.golang.org/api/iterator"
@@ -55,6 +60,12 @@ var ignoredWorkerEnv = map[string]any{ // A map is chosen because it gives O(1) 
 	"TEMPORAL_ADDRESS":        nil,
 	"OLAKE_SECRET_KEY":        nil,
 	"_":                       nil,
+	// Registry credentials/TLS settings must not leak into driver containers.
+	constants.EnvRegistryUsername:      nil,
+	constants.EnvRegistryPassword:      nil,
+	constants.EnvRegistryInsecure:      nil,
+	constants.EnvRegistryTLSSkipVerify: nil,
+	constants.EnvRegistryCACert:        nil,
 }
 
 // GetWorkerEnvVars returns the environment variables from the worker container.
@@ -87,23 +98,27 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 	}
 	driverImage := ""
 	for _, imageName := range images {
-		if strings.Contains(repositoryBase, "ecr") {
-			fullImage := fmt.Sprintf("%s/%s", repositoryBase, imageName)
+		switch detectRegistryType(repositoryBase) {
+		case registryECR:
+			fullImage := fmt.Sprintf("%s/%s", strings.TrimSuffix(repositoryBase, "/"), imageName)
 			tags, err = getECRImageTags(ctx, fullImage)
-		} else if isGCRArtifactRegistry(repositoryBase) {
-			fullImage := fmt.Sprintf("%s/%s", repositoryBase, imageName)
+		case registryGCR:
+			fullImage := fmt.Sprintf("%s/%s", strings.TrimSuffix(repositoryBase, "/"), imageName)
 			tags, err = getGCRArtifactRegistryImageTags(ctx, fullImage)
-		} else {
+		case registryDockerHub:
 			tags, err = getDockerHubImageTags(ctx, imageName)
+		default: // registryGeneric: any Docker Registry v2 compliant registry (Harbor, Nexus, Quay, GitLab, registry:2)
+			fullImage := fmt.Sprintf("%s/%s", strings.TrimSuffix(repositoryBase, "/"), imageName)
+			tags, err = getGenericRegistryImageTags(ctx, fullImage)
 		}
 
 		// Fallback to cached if online fetch fails or explicitly requested
 		if err != nil && cachedTags {
 			if constants.ExecutorEnvironment == "kubernetes" {
-				logger.Warn("failed to fetch image tags online for %s: %s. Cached fallback unavailable on Kubernetes (no Docker daemon)", imageName, err)
+				logger.Warnf("failed to fetch image tags online for %s: %s. Cached fallback unavailable on Kubernetes (no Docker daemon)", imageName, err)
 				continue
 			}
-			logger.Warn("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
+			logger.Warnf("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
 			tags, err = fetchCachedImageTags(ctx, imageName, repositoryBase)
 			if err != nil {
 				return nil, "", fmt.Errorf("failed to fetch cached image tags for %s: %s", imageName, err)
@@ -199,6 +214,120 @@ func getDockerHubImageTags(ctx context.Context, imageName string) ([]string, err
 	return tags, nil
 }
 
+// registryType classifies the configured CONTAINER_REGISTRY_BASE so tag listing
+// can be routed to the right client.
+type registryType int
+
+const (
+	registryDockerHub registryType = iota // Docker Hub (default); listed via the Docker Hub web API
+	registryECR                           // AWS ECR; listed via the AWS SDK using IAM
+	registryGCR                           // Google Artifact Registry; listed via the GCP SDK using ADC
+	registryGeneric                       // any other Docker Registry v2 compliant registry (Harbor, Nexus, Quay, GitLab, registry:2)
+)
+
+// detectRegistryType classifies the registry base. Empty and the Docker Hub hosts
+// map to Docker Hub (preserving the shipped default registry-1.docker.io), so existing
+// deployments are unaffected. Classification is based on the registry host only, so
+// look-alike hosts (e.g. Azure's *.azurecr.io, which contains the substring "ecr")
+// are not misrouted to the AWS ECR path.
+func detectRegistryType(base string) registryType {
+	base = strings.TrimSpace(strings.TrimSuffix(base, "/"))
+	if base == "" {
+		return registryDockerHub
+	}
+	host := base
+	if i := strings.IndexByte(base, '/'); i >= 0 {
+		host = base[:i]
+	}
+	switch {
+	case host == "docker.io", host == "registry-1.docker.io", host == "index.docker.io":
+		return registryDockerHub
+	case isECRRegistry(host):
+		return registryECR
+	case isGCRArtifactRegistry(host):
+		return registryGCR
+	}
+	return registryGeneric
+}
+
+// isECRRegistry reports whether the host is an AWS ECR registry: a private
+// "<account>.dkr.ecr.<region>.amazonaws.com[.cn]" host, or "public.ecr.aws".
+// This deliberately matches the AWS domain rather than the substring "ecr" so that
+// other registries (e.g. *.azurecr.io) are not misclassified.
+func isECRRegistry(host string) bool {
+	return strings.HasPrefix(host, "public.ecr.aws") ||
+		(strings.Contains(host, ".ecr.") && strings.Contains(host, "amazonaws.com"))
+}
+
+// getGenericRegistryImageTags lists tags from any Docker Registry HTTP API v2
+// compliant registry (Harbor, Nexus, Quay, GitLab, registry:2). The underlying
+// library transparently handles the bearer-token auth challenge and Link-header
+// pagination.
+func getGenericRegistryImageTags(ctx context.Context, fullImageName string) ([]string, error) {
+	nameOpts := []name.Option{name.WeakValidation}
+	if viper.GetBool(constants.EnvRegistryInsecure) {
+		nameOpts = append(nameOpts, name.Insecure) // allow plain-HTTP registries (e.g. host:5000)
+	}
+	repo, err := name.NewRepository(fullImageName, nameOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("invalid registry image reference %q: %s", fullImageName, err)
+	}
+
+	tr, err := registryTransport()
+	if err != nil {
+		return nil, err
+	}
+	tags, err := remote.List(repo,
+		remote.WithContext(ctx),
+		registryAuthOption(),
+		remote.WithTransport(tr),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tags from registry %q: %s", repo.String(), err)
+	}
+
+	var valid []string
+	for _, t := range tags {
+		if isValidTag(t) {
+			valid = append(valid, t)
+		}
+	}
+	return valid, nil
+}
+
+// registryAuthOption uses explicit credentials when provided, otherwise falls back to
+// the standard docker keychain (~/.docker/config.json via DOCKER_CONFIG), which itself
+// resolves to anonymous when no credentials are configured.
+func registryAuthOption() remote.Option {
+	user := strings.TrimSpace(viper.GetString(constants.EnvRegistryUsername))
+	pass := strings.TrimSpace(viper.GetString(constants.EnvRegistryPassword))
+	if user != "" || pass != "" {
+		return remote.WithAuth(&authn.Basic{Username: user, Password: pass})
+	}
+	return remote.WithAuthFromKeychain(authn.DefaultKeychain)
+}
+
+// registryTransport clones the default transport and applies optional TLS overrides
+// for on-prem registries with self-signed certificates or a private CA.
+func registryTransport() (http.RoundTripper, error) {
+	base := http.DefaultTransport.(*http.Transport).Clone()
+	tlsCfg := &tls.Config{InsecureSkipVerify: viper.GetBool(constants.EnvRegistryTLSSkipVerify)} //nolint:gosec // opt-in via CONTAINER_REGISTRY_TLS_SKIP_VERIFY for self-signed on-prem registries
+	if caPEM := strings.TrimSpace(viper.GetString(constants.EnvRegistryCACert)); caPEM != "" {
+		// The value is the PEM CA bundle contents itself, which is convenient for
+		// env-driven configs and Kubernetes Secrets (no file to mount).
+		pool, _ := x509.SystemCertPool()
+		if pool == nil {
+			pool = x509.NewCertPool()
+		}
+		if !pool.AppendCertsFromPEM([]byte(caPEM)) {
+			return nil, fmt.Errorf("no valid CA certificates found in %s (expected PEM contents)", constants.EnvRegistryCACert)
+		}
+		tlsCfg.RootCAs = pool
+	}
+	base.TLSClientConfig = tlsCfg
+	return base, nil
+}
+
 // isGCRArtifactRegistry reports whether the registry base refers to Google Artifact Registry (*-docker.pkg.dev).
 func isGCRArtifactRegistry(registryBase string) bool {
 	return strings.Contains(registryBase, "docker.pkg.dev")
@@ -283,9 +412,11 @@ func ParseGCRArtifactRegistryDetails(fullImageName string) (project, location, r
 
 // fetchCachedImageTags retrieves locally cached tags for an image
 func fetchCachedImageTags(ctx context.Context, imageName, repositoryBase string) ([]string, error) {
-	if strings.Contains(repositoryBase, "ecr") || isGCRArtifactRegistry(repositoryBase) {
-		// after making it ecr, it will be like "123456789012.dkr.ecr.us-west-2.amazonaws.com/olakego/source-mysql"
-		// from gcr, it will be like "us-docker.pkg.dev/my-project/my-repo/olakego/source-mysql"
+	if detectRegistryType(repositoryBase) != registryDockerHub {
+		// Non-Docker-Hub registries store images host-prefixed in `docker images`, e.g.
+		// ECR:     "123456789012.dkr.ecr.us-west-2.amazonaws.com/olakego/source-mysql"
+		// GCR:     "us-docker.pkg.dev/my-project/my-repo/olakego/source-mysql"
+		// generic: "harbor.corp.com/olake/olakego/source-mysql"
 		imageName = fmt.Sprintf("%s/%s", strings.TrimSuffix(repositoryBase, "/"), imageName)
 	}
 
