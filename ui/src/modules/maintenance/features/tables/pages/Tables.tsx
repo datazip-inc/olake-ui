@@ -159,7 +159,7 @@ const Tables: React.FC = () => {
 
 	const loading = isCatalogsPending || isDatabasesPending || isTablesFetching
 
-	// Derives a single UI state in priority order: catalog → database → tables.
+	// Get Page State according to the error
 	const pageState = (() => {
 		if (isCatalogsError) return PAGE_STATE.CATALOG_ERROR
 		if (!isCatalogsPending && catalogs.length === 0)
@@ -262,8 +262,11 @@ const Tables: React.FC = () => {
 	// Retries the appropriate API based on which state is currently failing or empty.
 	const handleRetry = () => {
 		if (pageState === PAGE_STATE.CATALOG_ERROR) void refetchCatalogs()
-		else if (pageState === PAGE_STATE.DATABASE_ERROR) void refetchDatabases()
-		else if (pageState === PAGE_STATE.DATABASE_EMPTY) void refetchDatabases()
+		else if (
+			pageState === PAGE_STATE.DATABASE_ERROR ||
+			pageState === PAGE_STATE.DATABASE_EMPTY
+		)
+			void refetchDatabases()
 		else void refetchTables()
 	}
 
