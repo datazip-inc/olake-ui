@@ -200,6 +200,7 @@ const ConfigureOptimizationModalView: React.FC<
 	}
 
 	const handleClose = () => {
+		if (isSaving) return
 		setActiveModal(null)
 		onClose()
 	}
@@ -214,6 +215,8 @@ const ConfigureOptimizationModalView: React.FC<
 				onCancel={handleClose}
 				footer={null}
 				closable={false}
+				maskClosable={!isSaving}
+				keyboard={!isSaving}
 				centered
 				width={696}
 				destroyOnHidden

@@ -32,6 +32,15 @@ import { getCancelRunID, getTableColumns } from "../utils"
 
 const EMPTY_TABLES: Table[] = []
 
+const PAGE_STATE = {
+	CATALOG_ERROR: "catalog-error",
+	CATALOG_EMPTY: "catalog-empty",
+	DATABASE_ERROR: "database-error",
+	DATABASE_EMPTY: "database-empty",
+	TABLES_ERROR: "tables-error",
+	READY: "ready",
+} as const
+
 const tableSearchFn = (row: Table, term: string): boolean =>
 	row.name.toLowerCase().includes(term)
 
@@ -149,25 +158,22 @@ const Tables: React.FC = () => {
 	} = useCancelTableRun()
 
 	const loading = isCatalogsPending || isDatabasesPending || isTablesFetching
-	const showPageError = isCatalogsError || isTablesError
-	const showCatalogEmptyState =
-		!isCatalogsPending && !isCatalogsError && catalogs.length === 0
-	const showDatabaseError =
-		!isCatalogsPending &&
-		!isCatalogsError &&
-		!isDatabasesPending &&
-		catalogs.length > 0 &&
-		!!selectedCatalog &&
-		isDatabasesError
 
-	const showDatabaseEmptyState =
-		!isCatalogsPending &&
-		!isCatalogsError &&
-		!isDatabasesPending &&
-		!isDatabasesError &&
-		catalogs.length > 0 &&
-		!!selectedCatalog &&
-		databaseOptions.length === 0
+	// Derives a single UI state in priority order: catalog → database → tables.
+	const pageState = (() => {
+		if (isCatalogsError) return PAGE_STATE.CATALOG_ERROR
+		if (!isCatalogsPending && catalogs.length === 0)
+			return PAGE_STATE.CATALOG_EMPTY
+		if (isDatabasesError) return PAGE_STATE.DATABASE_ERROR
+		if (
+			!isDatabasesPending &&
+			!!selectedCatalog &&
+			databaseOptions.length === 0
+		)
+			return PAGE_STATE.DATABASE_EMPTY
+		if (isTablesError) return PAGE_STATE.TABLES_ERROR
+		return PAGE_STATE.READY
+	})()
 
 	const getTableRunsPath = (tableName: string) =>
 		`/maintenance/tables/${encodeURIComponent(selectedCatalog ?? "")}/${encodeURIComponent(selectedDatabase ?? "")}/${encodeURIComponent(tableName)}/runs`
@@ -253,33 +259,19 @@ const Tables: React.FC = () => {
 		)
 	}
 
+	// Retries the appropriate API based on which state is currently failing or empty.
 	const handleRetry = () => {
-		if (isCatalogsError) {
-			void refetchCatalogs()
-		} else if (isDatabasesError) {
-			void refetchDatabases()
-		} else {
-			void refetchTables()
-		}
+		if (pageState === PAGE_STATE.CATALOG_ERROR) void refetchCatalogs()
+		else if (pageState === PAGE_STATE.DATABASE_ERROR) void refetchDatabases()
+		else if (pageState === PAGE_STATE.DATABASE_EMPTY) void refetchDatabases()
+		else void refetchTables()
 	}
 
 	return (
 		<>
 			<div className="min-h-full bg-white px-6 pt-6">
-				{showPageError ? (
-					<PageErrorState
-						title={
-							isCatalogsError
-								? "Failed to load catalogs"
-								: "Failed to load tables"
-						}
-						description="Please check your connection and try again."
-						onRetry={handleRetry}
-					/>
-				) : showCatalogEmptyState ? (
-					<TableEmptyState />
-				) : (
-					<>
+				{pageState !== PAGE_STATE.CATALOG_ERROR &&
+					pageState !== PAGE_STATE.CATALOG_EMPTY && (
 						<TablePageHeader
 							catalogs={catalogs}
 							isCatalogsPending={isCatalogsPending}
@@ -287,73 +279,95 @@ const Tables: React.FC = () => {
 							selectedCatalog={selectedCatalog}
 							selectedDatabase={selectedDatabase}
 							loading={loading}
-							isRefreshDisabled={showDatabaseEmptyState}
+							isRefreshDisabled={
+								pageState === PAGE_STATE.DATABASE_EMPTY ||
+								pageState === PAGE_STATE.DATABASE_ERROR
+							}
 							onCatalogChange={handleCatalogChange}
 							onDatabaseChange={handleDatabaseChange}
 							onRefresh={refetchTables}
 						/>
-						<div className="mt-8 w-full">
-							{showDatabaseError ? (
-								<PageErrorState
-									title="Failed to load databases"
-									description="Please check your connection and try again."
-									onRetry={() => void refetchDatabases()}
-								/>
-							) : showDatabaseEmptyState ? (
-								<PageErrorState
-									title="No Database Found"
-									description="There are no databases in the selected catalog."
-									onRetry={() => void refetchCatalogs()}
-								/>
-							) : (
-								<div className="flex flex-col gap-6">
-									<div className="grid w-full grid-cols-[1fr_auto] items-center gap-4">
-										<div className="min-w-0 overflow-x-auto">
-											<TableFilterBar
-												searchTerm={searchTerm}
-												onSearchChange={setSearchTerm}
-												activeFilter={activeFilter}
-												onFilterChange={setActiveFilter}
-											/>
-										</div>
-										<Button
-											type="primary"
-											size="middle"
-											className="shrink-0"
-											onClick={handleBulkConfigure}
-										>
-											Bulk Configure
-										</Button>
-									</div>
-									<DataTable
-										columns={columns}
-										rows={paginatedRows}
-										rowKey={row => row.name}
-										checkboxSelection
-										selectedRowKeys={selectedTables}
-										allSelectableRows={filteredRows}
-										onSelectionChange={setSelectedTables}
-										loading={loading}
-										emptyStateConfig={{
-											title:
-												tables.length === 0 ? "No Tables" : "No Tables Found.",
-											subtitle:
-												tables.length > 0
-													? "Try a different search or filter."
-													: "There are no tables in the selected database.",
-											onRefetch: () => navigate("/maintenance/catalogs"),
-										}}
-										pagination={{
-											currentPage,
-											totalPages,
-											onPageChange: setCurrentPage,
-										}}
+					)}
+				<div
+					className={
+						pageState !== PAGE_STATE.CATALOG_ERROR &&
+						pageState !== PAGE_STATE.CATALOG_EMPTY
+							? "mt-8 w-full"
+							: "w-full"
+					}
+				>
+					{pageState === PAGE_STATE.CATALOG_ERROR ? (
+						<PageErrorState
+							title="Failed to load catalogs"
+							description="Please check your connection and try again."
+							onRetry={handleRetry}
+						/>
+					) : pageState === PAGE_STATE.CATALOG_EMPTY ? (
+						<TableEmptyState />
+					) : pageState === PAGE_STATE.DATABASE_ERROR ? (
+						<PageErrorState
+							title="Failed to load databases"
+							description="Please check your connection and try again."
+							onRetry={handleRetry}
+						/>
+					) : pageState === PAGE_STATE.DATABASE_EMPTY ? (
+						<PageErrorState
+							title="No Database Found"
+							description="There are no databases in the selected catalog."
+							onRetry={handleRetry}
+						/>
+					) : pageState === PAGE_STATE.TABLES_ERROR ? (
+						<PageErrorState
+							title="Failed to load tables"
+							description="Please check your connection and try again."
+							onRetry={handleRetry}
+						/>
+					) : (
+						<div className="flex flex-col gap-6">
+							<div className="grid w-full grid-cols-[1fr_auto] items-center gap-4">
+								<div className="min-w-0 overflow-x-auto">
+									<TableFilterBar
+										searchTerm={searchTerm}
+										onSearchChange={setSearchTerm}
+										activeFilter={activeFilter}
+										onFilterChange={setActiveFilter}
 									/>
 								</div>
-							)}
+								<Button
+									type="primary"
+									size="middle"
+									className="shrink-0"
+									onClick={handleBulkConfigure}
+								>
+									Bulk Configure
+								</Button>
+							</div>
+							<DataTable
+								columns={columns}
+								rows={paginatedRows}
+								rowKey={row => row.name}
+								checkboxSelection
+								selectedRowKeys={selectedTables}
+								allSelectableRows={filteredRows}
+								onSelectionChange={setSelectedTables}
+								loading={loading}
+								emptyStateConfig={{
+									title: tables.length === 0 ? "No Tables" : "No Tables Found.",
+									subtitle:
+										tables.length > 0
+											? "Try a different search or filter."
+											: "There are no tables in the selected database.",
+									onRefetch: handleRetry,
+								}}
+								pagination={{
+									currentPage,
+									totalPages,
+									onPageChange: setCurrentPage,
+								}}
+							/>
 						</div>
-					</>
-				)}
+					)}
+				</div>
 			</div>
 
 			<ConfigureOptimizationModalSingle
