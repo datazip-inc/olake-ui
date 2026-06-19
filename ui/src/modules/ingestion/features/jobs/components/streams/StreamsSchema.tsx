@@ -207,7 +207,7 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 						/>
 					</div>
 					<div className="flex-1 px-2 text-left font-medium text-gray-700">
-						Column name
+						Source Column
 					</div>
 					{hasDestinationColumns && (
 						<div className="flex-1 px-2 text-left font-medium text-gray-700">
