@@ -50,6 +50,15 @@ var (
 	ConfRunMode               = "runmode"
 	ConfContainerRegistryBase = "CONTAINER_REGISTRY_BASE"
 
+	// Optional credentials/TLS for generic (Docker Registry v2) container registries
+	// such as Harbor, Nexus, Quay, GitLab, or a plain registry:2. These are ignored
+	// for ECR/GCR (which authenticate via cloud IAM) and for Docker Hub.
+	EnvRegistryUsername      = "CONTAINER_REGISTRY_USERNAME"
+	EnvRegistryPassword      = "CONTAINER_REGISTRY_PASSWORD"
+	EnvRegistryInsecure      = "CONTAINER_REGISTRY_INSECURE"        // allow plain-HTTP registries (e.g. host:5000)
+	EnvRegistryTLSSkipVerify = "CONTAINER_REGISTRY_TLS_SKIP_VERIFY" // skip TLS verification for self-signed HTTPS
+	EnvRegistryCACert        = "CONTAINER_REGISTRY_CA_CERT"         // PEM CA bundle contents for a private CA
+
 	// database keys
 	ConfPostgresDB            = "postgresdb"
 	ConfOLakePostgresUser     = "OLAKE_POSTGRES_USER"
