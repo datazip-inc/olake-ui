@@ -4,8 +4,6 @@ import { API_CONFIG } from "@/config"
 import { api } from "@/core/api"
 
 import type {
-	BulkUpdateTableConfigApiResponse,
-	BulkUpdateTableCronApiRequest,
 	GetProcessLogsApiResponse,
 	GetTableRunsApiResponse,
 	TableDetailsApiResponse,
@@ -13,6 +11,7 @@ import type {
 	TableMetricsApiResponse,
 	UpdateTableCronApiRequest,
 	UpdateTableConfigApiResponse,
+	UpdateTablesConfigApiRequest,
 } from "../types"
 
 export const tableService = {
@@ -84,10 +83,10 @@ export const tableService = {
 	bulkUpdateTableConfig: async (
 		catalog: string,
 		database: string,
-		payload: BulkUpdateTableCronApiRequest,
-	): Promise<BulkUpdateTableConfigApiResponse> => {
+		payload: UpdateTablesConfigApiRequest,
+	): Promise<UpdateTableConfigApiResponse> => {
 		try {
-			const response = await api.put<BulkUpdateTableConfigApiResponse>(
+			const response = await api.put<UpdateTableConfigApiResponse>(
 				`${API_CONFIG.ENDPOINTS.OPT.TABLES(catalog, database)}/config`,
 				payload,
 				{ disableErrorNotification: true },
@@ -111,9 +110,14 @@ export const tableService = {
 		payload: UpdateTableCronApiRequest,
 	): Promise<UpdateTableConfigApiResponse> => {
 		try {
+			const request: UpdateTablesConfigApiRequest = {
+				tables: [tableName],
+				sql_input: payload,
+			}
+
 			const response = await api.put<UpdateTableConfigApiResponse>(
-				`${API_CONFIG.ENDPOINTS.OPT.TABLE_CONFIG(catalog, database, tableName)}/config`,
-				payload,
+				`${API_CONFIG.ENDPOINTS.OPT.TABLES(catalog, database)}/config`,
+				request,
 				{ disableErrorNotification: true },
 			)
 			return response.data

@@ -12,10 +12,10 @@ import {
 } from "../../constants"
 import { tableService } from "../../services"
 import type {
-	BulkUpdateTableCronApiRequest,
 	CancelRunRequest,
 	ToggleTableOptimizingRequest,
 	UpdateTableCronApiRequest,
+	UpdateTablesConfigApiRequest,
 } from "../../types"
 
 export const useToggleTableOptimizing = () => {
@@ -72,7 +72,7 @@ export const useBulkUpdateTableCronConfig = (
 ) => {
 	return useMutation({
 		mutationKey: tableKeys.list(catalog, database),
-		mutationFn: (payload: BulkUpdateTableCronApiRequest) =>
+		mutationFn: (payload: UpdateTablesConfigApiRequest) =>
 			tableService.bulkUpdateTableConfig(catalog, database, payload),
 	})
 }

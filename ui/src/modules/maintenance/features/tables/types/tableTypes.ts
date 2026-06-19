@@ -99,15 +99,9 @@ export interface UpdateTableCronApiRequest {
 	target_file_size?: number
 }
 
-export interface BulkUpdateTableCronApiRequest {
+export interface UpdateTablesConfigApiRequest {
 	tables: string[]
 	sql_input: UpdateTableCronApiRequest
-}
-
-export interface BulkUpdateTableConfigApiResponse {
-	success: boolean
-	message: string
-	logs?: string[]
 }
 
 // Frontend Domain Types
@@ -202,8 +196,9 @@ export interface CancelRunRequest {
 }
 
 export interface UpdateTableConfigApiResponse {
+	sessionId?: string
 	success: boolean
-	message: string
+	message?: string
 	logs?: string[]
 }
 

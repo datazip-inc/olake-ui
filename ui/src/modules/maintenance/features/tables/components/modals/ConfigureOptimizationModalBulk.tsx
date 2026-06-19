@@ -122,7 +122,7 @@ const ConfigureOptimizationModalBulk: React.FC<
 						onSuccess: result =>
 							result.success
 								? onSuccess()
-								: onError(result.logs ?? [result.message]),
+								: onError(result.logs ?? (result.message ? [result.message] : [])),
 					},
 				)
 			}
