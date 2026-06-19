@@ -10,6 +10,8 @@ type UseCatalogDatabaseSelectionReturn = {
 	selectedCatalog: string | undefined
 	selectedDatabase: string | undefined
 	databaseOptions: string[]
+	isDatabasesError: boolean
+	refetchDatabases: () => void
 	setSelectedDatabase: (db: string | undefined) => void
 	handleCatalogChange: (catalogName: string) => void
 	handleDatabaseChange: (database: string) => void
@@ -43,8 +45,12 @@ export function useCatalogDatabaseSelection(
 
 	const catalogName = selectedCatalog ?? catalogParam ?? catalogs[0]?.name ?? ""
 
-	const { data: databaseOptions = [], isPending: isDatabasesPending } =
-		useCatalogDatabases(catalogName)
+	const {
+		data: databaseOptions = [],
+		isPending: isDatabasesPending,
+		isError: isDatabasesError,
+		refetch: refetchDatabases,
+	} = useCatalogDatabases(catalogName)
 
 	// URL params → state: validate against loaded catalogs, auto-select when no params.
 	// When auto-selecting (no catalogParam), also writes catalog to URL
@@ -117,6 +123,8 @@ export function useCatalogDatabaseSelection(
 		selectedCatalog,
 		selectedDatabase,
 		databaseOptions,
+		isDatabasesError,
+		refetchDatabases,
 		setSelectedDatabase,
 		handleCatalogChange,
 		handleDatabaseChange,
