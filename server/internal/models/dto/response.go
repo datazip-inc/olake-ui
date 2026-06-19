@@ -248,7 +248,6 @@ type OptimizationInfo struct {
 type TableProperties struct {
 	SessionID string   `json:"sessionId"`
 	Success   bool     `json:"success"`
-	Message   string   `json:"message"`
 	Logs      []string `json:"logs,omitempty"`
 }
 
