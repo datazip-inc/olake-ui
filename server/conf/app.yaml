@@ -32,6 +32,15 @@ TEMPORAL_EXTERNAL: false
 TEMPORAL_TASK_QUEUE: ""
 CONTAINER_REGISTRY_BASE: registry-1.docker.io
 
+# Optional credentials/TLS for a generic private Docker Registry v2 registry
+# (Harbor, Nexus, Quay, GitLab, plain registry:2). Leave empty for Docker Hub or
+# for ECR/GCR (which authenticate via cloud IAM). Prefer setting these via environment.
+# CONTAINER_REGISTRY_USERNAME: ""
+# CONTAINER_REGISTRY_PASSWORD: ""
+# CONTAINER_REGISTRY_INSECURE: false        # allow plain-HTTP registries (e.g. host:5000)
+# CONTAINER_REGISTRY_TLS_SKIP_VERIFY: false # skip TLS verification for self-signed HTTPS
+# CONTAINER_REGISTRY_CA_CERT: ""            # PEM CA bundle contents for a private CA
+
 # Prefer setting this via environment.
 OLAKE_SECRET_KEY: ""
 
