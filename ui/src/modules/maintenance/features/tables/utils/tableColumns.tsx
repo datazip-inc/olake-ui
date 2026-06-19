@@ -79,7 +79,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 		{
 			key: "actions",
 			header: "Actions",
-			width: 8,
+			width: 6,
 			render: row => (
 				<Dropdown
 					menu={{ items: getActionMenuItems(row) }}
@@ -96,7 +96,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 		{
 			key: "name",
 			header: "Table",
-			width: 24,
+			width: 20,
 			render: row => (
 				<div className="flex items-center gap-2">
 					<p className="text-sm leading-6 text-olake-text">{row.name}</p>
@@ -185,6 +185,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 					</Tooltip>
 				</div>
 			),
+			width: 10,
 			align: "center",
 			render: row => {
 				if (isTogglePendingFor(row.name)) {
