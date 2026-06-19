@@ -3,6 +3,7 @@ import semver from "semver"
 import {
 	MIN_COLUMN_SELECTION_SOURCE_VERSION,
 	MIN_JSON_FILTER_VERSION,
+	MIN_SOURCE_NAMING_CONVENTION_VERSION,
 } from "@/modules/ingestion/common/constants"
 import {
 	SelectedStreamsByNamespace,
@@ -125,6 +126,17 @@ export function isColumnEnabled(
 ): boolean {
 	if (!isColumnSelectionSupported(selectedStream)) return true
 	return selectedStream.selected_columns!.columns.includes(columnName)
+}
+
+// Returns true if the source version supports the use_source_column_names flag.
+export function isUseSourceColumnNamesSupported(
+	sourceVersion?: string,
+): boolean {
+	return (
+		!!sourceVersion &&
+		!!semver.valid(sourceVersion) &&
+		semver.gte(sourceVersion, MIN_SOURCE_NAMING_CONVENTION_VERSION)
+	)
 }
 
 // Filters out disabled streams

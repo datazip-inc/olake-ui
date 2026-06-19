@@ -34,5 +34,6 @@ export interface BulkConfigureStreamsModalProps {
 	onClose: () => void
 	streamsData: StreamsDataStructure | null
 	sourceType?: string
+	sourceVersion?: string
 	destinationType?: string
 }

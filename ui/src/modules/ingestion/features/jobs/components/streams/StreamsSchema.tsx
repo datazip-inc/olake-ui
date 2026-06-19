@@ -3,15 +3,24 @@ import { Checkbox, Input, Switch, Tooltip } from "antd"
 import { CheckboxChangeEvent } from "antd/es/checkbox/Checkbox"
 import { useState, useEffect } from "react"
 
+import SourceNamingConventionSectionSingle from "./SourceNamingConventionSectionSingle"
 import {
 	selectActiveSelectedStream,
 	selectActiveStreamData,
 	useStreamSelectionStore,
 } from "../../stores"
-import { isColumnSelectionSupported, isColumnEnabled } from "../../utils"
+import {
+	isColumnSelectionSupported,
+	isColumnEnabled,
+	isUseSourceColumnNamesSupported,
+} from "../../utils"
 import RenderTypeItems from "../RenderTypeItems"
 
-const StreamsSchema = () => {
+interface StreamsSchemaProps {
+	sourceVersion: string
+}
+
+const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 	const streamData = useStreamSelectionStore(selectActiveStreamData)
 	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
 	const updateSelectedColumns = useStreamSelectionStore(
@@ -154,6 +163,12 @@ const StreamsSchema = () => {
 				</div>
 			)}
 
+			{isUseSourceColumnNamesSupported(sourceVersion) && (
+				<div className="mb-3">
+					<SourceNamingConventionSectionSingle />
+				</div>
+			)}
+
 			{/* Search */}
 			<div className="mb-3 flex items-center gap-x-2">
 				<div className="w-full border-r pr-3">
@@ -183,7 +198,7 @@ const StreamsSchema = () => {
 
 			<div className="max-h-[400px] overflow-auto rounded border border-[#d9d9d9]">
 				{/* Table Header */}
-				<div className="flex items-center border-b border-gray-400 bg-gray-50 px-4 py-3">
+				<div className="sticky top-0 z-10 flex items-center border-b border-gray-400 bg-gray-50 px-4 py-3">
 					<div className="flex w-16 items-center justify-center">
 						<Checkbox
 							checked={isAllSelected}
@@ -192,7 +207,7 @@ const StreamsSchema = () => {
 						/>
 					</div>
 					<div className="flex-1 px-2 text-left font-medium text-gray-700">
-						Column name
+						Source Column
 					</div>
 					{hasDestinationColumns && (
 						<div className="flex-1 px-2 text-left font-medium text-gray-700">
@@ -246,13 +261,20 @@ const StreamsSchema = () => {
 							</div>
 							{hasDestinationColumns && (
 								<div className="flex-1 px-2 text-left">
-									<Tooltip title={destinationColumnName}>
-										<span className="block">
-											{destinationColumnName.length > 13
-												? `${destinationColumnName.substring(0, 13)}...`
-												: destinationColumnName}
-										</span>
-									</Tooltip>
+									{(() => {
+										const displayName = selectedStream.use_source_column_names
+											? item
+											: destinationColumnName
+										return (
+											<Tooltip title={displayName}>
+												<span className="block">
+													{displayName.length > 13
+														? `${displayName.substring(0, 13)}...`
+														: displayName}
+												</span>
+											</Tooltip>
+										)
+									})()}
 								</div>
 							)}
 							<div className="flex-1 px-2 text-left">

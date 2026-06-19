@@ -372,6 +372,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						<StreamConfiguration
 							destinationType={destinationType}
 							sourceType={sourceConnector}
+							sourceVersion={sourceVersion}
 						/>
 					) : null}
 				</div>
@@ -408,6 +409,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				onClose={() => setShowBulkConfigureStreamsModal(false)}
 				streamsData={streamsData}
 				sourceType={sourceConnector}
+				sourceVersion={sourceVersion}
 				destinationType={destinationType}
 			/>
 		</div>
