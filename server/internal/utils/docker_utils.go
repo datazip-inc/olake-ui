@@ -270,7 +270,7 @@ func isECRRegistry(host string) bool {
 // pagination.
 func getGenericRegistryImageTags(ctx context.Context, fullImageName string) ([]string, error) {
 	nameOpts := []name.Option{name.WeakValidation}
-	if viper.GetBool(constants.EnvRegistryInsecure) {
+	if appconfig.Load().ContainerRegistryInsecure {
 		nameOpts = append(nameOpts, name.Insecure) // allow plain-HTTP registries (e.g. host:5000)
 	}
 	repo, err := name.NewRepository(fullImageName, nameOpts...)
@@ -304,8 +304,9 @@ func getGenericRegistryImageTags(ctx context.Context, fullImageName string) ([]s
 // the standard docker keychain (~/.docker/config.json via DOCKER_CONFIG), which itself
 // resolves to anonymous when no credentials are configured.
 func registryAuthOption() remote.Option {
-	user := strings.TrimSpace(viper.GetString(constants.EnvRegistryUsername))
-	pass := strings.TrimSpace(viper.GetString(constants.EnvRegistryPassword))
+	cfg := appconfig.Load()
+	user := cfg.ContainerRegistryUsername
+	pass := cfg.ContainerRegistryPassword
 	if user != "" || pass != "" {
 		return remote.WithAuth(&authn.Basic{Username: user, Password: pass})
 	}
@@ -315,9 +316,10 @@ func registryAuthOption() remote.Option {
 // registryTransport clones the default transport and applies optional TLS overrides
 // for on-prem registries with self-signed certificates or a private CA.
 func registryTransport() (http.RoundTripper, error) {
+	cfg := appconfig.Load()
 	base := http.DefaultTransport.(*http.Transport).Clone()
-	tlsCfg := &tls.Config{InsecureSkipVerify: viper.GetBool(constants.EnvRegistryTLSSkipVerify)} //nolint:gosec // opt-in via CONTAINER_REGISTRY_TLS_SKIP_VERIFY for self-signed on-prem registries
-	if caPEM := strings.TrimSpace(viper.GetString(constants.EnvRegistryCACert)); caPEM != "" {
+	tlsCfg := &tls.Config{InsecureSkipVerify: cfg.ContainerRegistryTLSSkipVerify} //nolint:gosec // opt-in via CONTAINER_REGISTRY_TLS_SKIP_VERIFY for self-signed on-prem registries
+	if caPEM := cfg.ContainerRegistryCACert; caPEM != "" {
 		// The value is the PEM CA bundle contents itself, which is convenient for
 		// env-driven configs and Kubernetes Secrets (no file to mount).
 		pool, _ := x509.SystemCertPool()

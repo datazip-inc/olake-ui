@@ -34,8 +34,13 @@ type Config struct {
 	TemporalAPIKey        string
 	TemporalExternal      bool
 	TemporalTaskQueue     string
-	ContainerRegistryBase string
-	EnableOptimization    bool
+	ContainerRegistryBase          string
+	ContainerRegistryUsername      string
+	ContainerRegistryPassword      string
+	ContainerRegistryInsecure      bool
+	ContainerRegistryTLSSkipVerify bool
+	ContainerRegistryCACert        string
+	EnableOptimization             bool
 	OptimizationGroup     string
 	OptimizationBaseURL   string
 	OptimizationUsername  string
@@ -76,9 +81,14 @@ func loadConfig() Config {
 		HTTPReadTimeout:       v.GetDuration("HTTP_READ_TIMEOUT"),
 		HTTPWriteTimeout:      v.GetDuration("HTTP_WRITE_TIMEOUT"),
 		HTTPIdleTimeout:       v.GetDuration("HTTP_IDLE_TIMEOUT"),
-		RunMode:               strings.TrimSpace(v.GetString("RUN_MODE")),
-		ContainerRegistryBase: strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_BASE")),
-		LogsDir:               strings.TrimSpace(v.GetString("LOGS_DIR")),
+		RunMode:                        strings.TrimSpace(v.GetString("RUN_MODE")),
+		ContainerRegistryBase:          strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_BASE")),
+		ContainerRegistryUsername:      strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_USERNAME")),
+		ContainerRegistryPassword:      strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_PASSWORD")),
+		ContainerRegistryInsecure:      v.GetBool("CONTAINER_REGISTRY_INSECURE"),
+		ContainerRegistryTLSSkipVerify: v.GetBool("CONTAINER_REGISTRY_TLS_SKIP_VERIFY"),
+		ContainerRegistryCACert:        strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_CA_CERT")),
+		LogsDir:                        strings.TrimSpace(v.GetString("LOGS_DIR")),
 		TemporalAddress:       strings.TrimSpace(v.GetString("TEMPORAL_ADDRESS")),
 		TemporalNamespace:     strings.TrimSpace(v.GetString("TEMPORAL_NAMESPACE")),
 		TemporalEnableTLS:     v.GetBool("TEMPORAL_ENABLE_TLS"),
