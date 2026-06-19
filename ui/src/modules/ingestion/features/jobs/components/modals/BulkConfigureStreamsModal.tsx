@@ -2,6 +2,7 @@ import {
 	CaretDownIcon,
 	CaretRightIcon,
 	CheckIcon,
+	ColumnsPlusRightIcon,
 	FadersHorizontalIcon,
 	InfoIcon,
 	RowsIcon,
@@ -22,12 +23,16 @@ import { BulkConfigureStreamsModalProps } from "@/modules/ingestion/features/job
 
 import { CARD_STYLE } from "../../constants"
 import { useStreamSelectionStore } from "../../stores"
-import { buildBulkStreamsData } from "../../utils/streams"
+import {
+	buildBulkStreamsData,
+	isUseSourceColumnNamesSupported,
+} from "../../utils/streams"
 import BulkStreamSelectorList from "../streams/BulkStreamSelectorList"
 import DataFilterSectionBulk from "../streams/DataFilterSectionBulk"
 import IngestionModeSectionBulk from "../streams/IngestionModeSectionBulk"
 import NormalizationSectionBulk from "../streams/NormalizationSectionBulk"
 import PartitionRegexSectionBulk from "../streams/PartitionRegexSectionBulk"
+import SourceNamingConventionSectionBulk from "../streams/SourceNamingConventionSectionBulk"
 import SyncModeSectionBulk from "../streams/SyncModeSectionBulk"
 
 type BulkConfigureStep =
@@ -35,7 +40,7 @@ type BulkConfigureStep =
 	| "apply-configurations"
 	| "summary"
 	| "success"
-type BulkConfigurationTab = "config" | "partitioning"
+type BulkConfigurationTab = "config" | "partitioning" | "schema"
 
 type BulkConfig = {
 	syncMode: SyncMode | undefined
@@ -45,6 +50,7 @@ type BulkConfig = {
 	filter: string
 	filterConfig: FilterConfig | undefined
 	partitionRegex: string
+	useSourceColumnNames: boolean
 }
 
 enum BulkDirtyFieldKey {
@@ -53,6 +59,7 @@ enum BulkDirtyFieldKey {
 	Normalization = "normalization",
 	Filter = "filter",
 	PartitionRegex = "partitionRegex",
+	UseSourceColumnNames = "useSourceColumnNames",
 }
 
 type BulkDirtyFields = Record<BulkDirtyFieldKey, boolean>
@@ -63,6 +70,7 @@ const INITIAL_DIRTY_FIELDS: BulkDirtyFields = {
 	[BulkDirtyFieldKey.Normalization]: false,
 	[BulkDirtyFieldKey.Filter]: false,
 	[BulkDirtyFieldKey.PartitionRegex]: false,
+	[BulkDirtyFieldKey.UseSourceColumnNames]: false,
 }
 
 const INITIAL_BULK_CONFIG: BulkConfig = {
@@ -73,6 +81,7 @@ const INITIAL_BULK_CONFIG: BulkConfig = {
 	filter: "",
 	filterConfig: undefined,
 	partitionRegex: "",
+	useSourceColumnNames: false,
 }
 
 const CLOSE_COUNTDOWN = 3
@@ -95,8 +104,10 @@ const BulkConfigureStreamsModal = ({
 	onClose,
 	streamsData,
 	sourceType,
+	sourceVersion,
 	destinationType,
 }: BulkConfigureStreamsModalProps) => {
+	const schemaTabVisible = isUseSourceColumnNamesSupported(sourceVersion)
 	const [step, setStep] = useState<BulkConfigureStep>("select-streams")
 	const [activeTab, setActiveTab] = useState<BulkConfigurationTab>("config")
 	const [closeCountdown, setCloseCountdown] = useState(CLOSE_COUNTDOWN)
@@ -191,6 +202,7 @@ const BulkConfigureStreamsModal = ({
 			filter: "",
 			filterConfig: undefined,
 			partitionRegex: "",
+			useSourceColumnNames: false,
 		})
 		setDirtyFields(INITIAL_DIRTY_FIELDS)
 		setIsSyncIngestionCollapsed(true)
@@ -237,6 +249,9 @@ const BulkConfigureStreamsModal = ({
 			}),
 			...(dirtyFields[BulkDirtyFieldKey.PartitionRegex] && {
 				partitionRegex: bulkConfig.partitionRegex,
+			}),
+			...(dirtyFields[BulkDirtyFieldKey.UseSourceColumnNames] && {
+				useSourceColumnNames: bulkConfig.useSourceColumnNames,
 			}),
 		})
 
@@ -489,6 +504,11 @@ const BulkConfigureStreamsModal = ({
 													bulkPartitionRegex={bulkConfig.partitionRegex}
 												/>
 											)}
+											{dirtyFields[BulkDirtyFieldKey.UseSourceColumnNames] && (
+												<SourceNamingConventionSectionBulk
+													useSourceColumnNames={bulkConfig.useSourceColumnNames}
+												/>
+											)}
 										</div>
 									</div>
 								</div>
@@ -581,7 +601,12 @@ const BulkConfigureStreamsModal = ({
 										</div>
 
 										<div className="mt-8 rounded-md bg-olake-surface-muted p-0.5">
-											<div className="grid grid-cols-2 gap-1">
+											<div
+												className={clsx(
+													"grid gap-1",
+													schemaTabVisible ? "grid-cols-3" : "grid-cols-2",
+												)}
+											>
 												<button
 													type="button"
 													onClick={() => setActiveTab("config")}
@@ -595,6 +620,21 @@ const BulkConfigureStreamsModal = ({
 													<FadersHorizontalIcon className="size-4" />
 													Config
 												</button>
+												{schemaTabVisible && (
+													<button
+														type="button"
+														onClick={() => setActiveTab("schema")}
+														className={clsx(
+															"flex h-7 items-center justify-center gap-2 rounded-md border px-3 text-sm leading-5",
+															activeTab === "schema"
+																? "border-primary bg-white text-primary shadow-sm"
+																: "border-transparent text-olake-text",
+														)}
+													>
+														<ColumnsPlusRightIcon className="size-4" />
+														Schema
+													</button>
+												)}
 												<button
 													type="button"
 													onClick={() => setActiveTab("partitioning")}
@@ -611,7 +651,27 @@ const BulkConfigureStreamsModal = ({
 											</div>
 										</div>
 										<div className="mt-4">
-											{activeTab === "config" ? (
+											{activeTab === "schema" ? (
+												<div
+													key={selectionKey}
+													className="flex flex-col gap-4"
+												>
+													<SourceNamingConventionSectionBulk
+														isDirty={
+															dirtyFields[
+																BulkDirtyFieldKey.UseSourceColumnNames
+															]
+														}
+														useSourceColumnNames={
+															bulkConfig.useSourceColumnNames
+														}
+														onChange={value => {
+															setBulkConfigField("useSourceColumnNames", value)
+															markDirty(BulkDirtyFieldKey.UseSourceColumnNames)
+														}}
+													/>
+												</div>
+											) : activeTab === "config" ? (
 												<div
 													key={selectionKey}
 													className="flex flex-col gap-4"

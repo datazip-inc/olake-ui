@@ -22,39 +22,26 @@ func (h *Handler) GetTablesWithDetails(c *gin.Context) {
 	utils.SuccessResponse(c, "Successfully fetched tables with details", tables)
 }
 
-// SetProperties configures table level properties for optimization
+// SetProperties configures the same optimization properties on multiple tables (one terminal batch).
 func (h *Handler) SetProperties(c *gin.Context) {
-	catalog, database, table, ok := h.requiredCatalogDatabaseTable(c)
+	catalog, database, ok := h.requiredCatalogAndDatabase(c)
 	if !ok {
 		return
 	}
 
-	var req dto.SQLInput
-	if err := utils.BindAndValidate(c, &req); err != nil {
-		utils.ErrorResponse(c, utils.StatusFromBindError(err), "invalid request body for setting config in table properties", err)
+	var tableConfigs dto.OptimizationTableConfig
+	if err := utils.BindAndValidate(c, &tableConfigs); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), "invalid request body for optimization table config", err)
 		return
 	}
 
-	result, err := h.opt.SetProperties(c.Request.Context(), catalog, database, table, req)
+	result, err := h.opt.SetProperties(c.Request.Context(), catalog, database, tableConfigs)
 	if err != nil {
 		utils.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
 		return
 	}
 
-	utils.SuccessResponse(c, result.Message, result)
-}
-
-func (h *Handler) requiredCatalogDatabaseTable(c *gin.Context) (string, string, string, bool) {
-	catalog := c.Param("catalog")
-	database := c.Param("database")
-	table := c.Param("table")
-
-	if catalog == "" || database == "" || table == "" {
-		utils.ErrorResponse(c, badRequestStatusCode, "catalog, database, and table parameters are required", nil)
-		return "", "", "", false
-	}
-
-	return catalog, database, table, true
+	utils.SuccessResponse(c, "Finished setting properties for selected tables", result)
 }
 
 func (h *Handler) requiredCatalogAndDatabase(c *gin.Context) (string, string, bool) {

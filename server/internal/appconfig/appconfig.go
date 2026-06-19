@@ -9,37 +9,42 @@ import (
 )
 
 type Config struct {
-	AppName               string
-	HTTPPort              string
-	HTTPReadHeaderTimeout time.Duration
-	HTTPReadTimeout       time.Duration
-	HTTPWriteTimeout      time.Duration
-	HTTPIdleTimeout       time.Duration
-	RunMode               string
-	MaxMemory             int64
-	MaxUploadSize         int64
-	PostgresDSN           string
-	EncryptionKey         string
-	OlakePostgresUser     string
-	OlakePostgresPassword string
-	OlakePostgresHost     string
-	OlakePostgresPort     string
-	OlakePostgresDBName   string
-	OlakePostgresSSLMode  string
-	LogsDir               string
-	SessionOn             bool
-	TemporalAddress       string
-	TemporalNamespace     string
-	TemporalEnableTLS     bool
-	TemporalAPIKey        string
-	TemporalExternal      bool
-	TemporalTaskQueue     string
-	ContainerRegistryBase string
-	EnableOptimization    bool
-	OptimizationGroup     string
-	OptimizationBaseURL   string
-	OptimizationUsername  string
-	OptimizationPassword  string
+	AppName                        string
+	HTTPPort                       string
+	HTTPReadHeaderTimeout          time.Duration
+	HTTPReadTimeout                time.Duration
+	HTTPWriteTimeout               time.Duration
+	HTTPIdleTimeout                time.Duration
+	RunMode                        string
+	MaxMemory                      int64
+	MaxUploadSize                  int64
+	PostgresDSN                    string
+	EncryptionKey                  string
+	OlakePostgresUser              string
+	OlakePostgresPassword          string
+	OlakePostgresHost              string
+	OlakePostgresPort              string
+	OlakePostgresDBName            string
+	OlakePostgresSSLMode           string
+	LogsDir                        string
+	SessionOn                      bool
+	TemporalAddress                string
+	TemporalNamespace              string
+	TemporalEnableTLS              bool
+	TemporalAPIKey                 string
+	TemporalExternal               bool
+	TemporalTaskQueue              string
+	ContainerRegistryBase          string
+	ContainerRegistryUsername      string
+	ContainerRegistryPassword      string
+	ContainerRegistryInsecure      bool
+	ContainerRegistryTLSSkipVerify bool
+	ContainerRegistryCACert        string
+	EnableOptimization             bool
+	OptimizationGroup              string
+	OptimizationBaseURL            string
+	OptimizationUsername           string
+	OptimizationPassword           string
 }
 
 var cfg = loadConfig()
@@ -70,24 +75,29 @@ func loadConfig() Config {
 	v.AutomaticEnv()
 
 	return Config{
-		AppName:               strings.TrimSpace(v.GetString("APP_NAME")),
-		HTTPPort:              strings.TrimSpace(v.GetString("HTTP_PORT")),
-		HTTPReadHeaderTimeout: v.GetDuration("HTTP_READ_HEADER_TIMEOUT"),
-		HTTPReadTimeout:       v.GetDuration("HTTP_READ_TIMEOUT"),
-		HTTPWriteTimeout:      v.GetDuration("HTTP_WRITE_TIMEOUT"),
-		HTTPIdleTimeout:       v.GetDuration("HTTP_IDLE_TIMEOUT"),
-		RunMode:               strings.TrimSpace(v.GetString("RUN_MODE")),
-		ContainerRegistryBase: strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_BASE")),
-		LogsDir:               strings.TrimSpace(v.GetString("LOGS_DIR")),
-		TemporalAddress:       strings.TrimSpace(v.GetString("TEMPORAL_ADDRESS")),
-		TemporalNamespace:     strings.TrimSpace(v.GetString("TEMPORAL_NAMESPACE")),
-		TemporalEnableTLS:     v.GetBool("TEMPORAL_ENABLE_TLS"),
-		TemporalAPIKey:        strings.TrimSpace(v.GetString("TEMPORAL_API_KEY")),
-		TemporalExternal:      v.GetBool("TEMPORAL_EXTERNAL"),
-		TemporalTaskQueue:     strings.TrimSpace(v.GetString("TEMPORAL_TASK_QUEUE")),
-		MaxMemory:             v.GetInt64("MAX_MEMORY"),
-		MaxUploadSize:         v.GetInt64("MAX_UPLOAD_SIZE"),
-		SessionOn:             v.GetBool("SESSION_ON"),
+		AppName:                        strings.TrimSpace(v.GetString("APP_NAME")),
+		HTTPPort:                       strings.TrimSpace(v.GetString("HTTP_PORT")),
+		HTTPReadHeaderTimeout:          v.GetDuration("HTTP_READ_HEADER_TIMEOUT"),
+		HTTPReadTimeout:                v.GetDuration("HTTP_READ_TIMEOUT"),
+		HTTPWriteTimeout:               v.GetDuration("HTTP_WRITE_TIMEOUT"),
+		HTTPIdleTimeout:                v.GetDuration("HTTP_IDLE_TIMEOUT"),
+		RunMode:                        strings.TrimSpace(v.GetString("RUN_MODE")),
+		ContainerRegistryBase:          strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_BASE")),
+		ContainerRegistryUsername:      strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_USERNAME")),
+		ContainerRegistryPassword:      strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_PASSWORD")),
+		ContainerRegistryInsecure:      v.GetBool("CONTAINER_REGISTRY_INSECURE"),
+		ContainerRegistryTLSSkipVerify: v.GetBool("CONTAINER_REGISTRY_TLS_SKIP_VERIFY"),
+		ContainerRegistryCACert:        strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_CA_CERT")),
+		LogsDir:                        strings.TrimSpace(v.GetString("LOGS_DIR")),
+		TemporalAddress:                strings.TrimSpace(v.GetString("TEMPORAL_ADDRESS")),
+		TemporalNamespace:              strings.TrimSpace(v.GetString("TEMPORAL_NAMESPACE")),
+		TemporalEnableTLS:              v.GetBool("TEMPORAL_ENABLE_TLS"),
+		TemporalAPIKey:                 strings.TrimSpace(v.GetString("TEMPORAL_API_KEY")),
+		TemporalExternal:               v.GetBool("TEMPORAL_EXTERNAL"),
+		TemporalTaskQueue:              strings.TrimSpace(v.GetString("TEMPORAL_TASK_QUEUE")),
+		MaxMemory:                      v.GetInt64("MAX_MEMORY"),
+		MaxUploadSize:                  v.GetInt64("MAX_UPLOAD_SIZE"),
+		SessionOn:                      v.GetBool("SESSION_ON"),
 
 		PostgresDSN:           strings.TrimSpace(v.GetString("POSTGRES_DB")),
 		EncryptionKey:         strings.TrimSpace(v.GetString("OLAKE_SECRET_KEY")),
