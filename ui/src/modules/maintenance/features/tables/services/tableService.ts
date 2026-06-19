@@ -80,6 +80,29 @@ export const tableService = {
 		return response.data
 	},
 
+	bulkUpdateTableConfig: async (
+		catalog: string,
+		database: string,
+		payload: UpdateTablesConfigApiRequest,
+	): Promise<UpdateTableConfigApiResponse> => {
+		try {
+			const response = await api.put<UpdateTableConfigApiResponse>(
+				`${API_CONFIG.ENDPOINTS.OPT.TABLES(catalog, database)}/config`,
+				payload,
+				{ disableErrorNotification: true },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error bulk updating table config:", error)
+			const errorMessage =
+				error instanceof AxiosError
+					? (error.response?.data?.message ??
+						"Network error - please check your connection")
+					: "Unknown error occurred"
+			return { success: false, message: errorMessage }
+		}
+	},
+
 	updateTableConfig: async (
 		catalog: string,
 		database: string,
@@ -93,7 +116,7 @@ export const tableService = {
 			}
 
 			const response = await api.put<UpdateTableConfigApiResponse>(
-				API_CONFIG.ENDPOINTS.OPT.TABLE_CONFIG(catalog, database),
+				`${API_CONFIG.ENDPOINTS.OPT.TABLES(catalog, database)}/config`,
 				request,
 				{ disableErrorNotification: true },
 			)

@@ -59,7 +59,6 @@ const ConfigurationSuccessModal: React.FC<ConfigurationSuccessModalProps> = ({
 					<p className="whitespace-nowrap text-[30px] font-medium leading-[38px] text-olake-success-strong">
 						Configuration Successful
 					</p>
-					<p>Enable the table to run its first optimization</p>
 					<img
 						src={ConfigSuccessIcon}
 						alt=""
