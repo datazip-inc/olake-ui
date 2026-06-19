@@ -77,5 +77,4 @@ export const MIN_COLUMN_SELECTION_SOURCE_VERSION = "v0.4.0"
 export const MIN_JSON_FILTER_VERSION = "v0.6.0"
 
 // Minimum source version that supports the source naming convention (use_source_column_names).
-// TODO: update this version before final merge
 export const MIN_SOURCE_NAMING_CONVENTION_VERSION = "v0.7.7"
