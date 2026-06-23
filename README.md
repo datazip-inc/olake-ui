@@ -41,9 +41,19 @@ This Docker Compose setup provides a comprehensive environment(OLake UI, Tempora
 
 1. **One-Command Setup:**
 
-```sh
-curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
-```
+   Choose the setup that matches your use case:
+
+   **Ingestion only**
+
+   ```sh
+   curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
+   ```
+
+   **Ingestion and Maintenance**
+
+   ```sh
+   curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | ENABLE_OPTIMIZATION="true" docker compose --profile fusion -f - up -d
+   ```
 
 2. **Access the services:**
 
@@ -108,11 +118,24 @@ x-encryption:
 
 ### Updating OLake UI Version
 
-To update OLake UI to the latest version, use the following command:
+To update OLake UI to the latest version, use the command for your setup:
+
+**Ingestion only**
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - down && \
 curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
+```
+
+**Ingestion and Maintenance**
+
+```bash
+docker ps -aq --filter name=fusion-cluster \
+| xargs -r docker rm -f; \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml \
+| docker compose --profile fusion -f - down && \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml \
+| ENABLE_OPTIMIZATION="true" docker compose --profile fusion -f - up -d
 ```
 
 **Note**: Your data and configurations will be preserved as they are stored in persistent volumes and the `olake-data` directory.
