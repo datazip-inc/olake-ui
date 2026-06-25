@@ -22,9 +22,7 @@
 
 Olake-UI offers an intuitive web interface to configure, monitor, and manage your data replication jobs.
 
-- [UI Readme](/olake_frontend/README.md)
 - [Server Readme](/server/README.md)
-- [UI Figma Design](https://www.figma.com/design/FwLnU97I8LjtYNREPyYofc/Olake-Design-Community?node-id=1-46&p=f&t=y3BIsLTUaXhHwYLG-0)
 - [API Contracts](/api-contract.md)
 
 ## Running with Docker Compose
