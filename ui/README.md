@@ -1,138 +1,166 @@
-# Olake Frontend UI with React + TypeScript + Ant Design Tailwind + Vite 🌈
+# Olake Frontend UI
 
-## Design 🎨
+React + TypeScript + Ant Design + Tailwind CSS + Vite
 
-Check out our design on Figma:
-[Olake-UI Figma Design](https://www.figma.com/design/FwLnU97I8LjtYNREPyYofc/Olake%2FDesign%2FCommunity?node-id=0-1&p=f&t=oOQMWCyXF6rzMzT1-0)
-
-## Requirements ✅
+## Requirements
 
 - A latest LTS version of [Node.js](https://nodejs.org/en/download/).
-- [pnpm](https://pnpm.io/installation), a fast, disk space efficient package manager for Node.js.
+- [pnpm](https://pnpm.io/installation), a fast, disk-space-efficient package manager for Node.js.
 
-## Running the project locally 🚀
+## Running the project locally
 
-- 🌐 Clone the Repo using the SSH or HTTPS
-- 🎉 Install all the required dependencies in the root directory of the project using pnpm. before that ensure that u have 'pnpm'.
+All commands below are run from the `ui/` directory.
+
+1. Clone the repository using SSH or HTTPS.
+2. Install dependencies:
 
 ```bash
 pnpm install
 ```
 
-- 🎮 Run the project from the root directory.
+3. Start the development server:
 
 ```bash
 pnpm dev
 ```
 
-### To format the code 🎭
+### Build and preview
+
+```bash
+pnpm build
+pnpm preview
+```
+
+### Format code
 
 ```bash
 pnpm format
+pnpm format:check
 ```
 
-## Checksum before commit && pushing to remote 🎭
+## Checks before commit and push
 
-- 📝 To check the `EsLint` issus
+Check ESLint issues:
 
 ```bash
 pnpm lint
 ```
 
-- 🎨 To fix the `EsLint` issues
+Fix ESLint issues:
 
 ```bash
 pnpm lint:fix
 ```
 
-## Troubleshoot Options 🚨
+## Troubleshooting
 
-- Run the following command to clean the `node_modules`. After that reinstall dependencies using `pnpm install`
+To clean `node_modules` and reinstall dependencies:
 
 ```bash
 pnpx npkill
+pnpm install
 ```
 
-## Folder Structure 📁
+## Architecture overview
+
+The app is organized into **core** (cross-cutting concerns), **modules** (feature domains), and **common** (shared UI and utilities).
+
+- **Routing** — `src/app/router.tsx` defines public and protected routes. Feature routes are registered through the module registry in `src/core/modules/registry.ts`.
+- **Modules** — Each domain module (`ingestion`, `maintenance`) exports an `AppModule` descriptor with nav config, routes, and optional feature gates.
+- **Data fetching** — API calls live in `services/`. TanStack Query hooks in `hooks/queries/` and `hooks/mutations/` handle server state, caching, and cache invalidation.
+- **Client state** — Zustand stores remain for UI/auth state that does not belong in the server cache.
+- **Path alias** — `@/` resolves to `src/` (configured in `vite.config.ts`).
+
+To add a new module, create `src/modules/<name>/index.ts`, register it in `src/core/modules/registry.ts`, and add a corresponding entry in `useActiveModuleKeys`.
+
+## Folder structure
 
 ```text
-├── public // Contains public resources. Ex favicon
+ui/
+├── public/                          # Static assets (e.g. favicon)
+├── tests/                           # Playwright E2E tests (see tests/README.md)
 │
-├── src
-│   ├── assets // Contains all assets used in App
-│   ├── api  // AXIOS setup and mockdata
-|       ├── services // API services for Jobs , Sources , Destinations
-│   ├── modules  // Contains all modules of App
-|   |   ├── auth // auth components
-│   │   ├── common
-|   |   |   ├── components // common components
-|   |   |   ├── Modals // Modals used throughout the app
-│   │   └── destinations // All destinations related  components
-|   |   ├── sources // All sources related components
-|   |   ├── jobs  // All jobs related components
-|	|
-│   ├── routes // routes
-|   |
-│   ├── store  // Contains all state management files
-|   |   ├── authStore // auth specific states
-|   |   ├── destinationStore // Destination specific states
-|   |   ├── jobStore // Job specific states
-|   |   ├── modalStore // Modals specific states
-|   |   ├── selectionStore // state file for managing the selected entities
-|   |   ├── sourceStore // Source specific states
-|   |   ├── taskStore // Task specific states
-|   |   ├── index // states root file
+├── src/
+│   ├── app/                         # App shell and router
+│   │   ├── App.tsx
+│   │   └── router.tsx
 │   │
-│   ├── types
-|   |   ├── apiTypes // api specific types
-|   |   ├── authTypes // auth specific types
-|   |   ├── commonTypes // common types used across different files
-|   |   ├── entityTypes // entity(source/destination) specific types
-|   |   ├── streamTypes // stream specific types
-|   |   ├── jobTypes // Job specific types
-|   |   ├── destinationTypes //Destination specific types
-|   |   ├── sourceTypes // Source specific types
-|   |   ├── formTypes // Form specific types
-|   |   ├── errorTypes //Error specific Types
-|   |   ├── index  //types root file
-|   |
-|   ├── utils // common functions and constants
+│   ├── assets/                      # Images, icons, and SVGs
 │   │
-│   ├── main.tsx // Root File of App which has all providers
+│   ├── common/                      # Shared across all modules
+│   │   ├── components/              # Reusable UI (DataTable, modals, form widgets)
+│   │   ├── constants/
+│   │   ├── hooks/
+│   │   ├── types/
+│   │   └── utils/
 │   │
-│   └── App.tsx // App
+│   ├── config/                      # App configuration (e.g. API base URL)
+│   │
+│   ├── core/                        # Cross-cutting application infrastructure
+│   │   ├── analytics/
+│   │   ├── api/                     # Axios instance and interceptors
+│   │   ├── auth/                    # Login, auth store, auth services
+│   │   ├── layout/                  # Shell, sidebar, nav config
+│   │   ├── modules/                 # Module registry and route builder
+│   │   ├── notifications/
+│   │   ├── platform/                # Platform-wide state and services
+│   │   └── settings/                # System settings pages and hooks
+│   │
+│   ├── lib/                         # Shared library code (e.g. Ant Design theme)
+│   │
+│   ├── modules/                     # Feature domains
+│   │   ├── ingestion/               # Jobs, sources, destinations
+│   │   │   ├── common/              # Shared ingestion components and services
+│   │   │   └── features/
+│   │   │       ├── jobs/
+│   │   │       ├── sources/
+│   │   │       └── destinations/    # Each feature typically contains:
+│   │   │                            #   components/, hooks/, pages/, services/,
+│   │   │                            #   stores/, types/, utils/, constants/
+│   │   └── maintenance/             # Catalogs, tables, compaction
+│   │       ├── common/
+│   │       └── features/
+│   │           ├── catalogs/
+│   │           └── tables/
+│   │
+│   ├── providers/                   # React context providers (QueryClient, Ant Design)
+│   │
+│   ├── main.tsx                     # Application entry point
+│   └── index.css                    # Global styles
 │
-├── index.html // index file of React App
-│
+├── index.html
 ├── package.json
-│
-├── eslint.config.js // Configuration of ESLint Plugin
-│
-├── tsconfig.json // Configuration of TypeScript
-│
-├── tailwind.config.js // Configuration of Tailwind CSS
-│
-├── tsconfig.app.json // Configuration of TypeScript for Browser(App) Environment
-│
-├── tsconfig.node.json // Configuration of TypeScript for Node Environment
-│
-└── vite.config.ts // Configuration of Vite
+├── eslint.config.js
+├── tsconfig.json
+├── tsconfig.app.json
+├── tsconfig.node.json
+├── tailwind.config.js
+├── postcss.config.js
+├── vite.config.ts
+└── playwright.config.ts
 ```
 
-## Used Packages 📦
+## Used packages
 
-- **Tailwind CSS**: Tailwind CSS is an open-source CSS framework.
-- **zustand**: A small, fast, and scalable bearbones state management solution.
-- **Axios**: Axios is a promise based HTTP client for browser and node.js.
-- **React Router DOM**: Used for Routing.
-- **Ant Design**: Component Library.
-- **Phosphor-icons**: Icons Library for our App.
-- **Vite**: Vite is a local development server
-- **eslint/js**: ESLint Plugin is used for Linting.
-- **prettier**: Prettier Plugin is used for Prettier issues.
+- **React** / **React DOM**: UI library.
+- **TypeScript**: Static typing.
+- **Vite**: Build tool and dev server.
+- **Tailwind CSS**: Utility-first CSS framework.
+- **Ant Design**: Component library.
+- **TanStack Query** (`@tanstack/react-query`): Server-state management, caching, and data synchronization.
+- **Axios**: HTTP client for API requests.
+- **Zustand**: Client-side state management for auth and UI state.
+- **React Router DOM**: Client-side routing.
+- **Phosphor Icons** (`@phosphor-icons/react`): Icon library.
+- **React JSON Schema Form** (`@rjsf/*`): Dynamic form rendering from JSON Schema.
+- **clsx**: Conditional class name utility.
+- **date-fns**, **croner**, **semver**, **uuid**, **react-virtuoso**, **react-markdown**: Supporting utilities.
+- **Playwright** (`@playwright/test`): End-to-end testing (dev dependency).
+- **ESLint** / **Prettier**: Linting and formatting (dev dependencies).
 
-## UX Tips
+## UX tips
 
-### Suspense Wrapper
+### Suspense wrapper
 
-- use `suspense` from `react` for Loading Animation.
+Use `Suspense` from `react` for loading states on lazily loaded routes and components. The app wraps `RouterProvider` in a `Suspense` boundary with a shared loading screen.
+ 

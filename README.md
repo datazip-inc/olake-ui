@@ -1,4 +1,4 @@
-# Olake-UI
+# OLake-UI
 
 <h1 align="center" style="border-bottom: none">
     <a href="https://datazip.io/olake" target="_blank">
@@ -7,29 +7,25 @@
     <br>OLake
 </h1>
 
-<p align="center">Fastest open-source tool for replicating Databases to Apache Iceberg or Data Lakehouse. ⚡ Efficient, quick and scalable data ingestion for real-time analytics. Starting with MongoDB. Visit <a href="https://olake.io/" target="_blank">olake.io/docs</a> for the full documentation, and benchmarks</p>
+<p align="center"><a href="https://github.com/datazip-inc/olake"><strong>OLake Go</strong></a> enables real-time data ingestion from databases, S3, and Kafka into Apache Iceberg. <br/> <a href="https://github.com/datazip-inc/olake-fusion"><strong>OLake Fusion</strong></a> is a table management system for Apache Iceberg, helping teams to optimize performance and reduce storage costs. <br/> Visit <a href="https://olake.io/" target="_blank">olake.io/docs</a> for the full documentation, and benchmarks</p>
 
 <p align="center">
     <a href="https://github.com/datazip-inc/olake-ui/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/datazip-inc/olake"/></a> <a href="https://olake.io/docs"><img alt="Documentation" height="22" src="https://img.shields.io/badge/view-Documentation-blue?style=for-the-badge"/></a>
-    <a href="https://join.slack.com/t/getolake/shared_invite/zt-2utw44do6-g4XuKKeqBghBMy2~LcJ4ag"><img alt="slack" src="https://img.shields.io/badge/Join%20Our%20Community-Slack-blue"/></a>
-    <a href="https://hacktoberfest.com/">
-        <img alt="Hacktoberfest 2025" src="https://img.shields.io/badge/Hacktoberfest-2025%20🎃-orange"/>
-    </a>
+    <a href="https://olake.io/slack/"><img alt="slack" src="https://img.shields.io/badge/Join%20Our%20Community-Slack-blue"/></a>
 
 </p>
 
 ## Overview
 
-Olake-UI offers an intuitive web interface to configure, monitor, and manage your data replication jobs.
+OLake-UI offers an intuitive web interface to configure, monitor, and manage your data replication jobs.
 
-- [UI Readme](/olake_frontend/README.md)
+- [UI Readme](/ui/README.md)
 - [Server Readme](/server/README.md)
-- [UI Figma Design](https://www.figma.com/design/FwLnU97I8LjtYNREPyYofc/Olake-Design-Community?node-id=1-46&p=f&t=y3BIsLTUaXhHwYLG-0)
 - [API Contracts](/api-contract.md)
 
 ## Running with Docker Compose
 
-This Docker Compose setup provides a comprehensive environment(OLake UI, Temporal worker, Temporal service, and dependencies) for demonstrating and exploring Olake's capabilities. This is the recommended way to get started for local development or evaluation.
+This Docker Compose setup provides a comprehensive environment(OLake UI, Temporal worker, Temporal service, and dependencies) for demonstrating and exploring OLake's capabilities. This is the recommended way to get started for local development or evaluation.
 
 ### Prerequisites
 
@@ -41,9 +37,19 @@ This Docker Compose setup provides a comprehensive environment(OLake UI, Tempora
 
 1. **One-Command Setup:**
 
-```sh
-curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
-```
+   Choose the setup that matches your use case:
+
+   **Ingestion only**
+
+   ```sh
+   curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
+   ```
+
+   **Ingestion and Maintenance**
+
+   ```sh
+   curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | ENABLE_OPTIMIZATION="true" docker compose --profile fusion -f - up -d
+   ```
 
 2. **Access the services:**
 
@@ -108,23 +114,42 @@ x-encryption:
 
 ### Updating OLake UI Version
 
-To update OLake UI to the latest version, use the following command:
+To update OLake UI to the latest version, use the command for your setup:
+
+**Ingestion only**
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - down && \
 curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
 ```
 
+**Ingestion and Maintenance**
+
+```bash
+docker ps -aq --filter name=fusion-cluster \
+| xargs -r docker rm -f; \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml \
+| docker compose --profile fusion -f - down && \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml \
+| ENABLE_OPTIMIZATION="true" docker compose --profile fusion -f - up -d
+```
+
 **Note**: Your data and configurations will be preserved as they are stored in persistent volumes and the `olake-data` directory.
 
 ### Upgrading from legacy `docker-compose.yml`
 
-To upgrade from legacy `docker-compose.yml` that was used before **Jan 30th 2026** , follow this [documentation](https://olake.io/docs/install/olake-ui/#:~:text=To%20move%20from,Legacy%20Setup.).
+To upgrade from legacy `docker-compose.yml` that was used before **Jan 30th 2026**:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - down && \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
+```
 
 ## Contributing
 
-We ❤️ contributions big or small check our [Bounty Program](https://olake.io/docs/community/issues-and-prs#goodies). As always, thanks to our amazing contributors!.
+We ❤️ contributions of all sizes and appreciate every improvement to the project. As always, thanks to our amazing contributors!
 
-- To contribute to Olake-UI visit [CONTRIBUTING.md](CONTRIBUTING.md)
-- To contribute to Olake Main Repo, visit [OLake Main Repository](https://github.com/datazip-inc/olake).
-- To contribute to OLake website and [documentation](https://olake.io/docs), visit [Olake Docs Repository](https://github.com/datazip-inc/olake-docs/).
+- To contribute to OLake-UI visit [CONTRIBUTING.md](CONTRIBUTING.md)
+- To contribute to OLake Go Repo, visit [OLake Go Repository](https://github.com/datazip-inc/olake).
+- To contribute to OLake Fusion Repo, visit [OLake Fusion Repository](https://github.com/datazip-inc/olake-fusion).
+- To contribute to OLake website and [documentation](https://olake.io/docs), visit [OLake Docs Repository](https://github.com/datazip-inc/olake-docs/).
