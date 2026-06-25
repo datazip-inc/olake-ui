@@ -22,6 +22,7 @@
 
 Olake-UI offers an intuitive web interface to configure, monitor, and manage your data replication jobs.
 
+- [UI Readme](/ui/README.md)
 - [Server Readme](/server/README.md)
 - [API Contracts](/api-contract.md)
 
