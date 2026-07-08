@@ -9,12 +9,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 func GetCurrentUserID(c *gin.Context) *int {
+	if !appconfig.Load().SessionOn {
+		defaultUserID := 1
+		return &defaultUserID
+	}
+
 	raw, ok := c.Get(constants.ContextUserIDKey)
 	if !ok {
 		return nil

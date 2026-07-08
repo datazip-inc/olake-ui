@@ -11,7 +11,7 @@ import Sidebar from "./components/Sidebar"
 import {
 	getBreadcrumbModuleLabel,
 	getBreadcrumbTrail,
-	getNavModules,
+	useVisibleNavModules,
 } from "./nav-config"
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
@@ -24,7 +24,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 	const location = useLocation()
 
 	const enabledFeatures = useActiveModuleKeys()
-	const navModules = getNavModules(enabledFeatures)
+	const navModules = useVisibleNavModules(enabledFeatures)
 
 	const breadcrumbItems = getBreadcrumbTrail(location.pathname, navModules)
 
@@ -55,7 +55,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 						<span>
 							{getBreadcrumbModuleLabel(location.pathname, navModules)}
 						</span>
-						<span>/</span>
+						{breadcrumbItems.length > 0 && <span>/</span>}
 						{breadcrumbItems.map((item, index) => (
 							<span
 								key={`${item}-${index}`}

@@ -1,1 +1,1 @@
-export { platformService } from "./platformService"
+export * from "./platformService"

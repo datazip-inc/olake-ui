@@ -1,15 +1,22 @@
-import { InfoIcon, SidebarSimpleIcon, SignOutIcon } from "@phosphor-icons/react"
+import { InfoIcon, SidebarSimpleIcon } from "@phosphor-icons/react"
 import { Tooltip } from "antd"
 import clsx from "clsx"
 import { useEffect, useState } from "react"
 import { Link, NavLink, useLocation } from "react-router-dom"
 
 import { OLake, OlakeLogo } from "@/assets"
+import SidebarHeader from "@/core/layout/components/SidebarHeader"
+import SidebarLogout from "@/core/layout/components/SidebarLogout"
 
-import { matchesPath, NavModule, SYSTEM_ITEMS } from "../nav-config"
+import { matchesPath, NavModule } from "../nav-config"
 import SidebarModuleGroup from "./SidebarModuleGroup"
 import SidebarNavItem from "./SidebarNavItem"
 import UpdateNotification from "./UpdateNotification"
+
+const hasModuleHeader = (
+	mod: NavModule,
+): mod is NavModule & { moduleLabel: string; icon: React.ElementType } =>
+	Boolean(mod.moduleLabel && mod.icon)
 
 const getOpenModules = (
 	navModules: NavModule[],
@@ -93,6 +100,12 @@ const Sidebar: React.FC<{
 				</div>
 			)}
 
+			{!collapsed && (
+				<div className="px-6 pb-4">
+					<SidebarHeader collapsed={collapsed} />
+				</div>
+			)}
+
 			<nav className="flex flex-1 flex-col overflow-y-auto px-6 pb-6">
 				{collapsed ? (
 					<div className="flex h-full flex-col items-center px-0 pb-6 pt-1">
@@ -126,28 +139,6 @@ const Sidebar: React.FC<{
 									))}
 								</div>
 							))}
-
-							{SYSTEM_ITEMS.map(({ path, label, icon: Icon }) => (
-								<Tooltip
-									key={path}
-									title={label}
-									placement="right"
-								>
-									<NavLink
-										to={path}
-										className={({ isActive }) =>
-											clsx(
-												"flex items-center justify-center rounded-md p-1",
-												isActive
-													? "bg-olake-surface-muted text-olake-heading-strong"
-													: "text-olake-body hover:bg-olake-surface-muted",
-											)
-										}
-									>
-										<Icon size={20} />
-									</NavLink>
-								</Tooltip>
-							))}
 						</div>
 
 						<button
@@ -171,46 +162,36 @@ const Sidebar: React.FC<{
 
 								{navModules
 									.filter(m => m.section === section)
-									.map(mod => (
-										<SidebarModuleGroup
-											key={mod.key}
-											mod={mod}
-											isOpen={openModules[mod.key] ?? false}
-											onToggle={() => toggleModule(mod.key)}
-										/>
-									))}
+									.flatMap(mod =>
+										hasModuleHeader(mod)
+											? [
+													<SidebarModuleGroup
+														key={mod.key}
+														mod={mod}
+														isOpen={openModules[mod.key] ?? false}
+														onToggle={() => toggleModule(mod.key)}
+													/>,
+												]
+											: mod.items.map(({ path, label, icon }) => (
+													<SidebarNavItem
+														key={path}
+														path={path}
+														label={label}
+														icon={icon}
+														iconSize={16}
+														className="mb-2 h-8"
+													/>
+												)),
+									)}
 							</div>
 						))}
-
-						{/* System section */}
-						<div>
-							<p className="mb-2 text-[12px] font-medium leading-5 text-olake-icon-muted">
-								System
-							</p>
-							{SYSTEM_ITEMS.map(({ path, label, icon }) => (
-								<SidebarNavItem
-									key={path}
-									path={path}
-									label={label}
-									icon={icon}
-									iconSize={16}
-									className="mb-2 h-8"
-								/>
-							))}
-						</div>
 
 						{/* Bottom: update card + logout */}
 						<div className="mt-auto">
 							<div className="mb-4">
 								<UpdateNotification onOpen={onOpenUpdates} />
 							</div>
-							<button
-								onClick={onLogout}
-								className="flex h-8 w-full items-center gap-[9px] rounded-md px-2 text-[14px] leading-[22px] text-olake-body hover:bg-olake-surface-muted"
-							>
-								<SignOutIcon size={16} />
-								<span>Logout</span>
-							</button>
+							<SidebarLogout onLogout={onLogout} />
 						</div>
 					</>
 				)}

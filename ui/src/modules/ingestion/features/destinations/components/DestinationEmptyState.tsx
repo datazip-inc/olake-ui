@@ -2,6 +2,7 @@ import { PlayCircleIcon, PlusIcon } from "@phosphor-icons/react"
 import { Button } from "antd"
 
 import { FirstDestination, DestinationTutorial } from "@/assets"
+import { ActionButton } from "@/common/components/action"
 import { DestinationTutorialYTLink } from "@/modules/ingestion/features/destinations/constants"
 
 const DestinationEmptyState = ({
@@ -23,14 +24,16 @@ const DestinationEmptyState = ({
 			<p className="mb-8 text-text-primary">
 				Get started and experience the speed of OLake by running jobs
 			</p>
-			<Button
-				type="primary"
-				className="border-1 mb-12 border-[1px] border-[#D9D9D9] bg-white px-6 py-4 text-black"
-				onClick={handleCreateDestination}
-			>
-				<PlusIcon />
-				New Destination
-			</Button>
+			<ActionButton>
+				<Button
+					type="primary"
+					className="border-1 mb-12 border-[1px] border-[#D9D9D9] bg-white px-6 py-4 text-black"
+					onClick={handleCreateDestination}
+				>
+					<PlusIcon />
+					New Destination
+				</Button>
+			</ActionButton>
 			<div className="w-[412px] rounded-xl border-[1px] border-[#D9D9D9] bg-white p-4 shadow-sm">
 				<div className="flex items-center gap-4">
 					<a

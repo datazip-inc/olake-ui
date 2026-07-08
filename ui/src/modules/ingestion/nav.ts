@@ -68,8 +68,16 @@ export const ingestionNavModule: NavModule = {
 	iconClassName: "-rotate-90",
 	items: [
 		{ path: "/jobs", label: "Jobs", icon: GitCommitIcon },
-		{ path: "/sources", label: "Sources", icon: PathIcon },
-		{ path: "/destinations", label: "Destinations", icon: LinktreeLogoIcon },
+		{
+			path: "/sources",
+			label: "Sources",
+			icon: PathIcon,
+		},
+		{
+			path: "/destinations",
+			label: "Destinations",
+			icon: LinktreeLogoIcon,
+		},
 	],
 	getBreadcrumbTrail: matchBreadcrumbs,
 }

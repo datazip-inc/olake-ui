@@ -91,3 +91,7 @@ func BuildPostgresURIFromConfig() (string, error) {
 
 	return u.String(), nil
 }
+
+func (db *Database) Conn() *gorm.DB {
+	return db.conn
+}

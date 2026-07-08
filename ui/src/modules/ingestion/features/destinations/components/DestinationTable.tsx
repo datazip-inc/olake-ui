@@ -6,6 +6,7 @@ import {
 import { Table, Input, Button, Dropdown, Pagination, Tooltip } from "antd"
 import { useState } from "react"
 
+import { resolveActionMenuItem } from "@/common/components/action"
 import { DeleteModal } from "@/modules/ingestion/common/components"
 import JobConnection from "@/modules/ingestion/common/components/JobConnection"
 import {
@@ -59,7 +60,9 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 									}
 								},
 							},
-						],
+						]
+							.map(resolveActionMenuItem)
+							.filter(Boolean),
 					}}
 					trigger={["click"]}
 					overlayStyle={{ minWidth: "170px" }}

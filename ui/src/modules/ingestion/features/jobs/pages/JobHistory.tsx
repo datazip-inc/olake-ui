@@ -2,7 +2,6 @@ import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
 	ArrowsClockwiseIcon,
-	EyeIcon,
 } from "@phosphor-icons/react"
 import { Table, Button, Input, Spin, Pagination, Tooltip } from "antd"
 import clsx from "clsx"
@@ -16,9 +15,10 @@ import {
 } from "@/common/utils"
 import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
 import { getConnectorImage } from "@/modules/ingestion/common/utils"
+import { useTaskHistoryActions } from "@/modules/ingestion/features/jobs/hooks/useTaskHistoryActions"
 
 import { useJobDetails, useJobTasks } from "../hooks"
-import { JobType } from "../types"
+import { JobTask, JobType } from "../types"
 import { getJobTypeClass, getJobTypeLabel } from "../utils"
 
 interface JobHistoryNavState {
@@ -89,14 +89,7 @@ const JobHistory: React.FC = () => {
 		: null
 
 	const { data: job } = useJobDetails(jobId || "")
-
-	const handleViewLogs = (filePath: string) => {
-		if (jobId) {
-			navigate(
-				`/jobs/${jobId}/history/1/logs?file=${encodeURIComponent(filePath)}`,
-			)
-		}
-	}
+	const { renderTaskAction, modal } = useTaskHistoryActions(jobId)
 
 	const { Search } = Input
 
@@ -148,15 +141,7 @@ const JobHistory: React.FC = () => {
 		{
 			title: "Actions",
 			key: "actions",
-			render: (_: any, record: any) => (
-				<Button
-					type="default"
-					icon={<EyeIcon size={16} />}
-					onClick={() => handleViewLogs(record.file_path)}
-				>
-					View logs
-				</Button>
-			),
+			render: (_: unknown, record: JobTask) => renderTaskAction(record),
 		},
 	]
 
@@ -220,7 +205,7 @@ const JobHistory: React.FC = () => {
 			</div>
 
 			<div className="flex flex-1 flex-col overflow-hidden border-t border-gray-200 p-6">
-				<h2 className="mb-4 text-xl font-bold">Job Logs & History</h2>
+				<h2 className="mb-4 text-xl font-bold">Job History</h2>
 
 				<div className="mb-4 flex gap-2">
 					<Search
@@ -290,6 +275,8 @@ const JobHistory: React.FC = () => {
 					<ArrowRightIcon size={16} />
 				</Button>
 			</div>
+
+			{modal}
 		</div>
 	)
 }

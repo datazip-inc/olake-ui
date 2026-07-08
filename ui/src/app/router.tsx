@@ -37,7 +37,6 @@ const RootHandler = () => {
 
 const lazyComponents = {
 	Login: lazy(() => import("@/core/auth/pages/Login")),
-	SystemSettings: lazy(() => import("@/core/settings/pages/SystemSettings")),
 }
 
 const publicRoutes = [
@@ -82,10 +81,6 @@ const protectedRoutes = [
 				),
 			},
 			...buildProtectedChildren(moduleRegistry),
-			{
-				path: "settings",
-				element: <lazyComponents.SystemSettings />,
-			},
 			{
 				path: "*",
 				element: (

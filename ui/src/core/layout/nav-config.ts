@@ -1,11 +1,12 @@
-import { SlidersIcon } from "@phosphor-icons/react"
-
+import { useActionAccess } from "@/common/components/action"
 import { moduleRegistry } from "@/core/modules/registry"
 
 export type NavItem = {
 	path: string
 	label: string
 	icon: React.ElementType
+	/** Optional RBAC feature key — EE filters items the user cannot read. */
+	feature?: string
 }
 
 export type NavModule = {
@@ -13,12 +14,17 @@ export type NavModule = {
 	key: string
 	/** Section header this module belongs to (e.g. "Services") */
 	section: string
-	/** Label shown in the breadcrumb and sidebar toggle button */
-	moduleLabel: string
-	icon: React.ElementType
+	/**
+	 * Label for the collapsible module header and breadcrumb root.
+	 * Omit to render items directly under the section (no module group).
+	 */
+	moduleLabel?: string
+	icon?: React.ElementType
 	iconClassName?: string
 	/** Optional badge text shown next to the module label (e.g. "New") */
 	badge?: string
+	/** Optional action rendered in the module header row (right of the caret). */
+	headerAction?: React.FC
 	items: NavItem[]
 	/**
 	 * Optional per-module breadcrumb trail resolver.
@@ -40,9 +46,22 @@ export const getNavModules = (enabledFeatures: Set<string>): NavModule[] =>
 		.filter(m => !m.gate || enabledFeatures.has(m.nav.key))
 		.map(m => m.nav)
 
-export const SYSTEM_ITEMS: NavItem[] = [
-	{ path: "/settings", label: "Settings", icon: SlidersIcon },
-]
+export const useVisibleNavModules = (
+	enabledFeatures: Set<string>,
+): NavModule[] => {
+	const { canAccess } = useActionAccess()
+
+	return getNavModules(enabledFeatures)
+		.map(mod => ({
+			...mod,
+			items: mod.items.filter(item => !item.feature || canAccess(item.feature)),
+		}))
+		.filter(mod => mod.items.length > 0)
+}
+
+/** Returns the nav module that owns `pathname` (matched via any of its items). */
+const findModuleForPath = (pathname: string, modules: NavModule[]) =>
+	modules.find(m => m.items.some(item => matchesPath(pathname, item.path)))
 
 // ─── Breadcrumb utils (fully driven by navModules — no manual edits needed) ──
 
@@ -50,10 +69,13 @@ export const getBreadcrumbModuleLabel = (
 	pathname: string,
 	modules: NavModule[],
 ): string => {
-	const mod = modules.find(m =>
-		m.items.some(item => matchesPath(pathname, item.path)),
-	)
-	return mod?.moduleLabel ?? "System"
+	const mod = findModuleForPath(pathname, modules)
+	if (!mod) return ""
+
+	if (mod.moduleLabel) return mod.moduleLabel
+
+	const item = mod.items.find(i => matchesPath(pathname, i.path))
+	return item?.label ?? mod.section
 }
 
 /** Returns breadcrumb segments after the module label, e.g. ["Tables", "Run Logs <foo>"] */
@@ -64,11 +86,13 @@ export const getBreadcrumbTrail = (
 	for (const mod of modules) {
 		const trail = mod.getBreadcrumbTrail?.(pathname)
 		if (trail) return trail
+
 		const item = mod.items.find(i => matchesPath(pathname, i.path))
-		if (item) return [item.label]
+		if (!item) continue
+
+		if (!mod.moduleLabel) return []
+		return [item.label]
 	}
-	const sysItem = SYSTEM_ITEMS.find(
-		i => i.path && matchesPath(pathname, i.path),
-	)
-	return sysItem ? [sysItem.label] : []
+
+	return []
 }

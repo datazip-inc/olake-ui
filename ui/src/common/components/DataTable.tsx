@@ -10,6 +10,8 @@ export type ColumnDef<TRow> = {
 	header: string | React.ReactNode
 	/** Percentage of total table width (0–100). Columns without width get 1fr. */
 	width?: number
+	/** Minimum pixel width for this column. Used with width in grid minmax(). */
+	minWidth?: number
 	/** Horizontal alignment for both header and cell content. Defaults to left. */
 	align?: ColumnAlignment
 	render: (row: TRow) => React.ReactNode
@@ -213,16 +215,18 @@ function DataTable<TRow>({
 		}
 	}
 
-	// Checkbox column: at least 32px, up to 4%; data columns use declared % or 1fr.
+	// Checkbox column: at least 32px, up to 4%; data columns use declared %/minWidth or 1fr.
 	const gridTemplateColumns = useMemo(() => {
 		const colWidths = checkboxSelection ? ["minmax(32px, 4%)"] : []
-		columns.forEach(col =>
-			colWidths.push(
-				col.width === undefined || col.width <= 0 || col.width > 100
-					? "1fr"
-					: `${col.width}%`,
-			),
-		)
+		columns.forEach(col => {
+			if (col.width === undefined || col.width <= 0 || col.width > 100) {
+				colWidths.push("minmax(0, 1fr)")
+			} else if (col.minWidth !== undefined) {
+				colWidths.push(`minmax(${col.minWidth}px, ${col.width}%)`)
+			} else {
+				colWidths.push(`minmax(0, ${col.width}%)`)
+			}
+		})
 		return colWidths.join(" ")
 	}, [columns, checkboxSelection])
 
@@ -278,7 +282,10 @@ function DataTable<TRow>({
 						{columns.map(col => (
 							<div
 								key={`header-${col.key}`}
-								className={getAlignmentClass(col.align)}
+								className={clsx(
+									getAlignmentClass(col.align),
+									"min-w-0 overflow-hidden",
+								)}
 							>
 								{col.header}
 							</div>
@@ -315,7 +322,10 @@ function DataTable<TRow>({
 								{columns.map(col => (
 									<div
 										key={`cell-${col.key}`}
-										className={getAlignmentClass(col.align)}
+										className={clsx(
+											getAlignmentClass(col.align),
+											"min-w-0 overflow-hidden",
+										)}
 									>
 										{col.render(row)}
 									</div>

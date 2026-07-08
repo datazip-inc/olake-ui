@@ -3,6 +3,7 @@ import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 
+import { ActionButton } from "@/common/components/action"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { JobTable, JobEmptyState, DeleteJobModal } from "../components"
@@ -156,15 +157,17 @@ const Jobs: React.FC = () => {
 					<GitCommitIcon className="mr-2 size-6" />
 					<h1 className="text-2xl font-bold">Jobs</h1>
 				</div>
-				<button
-					type="button"
-					data-testid="create-job-button"
-					className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
-					onClick={handleCreateJob}
-				>
-					<PlusIcon className="size-4 text-white" />
-					Create Job
-				</button>
+				<ActionButton>
+					<button
+						type="button"
+						data-testid="create-job-button"
+						className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
+						onClick={handleCreateJob}
+					>
+						<PlusIcon className="size-4 text-white" />
+						Create Job
+					</button>
+				</ActionButton>
 			</div>
 
 			<p className="mb-6 text-gray-600">

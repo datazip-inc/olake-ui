@@ -12,7 +12,7 @@ const SidebarNavItem: React.FC<{
 		to={path}
 		className={({ isActive }) =>
 			clsx(
-				"flex items-center gap-[9px] rounded-md px-2 text-[14px] leading-[22px]",
+				"flex min-w-0 items-center gap-[9px] rounded-md px-2 text-[14px] leading-[22px]",
 				isActive
 					? "bg-[#f5f5f5] text-[#141414]"
 					: "text-[#595959] hover:bg-[#f5f5f5]",
@@ -20,8 +20,11 @@ const SidebarNavItem: React.FC<{
 			)
 		}
 	>
-		<Icon size={iconSize} />
-		<span>{label}</span>
+		<Icon
+			size={iconSize}
+			className="shrink-0"
+		/>
+		<span className="truncate">{label}</span>
 	</NavLink>
 )
 

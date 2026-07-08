@@ -158,7 +158,7 @@ func GetAndValidateLogBaseDir(filePath string) (string, error) {
 	return baseDir, nil
 }
 
-// GetAndValidateSyncDir returns the logs directory and sync_* folder name under it
+// GetAndValidateSyncDir returns the logs directory and the most recently created sync_* folder under it.
 func GetAndValidateSyncDir(baseDir string) (string, string, error) {
 	logsDir := filepath.Join(baseDir, "logs")
 
@@ -166,18 +166,34 @@ func GetAndValidateSyncDir(baseDir string) (string, string, error) {
 	if err != nil {
 		return "", "", fmt.Errorf("failed to read logs directory: %s", err)
 	}
-	if len(entries) == 0 {
-		return "", "", fmt.Errorf("no sync log folders found in: %s", logsDir)
-	}
 
+	var latestName string
+	var latestTime time.Time
+	found := false
+
+	// Find the most recently created sync_* folder
 	for _, entry := range entries {
-		// get the first directory that starts with "sync_"
-		if entry.IsDir() && strings.HasPrefix(entry.Name(), "sync_") {
-			return logsDir, entry.Name(), nil
+		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), "sync_") {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			return "", "", fmt.Errorf("failed to stat sync folder %s: %s", entry.Name(), err)
+		}
+
+		if !found || info.ModTime().After(latestTime) {
+			latestName = entry.Name()
+			latestTime = info.ModTime()
+			found = true
 		}
 	}
 
-	return "", "", fmt.Errorf("no sync folder found in: %s", logsDir)
+	if !found {
+		return "", "", fmt.Errorf("no sync folder found in: %s", logsDir)
+	}
+
+	return logsDir, latestName, nil
 }
 
 // addFileToArchive streams a file into the tar archive
