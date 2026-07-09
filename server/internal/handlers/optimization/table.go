@@ -16,7 +16,7 @@ func (h *Handler) GetTablesWithDetails(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 20*time.Minute)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 1*time.Hour)
 	defer cancel()
 
 	tables, err := h.opt.GetTablesWithDetails(ctx, catalog, database)
