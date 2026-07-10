@@ -51,9 +51,33 @@ func NewClient() (*Service, error) {
 		username:  username,
 		password:  password,
 		client: &http.Client{
-			Timeout: constants.OptMaxTimeout,
+			Timeout:   constants.OptMaxTimeout,
+			Transport: newOptimizationTransport(),
 		},
 	}, nil
+}
+
+// newOptimizationTransport returns an http.RoundTripper tuned for concurrent
+// fan-out against a single Amoro host. Cloned from http.DefaultTransport so
+// standard env-based proxy / dial settings are preserved.
+func newOptimizationTransport() http.RoundTripper {
+	base, ok := http.DefaultTransport.(*http.Transport)
+	var t *http.Transport
+	if ok {
+		t = base.Clone()
+	} else {
+		t = &http.Transport{}
+	}
+	// Amoro is a single host (`OPTIMIZATION_BASE_URL`); size the pool to match
+	// the maximum expected concurrent in-flight requests (outer fan-out workers
+	// * inner per-table fan-out). Default DefaultTransport.MaxIdleConnsPerHost
+	// is 2, which serializes concurrent goroutines against the same host.
+	t.MaxIdleConns = 256
+	t.MaxIdleConnsPerHost = 128
+	t.MaxConnsPerHost = 128
+	t.IdleConnTimeout = 90 * time.Second
+	t.ForceAttemptHTTP2 = true
+	return t
 }
 
 func (s *Service) credentials() (apiKey, apiSecret string, version int64) {

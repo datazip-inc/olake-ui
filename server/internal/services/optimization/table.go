@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 )
@@ -14,14 +16,15 @@ import (
 // when no process records exist for the given type.
 var errNoProcess = errors.New("no optimizing process found")
 
+// tableFanoutWorkers caps how many tables are processed concurrently in
+// GetTablesWithDetails. Each worker also fans out its own 4 upstream calls
+// concurrently, so peak in-flight requests to Amoro is
+// tableFanoutWorkers * 4 (bounded by the http.Transport connection pool
+// configured in newOptimizationTransport).
+const tableFanoutWorkers = 16
+
 // fetches all tables with full details for a specific catalog and database
 func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseName string) (*dto.TablesResponse, error) {
-	response := &dto.TablesResponse{
-		Catalog:  catalog,
-		Database: databaseName,
-		Tables:   make([]dto.TableInfo, 0),
-	}
-
 	tablesResult, err := s.getTables(ctx, catalog, databaseName, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tables for catalog %s, database %s: %w", catalog, databaseName, err)
@@ -32,93 +35,152 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 		return nil, fmt.Errorf("unexpected tables result format for %s.%s: got %T", catalog, databaseName, tablesResult)
 	}
 
-	for _, item := range tablesList {
+	// First pass: validate structural shape and extract names synchronously.
+	// Doing this up-front means we can size the results slice by index and
+	// avoid needing any locking during the concurrent fan-out below.
+	names := make([]string, len(tablesList))
+	for i, item := range tablesList {
 		tableMap, ok := item.(map[string]interface{})
 		if !ok {
 			return nil, fmt.Errorf("invalid table item type: got %T", item)
 		}
-
 		tableName, ok := tableMap["name"].(string)
 		if !ok || tableName == "" {
 			return nil, fmt.Errorf("missing or invalid table name in %v", tableMap)
 		}
-
-		tableInfo := dto.TableInfo{
-			Name:         tableName,
-			Enabled:      false,
-			OLakeCreated: false,
-		}
-
-		tableDetails, err := s.getTableDetails(ctx, catalog, databaseName, tableName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get details for table %s.%s.%s: %w", catalog, databaseName, tableName, err)
-		}
-
-		detailsMap, ok := tableDetails.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("invalid tableDetails type: expected map[string]interface{}, got %T", tableDetails)
-		}
-
-		baseMetrics, ok := detailsMap["baseMetrics"].(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("missing or invalid baseMetrics for table %s.%s.%s", catalog, databaseName, tableName)
-		}
-
-		totalSize, ok := baseMetrics["totalSize"].(string)
-		if !ok {
-			return nil, fmt.Errorf("missing or invalid totalSize in baseMetrics for table %s.%s.%s", catalog, databaseName, tableName)
-		}
-
-		tableInfo.TotalSize = totalSize
-
-		properties, ok := detailsMap["properties"].(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("missing or invalid properties for table %s.%s.%s", catalog, databaseName, tableName)
-		}
-
-		if enabled, ok := properties["self-optimizing.enabled"]; ok {
-			tableInfo.Enabled = enabled.(string) == "true"
-		}
-
-		if _, ok := properties["olake_2pc"]; ok {
-			tableInfo.OLakeCreated = true
-		}
-
-		tableSummary, ok := detailsMap["tableSummary"].(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("missing or invalid tableSummary for table %s.%s.%s", catalog, databaseName, tableName)
-		}
-
-		healthScore, ok := tableSummary["healthScore"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("missing or invalid healthScore in tableSummary for table %s.%s.%s", catalog, databaseName, tableName)
-		}
-
-		tableInfo.HealthScore = int(healthScore)
-
-		// fetch latest optimizing processes for each type
-		res, err := s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "MINOR")
-		if err != nil && !errors.Is(err, errNoProcess) {
-			return nil, fmt.Errorf("failed to fetch latest Lite process info: %w", err)
-		}
-		tableInfo.Minor = res
-
-		res, err = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "MAJOR")
-		if err != nil && !errors.Is(err, errNoProcess) {
-			return nil, fmt.Errorf("failed to fetch latest Medium process info: %w", err)
-		}
-		tableInfo.Major = res
-
-		res, err = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "FULL")
-		if err != nil && !errors.Is(err, errNoProcess) {
-			return nil, fmt.Errorf("failed to fetch latest Full process info: %w", err)
-		}
-		tableInfo.Full = res
-
-		response.Tables = append(response.Tables, tableInfo)
+		names[i] = tableName
 	}
 
-	return response, nil
+	// Pre-sized slice so each goroutine writes to its own index; no mutex needed.
+	results := make([]dto.TableInfo, len(names))
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(tableFanoutWorkers)
+	for i := range names {
+		i := i
+		g.Go(func() error {
+			info, err := s.buildTableInfo(gctx, catalog, databaseName, names[i])
+			if err != nil {
+				return err
+			}
+			results[i] = info
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return &dto.TablesResponse{
+		Catalog:  catalog,
+		Database: databaseName,
+		Tables:   results,
+	}, nil
+}
+
+// buildTableInfo fetches the details + latest MINOR/MAJOR/FULL optimizing
+// processes for a single table, running all four upstream calls in parallel.
+// Preserves the original error semantics: errNoProcess is tolerated (leaves
+// the corresponding process field nil), any other error aborts the request.
+func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableName string) (dto.TableInfo, error) {
+	info := dto.TableInfo{
+		Name:         tableName,
+		Enabled:      false,
+		OLakeCreated: false,
+	}
+
+	var (
+		details            interface{}
+		minor, major, full *dto.OptimizationInfo
+	)
+
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		d, err := s.getTableDetails(gctx, catalog, database, tableName)
+		if err != nil {
+			return fmt.Errorf("failed to get details for table %s.%s.%s: %w", catalog, database, tableName, err)
+		}
+		details = d
+		return nil
+	})
+
+	g.Go(func() error {
+		r, err := s.fetchLatestProcessInfo(gctx, catalog, database, tableName, "MINOR")
+		if err != nil && !errors.Is(err, errNoProcess) {
+			return fmt.Errorf("failed to fetch latest Lite process info: %w", err)
+		}
+		minor = r
+		return nil
+	})
+
+	g.Go(func() error {
+		r, err := s.fetchLatestProcessInfo(gctx, catalog, database, tableName, "MAJOR")
+		if err != nil && !errors.Is(err, errNoProcess) {
+			return fmt.Errorf("failed to fetch latest Medium process info: %w", err)
+		}
+		major = r
+		return nil
+	})
+
+	g.Go(func() error {
+		r, err := s.fetchLatestProcessInfo(gctx, catalog, database, tableName, "FULL")
+		if err != nil && !errors.Is(err, errNoProcess) {
+			return fmt.Errorf("failed to fetch latest Full process info: %w", err)
+		}
+		full = r
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return info, err
+	}
+
+	// Parse the details payload after the inner Wait() so the reads are
+	// synchronized with the goroutine's write to `details`.
+	detailsMap, ok := details.(map[string]interface{})
+	if !ok {
+		return info, fmt.Errorf("invalid tableDetails type: expected map[string]interface{}, got %T", details)
+	}
+
+	baseMetrics, ok := detailsMap["baseMetrics"].(map[string]interface{})
+	if !ok {
+		return info, fmt.Errorf("missing or invalid baseMetrics for table %s.%s.%s", catalog, database, tableName)
+	}
+
+	totalSize, ok := baseMetrics["totalSize"].(string)
+	if !ok {
+		return info, fmt.Errorf("missing or invalid totalSize in baseMetrics for table %s.%s.%s", catalog, database, tableName)
+	}
+	info.TotalSize = totalSize
+
+	properties, ok := detailsMap["properties"].(map[string]interface{})
+	if !ok {
+		return info, fmt.Errorf("missing or invalid properties for table %s.%s.%s", catalog, database, tableName)
+	}
+	if enabled, ok := properties["self-optimizing.enabled"]; ok {
+		if enabledStr, ok := enabled.(string); ok {
+			info.Enabled = enabledStr == "true"
+		}
+	}
+	if _, ok := properties["olake_2pc"]; ok {
+		info.OLakeCreated = true
+	}
+
+	tableSummary, ok := detailsMap["tableSummary"].(map[string]interface{})
+	if !ok {
+		return info, fmt.Errorf("missing or invalid tableSummary for table %s.%s.%s", catalog, database, tableName)
+	}
+	healthScore, ok := tableSummary["healthScore"].(float64)
+	if !ok {
+		return info, fmt.Errorf("missing or invalid healthScore in tableSummary for table %s.%s.%s", catalog, database, tableName)
+	}
+	info.HealthScore = int(healthScore)
+
+	info.Minor = minor
+	info.Major = major
+	info.Full = full
+	return info, nil
 }
 
 // GetTables returns the list of tables for a given catalog and database
