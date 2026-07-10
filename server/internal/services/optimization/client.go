@@ -61,7 +61,6 @@ func NewClient() (*Service, error) {
 	}, nil
 }
 
-
 func (s *Service) credentials() (apiKey, apiSecret string, version int64) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

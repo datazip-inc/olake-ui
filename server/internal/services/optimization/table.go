@@ -51,7 +51,6 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(tableFanoutWorkers)
 	for i := range names {
-		i := i
 		g.Go(func() error {
 			info, err := s.buildTableInfo(gctx, catalog, databaseName, names[i])
 			if err != nil {
@@ -107,7 +106,6 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 		{"FULL", "Full", &full},
 	}
 	for _, pt := range processTypes {
-		pt := pt
 		g.Go(func() error {
 			r, err := s.fetchLatestProcessInfo(gctx, catalog, database, tableName, pt.kind)
 			if err != nil && !errors.Is(err, errNoProcess) {
