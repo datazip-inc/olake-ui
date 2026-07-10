@@ -122,8 +122,6 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 		return info, err
 	}
 
-	// Parse the details payload after the inner Wait() so the reads are
-	// synchronized with the goroutine's write to `details`.
 	detailsMap, ok := details.(map[string]interface{})
 	if !ok {
 		return info, fmt.Errorf("invalid tableDetails type: expected map[string]interface{}, got %T", details)

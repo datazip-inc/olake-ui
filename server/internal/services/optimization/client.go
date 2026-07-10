@@ -56,29 +56,11 @@ func NewClient() (*Service, error) {
 		username:  username,
 		password:  password,
 		client: &http.Client{
-			Timeout:   reqTimeout,
-			Transport: newTransport(),
+			Timeout: reqTimeout,
 		},
 	}, nil
 }
 
-// fanout against a single host : http.RoundTripper
-func newTransport() http.RoundTripper {
-	base, ok := http.DefaultTransport.(*http.Transport)
-	var t *http.Transport
-	if ok {
-		t = base.Clone()
-	} else {
-		t = &http.Transport{}
-	}
-
-	t.MaxIdleConns = 256        // total across all hosts
-	t.MaxIdleConnsPerHost = 128 // keep-alive pool
-	t.MaxConnsPerHost = 128     // cap on total ( idle + active ) per host
-	t.IdleConnTimeout = 90 * time.Second
-	t.ForceAttemptHTTP2 = true
-	return t
-}
 
 func (s *Service) credentials() (apiKey, apiSecret string, version int64) {
 	s.mu.RLock()
