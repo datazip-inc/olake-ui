@@ -48,3 +48,6 @@ OLAKE_SECRET_KEY: ""
 ENABLE_OPTIMIZATION: false
 OPTIMIZATION_BASE_URL: http://127.0.0.1:1630
 OPTIMIZATION_GROUP: spark-container
+# Per-request timeout for a single Amoro HTTP call. Override via env
+# OPTIMIZATION_REQUEST_TIMEOUT when deploying via Helm / docker-compose.
+OPTIMIZATION_REQUEST_TIMEOUT: "30s"

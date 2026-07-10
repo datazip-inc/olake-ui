@@ -44,6 +44,11 @@ func NewClient() (*Service, error) {
 		return nil, fmt.Errorf("failed to generate token: %s", err)
 	}
 
+	reqTimeout := appconfig.Load().OptimizationRequestTimeout
+	if reqTimeout <= 0 {
+		reqTimeout = constants.OptMaxTimeout
+	}
+
 	return &Service{
 		baseURL:   baseURL,
 		apiKey:    apiKey,
@@ -51,7 +56,7 @@ func NewClient() (*Service, error) {
 		username:  username,
 		password:  password,
 		client: &http.Client{
-			Timeout:   constants.OptMaxTimeout,
+			Timeout:   reqTimeout,
 			Transport: newTransport(),
 		},
 	}, nil

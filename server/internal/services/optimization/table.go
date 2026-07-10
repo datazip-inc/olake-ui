@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"runtime"
 
 	"golang.org/x/sync/errgroup"
 
@@ -16,8 +17,8 @@ import (
 // when no process records exist for the given type.
 var errNoProcess = errors.New("no optimizing process found")
 
-// concurrency : max tables = 16
-const tableFanoutWorkers = 16
+// concurrency : bounded by available runtime cores
+var tableFanoutWorkers = runtime.NumCPU()
 
 // fetches all tables with full details for a specific catalog and database
 func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseName string) (*dto.TablesResponse, error) {
@@ -96,32 +97,26 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 		return nil
 	})
 
-	g.Go(func() error {
-		r, err := s.fetchLatestProcessInfo(gctx, catalog, database, tableName, "MINOR")
-		if err != nil && !errors.Is(err, errNoProcess) {
-			return fmt.Errorf("failed to fetch latest Lite process info: %w", err)
-		}
-		minor = r
-		return nil
-	})
-
-	g.Go(func() error {
-		r, err := s.fetchLatestProcessInfo(gctx, catalog, database, tableName, "MAJOR")
-		if err != nil && !errors.Is(err, errNoProcess) {
-			return fmt.Errorf("failed to fetch latest Medium process info: %w", err)
-		}
-		major = r
-		return nil
-	})
-
-	g.Go(func() error {
-		r, err := s.fetchLatestProcessInfo(gctx, catalog, database, tableName, "FULL")
-		if err != nil && !errors.Is(err, errNoProcess) {
-			return fmt.Errorf("failed to fetch latest Full process info: %w", err)
-		}
-		full = r
-		return nil
-	})
+	processTypes := []struct {
+		kind  string
+		label string
+		dst   **dto.OptimizationInfo
+	}{
+		{"MINOR", "Lite", &minor},
+		{"MAJOR", "Medium", &major},
+		{"FULL", "Full", &full},
+	}
+	for _, pt := range processTypes {
+		pt := pt
+		g.Go(func() error {
+			r, err := s.fetchLatestProcessInfo(gctx, catalog, database, tableName, pt.kind)
+			if err != nil && !errors.Is(err, errNoProcess) {
+				return fmt.Errorf("failed to fetch latest %s process info: %w", pt.label, err)
+			}
+			*pt.dst = r
+			return nil
+		})
+	}
 
 	if err := g.Wait(); err != nil {
 		return info, err

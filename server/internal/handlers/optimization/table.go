@@ -1,9 +1,6 @@
 package optimization
 
 import (
-	"context"
-	"time"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
@@ -16,10 +13,7 @@ func (h *Handler) GetTablesWithDetails(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 1*time.Hour)
-	defer cancel()
-
-	tables, err := h.opt.GetTablesWithDetails(ctx, catalog, database)
+	tables, err := h.opt.GetTablesWithDetails(c.Request.Context(), catalog, database)
 	if err != nil {
 		utils.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
 		return
