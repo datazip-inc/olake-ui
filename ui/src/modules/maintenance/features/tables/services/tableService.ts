@@ -15,13 +15,13 @@ import type {
 } from "../types"
 
 export const tableService = {
-     getTables: async (catalog: string, database: string) => {
-          const response = await api.get<GetTablesApiResponse>(
-               API_CONFIG.ENDPOINTS.OPT.TABLES(catalog, database),
-               { timeout: 3600000 }, // 1 hour
-          )
-          return response.data
-     },
+	getTables: async (catalog: string, database: string) => {
+		const response = await api.get<GetTablesApiResponse>(
+			API_CONFIG.ENDPOINTS.OPT.TABLES(catalog, database),
+			{ timeout: 3600000 }, // 1 hour
+		)
+		return response.data
+	},
 
 	getTableDetails: async (
 		catalog: string,
