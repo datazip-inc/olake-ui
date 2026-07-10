@@ -16,11 +16,7 @@ import (
 // when no process records exist for the given type.
 var errNoProcess = errors.New("no optimizing process found")
 
-// tableFanoutWorkers caps how many tables are processed concurrently in
-// GetTablesWithDetails. Each worker also fans out its own 4 upstream calls
-// concurrently, so peak in-flight requests to Amoro is
-// tableFanoutWorkers * 4 (bounded by the http.Transport connection pool
-// configured in newOptimizationTransport).
+// concurrency : max tables = 16
 const tableFanoutWorkers = 16
 
 // fetches all tables with full details for a specific catalog and database
@@ -35,9 +31,6 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 		return nil, fmt.Errorf("unexpected tables result format for %s.%s: got %T", catalog, databaseName, tablesResult)
 	}
 
-	// First pass: validate structural shape and extract names synchronously.
-	// Doing this up-front means we can size the results slice by index and
-	// avoid needing any locking during the concurrent fan-out below.
 	names := make([]string, len(tablesList))
 	for i, item := range tablesList {
 		tableMap, ok := item.(map[string]interface{})
@@ -51,7 +44,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 		names[i] = tableName
 	}
 
-	// Pre-sized slice so each goroutine writes to its own index; no mutex needed.
+	// let each go-routine write to its own index (no mutex required)
 	results := make([]dto.TableInfo, len(names))
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -78,10 +71,6 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 	}, nil
 }
 
-// buildTableInfo fetches the details + latest MINOR/MAJOR/FULL optimizing
-// processes for a single table, running all four upstream calls in parallel.
-// Preserves the original error semantics: errNoProcess is tolerated (leaves
-// the corresponding process field nil), any other error aborts the request.
 func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableName string) (dto.TableInfo, error) {
 	info := dto.TableInfo{
 		Name:         tableName,
@@ -96,6 +85,8 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 
 	g, gctx := errgroup.WithContext(ctx)
 
+	// total : tableFanoutWorkers * 4
+	
 	g.Go(func() error {
 		d, err := s.getTableDetails(gctx, catalog, database, tableName)
 		if err != nil {

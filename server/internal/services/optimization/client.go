@@ -52,15 +52,13 @@ func NewClient() (*Service, error) {
 		password:  password,
 		client: &http.Client{
 			Timeout:   constants.OptMaxTimeout,
-			Transport: newOptimizationTransport(),
+			Transport: newTransport(),
 		},
 	}, nil
 }
 
-// newOptimizationTransport returns an http.RoundTripper tuned for concurrent
-// fan-out against a single Amoro host. Cloned from http.DefaultTransport so
-// standard env-based proxy / dial settings are preserved.
-func newOptimizationTransport() http.RoundTripper {
+// fanout against a single host : http.RoundTripper
+func newTransport() http.RoundTripper {
 	base, ok := http.DefaultTransport.(*http.Transport)
 	var t *http.Transport
 	if ok {
@@ -68,13 +66,10 @@ func newOptimizationTransport() http.RoundTripper {
 	} else {
 		t = &http.Transport{}
 	}
-	// Amoro is a single host (`OPTIMIZATION_BASE_URL`); size the pool to match
-	// the maximum expected concurrent in-flight requests (outer fan-out workers
-	// * inner per-table fan-out). Default DefaultTransport.MaxIdleConnsPerHost
-	// is 2, which serializes concurrent goroutines against the same host.
-	t.MaxIdleConns = 256
-	t.MaxIdleConnsPerHost = 128
-	t.MaxConnsPerHost = 128
+
+	t.MaxIdleConns = 256        // total across all hosts
+	t.MaxIdleConnsPerHost = 128 // keep-alive pool
+	t.MaxConnsPerHost = 128     // cap on total ( idle + active ) per host
 	t.IdleConnTimeout = 90 * time.Second
 	t.ForceAttemptHTTP2 = true
 	return t
