@@ -18,7 +18,7 @@ import (
 var errNoProcess = errors.New("no optimizing process found")
 
 // concurrency : bounded by available runtime cores
-var tableFanoutWorkers = runtime.NumCPU()
+var tableFanoutWorkers = runtime.NumCPU() * 2
 
 // fetches all tables with full details for a specific catalog and database
 func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseName string) (*dto.TablesResponse, error) {
