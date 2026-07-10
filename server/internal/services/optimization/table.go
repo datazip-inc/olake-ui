@@ -86,7 +86,7 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 	g, gctx := errgroup.WithContext(ctx)
 
 	// total : tableFanoutWorkers * 4
-	
+
 	g.Go(func() error {
 		d, err := s.getTableDetails(gctx, catalog, database, tableName)
 		if err != nil {
