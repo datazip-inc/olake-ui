@@ -79,9 +79,11 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 	}
 
 	var (
-		details            interface{}
-		minor, major, full *dto.OptimizationInfo
+		details interface{}
+		procs   [3]*dto.OptimizationInfo
 	)
+	processKinds := [3]string{"MINOR", "MAJOR", "FULL"}
+	processLabels := [3]string{"Lite", "Medium", "Full"}
 
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -94,22 +96,13 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 		return nil
 	})
 
-	processTypes := []struct {
-		kind  string
-		label string
-		dst   **dto.OptimizationInfo
-	}{
-		{"MINOR", "Lite", &minor},
-		{"MAJOR", "Medium", &major},
-		{"FULL", "Full", &full},
-	}
-	for _, pt := range processTypes {
+	for i, kind := range processKinds {
 		g.Go(func() error {
-			r, err := s.fetchLatestProcessInfo(gctx, catalog, database, tableName, pt.kind)
+			r, err := s.fetchLatestProcessInfo(gctx, catalog, database, tableName, kind)
 			if err != nil && !errors.Is(err, errNoProcess) {
-				return fmt.Errorf("failed to fetch latest %s process info: %w", pt.label, err)
+				return fmt.Errorf("failed to fetch latest %s process info: %w", processLabels[i], err)
 			}
-			*pt.dst = r
+			procs[i] = r
 			return nil
 		})
 	}
@@ -157,9 +150,9 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 	}
 	info.HealthScore = int(healthScore)
 
-	info.Minor = minor
-	info.Major = major
-	info.Full = full
+	info.Minor = procs[0]
+	info.Major = procs[1]
+	info.Full = procs[2]
 	return info, nil
 }
 
