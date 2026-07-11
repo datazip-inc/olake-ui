@@ -110,7 +110,7 @@ var (
 	OptPathTerminalExecute          = "/api/ams/v1/terminal/catalogs/%s/execute"
 	OptPathTerminalLogs             = "/api/ams/v1/terminal/%s/logs"
 	// others
-	OptMaxTimeout         = 30 * time.Second
+	OptMaxTimeout         = 10 * time.Minute
 	OptSessionTimeout     = 5 * time.Minute // used for fusion poll (terminal query execution)
 	OptMinorCron          = "self-optimizing.minor.trigger.cron"
 	OptMajorCron          = "self-optimizing.major.trigger.cron"
