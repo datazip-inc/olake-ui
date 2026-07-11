@@ -18,6 +18,7 @@ export const tableService = {
 	getTables: async (catalog: string, database: string) => {
 		const response = await api.get<GetTablesApiResponse>(
 			API_CONFIG.ENDPOINTS.OPT.TABLES(catalog, database),
+			{ timeout: 600000 },
 		)
 		return response.data
 	},

@@ -45,6 +45,7 @@ type Config struct {
 	OptimizationBaseURL            string
 	OptimizationUsername           string
 	OptimizationPassword           string
+	OptimizationRequestTimeout     time.Duration
 }
 
 var cfg = loadConfig()
@@ -108,10 +109,11 @@ func loadConfig() Config {
 		OlakePostgresDBName:   strings.TrimSpace(v.GetString("OLAKE_POSTGRES_DBNAME")),
 		OlakePostgresSSLMode:  strings.TrimSpace(v.GetString("OLAKE_POSTGRES_SSLMODE")),
 
-		EnableOptimization:   v.GetBool("ENABLE_OPTIMIZATION"),
-		OptimizationGroup:    strings.TrimSpace(v.GetString("OPTIMIZATION_GROUP")),
-		OptimizationBaseURL:  strings.TrimSpace(v.GetString("OPTIMIZATION_BASE_URL")),
-		OptimizationUsername: strings.TrimSpace(v.GetString("USERNAME")),
-		OptimizationPassword: strings.TrimSpace(v.GetString("PASSWORD")),
+		EnableOptimization:         v.GetBool("ENABLE_OPTIMIZATION"),
+		OptimizationGroup:          strings.TrimSpace(v.GetString("OPTIMIZATION_GROUP")),
+		OptimizationBaseURL:        strings.TrimSpace(v.GetString("OPTIMIZATION_BASE_URL")),
+		OptimizationUsername:       strings.TrimSpace(v.GetString("USERNAME")),
+		OptimizationPassword:       strings.TrimSpace(v.GetString("PASSWORD")),
+		OptimizationRequestTimeout: v.GetDuration("OPTIMIZATION_REQUEST_TIMEOUT"),
 	}
 }
