@@ -254,7 +254,7 @@
           },
           "catalog_name": {
             "description": "User defined catalog name. Numbers, lowercase letters and underscores are allowed.",
-            "pattern": "^[a-z][a-z0-9_]*$",
+            "pattern": "^[a-z0-9_]+$",
             "title": "Catalog Name",
             "type": "string"
           },
