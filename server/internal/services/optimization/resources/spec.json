@@ -253,7 +253,7 @@
             "type": "string"
           },
           "catalog_name": {
-            "description": "User defined catalog name.",
+            "description": "User defined catalog name",
             "title": "Catalog Name",
             "type": "string"
           },
