@@ -3,7 +3,7 @@ import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { ActionButton } from "@/common/components/action"
+import { Action } from "@/common/components/action"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { JobTable, JobEmptyState, DeleteJobModal } from "../components"
@@ -157,7 +157,7 @@ const Jobs: React.FC = () => {
 					<GitCommitIcon className="mr-2 size-6" />
 					<h1 className="text-2xl font-bold">Jobs</h1>
 				</div>
-				<ActionButton>
+				<Action>
 					<button
 						type="button"
 						data-testid="create-job-button"
@@ -167,7 +167,7 @@ const Jobs: React.FC = () => {
 						<PlusIcon className="size-4 text-white" />
 						Create Job
 					</button>
-				</ActionButton>
+				</Action>
 			</div>
 
 			<p className="mb-6 text-gray-600">

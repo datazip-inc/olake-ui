@@ -1,6 +1,7 @@
-export const useActionAccess = () => ({
-	canAccess: (feature?: string) => {
-		void feature
-		return true
-	},
+type ActionAccess = {
+	canAccess: (access: string) => boolean
+}
+
+export const useActionAccess = (): ActionAccess => ({
+	canAccess: () => true,
 })

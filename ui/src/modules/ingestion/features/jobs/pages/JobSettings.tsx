@@ -8,7 +8,7 @@ import { Cron } from "croner"
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 
-import { ActionButton } from "@/common/components/action"
+import { Action } from "@/common/components/action"
 import { getConnectorImage } from "@/modules/ingestion/common/utils"
 
 import {
@@ -478,7 +478,7 @@ const JobSettings: React.FC = () => {
 												the destination.
 											</div>
 										</div>
-										<ActionButton>
+										<Action>
 											<button
 												onClick={handleClearDestination}
 												className="rounded-md border bg-danger px-4 py-1 font-light text-white hover:bg-danger-dark disabled:cursor-not-allowed disabled:opacity-50"
@@ -488,7 +488,7 @@ const JobSettings: React.FC = () => {
 											>
 												Clear Destination
 											</button>
-										</ActionButton>
+										</Action>
 									</div>
 								</div>
 							</div>
@@ -501,14 +501,14 @@ const JobSettings: React.FC = () => {
 												No data will be deleted in your source and destination.
 											</div>
 										</div>
-										<ActionButton>
+										<Action>
 											<button
 												onClick={handleDeleteJob}
 												className="rounded-md border bg-danger px-4 py-1 font-light text-white hover:bg-danger-dark"
 											>
 												Delete this job
 											</button>
-										</ActionButton>
+										</Action>
 									</div>
 								</div>
 								<DeleteJobModal fromJobSettings={true} />
@@ -519,7 +519,7 @@ const JobSettings: React.FC = () => {
 				</div>
 
 				<div className="flex justify-end border-t border-gray-200 bg-white p-4 shadow-sm">
-					<ActionButton>
+					<Action>
 						<Button
 							type="primary"
 							onClick={handleSaveSettings}
@@ -527,7 +527,7 @@ const JobSettings: React.FC = () => {
 						>
 							Save
 						</Button>
-					</ActionButton>
+					</Action>
 				</div>
 			</div>
 			<ClearDestinationModal />

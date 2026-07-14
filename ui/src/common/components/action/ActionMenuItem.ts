@@ -1,7 +1,7 @@
 import type { MenuProps } from "antd"
 
 export type ActionMenuItemConfig = NonNullable<MenuProps["items"]>[number] & {
-	feature?: string
+	access?: string
 }
 
 export const resolveActionMenuItem = (

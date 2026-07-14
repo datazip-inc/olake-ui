@@ -7,7 +7,7 @@ import {
 import type { ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { ActionButton } from "@/common/components/action"
+import { Action } from "@/common/components/action"
 
 const StepCard = ({
 	step,
@@ -103,7 +103,7 @@ const JobEmptyState = () => {
 				<p className="text-xs font-medium text-[#212121]">
 					What&apos;s Next: Create your first source
 				</p>
-				<ActionButton>
+				<Action>
 					<button
 						onClick={() => {
 							navigate("/sources/new")
@@ -116,7 +116,7 @@ const JobEmptyState = () => {
 							weight="bold"
 						/>
 					</button>
-				</ActionButton>
+				</Action>
 			</div>
 		</div>
 	)

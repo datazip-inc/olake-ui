@@ -3,7 +3,7 @@ import { Button, Tabs, Empty, Spin } from "antd"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { ActionButton } from "@/common/components/action"
+import { Action } from "@/common/components/action"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import { Entity } from "@/modules/ingestion/common/types"
 
@@ -85,7 +85,7 @@ const Sources: React.FC = () => {
 					<LinktreeLogoIcon className="mr-2 size-6" />
 					<h1 className="text-2xl font-bold">Sources</h1>
 				</div>
-				<ActionButton>
+				<Action>
 					<button
 						data-testid="create-source-button"
 						className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
@@ -94,7 +94,7 @@ const Sources: React.FC = () => {
 						<PlusIcon className="size-4 text-white" />
 						Create Source
 					</button>
-				</ActionButton>
+				</Action>
 			</div>
 
 			<p className="mb-6 text-gray-600">A list of all your sources</p>

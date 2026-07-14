@@ -3,7 +3,7 @@ import { Button, Tabs, Empty, Spin } from "antd"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { ActionButton } from "@/common/components/action"
+import { Action } from "@/common/components/action"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import { Entity } from "@/modules/ingestion/common/types"
 
@@ -82,7 +82,7 @@ const Destinations: React.FC = () => {
 					<PathIcon className="mr-2 size-6" />
 					<h1 className="text-2xl font-bold">Destinations</h1>
 				</div>
-				<ActionButton>
+				<Action>
 					<button
 						data-testid="create-destination-button"
 						onClick={handleCreateDestination}
@@ -91,7 +91,7 @@ const Destinations: React.FC = () => {
 						<PlusIcon className="size-4 text-white" />
 						Create Destination
 					</button>
-				</ActionButton>
+				</Action>
 			</div>
 
 			<p className="mb-6 text-gray-600">A list of all your destinations</p>

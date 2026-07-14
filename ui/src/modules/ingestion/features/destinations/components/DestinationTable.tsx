@@ -42,12 +42,14 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 						items: [
 							{
 								key: "edit",
+								access: "destinations.write",
 								icon: <PencilSimpleLineIcon className="size-4" />,
 								label: "Edit",
 								onClick: () => onEdit(String(record.id)),
 							},
 							{
 								key: "delete",
+								access: "destinations.write",
 								icon: <TrashIcon className="size-4" />,
 								label: "Delete",
 								danger: true,

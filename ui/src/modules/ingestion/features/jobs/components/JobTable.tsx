@@ -72,12 +72,14 @@ const JobTable: React.FC<JobTableProps> = ({
 						? [
 								{
 									key: "edit",
+									access: "jobs.write",
 									icon: <PencilSimpleIcon className="size-4" />,
 									label: "Edit",
 									onClick: () => onEdit(record.id.toString()),
 								},
 								{
 									key: "delete",
+									access: "jobs.write",
 									icon: <TrashIcon className="size-4" />,
 									label: "Delete",
 									danger: true,
@@ -89,6 +91,7 @@ const JobTable: React.FC<JobTableProps> = ({
 								return [
 									{
 										key: "sync",
+										access: "jobs.write",
 										icon: <ArrowsClockwiseIcon className="size-4" />,
 										label: "Sync now",
 										disabled:
@@ -98,6 +101,7 @@ const JobTable: React.FC<JobTableProps> = ({
 									},
 									{
 										key: "edit",
+										access: "jobs.write",
 										icon: <PencilSimpleIcon className="size-4" />,
 										label: "Edit Streams",
 										disabled: !j.activate,
@@ -105,6 +109,7 @@ const JobTable: React.FC<JobTableProps> = ({
 									},
 									{
 										key: "pause",
+										access: "jobs.write",
 										icon: j.activate ? (
 											<PauseIcon className="size-4" />
 										) : (
@@ -116,6 +121,7 @@ const JobTable: React.FC<JobTableProps> = ({
 									},
 									{
 										key: "cancel",
+										access: "jobs.write",
 										icon: <XIcon className="size-4" />,
 										label: "Cancel Run",
 										disabled:
@@ -141,6 +147,7 @@ const JobTable: React.FC<JobTableProps> = ({
 									},
 									{
 										key: "delete",
+										access: "jobs.write",
 										icon: <TrashIcon className="size-4" />,
 										label: "Delete",
 										danger: true,
