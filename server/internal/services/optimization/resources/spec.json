@@ -253,8 +253,7 @@
             "type": "string"
           },
           "catalog_name": {
-            "description": "User defined catalog name, if left blank defaults to olake_iceberg. Only lowercase letters and underscores are allowed.",
-            "pattern": "^[a-z_]+$",
+            "description": "User defined catalog name",
             "title": "Catalog Name",
             "type": "string"
           },
