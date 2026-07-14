@@ -55,14 +55,12 @@ const SourceTable: React.FC<SourceTableProps> = ({
 						items: [
 							{
 								key: "edit",
-								access: "sources.write",
 								icon: <PencilSimpleLineIcon className="size-4" />,
 								label: "Edit",
 								onClick: () => onEdit(record.id.toString()),
 							},
 							{
 								key: "delete",
-								access: "sources.write",
 								icon: <TrashIcon className="size-4" />,
 								label: "Delete",
 								danger: true,
