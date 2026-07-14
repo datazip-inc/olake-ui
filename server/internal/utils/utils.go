@@ -258,3 +258,14 @@ func ConvertMBToBytes(sizeMB int64) string {
 	sizeBytes := sizeMB * bytesPerMB
 	return strconv.FormatInt(sizeBytes, 10)
 }
+
+func ToOptimizationType(optimizationType string) string {
+	switch optimizationType {
+	case constants.LiteOptimization:
+		return constants.InternalMinorOptimization
+	case constants.MediumOptimization:
+		return constants.InternalMajorOptimization
+	default:
+		return optimizationType
+	}
+}

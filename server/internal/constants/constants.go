@@ -105,7 +105,6 @@ var (
 	OptPathCatalogs                 = "/api/ams/v1/catalogs"
 	OptPathCatalogDetail            = "/api/ams/v1/catalogs/%s"
 	OptPathCatalogTables            = "/api/ams/v1/catalogs/%s/databases/%s/tables"
-	OptPathTableDetails             = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/details"
 	OptPathTableOptimizingProcesses = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes"
 	OptPathTerminalExecute          = "/api/ams/v1/terminal/catalogs/%s/execute"
 	OptPathTerminalLogs             = "/api/ams/v1/terminal/%s/logs"
@@ -130,6 +129,12 @@ var (
 	CatalogSpecVersion             = "v0.7.4"
 	CatalogSpecType                = "iceberg"
 	IcebergCatalogSpecFile         = "server/internal/services/optimization/resources/spec.json"
+
+	LiteOptimization          = "LITE"
+	MediumOptimization        = "MEDIUM"
+	FullOptimization          = "FULL"
+	InternalMinorOptimization = "MINOR"
+	InternalMajorOptimization = "MAJOR"
 
 	ContextUserIDKey = "user_id"
 	ProjectIDParam   = "projectid"
