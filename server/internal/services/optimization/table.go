@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
+	"time"
 
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -23,10 +25,12 @@ var tableFanoutWorkers = runtime.NumCPU() * 2
 
 // fetches all tables with full details for a specific catalog and database
 func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseName string) (*dto.TablesResponse, error) {
+	start := time.Now()
 	tablesResult, err := s.getTables(ctx, catalog, databaseName, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tables for catalog %s, database %s: %w", catalog, databaseName, err)
 	}
+	logger.Info("Get Tables Fusion API took : %s", time.Since(start))
 
 	tablesList, ok := tablesResult.([]interface{})
 	if !ok {
@@ -134,6 +138,17 @@ func (s *Service) getTables(ctx context.Context, catalog, database, keywords str
 
 // loadOptimizationInfoForEachTable fetches the latest optimizing process info for a specific type
 func (s *Service) loadOptimizationInfoForEachTable(ctx context.Context, catalog, database, table, processType string) (*dto.OptimizationInfo, error) {
+	start := time.Now()
+	defer func() {
+		logger.Info(
+			"loadOptimizationInfoForEachTable [%s] %s.%s.%s took %s",
+			processType,
+			catalog,
+			database,
+			table,
+			time.Since(start),
+		)
+	}()
 	result, err := s.getLatestOptimizingProcessByType(ctx, catalog, database, table, processType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest %s optimizing process for %s.%s.%s: %w", processType, catalog, database, table, err)
