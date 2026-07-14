@@ -5,7 +5,7 @@ export type NavItem = {
 	path: string
 	label: string
 	icon: React.ElementType
-	accessKey?: string
+	access?: string
 }
 
 export type NavModule = {
@@ -53,7 +53,7 @@ export const useVisibleNavModules = (
 	return getNavModules(enabledFeatures)
 		.map(mod => ({
 			...mod,
-			items: mod.items.filter(item => !item.accessKey || canAccess(item.accessKey)),
+			items: mod.items.filter(item => !item.access || canAccess(item.access)),
 		}))
 		.filter(mod => mod.items.length > 0)
 }
