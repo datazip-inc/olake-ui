@@ -5,8 +5,7 @@ export type NavItem = {
 	path: string
 	label: string
 	icon: React.ElementType
-	/** Optional RBAC feature key — EE filters items the user cannot read. */
-	feature?: string
+	accessKey?: string
 }
 
 export type NavModule = {
@@ -54,7 +53,7 @@ export const useVisibleNavModules = (
 	return getNavModules(enabledFeatures)
 		.map(mod => ({
 			...mod,
-			items: mod.items.filter(item => !item.feature || canAccess(item.feature)),
+			items: mod.items.filter(item => !item.accessKey || canAccess(item.accessKey)),
 		}))
 		.filter(mod => mod.items.length > 0)
 }
