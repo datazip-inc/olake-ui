@@ -24,12 +24,25 @@ type JobLastRunInfo struct {
 	LastRunTime  string
 	LastRunState string
 	LastRunType  string
+
+	// Typed run details for the metrics collector.
+	WorkflowID string
+	StartTime  time.Time
+	CloseTime  *time.Time // nil while the workflow is still open
+	Status     enumspb.WorkflowExecutionStatus
 }
 
-// fetchLatestJobRunsByJobIDs batches workflow queries for multiple jobs into a single/few temporal API calls
-func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobs []*models.Job) (map[int]JobLastRunInfo, error) {
+// fetchLatestJobRunsByJobIDs batches workflow queries for multiple jobs into a single/few temporal API calls.
+// An optional opType restricts results to that operation type (e.g. temporal.Sync);
+// omitted, the latest run is returned regardless of operation.
+func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobs []*models.Job, opTypes ...temporal.Command) (map[int]JobLastRunInfo, error) {
 	if len(jobs) == 0 {
 		return map[int]JobLastRunInfo{}, nil
+	}
+
+	var opType temporal.Command
+	if len(opTypes) > 0 {
+		opType = opTypes[0]
 	}
 
 	jobIDSet := make(map[int]struct{}, len(jobs))
@@ -41,6 +54,11 @@ func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Tempor
 	// Using BETWEEN with 'z' suffix.
 	// 'z' sorts after all digits/hyphens in standard collation, ensuring we capture the full range.
 	query := fmt.Sprintf("WorkflowId BETWEEN 'sync-%s-' AND 'sync-%s-z'", projectID, projectID)
+	if opType != "" {
+		// Runs predating the OperationType search attribute are missed by this
+		// filter — same limitation syncWorkflowOperationType handles.
+		query += fmt.Sprintf(" AND OperationType = '%s'", opType)
+	}
 
 	result := make(map[int]JobLastRunInfo, len(jobs))
 	var nextPageToken []byte
@@ -72,11 +90,20 @@ func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Tempor
 			}
 
 			// add the latest run for this job
-			opType := syncWorkflowOperationType(execution)
+			runOpType := syncWorkflowOperationType(execution)
+			var closeTime *time.Time
+			if execution.CloseTime != nil {
+				t := execution.CloseTime.AsTime()
+				closeTime = &t
+			}
 			result[jobID] = JobLastRunInfo{
 				LastRunTime:  execution.StartTime.AsTime().Format(time.RFC3339),
 				LastRunState: execution.Status.String(),
-				LastRunType:  utils.Ternary(opType == temporal.Sync, "sync", "clear").(string),
+				LastRunType:  utils.Ternary(runOpType == temporal.Sync, "sync", "clear").(string),
+				WorkflowID:   execution.Execution.WorkflowId,
+				StartTime:    execution.StartTime.AsTime(),
+				CloseTime:    closeTime,
+				Status:       execution.Status,
 			}
 
 			// break if all jobs are populated.

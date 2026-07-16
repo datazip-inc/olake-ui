@@ -30,12 +30,12 @@ func New(cfg *appconfig.Config, h *handlers.Handler) *Server {
 
 	s.engine = gin.New()
 	s.engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
-		SkipPaths: []string{"/health"},
+		SkipPaths: []string{"/health", "/metrics"},
 	}))
 	s.engine.Use(gin.Recovery())
 
 	s.configureRequestLimits(cfg)
-	s.configureBaseRoutes()
+	s.configureBaseRoutes(cfg, h)
 
 	if cfg.RunMode == "localdev" {
 		s.engine.Use(s.defaultCORSMiddleware())
@@ -106,10 +106,21 @@ func (s *Server) configureRequestLimits(cfg *appconfig.Config) {
 	}
 }
 
-func (s *Server) configureBaseRoutes() {
+func (s *Server) configureBaseRoutes(cfg *appconfig.Config, h *handlers.Handler) {
 	s.engine.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+
+	// GET /metrics — Prometheus text exposition. Registered explicitly (so the SPA
+	// NoRoute fallback never sees it) and outside the /api auth group, same trust
+	// level as /health. METRICS_ENABLED=false turns the route into a 404.
+	if cfg.MetricsEnabled {
+		s.engine.GET("/metrics", gin.WrapH(h.ETL.MetricsHandler()))
+	} else {
+		s.engine.GET("/metrics", func(c *gin.Context) {
+			c.JSON(http.StatusNotFound, gin.H{"message": "not found", "success": false})
+		})
+	}
 }
 
 func (s *Server) configureStaticFrontend() {

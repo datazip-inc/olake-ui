@@ -87,6 +87,20 @@ func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error)
 	return jobs, nil
 }
 
+// ListDistinctProjectIDs returns the distinct project IDs present in the jobs table.
+// Used by the metrics collector, which is cross-project unlike the per-project accessors.
+func (db *Database) ListDistinctProjectIDs() ([]string, error) {
+	var projectIDs []string
+	err := db.conn.
+		Model(&models.Job{}).
+		Distinct().
+		Pluck("project_id", &projectIDs).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to list distinct project ids: %s", err)
+	}
+	return projectIDs, nil
+}
+
 // GetByID retrieves a job by ID
 func (db *Database) GetJobByID(id int, decrypt bool) (*models.Job, error) {
 	job := &models.Job{}

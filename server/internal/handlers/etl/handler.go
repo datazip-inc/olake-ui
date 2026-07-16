@@ -1,6 +1,8 @@
 package etl
 
 import (
+	"net/http"
+
 	services "github.com/datazip-inc/olake-ui/server/internal/services/etl"
 )
 
@@ -12,4 +14,9 @@ type Handler struct {
 // NewHandler initializes the ETL handler with its service dependency.
 func NewHandler(s *services.Service) *Handler {
 	return &Handler{etl: s}
+}
+
+// MetricsHandler exposes the ETL service's Prometheus /metrics handler.
+func (h *Handler) MetricsHandler() http.Handler {
+	return h.etl.MetricsHandler()
 }
