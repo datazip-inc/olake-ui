@@ -70,74 +70,11 @@ const JobTable: React.FC<JobTableProps> = ({
 				const menuItems = (
 					jobType === "saved"
 						? [
-							{
-								key: "edit",
-								icon: <PencilSimpleIcon className="size-4" />,
-								label: "Edit",
-								onClick: () => onEdit(record.id.toString()),
-							},
-							{
-								key: "delete",
-								icon: <TrashIcon className="size-4" />,
-								label: "Delete",
-								danger: true,
-								onClick: () => onDelete(record.id.toString()),
-							},
-						]
-						: (() => {
-							const j = record as Job
-							return [
-								{
-									key: "sync",
-									icon: <ArrowsClockwiseIcon className="size-4" />,
-									label: "Sync now",
-									disabled:
-										j.last_run_state?.toLowerCase() === "running" ||
-										!j.activate,
-									onClick: () => onSync(record.id.toString()),
-								},
 								{
 									key: "edit",
 									icon: <PencilSimpleIcon className="size-4" />,
-									label: "Edit Streams",
-									disabled: !j.activate,
+									label: "Edit",
 									onClick: () => onEdit(record.id.toString()),
-								},
-								{
-									key: "pause",
-									icon: j.activate ? (
-										<PauseIcon className="size-4" />
-									) : (
-										<PlayIcon className="size-4" />
-									),
-									label: j.activate ? "Pause job" : "Resume job",
-									disabled: j.last_run_state?.toLowerCase() === "running",
-									onClick: () => onPause(record.id.toString(), j.activate),
-								},
-								{
-									key: "cancel",
-									icon: <XIcon className="size-4" />,
-									label: "Cancel Run",
-									disabled:
-										!j.activate ||
-										j.last_run_state?.toLowerCase() !== "running" ||
-										(j.last_run_type === JobType.ClearDestination &&
-											j.last_run_state?.toLowerCase() === "running"),
-									onClick: () => onCancelJob(record.id.toString()),
-								},
-								{
-									key: "history",
-									icon: <ClockCounterClockwiseIcon className="size-4" />,
-									label: "Job History",
-									disabled: !j.activate,
-									onClick: () => handleViewHistory(record.id.toString()),
-								},
-								{
-									key: "settings",
-									icon: <GearIcon className="size-4" />,
-									label: "Job settings",
-									disabled: !j.activate,
-									onClick: () => handleViewSettings(record.id.toString()),
 								},
 								{
 									key: "delete",
@@ -147,7 +84,70 @@ const JobTable: React.FC<JobTableProps> = ({
 									onClick: () => onDelete(record.id.toString()),
 								},
 							]
-						})()
+						: (() => {
+								const j = record as Job
+								return [
+									{
+										key: "sync",
+										icon: <ArrowsClockwiseIcon className="size-4" />,
+										label: "Sync now",
+										disabled:
+											j.last_run_state?.toLowerCase() === "running" ||
+											!j.activate,
+										onClick: () => onSync(record.id.toString()),
+									},
+									{
+										key: "edit",
+										icon: <PencilSimpleIcon className="size-4" />,
+										label: "Edit Streams",
+										disabled: !j.activate,
+										onClick: () => onEdit(record.id.toString()),
+									},
+									{
+										key: "pause",
+										icon: j.activate ? (
+											<PauseIcon className="size-4" />
+										) : (
+											<PlayIcon className="size-4" />
+										),
+										label: j.activate ? "Pause job" : "Resume job",
+										disabled: j.last_run_state?.toLowerCase() === "running",
+										onClick: () => onPause(record.id.toString(), j.activate),
+									},
+									{
+										key: "cancel",
+										icon: <XIcon className="size-4" />,
+										label: "Cancel Run",
+										disabled:
+											!j.activate ||
+											j.last_run_state?.toLowerCase() !== "running" ||
+											(j.last_run_type === JobType.ClearDestination &&
+												j.last_run_state?.toLowerCase() === "running"),
+										onClick: () => onCancelJob(record.id.toString()),
+									},
+									{
+										key: "history",
+										icon: <ClockCounterClockwiseIcon className="size-4" />,
+										label: "Job History",
+										disabled: !j.activate,
+										onClick: () => handleViewHistory(record.id.toString()),
+									},
+									{
+										key: "settings",
+										icon: <GearIcon className="size-4" />,
+										label: "Job settings",
+										disabled: !j.activate,
+										onClick: () => handleViewSettings(record.id.toString()),
+									},
+									{
+										key: "delete",
+										icon: <TrashIcon className="size-4" />,
+										label: "Delete",
+										danger: true,
+										onClick: () => onDelete(record.id.toString()),
+									},
+								]
+							})()
 				)
 					.map(resolveActionMenuItem)
 					.filter(Boolean)
