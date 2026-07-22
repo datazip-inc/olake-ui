@@ -10,6 +10,7 @@ import type { MenuProps } from "antd/es/menu"
 import clsx from "clsx"
 
 import { Tag, type ColumnDef } from "@/common/components"
+import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { RunStatusCell } from "../components"
 import type { Table } from "../types"
@@ -109,7 +110,12 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 			header: (
 				<div className="flex items-center gap-1">
 					<span>Health Score</span>
-					<Tooltip title="Overall table efficiency based on small files and deletes. Higher is better.">
+					<Tooltip
+						title="Overall table efficiency based on small files and deletes. Higher is better."
+						onOpenChange={open => {
+							if (open) trackEvent(AnalyticsEvent.HealthScoreTooltipViewed)
+						}}
+					>
 						<QuestionIcon
 							size={14}
 							className="cursor-help text-olake-text-secondary"

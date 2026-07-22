@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { DataTable, PageErrorState } from "@/common/components"
 import { ErrorLogsModal } from "@/common/components/modals"
 import { usePaginatedSearch } from "@/common/hooks"
+import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import { catalogKeys } from "@/modules/maintenance/features/catalogs/constants"
 import { useCatalogs } from "@/modules/maintenance/features/catalogs/hooks"
 
@@ -143,6 +144,7 @@ const Tables: React.FC = () => {
 			message.info("Please select more than 1 table to bulk configure.")
 			return
 		}
+		trackEvent(AnalyticsEvent.BulkConfigureClicked)
 		setBulkModalOpen(true)
 	}
 
@@ -188,7 +190,10 @@ const Tables: React.FC = () => {
 			cancelTableRunVariables?.tableName === tableName
 
 		const actions: TableActions = {
-			onViewLogs: row => navigate(getTableRunsPath(row.name)),
+			onViewLogs: row => {
+				trackEvent(AnalyticsEvent.ViewLogsClicked)
+				navigate(getTableRunsPath(row.name))
+			},
 			onCancelRun: row => {
 				const runId = getCancelRunID(row)
 				if (!runId) return
@@ -200,6 +205,11 @@ const Tables: React.FC = () => {
 				})
 			},
 			onToggleOptimizingStatus: (row, enabled) => {
+				trackEvent(
+					enabled
+						? AnalyticsEvent.StatusToggleOnClicked
+						: AnalyticsEvent.StatusToggleOffClicked,
+				)
 				const request: ToggleTableOptimizingRequest = {
 					catalog: selectedCatalog ?? "",
 					database: selectedDatabase ?? "",
@@ -208,6 +218,11 @@ const Tables: React.FC = () => {
 				}
 				toggleTableOptimizing(request, {
 					onSuccess: result => {
+						if (enabled && result.success) {
+							trackEvent(AnalyticsEvent.StatusEnableSuccessful)
+						} else if (enabled && !result.success) {
+							trackEvent(AnalyticsEvent.StatusEnableFailed)
+						}
 						if (!result.success) {
 							setLastToggleRequest(request)
 							setOptimizationErrorLogs(result.logs ?? [])
@@ -217,10 +232,12 @@ const Tables: React.FC = () => {
 				})
 			},
 			onViewMetrics: row => {
+				trackEvent(AnalyticsEvent.ViewTableMetricsClicked)
 				setMetricsTableName(row.name)
 				setMetricsModalOpen(true)
 			},
 			onConfigure: row => {
+				trackEvent(AnalyticsEvent.ConfigureButtonClicked)
 				setConfigureTable(row)
 				setConfigureModalOpen(true)
 			},
@@ -421,6 +438,7 @@ const Tables: React.FC = () => {
 				title="Failed to update optimization configuration"
 				error={optimizationErrorLogs.join("\n")}
 				onAction={() => {
+					trackEvent(AnalyticsEvent.StatusRetryClicked)
 					setOptimizationErrorOpen(false)
 					if (lastToggleRequest) toggleTableOptimizing(lastToggleRequest)
 				}}

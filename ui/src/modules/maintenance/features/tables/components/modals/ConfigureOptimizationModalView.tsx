@@ -4,6 +4,7 @@ import clsx from "clsx"
 import { useEffect, useState } from "react"
 
 import { ErrorLogsModal } from "@/common/components/modals"
+import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
 import {
@@ -80,9 +81,17 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 					</label>
 					<Select
 						value={value.frequency}
-						onChange={next =>
+						onChange={next => {
+							trackEvent(AnalyticsEvent.FrequencySelected, {
+								tier: title,
+								frequency: next,
+							})
+							trackEvent(AnalyticsEvent.FrequencyOptionClicked, {
+								tier: title,
+								option: next,
+							})
 							onChange({ ...value, frequency: next, customCron: "" })
-						}
+						}}
 						options={CRON_FREQUENCY_OPTIONS}
 						className="w-full"
 					/>
@@ -182,6 +191,7 @@ const ConfigureOptimizationModalView: React.FC<
 	}, [open])
 
 	const handleSave = () => {
+		trackEvent(AnalyticsEvent.ConfigurationSaveClicked)
 		const payload: UpdateTableCronApiRequest = {
 			minor_cron: getCronFromConfig(minorCron),
 			major_cron: getCronFromConfig(majorCron),
@@ -191,8 +201,12 @@ const ConfigureOptimizationModalView: React.FC<
 		}
 
 		onSave(payload, {
-			onSuccess: () => setActiveModal(ActiveOptimizationModalState.SUCCESS),
+			onSuccess: () => {
+				trackEvent(AnalyticsEvent.ConfigurationSaveSuccessful)
+				setActiveModal(ActiveOptimizationModalState.SUCCESS)
+			},
 			onError: logs => {
+				trackEvent(AnalyticsEvent.ConfigurationSaveFailed)
 				setErrorLogs(logs)
 				setActiveModal(ActiveOptimizationModalState.ERROR_LOGS)
 			},
@@ -316,8 +330,12 @@ const ConfigureOptimizationModalView: React.FC<
 														/[^0-9]/g,
 														"",
 													)
-													setTargetFileSize(
-														numericValue === "" ? 0 : Number(numericValue),
+													const nextValue =
+														numericValue === "" ? 0 : Number(numericValue)
+													setTargetFileSize(nextValue)
+													trackEvent(
+														AnalyticsEvent.TargetFileSizeCustomized,
+														{ target_file_size: nextValue },
 													)
 												}}
 												inputMode="numeric"

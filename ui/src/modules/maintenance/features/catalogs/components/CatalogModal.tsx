@@ -11,6 +11,7 @@ import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import { widgets } from "@/common/components/form/widgets"
 import { ErrorLogsModal } from "@/common/components/modals"
 import { transformErrors } from "@/common/constants"
+import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import {
 	trimFormDataStrings,
 	handleSpecResponse,
@@ -158,6 +159,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 		} catch {
 			message.error("Failed to load destination config")
 		}
+		trackEvent(AnalyticsEvent.ImportCatalogFromDestinationClicked)
 	}
 
 	const validateForm = async (): Promise<boolean> => {
@@ -169,6 +171,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 	}
 
 	const handleSaveCatalog = async () => {
+		trackEvent(AnalyticsEvent.CatalogConnectClicked)
 		const isValid = await validateForm()
 		if (!isValid) return
 

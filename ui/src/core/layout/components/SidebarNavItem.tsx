@@ -1,6 +1,13 @@
 import clsx from "clsx"
 import { NavLink } from "react-router-dom"
 
+import { trackEvent, AnalyticsEvent } from "@/core/analytics"
+
+const MAINTENANCE_PATHS = new Set([
+	"/maintenance/tables",
+	"/maintenance/catalogs",
+])
+
 const SidebarNavItem: React.FC<{
 	path: string
 	label: string
@@ -10,6 +17,11 @@ const SidebarNavItem: React.FC<{
 }> = ({ path, label, icon: Icon, iconSize = 14, className }) => (
 	<NavLink
 		to={path}
+		onClick={() => {
+			if (MAINTENANCE_PATHS.has(path)) {
+				trackEvent(AnalyticsEvent.MaintenanceModuleOpened, { path })
+			}
+		}}
 		className={({ isActive }) =>
 			clsx(
 				"flex items-center gap-[9px] rounded-md px-2 text-[14px] leading-[22px]",
