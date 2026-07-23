@@ -16,8 +16,8 @@ var (
 	AsyncCommands = []Command{Sync, ClearDestination}
 )
 
-// getWorkflowDirectory determines the directory name based on operation and workflow ID
-func getWorkflowDirectory(operation Command, originalWorkflowID string) string {
+// GetWorkflowDirectory determines the directory name based on operation and workflow ID
+func GetWorkflowDirectory(operation Command, originalWorkflowID string) string {
 	if slices.Contains(AsyncCommands, operation) {
 		return fmt.Sprintf("%x", sha256.Sum256([]byte(originalWorkflowID)))
 	}
@@ -61,7 +61,7 @@ func ReadJSONFile(filePath string) (map[string]interface{}, error) {
 // SetupConfigFiles creates the work directory and writes the config files to it
 // It writes to the mounted path and can be accessed by the worker.
 func SetupConfigFiles(cmd Command, workflowID string, configs []JobConfig) error {
-	subDir := getWorkflowDirectory(cmd, workflowID)
+	subDir := GetWorkflowDirectory(cmd, workflowID)
 	workDir := filepath.Join(constants.DefaultConfigDir, subDir)
 
 	if err := createDirectory(workDir, 0755); err != nil {

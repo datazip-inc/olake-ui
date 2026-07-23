@@ -3,7 +3,6 @@ package appconfig
 import (
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/spf13/viper"
@@ -50,13 +49,9 @@ type Config struct {
 	OptimizationRequestTimeout     time.Duration
 }
 
-var (
-	cfg     Config
-	cfgOnce sync.Once
-)
+var cfg = loadConfig()
 
 func Load() Config {
-	cfgOnce.Do(func() { cfg = loadConfig() })
 	return cfg
 }
 

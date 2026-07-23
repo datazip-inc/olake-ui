@@ -111,9 +111,9 @@ func (s *Server) configureBaseRoutes(cfg *appconfig.Config, h *handlers.Handler)
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// GET /metrics — Prometheus text exposition. Registered explicitly (so the SPA
-	// NoRoute fallback never sees it) and outside the /api auth group, same trust
-	// level as /health. METRICS_ENABLED=false turns the route into a 404.
+	// GET /metrics — Prometheus exposition. Registered as a real route so it wins
+	// over the catch-all that serves the frontend's index.html, and kept outside the
+	// /api auth group. METRICS_ENABLED=false → 404.
 	if cfg.MetricsEnabled {
 		s.engine.GET("/metrics", gin.WrapH(h.ETL.MetricsHandler()))
 	} else {

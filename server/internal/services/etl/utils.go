@@ -19,17 +19,14 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// JobLastRunInfo holds the latest run information for a job
+// JobLastRunInfo holds the latest run of a job exactly as Temporal reports it.
+// Values stay in their source form; the API layer formats them into DTO strings.
 type JobLastRunInfo struct {
-	LastRunTime  string
-	LastRunState string
-	LastRunType  string
-
-	// Typed run details for the metrics collector.
-	WorkflowID string
-	StartTime  time.Time
-	CloseTime  *time.Time // nil while the workflow is still open
-	Status     enumspb.WorkflowExecutionStatus
+	WorkflowID    string
+	StartTime     time.Time
+	CloseTime     *time.Time // nil while the run is still open
+	Status        enumspb.WorkflowExecutionStatus
+	OperationType temporal.Command
 }
 
 // fetchLatestJobRunsByJobIDs batches workflow queries for multiple jobs into a single/few temporal API calls.
@@ -90,20 +87,17 @@ func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Tempor
 			}
 
 			// add the latest run for this job
-			runOpType := syncWorkflowOperationType(execution)
 			var closeTime *time.Time
 			if execution.CloseTime != nil {
 				t := execution.CloseTime.AsTime()
 				closeTime = &t
 			}
 			result[jobID] = JobLastRunInfo{
-				LastRunTime:  execution.StartTime.AsTime().Format(time.RFC3339),
-				LastRunState: execution.Status.String(),
-				LastRunType:  utils.Ternary(runOpType == temporal.Sync, "sync", "clear").(string),
-				WorkflowID:   execution.Execution.WorkflowId,
-				StartTime:    execution.StartTime.AsTime(),
-				CloseTime:    closeTime,
-				Status:       execution.Status,
+				WorkflowID:    execution.Execution.WorkflowId,
+				StartTime:     execution.StartTime.AsTime(),
+				CloseTime:     closeTime,
+				Status:        execution.Status,
+				OperationType: syncWorkflowOperationType(execution),
 			}
 
 			// break if all jobs are populated.
@@ -179,8 +173,8 @@ func buildJobDataItems(jobs []*models.Job, lastRunByJobID map[int]JobLastRunInfo
 
 		// Set workflow info from pre-fetched map
 		if lastRun, ok := lastRunByJobID[job.ID]; ok {
-			jobInfo.LastRunTime = lastRun.LastRunTime
-			jobInfo.LastRunState = lastRun.LastRunState
+			jobInfo.LastRunTime = lastRun.StartTime.Format(time.RFC3339)
+			jobInfo.LastRunState = lastRun.Status.String()
 		}
 
 		jobItems = append(jobItems, jobInfo)

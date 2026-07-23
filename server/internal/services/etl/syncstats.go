@@ -1,10 +1,10 @@
 package etl
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
+
+	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 )
 
 // syncStats holds the pass-through values read from a sync run's stats.json.
@@ -17,20 +17,15 @@ type syncStats struct {
 	Memory   float64
 }
 
-// readSyncStats reads and parses stats.json from a sync run's work directory.
-// Missing or unparsable keys yield zero values without error (old connector
-// images ship fewer keys). A missing file or truncated JSON (the CLI
-// truncate-rewrites the file every ~2s) returns an error so the caller can keep
-// the previously reported values for that job.
-func readSyncStats(dir string) (*syncStats, error) {
-	data, err := os.ReadFile(filepath.Join(dir, "stats.json"))
+// readSyncStats parses a sync run's stats.json. Missing or unparsable keys yield
+// zero values without error (older images ship fewer keys); a missing file or
+// truncated JSON (the CLI truncate-rewrites every ~2s) errors so the caller keeps
+// the job's previous values.
+func readSyncStats(baseDir, workflowID string) (*syncStats, error) {
+	statsPath := filepath.Join(baseDir, temporal.GetWorkflowDirectory(temporal.Sync, workflowID), "stats.json")
+	raw, err := temporal.ReadJSONFile(statsPath)
 	if err != nil {
-		return nil, err
-	}
-
-	var raw map[string]any
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return nil, fmt.Errorf("failed to parse stats.json in %s: %s", dir, err)
+		return nil, fmt.Errorf("failed to read %s: %s", statsPath, err)
 	}
 
 	stats := &syncStats{}
