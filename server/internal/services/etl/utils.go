@@ -30,8 +30,8 @@ type JobLastRunInfo struct {
 }
 
 // fetchLatestJobRunsByJobIDs batches workflow queries for multiple jobs into a single/few temporal API calls.
-// An optional opType restricts results to that operation type (e.g. temporal.Sync);
-// omitted, the latest run is returned regardless of operation.
+// opTypes is an optional operation-type filter (e.g. temporal.Sync); it is variadic only so existing callers
+// stay unchanged — only the first value is used, omitted means the latest run regardless of operation.
 func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobs []*models.Job, opTypes ...temporal.Command) (map[int]JobLastRunInfo, error) {
 	if len(jobs) == 0 {
 		return map[int]JobLastRunInfo{}, nil

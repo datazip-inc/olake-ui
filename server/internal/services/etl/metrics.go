@@ -293,16 +293,11 @@ func (m *metricsCollector) refreshStats() {
 	}
 }
 
-// MetricsHandler serves GET /metrics: a TTL-guarded refresh, then the exposition.
-// A refresh error serves the previous snapshot instead of failing the scrape.
-func (s Service) MetricsHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), metricsRefreshTimeout)
-		defer cancel()
-
-		if err := s.metrics.refresh(ctx); err != nil {
-			logger.Errorf("metrics refresh failed, serving previous snapshot: %s", err)
-		}
-		s.metrics.handler.ServeHTTP(w, r)
-	})
+// RefreshMetrics rebuilds the snapshot (TTL-guarded, bounded by the refresh timeout)
+// and returns the Prometheus exposition handler for the caller to serve. On a backend
+// failure it returns the previous snapshot's handler together with the error.
+func (s Service) RefreshMetrics(ctx context.Context) (http.Handler, error) {
+	ctx, cancel := context.WithTimeout(ctx, metricsRefreshTimeout)
+	defer cancel()
+	return s.metrics.handler, s.metrics.refresh(ctx)
 }

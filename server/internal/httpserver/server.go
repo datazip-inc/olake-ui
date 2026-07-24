@@ -111,11 +111,10 @@ func (s *Server) configureBaseRoutes(cfg *appconfig.Config, h *handlers.Handler)
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// GET /metrics — Prometheus exposition. Registered as a real route so it wins
-	// over the catch-all that serves the frontend's index.html, and kept outside the
-	// /api auth group. METRICS_ENABLED=false → 404.
+	// GET /metrics — real route so it beats the frontend catch-all, and outside the
+	// /api auth group (scraped without auth). METRICS_ENABLED=false → 404.
 	if cfg.MetricsEnabled {
-		s.engine.GET("/metrics", gin.WrapH(h.ETL.MetricsHandler()))
+		s.engine.GET("/metrics", h.ETL.Metrics)
 	} else {
 		s.engine.GET("/metrics", func(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"message": "not found", "success": false})
