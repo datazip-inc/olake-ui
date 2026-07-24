@@ -46,6 +46,7 @@ type Config struct {
 	OptimizationUsername           string
 	OptimizationPassword           string
 	OptimizationRequestTimeout     time.Duration
+	InstallationMode               string
 }
 
 var cfg = loadConfig()
@@ -60,8 +61,10 @@ func loadConfig() Config {
 	// Auto-detect RUN_MODE default based on execution environment.
 	// KUBERNETES_SERVICE_HOST is automatically injected into every pod by Kubernetes.
 	// Priority: RUN_MODE env var > app.yaml > this default.
+	installationMode := "docker"
 	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
 		v.SetDefault("RUN_MODE", "staging")
+		installationMode = "helm"
 	} else {
 		v.SetDefault("RUN_MODE", "dev")
 	}
@@ -115,5 +118,6 @@ func loadConfig() Config {
 		OptimizationUsername:       strings.TrimSpace(v.GetString("USERNAME")),
 		OptimizationPassword:       strings.TrimSpace(v.GetString("PASSWORD")),
 		OptimizationRequestTimeout: v.GetDuration("OPTIMIZATION_REQUEST_TIMEOUT"),
+		InstallationMode:           installationMode,
 	}
 }

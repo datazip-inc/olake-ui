@@ -6,6 +6,7 @@ import { useNavigate, useParams } from "react-router-dom"
 
 import { DataTable } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
+import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { RunMetricsSidebar } from "../components"
 import { useRunHistoryFilters, useTableRuns } from "../hooks"
@@ -134,6 +135,7 @@ const RunHistory: React.FC = () => {
 	const totalPages = Math.max(1, Math.ceil(totalRuns / pageSize))
 
 	const handleMetricsClick = (row: TableRun) => {
+		trackEvent(AnalyticsEvent.ViewMetricsClicked)
 		setSelectedRunId(row.runId)
 		setMetricsSidebarOpen(true)
 		setMetricsRows(row.metrics)
@@ -141,9 +143,12 @@ const RunHistory: React.FC = () => {
 	const getRunLogsPath = (runId: string) =>
 		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(runId)}/logs`
 
-	const columns = getColumns(handleMetricsClick, runId =>
-		navigate(getRunLogsPath(runId)),
-	)
+	const handleLogsClick = (runId: string) => {
+		trackEvent(AnalyticsEvent.ViewLogsClicked)
+		navigate(getRunLogsPath(runId))
+	}
+
+	const columns = getColumns(handleMetricsClick, handleLogsClick)
 
 	return (
 		<div className="min-h-full bg-white px-6 pt-6">

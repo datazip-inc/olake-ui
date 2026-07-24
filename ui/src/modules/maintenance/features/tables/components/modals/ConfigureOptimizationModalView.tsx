@@ -22,6 +22,16 @@ import type {
 } from "../../types"
 import { getCronFromConfig, getEarliestNextRun, getNextRuns } from "../../utils"
 
+const TIER_FREQUENCY_EVENT = {
+	[RUN_TYPE_LABEL.LITE]: AnalyticsEvent.LiteFrequencySelected,
+	[RUN_TYPE_LABEL.MEDIUM]: AnalyticsEvent.MediumFrequencySelected,
+	[RUN_TYPE_LABEL.FULL]: AnalyticsEvent.FullFrequencySelected,
+} as const
+
+const getFrequencyOptionLabel = (frequencyValue: string): string =>
+	CRON_FREQUENCY_OPTIONS.find(option => option.value === frequencyValue)
+		?.label ?? "Custom"
+
 export type SaveCallbacks = {
 	onSuccess: () => void
 	onError: (logs: string[]) => void
@@ -82,14 +92,15 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 					<Select
 						value={value.frequency}
 						onChange={next => {
-							trackEvent(AnalyticsEvent.FrequencySelected, {
-								tier: title,
-								frequency: next,
-							})
-							trackEvent(AnalyticsEvent.FrequencyOptionClicked, {
-								tier: title,
-								option: next,
-							})
+							if (next !== "never") {
+								const tierEvent =
+									TIER_FREQUENCY_EVENT[
+										title as keyof typeof TIER_FREQUENCY_EVENT
+									]
+								if (tierEvent) {
+									trackEvent(tierEvent)
+								}
+							}
 							onChange({ ...value, frequency: next, customCron: "" })
 						}}
 						options={CRON_FREQUENCY_OPTIONS}
@@ -192,6 +203,18 @@ const ConfigureOptimizationModalView: React.FC<
 
 	const handleSave = () => {
 		trackEvent(AnalyticsEvent.ConfigurationSaveClicked)
+		trackEvent(AnalyticsEvent.FrequencyOptionClicked, {
+			frequency: RUN_TYPE_LABEL.LITE,
+			option: getFrequencyOptionLabel(minorCron.frequency),
+		})
+		trackEvent(AnalyticsEvent.FrequencyOptionClicked, {
+			frequency: RUN_TYPE_LABEL.MEDIUM,
+			option: getFrequencyOptionLabel(majorCron.frequency),
+		})
+		trackEvent(AnalyticsEvent.FrequencyOptionClicked, {
+			frequency: RUN_TYPE_LABEL.FULL,
+			option: getFrequencyOptionLabel(fullCron.frequency),
+		})
 		const payload: UpdateTableCronApiRequest = {
 			minor_cron: getCronFromConfig(minorCron),
 			major_cron: getCronFromConfig(majorCron),
@@ -333,10 +356,12 @@ const ConfigureOptimizationModalView: React.FC<
 													const nextValue =
 														numericValue === "" ? 0 : Number(numericValue)
 													setTargetFileSize(nextValue)
-													trackEvent(
-														AnalyticsEvent.TargetFileSizeCustomized,
-														{ target_file_size: nextValue },
-													)
+													if (nextValue !== DEFAULT_TARGET_FILE_SIZE) {
+														trackEvent(
+															AnalyticsEvent.TargetFileSizeCustomized,
+															{ target_file_size: nextValue },
+														)
+													}
 												}}
 												inputMode="numeric"
 												placeholder="100"

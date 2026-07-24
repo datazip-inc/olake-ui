@@ -6,6 +6,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/optimization"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 )
 
 // acts as the orchestration layer for: ETL & Optimization handlers
@@ -28,6 +29,7 @@ func NewHandler(appSvc *services.AppService, cfg *appconfig.Config, db *database
 
 	if opt := appSvc.Optimization(); opt != nil {
 		handler.Optimization = optimization.NewHandler(opt)
+		telemetry.TrackInstalledFusion()
 	}
 
 	return handler
