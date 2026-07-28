@@ -13,7 +13,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	enumspb "go.temporal.io/api/enums/v1"
 )
@@ -90,14 +89,12 @@ func newMetricsCollector(db *database.Database, tempClient *temporal.Temporal, s
 	}
 
 	// Own registry (not the global default) so the exposition holds only these series.
-	// scrapeErrors is the only signal a failing backend is being served stale; the
-	// Go/Process collectors expose the UI backend's own health so its OOM/fd leaks alert.
+	// scrapeErrors counts snapshot rebuild failures: on a Postgres or Temporal read error
+	// the gauges below keep their previous values and the scrape still returns 200.
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(
 		m.status, m.startTime, m.duration, m.records, m.bytes, m.cpu, m.memory,
 		m.scrapeErrors,
-		collectors.NewGoCollector(),
-		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
 	m.handler = promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 
