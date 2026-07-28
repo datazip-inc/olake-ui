@@ -11,12 +11,12 @@ import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import { widgets } from "@/common/components/form/widgets"
 import { ErrorLogsModal } from "@/common/components/modals"
 import { transformErrors } from "@/common/constants"
-import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import {
 	trimFormDataStrings,
 	handleSpecResponse,
 	formatApiErrorMessage,
 } from "@/common/utils"
+import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import {
 	useCatalogDetails,
