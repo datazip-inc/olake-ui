@@ -112,12 +112,13 @@ func (s *Server) configureBaseRoutes(cfg *appconfig.Config, h *handlers.Handler)
 	})
 
 	// GET /metrics — real route so it beats the frontend catch-all, and outside the
-	// /api auth group (scraped without auth). METRICS_ENABLED=false → 404.
+	// /api auth group. When METRICS_ENABLED=false the route returns "disabled" 404, 
+	// so a disabled endpoint is distinguishable from an unreachable/undeployed one.
 	if cfg.MetricsEnabled {
 		s.engine.GET("/metrics", h.ETL.Metrics)
 	} else {
 		s.engine.GET("/metrics", func(c *gin.Context) {
-			c.JSON(http.StatusNotFound, gin.H{"message": "not found", "success": false})
+			c.JSON(http.StatusNotFound, gin.H{"message": "metrics endpoint is disabled", "success": false})
 		})
 	}
 }

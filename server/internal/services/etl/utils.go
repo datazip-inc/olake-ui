@@ -37,11 +37,6 @@ func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Tempor
 		return map[int]JobLastRunInfo{}, nil
 	}
 
-	var opType temporal.Command
-	if len(opTypes) > 0 {
-		opType = opTypes[0]
-	}
-
 	jobIDSet := make(map[int]struct{}, len(jobs))
 	for _, job := range jobs {
 		jobIDSet[job.ID] = struct{}{}
@@ -51,10 +46,10 @@ func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Tempor
 	// Using BETWEEN with 'z' suffix.
 	// 'z' sorts after all digits/hyphens in standard collation, ensuring we capture the full range.
 	query := fmt.Sprintf("WorkflowId BETWEEN 'sync-%s-' AND 'sync-%s-z'", projectID, projectID)
-	if opType != "" {
+	if len(opTypes) > 0 && opTypes[0] != "" {
 		// Runs predating the OperationType search attribute are missed by this
 		// filter — same limitation syncWorkflowOperationType handles.
-		query += fmt.Sprintf(" AND OperationType = '%s'", opType)
+		query += fmt.Sprintf(" AND OperationType = '%s'", opTypes[0])
 	}
 
 	result := make(map[int]JobLastRunInfo, len(jobs))

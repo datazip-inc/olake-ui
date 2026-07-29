@@ -3,14 +3,15 @@ package etl
 import (
 	"context"
 	"fmt"
-	"maps"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -107,7 +108,6 @@ func newMetricsCollector(db *database.Database, tempClient *temporal.Temporal, s
 func syncStatusValue(status enumspb.WorkflowExecutionStatus) float64 {
 	switch status {
 	case enumspb.WORKFLOW_EXECUTION_STATUS_RUNNING,
-		enumspb.WORKFLOW_EXECUTION_STATUS_CONTINUED_AS_NEW,
 		enumspb.WORKFLOW_EXECUTION_STATUS_PAUSED:
 		return 0
 	case enumspb.WORKFLOW_EXECUTION_STATUS_COMPLETED:
@@ -224,8 +224,8 @@ func (m *metricsCollector) gather(ctx context.Context) ([]metricsRow, error) {
 }
 
 // commit swaps the exposed series to the staged rows. status/start/duration are
-// Reset so deleted and renamed jobs drop out; the stats gauges are updated per job
-// so a job with an unreadable stats.json this snapshot keeps its last values.
+// Reset so deleted jobs drop out; the stats gauges are updated per job (not Reset)
+// so a job with unreadable stats.json keeps its last values.
 func (m *metricsCollector) commit(rows []metricsRow) {
 	m.status.Reset()
 	m.startTime.Reset()
@@ -239,12 +239,6 @@ func (m *metricsCollector) commit(rows []metricsRow) {
 
 		jobID := row.labels["job_id"]
 		live[jobID] = struct{}{}
-
-		// A rename changes the label set: drop the old-label stats series regardless of
-		// whether new values arrived this snapshot, so a rename leaves no stale duplicate.
-		if prev, ok := m.statsTargets[jobID]; ok && !maps.Equal(prev.labels, row.labels) {
-			m.deleteStats(jobID)
-		}
 		m.statsTargets[jobID] = statsTarget{workflowID: row.workflowID, labels: row.labels}
 
 		if row.stats != nil {
@@ -262,7 +256,7 @@ func (m *metricsCollector) commit(rows []metricsRow) {
 	}
 }
 
-// deleteStats removes every stats series of a job, whatever its current labels.
+// deleteStats removes a job's four stats series when it leaves the snapshot.
 func (m *metricsCollector) deleteStats(jobID string) {
 	match := prometheus.Labels{"job_id": jobID}
 	m.records.DeletePartialMatch(match)
@@ -288,6 +282,44 @@ func (m *metricsCollector) refreshStats() {
 		}
 		m.setStats(target.labels, stats)
 	}
+}
+
+// syncStats holds the pass-through values read from a sync run's stats.json.
+// Key contract with the sync CLI: "Synced Records" (number), "Bytes Read"
+// (number), "CPU Utilization" (number 0-1), "Memory Usage Bytes" (number).
+type syncStats struct {
+	Records  float64
+	Bytes    float64
+	CPURatio float64
+	Memory   float64
+}
+
+// readSyncStats parses a sync run's stats.json. Missing or unparsable keys yield
+// zero values without error (older images ship fewer keys); a missing file or
+// truncated JSON (the CLI truncate-rewrites every ~2s) errors so the caller keeps
+// the job's previous values.
+func readSyncStats(baseDir, workflowID string) (*syncStats, error) {
+	statsPath := filepath.Join(baseDir, temporal.GetWorkflowDirectory(temporal.Sync, workflowID), "stats.json")
+	raw, err := utils.ReadJSONFile(statsPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read %s: %s", statsPath, err)
+	}
+
+	stats := &syncStats{}
+	if v, ok := raw["Synced Records"].(float64); ok {
+		stats.Records = v
+	}
+	if v, ok := raw["Bytes Read"].(float64); ok {
+		stats.Bytes = v
+	}
+	if v, ok := raw["CPU Utilization"].(float64); ok {
+		stats.CPURatio = v
+	}
+	if v, ok := raw["Memory Usage Bytes"].(float64); ok {
+		stats.Memory = v
+	}
+
+	return stats, nil
 }
 
 // RefreshMetrics rebuilds the snapshot (TTL-guarded, bounded by the refresh timeout)
