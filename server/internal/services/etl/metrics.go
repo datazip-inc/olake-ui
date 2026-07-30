@@ -129,8 +129,8 @@ type metricsRow struct {
 }
 
 // refresh runs on the scrape path: a full snapshot at most every metricsRefreshTTL,
-// a stats.json-only re-read every statsRefreshTTL in between. The mutex serialises
-// concurrent scrapes; on error the previous snapshot is kept and the error counted.
+// a stats.json-only re-read every statsRefreshTTL in between. The mutex serialises any
+// overlapping scrapes; on error the previous snapshot is kept and the error counted.
 func (m *metricsCollector) refresh(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -159,14 +159,14 @@ func (m *metricsCollector) refresh(ctx context.Context) error {
 }
 
 func (m *metricsCollector) gather(ctx context.Context) ([]metricsRow, error) {
-	projectIDs, err := m.db.ListDistinctProjectIDs()
+	projectIDs, err := m.db.ListDistinctProjectIDs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list project ids: %s", err)
 	}
 
 	rows := make([]metricsRow, 0)
 	for _, projectID := range projectIDs {
-		jobs, err := m.db.ListJobsByProjectID(projectID)
+		jobs, err := m.db.ListJobsByProjectID(ctx, projectID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list jobs project_id[%s]: %s", projectID, err)
 		}

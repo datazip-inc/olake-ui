@@ -62,10 +62,10 @@ func (db *Database) CreateJob(job *models.Job) error {
 // including related Source and Destination, sorted by latest update time.
 // Only fetches columns needed for JobResponse
 // Excludes: streams_config, state (not needed for JobResponse).
-func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error) {
+func (db *Database) ListJobsByProjectID(ctx context.Context, projectID string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
-	err := db.conn.
+	err := db.conn.WithContext(ctx).
 		Model(&models.Job{}).
 		Select(jobListColumns).
 		Where("project_id = ?", projectID).
@@ -89,9 +89,9 @@ func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error)
 
 // ListDistinctProjectIDs returns the distinct project IDs present in the jobs table.
 // Used by the metrics collector, which is cross-project unlike the per-project accessors.
-func (db *Database) ListDistinctProjectIDs() ([]string, error) {
+func (db *Database) ListDistinctProjectIDs(ctx context.Context) ([]string, error) {
 	var projectIDs []string
-	err := db.conn.
+	err := db.conn.WithContext(ctx).
 		Model(&models.Job{}).
 		Distinct().
 		Pluck("project_id", &projectIDs).Error

@@ -26,7 +26,7 @@ import (
 // Job-related methods on AppService
 
 func (s Service) ListJobs(ctx context.Context, projectID string) ([]dto.JobResponse, error) {
-	jobs, err := s.db.ListJobsByProjectID(projectID)
+	jobs, err := s.db.ListJobsByProjectID(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list jobs: %s", err)
 	}
