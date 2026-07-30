@@ -44,8 +44,8 @@ CONTAINER_REGISTRY_BASE: registry-1.docker.io
 # Prefer setting this via environment.
 OLAKE_SECRET_KEY: ""
 
-# Prometheus metrics endpoint, METRICS_ENABLED=false disables the route entirely (404).
-METRICS_ENABLED: true
+# Prometheus metrics endpoint, by default disabled. METRICS_ENABLED=false disables the route entirely (404).
+METRICS_ENABLED: false
 
 # Optimization module configuration
 ENABLE_OPTIMIZATION: false
