@@ -171,7 +171,6 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 	}
 
 	const handleSaveCatalog = async () => {
-		trackEvent(AnalyticsEvent.CatalogConnectClicked)
 		const isValid = await validateForm()
 		if (!isValid) return
 
@@ -191,8 +190,14 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 				)
 				setCreatedCatalogName(getCatalogNameFromFormData(formData))
 			}
+			trackEvent(AnalyticsEvent.CatalogConnectClicked, {
+				success: true,
+			})
 			setActiveModal(ActiveCatalogModalState.CATALOG_SUCCESS)
 		} catch (e) {
+			trackEvent(AnalyticsEvent.CatalogConnectClicked, {
+				success: false,
+			})
 			const err = e as {
 				response?: { data?: { message?: string } }
 				message?: string

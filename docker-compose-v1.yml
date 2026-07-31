@@ -23,15 +23,12 @@ x-envs:
     CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
     OLAKE_SECRET_KEY: *encryptionKey
     PERSISTENT_DIR: *hostPersistencePath
-    ENABLE_OPTIMIZATION: ${ENABLE_OPTIMIZATION:-true}
+    ENABLE_OPTIMIZATION: ${ENABLE_OPTIMIZATION:-false}
 
 services:
   olake-ui:
-    # image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
-    # pull_policy: always
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
+    pull_policy: always
     container_name: olake-ui
     environment:
       <<: *sharedEnvs
@@ -257,9 +254,9 @@ services:
         aliases:
           - fusion.olake.internal
     ports:
-      - "1630:1630" # Web UI + REST API
-      - "1260:1260" # Thrift table service
-      - "1261:1261" # Thrift optimizing service
+      - "1630:1630"    # Web UI + REST API
+      - "1260:1260"    # Thrift table service
+      - "1261:1261"    # Thrift optimizing service
     environment:
       <<: *sharedEnvs
       AMORO_LOG_DIR: /mnt/amoro-logs
@@ -353,6 +350,7 @@ services:
         echo "  Web UI : http://localhost:1630"
         echo "  Login  : admin / password"
         echo "============================================"
+
 
   kind-setup:
     image: docker:27-cli

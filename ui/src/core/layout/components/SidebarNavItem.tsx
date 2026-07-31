@@ -8,6 +8,8 @@ const MAINTENANCE_PATHS = new Set([
 	"/maintenance/catalogs",
 ])
 
+const MAINTENANCE_SESSION_KEY = "maintenance_module_opened_session"
+
 const SidebarNavItem: React.FC<{
 	path: string
 	label: string
@@ -18,8 +20,10 @@ const SidebarNavItem: React.FC<{
 	<NavLink
 		to={path}
 		onClick={() => {
-			if (MAINTENANCE_PATHS.has(path)) {
+			if (MAINTENANCE_PATHS.has(path) && !sessionStorage.getItem(MAINTENANCE_SESSION_KEY)) {
+				//if cookie does not have maintainance
 				trackEvent(AnalyticsEvent.MaintenanceModuleOpened, { path })
+				sessionStorage.setItem(MAINTENANCE_SESSION_KEY, "true")
 			}
 		}}
 		className={({ isActive }) =>

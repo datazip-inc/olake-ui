@@ -144,7 +144,7 @@ const Tables: React.FC = () => {
 			message.info("Please select more than 1 table to bulk configure.")
 			return
 		}
-		trackEvent(AnalyticsEvent.ConfigureButtonClicked, { mode: "bulk" })
+  		trackEvent(AnalyticsEvent.ConfigureButtonClicked, { mode: "bulk" })
 		setBulkModalOpen(true)
 	}
 
@@ -224,8 +224,11 @@ const Tables: React.FC = () => {
 							setLastToggleRequest(request)
 							setOptimizationErrorLogs(result.logs ?? [])
 							setOptimizationErrorOpen(true)
-						}
+						}						
 					},
+					onError: () => {
+						if (request.enabled) trackEvent(AnalyticsEvent.StatusEnableFailed)
+					},			
 				})
 			},
 			onViewMetrics: row => {
@@ -435,9 +438,25 @@ const Tables: React.FC = () => {
 				title="Failed to update optimization configuration"
 				error={optimizationErrorLogs.join("\n")}
 				onAction={() => {
-					trackEvent(AnalyticsEvent.StatusRetryClicked)
 					setOptimizationErrorOpen(false)
-					if (lastToggleRequest) toggleTableOptimizing(lastToggleRequest)
+					if (lastToggleRequest) {
+						toggleTableOptimizing(lastToggleRequest, {
+							onSuccess: result => {
+								trackEvent(AnalyticsEvent.StatusRetryClicked, {
+									"status": result.success ? "success" : "failed",
+								})
+								if (!result.success) {
+									setOptimizationErrorLogs(result.logs ?? [])
+									setOptimizationErrorOpen(true)
+								}
+							},
+							onError: () => {
+								trackEvent(AnalyticsEvent.StatusRetryClicked, {
+									"status": "failed",
+								})
+							},
+						})						
+					}
 				}}
 				actionButtonText="Retry"
 			/>

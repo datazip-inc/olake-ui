@@ -20,7 +20,12 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
-var instance *Telemetry
+var (
+	instance *Telemetry
+	// ready is closed once InitTelemetry's goroutine finishes (whether or not
+	// telemetry was actually enabled), so waiters can safely read instance.
+	ready = make(chan struct{})
+)
 
 type LocationInfo struct {
 	Country string `json:"country"`
@@ -47,6 +52,7 @@ type Telemetry struct {
 
 func InitTelemetry(db *database.Database) {
 	go func() {
+		defer close(ready)
 		if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
 			return
 		}
