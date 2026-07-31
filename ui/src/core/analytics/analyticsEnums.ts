@@ -33,4 +33,5 @@ export enum AnalyticsEvent {
 	ViewLogsClicked = "view_logs_clicked",
 	// Maintenance
 	MaintenanceModuleOpened = "maintenance_module_opened",
+	
 }

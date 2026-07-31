@@ -30,19 +30,11 @@ func trackStartupEvent(event string, properties map[string]interface{}) {
 
 
 func TrackInstalledFusion(KubernetesServiceHost string) {
+	var mode string
 	if KubernetesServiceHost != "" {
 		mode = "helm"
 	} else {
 		mode = "docker"
 	}
 	trackStartupEvent(EventInstalledFusion, map[string]interface{}{"mode": mode})
-}
-
-func TrackInstallationMode(KubernetesServiceHost string) {
-	if KubernetesServiceHost != "" {
-		mode = "helm"
-	} else {
-		mode = "docker"
-	}
-	trackStartupEvent(EventInstallationMode, map[string]interface{}{"mode": mode})
 }

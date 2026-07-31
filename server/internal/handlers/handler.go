@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"os"
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/etl"

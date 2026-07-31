@@ -10,7 +10,6 @@ import { api } from "@/core/api"
 const ANALYTICS_ENDPOINT = "https://analytics.olake.io/mp/track"
 const SYSTEM_INFO_SESSION_KEY = "analytics_system_info"
 
-
 const sendAnalyticsEvent = async (
 	eventName: string,
 	properties: Record<string, any>,
@@ -77,7 +76,7 @@ const fetchSystemInfo = async (): Promise<SystemInfo> => {
 }
 
 const getSystemInfo = async (): Promise<SystemInfo> => {
-	try{
+	try {
 		const cached = sessionStorage.getItem(SYSTEM_INFO_SESSION_KEY)
 		if (cached) {
 			return JSON.parse(cached) as SystemInfo

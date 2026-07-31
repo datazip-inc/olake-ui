@@ -115,6 +115,5 @@ func loadConfig() Config {
 		OptimizationUsername:       strings.TrimSpace(v.GetString("USERNAME")),
 		OptimizationPassword:       strings.TrimSpace(v.GetString("PASSWORD")),
 		OptimizationRequestTimeout: v.GetDuration("OPTIMIZATION_REQUEST_TIMEOUT"),
-		InstallationMode:           installationMode,
 	}
 }
