@@ -191,12 +191,12 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 				setCreatedCatalogName(getCatalogNameFromFormData(formData))
 			}
 			trackEvent(AnalyticsEvent.CatalogConnectClicked, {
-				success: true,
+				"status": "success",
 			})
 			setActiveModal(ActiveCatalogModalState.CATALOG_SUCCESS)
 		} catch (e) {
 			trackEvent(AnalyticsEvent.CatalogConnectClicked, {
-				success: false,
+				"status": "failed",
 			})
 			const err = e as {
 				response?: { data?: { message?: string } }

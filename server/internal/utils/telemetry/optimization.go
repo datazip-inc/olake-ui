@@ -28,7 +28,6 @@ func trackStartupEvent(event string, properties map[string]interface{}) {
 	}()
 }
 
-
 func TrackInstalledFusion(KubernetesServiceHost string) {
 	var mode string
 	if KubernetesServiceHost != "" {

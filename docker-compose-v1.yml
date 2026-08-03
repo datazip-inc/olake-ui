@@ -269,6 +269,10 @@ services:
       - kind-kubeconfig:/root/.kube:ro
       - spark-home:/opt/spark:ro
       - <<: *amoroLogVolumeDetails
+      - type: bind
+        source: ${PWD}/olake-data/telemetry
+        target: /tmp/olake-config/telemetry
+        read_only: true
     entrypoint:
       - /bin/sh
       - -c

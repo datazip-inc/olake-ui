@@ -64,7 +64,6 @@ func main() {
 	telemetry.InitTelemetry(db)
 
 	cfg := appconfig.Load()
-	telemetry.TrackInstallationMode(cfg.InstallationMode)
 
 	// Set Swagger Info version to match the application's runtime version.
 	if constants.AppVersion != "" {
