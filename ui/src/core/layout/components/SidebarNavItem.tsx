@@ -20,7 +20,11 @@ const SidebarNavItem: React.FC<{
 	<NavLink
 		to={path}
 		onClick={() => {
-			if (MAINTENANCE_PATHS.has(path) && !sessionStorage.getItem(MAINTENANCE_SESSION_KEY)) {
+			if (
+				MAINTENANCE_PATHS.has(path) &&
+				!sessionStorage.getItem(MAINTENANCE_SESSION_KEY)
+			) {
+				console.log("Maintenance module opened", path)
 				//if cookie does not have maintainance
 				trackEvent(AnalyticsEvent.MaintenanceModuleOpened, { path })
 				sessionStorage.setItem(MAINTENANCE_SESSION_KEY, "true")

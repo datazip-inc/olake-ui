@@ -59,7 +59,8 @@ type SystemInfo = {
 		country: string
 		region: string
 		city: string
-	} | ""
+		  }
+		| ""
 }
 
 const fetchSystemInfo = async (): Promise<SystemInfo> => {

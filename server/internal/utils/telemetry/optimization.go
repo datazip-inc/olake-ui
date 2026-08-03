@@ -28,9 +28,9 @@ func trackStartupEvent(event string, properties map[string]interface{}) {
 	}()
 }
 
-func TrackInstalledFusion(KubernetesServiceHost string) {
+func TrackInstalledFusion(serviceHost string) {
 	var mode string
-	if KubernetesServiceHost != "" {
+	if serviceHost != "" {
 		mode = "helm"
 	} else {
 		mode = "docker"
