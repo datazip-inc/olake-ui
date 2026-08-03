@@ -26,7 +26,7 @@ import (
 // Job-related methods on AppService
 
 func (s Service) ListJobs(ctx context.Context, projectID string) ([]dto.JobResponse, error) {
-	jobs, err := s.db.ListJobsByProjectID(projectID)
+	jobs, err := s.db.ListJobsByProjectID(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list jobs: %s", err)
 	}
@@ -547,9 +547,9 @@ func (s Service) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, incl
 	}
 
 	if lastRun != nil {
-		jobResp.LastRunTime = lastRun.LastRunTime
-		jobResp.LastRunState = lastRun.LastRunState
-		jobResp.LastRunType = lastRun.LastRunType
+		jobResp.LastRunTime = lastRun.StartTime.Format(time.RFC3339)
+		jobResp.LastRunState = lastRun.Status.String()
+		jobResp.LastRunType = utils.Ternary(lastRun.OperationType == temporal.Sync, "sync", "clear").(string)
 	}
 
 	if job.AdvancedSettings != nil && *job.AdvancedSettings != "" && *job.AdvancedSettings != "{}" {

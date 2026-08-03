@@ -19,15 +19,20 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// JobLastRunInfo holds the latest run information for a job
+// JobLastRunInfo holds the latest run of a job exactly as Temporal reports it.
+// Values stay in their source form; the API layer formats them into DTO strings.
 type JobLastRunInfo struct {
-	LastRunTime  string
-	LastRunState string
-	LastRunType  string
+	WorkflowID    string
+	StartTime     time.Time
+	CloseTime     *time.Time // nil while the run is still open
+	Status        enumspb.WorkflowExecutionStatus
+	OperationType temporal.Command
 }
 
-// fetchLatestJobRunsByJobIDs batches workflow queries for multiple jobs into a single/few temporal API calls
-func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobs []*models.Job) (map[int]JobLastRunInfo, error) {
+// fetchLatestJobRunsByJobIDs batches workflow queries for multiple jobs into a single/few temporal API calls.
+// opTypes is an optional operation-type filter (e.g. temporal.Sync); it is variadic only so existing callers
+// stay unchanged — only the first value is used, omitted means the latest run regardless of operation.
+func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobs []*models.Job, opTypes ...temporal.Command) (map[int]JobLastRunInfo, error) {
 	if len(jobs) == 0 {
 		return map[int]JobLastRunInfo{}, nil
 	}
@@ -41,6 +46,11 @@ func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Tempor
 	// Using BETWEEN with 'z' suffix.
 	// 'z' sorts after all digits/hyphens in standard collation, ensuring we capture the full range.
 	query := fmt.Sprintf("WorkflowId BETWEEN 'sync-%s-' AND 'sync-%s-z'", projectID, projectID)
+	if len(opTypes) > 0 && opTypes[0] != "" {
+		// Runs predating the OperationType search attribute are missed by this
+		// filter — same limitation syncWorkflowOperationType handles.
+		query += fmt.Sprintf(" AND OperationType = '%s'", opTypes[0])
+	}
 
 	result := make(map[int]JobLastRunInfo, len(jobs))
 	var nextPageToken []byte
@@ -72,11 +82,17 @@ func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Tempor
 			}
 
 			// add the latest run for this job
-			opType := syncWorkflowOperationType(execution)
+			var closeTime *time.Time
+			if execution.CloseTime != nil {
+				t := execution.CloseTime.AsTime()
+				closeTime = &t
+			}
 			result[jobID] = JobLastRunInfo{
-				LastRunTime:  execution.StartTime.AsTime().Format(time.RFC3339),
-				LastRunState: execution.Status.String(),
-				LastRunType:  utils.Ternary(opType == temporal.Sync, "sync", "clear").(string),
+				WorkflowID:    execution.Execution.WorkflowId,
+				StartTime:     execution.StartTime.AsTime(),
+				CloseTime:     closeTime,
+				Status:        execution.Status,
+				OperationType: syncWorkflowOperationType(execution),
 			}
 
 			// break if all jobs are populated.
@@ -152,8 +168,8 @@ func buildJobDataItems(jobs []*models.Job, lastRunByJobID map[int]JobLastRunInfo
 
 		// Set workflow info from pre-fetched map
 		if lastRun, ok := lastRunByJobID[job.ID]; ok {
-			jobInfo.LastRunTime = lastRun.LastRunTime
-			jobInfo.LastRunState = lastRun.LastRunState
+			jobInfo.LastRunTime = lastRun.StartTime.Format(time.RFC3339)
+			jobInfo.LastRunState = lastRun.Status.String()
 		}
 
 		jobItems = append(jobItems, jobInfo)
