@@ -27,8 +27,6 @@ export enum AnalyticsEvent {
 	// Job status
 	StatusToggleOnClicked = "status_toggle_on_clicked",
 	StatusToggleOffClicked = "status_toggle_off_clicked",
-	StatusEnableSuccessful = "status_enable_successful",
-	StatusEnableFailed = "status_enable_failed",
 	StatusRetryClicked = "status_retry_clicked",
 	ViewLogsClicked = "view_logs_clicked",
 	// Maintenance

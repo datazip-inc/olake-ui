@@ -85,9 +85,9 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 					</label>
 					<Select
 						value={value.frequency}
-						onChange={next => {
+						onChange={next =>
 							onChange({ ...value, frequency: next, customCron: "" })
-						}}
+						}
 						options={CRON_FREQUENCY_OPTIONS}
 						className="w-full"
 					/>
@@ -333,9 +333,9 @@ const ConfigureOptimizationModalView: React.FC<
 														/[^0-9]/g,
 														"",
 													)
-													const nextValue =
-														numericValue === "" ? 0 : Number(numericValue)
-													setTargetFileSize(nextValue)
+													setTargetFileSize(
+														numericValue === "" ? 0 : Number(numericValue),
+													)
 												}}
 												inputMode="numeric"
 												placeholder="100"

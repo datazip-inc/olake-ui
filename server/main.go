@@ -63,13 +63,12 @@ func main() {
 
 	telemetry.InitTelemetry(db)
 
-	cfg := appconfig.Load()
-
 	// Set Swagger Info version to match the application's runtime version.
 	if constants.AppVersion != "" {
 		docs.SwaggerInfo.Version = constants.AppVersion
 	}
 
+	cfg := appconfig.Load()
 	if cfg.EncryptionKey == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}

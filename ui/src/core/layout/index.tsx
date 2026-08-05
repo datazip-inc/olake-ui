@@ -8,6 +8,7 @@ import { UpdatesModal } from "@/core/platform/components"
 import { usePlatformStore } from "@/core/platform/stores"
 
 import Sidebar from "./components/Sidebar"
+import { useModuleAnalytics } from "./hooks/useModuleAnalytics"
 import {
 	getBreadcrumbModuleLabel,
 	getBreadcrumbTrail,
@@ -27,6 +28,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 	const navModules = getNavModules(enabledFeatures)
 
 	const breadcrumbItems = getBreadcrumbTrail(location.pathname, navModules)
+
+	useModuleAnalytics(navModules)
 
 	useEffect(() => {
 		const hasReleases = releases && Object.keys(releases).length > 0

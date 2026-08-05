@@ -215,11 +215,12 @@ const Tables: React.FC = () => {
 				}
 				toggleTableOptimizing(request, {
 					onSuccess: result => {
-						if (enabled && result.success) {
-							trackEvent(AnalyticsEvent.StatusEnableSuccessful)
-						} else if (enabled && !result.success) {
-							trackEvent(AnalyticsEvent.StatusEnableFailed)
-						}
+						trackEvent(
+							enabled
+								? AnalyticsEvent.StatusToggleOnClicked
+								: AnalyticsEvent.StatusToggleOffClicked,
+							{ success: result.success },
+						)
 						if (!result.success) {
 							setLastToggleRequest(request)
 							setOptimizationErrorLogs(result.logs ?? [])
@@ -227,7 +228,12 @@ const Tables: React.FC = () => {
 						}
 					},
 					onError: () => {
-						if (request.enabled) trackEvent(AnalyticsEvent.StatusEnableFailed)
+						trackEvent(
+							request.enabled
+								? AnalyticsEvent.StatusToggleOnClicked
+								: AnalyticsEvent.StatusToggleOffClicked,
+							{ success: false },
+						)
 					},
 				})
 			},
@@ -443,7 +449,7 @@ const Tables: React.FC = () => {
 						toggleTableOptimizing(lastToggleRequest, {
 							onSuccess: result => {
 								trackEvent(AnalyticsEvent.StatusRetryClicked, {
-									status: result.success ? "success" : "failed",
+									success: result.success,
 								})
 								if (!result.success) {
 									setOptimizationErrorLogs(result.logs ?? [])
@@ -452,7 +458,7 @@ const Tables: React.FC = () => {
 							},
 							onError: () => {
 								trackEvent(AnalyticsEvent.StatusRetryClicked, {
-									status: "failed",
+									success: false,
 								})
 							},
 						})

@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 // startupEventTimeout bounds how long a startup event waits for InitTelemetry.
-const startupEventTimeout = 5 * time.Second
+startupEventTimeout := appconfig.Load().OptimizationRequestTimeout
 
 // trackStartupEvent fires the event once InitTelemetry finishes, dropping it
 // if telemetry never became available.
@@ -30,10 +31,6 @@ func trackStartupEvent(event string, properties map[string]interface{}) {
 
 func TrackInstalledFusion(serviceHost string) {
 	var mode string
-	if serviceHost != "" {
-		mode = "helm"
-	} else {
-		mode = "docker"
-	}
+	mode := utils.Ternary(serviceHost != "","helm", "docker")
 	trackStartupEvent(EventInstalledFusion, map[string]interface{}{"mode": mode})
 }

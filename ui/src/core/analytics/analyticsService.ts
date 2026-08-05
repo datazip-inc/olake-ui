@@ -4,6 +4,7 @@
 
 import axios from "axios"
 
+import sessionStore from "@/common/utils/session"
 import { api } from "@/core/api"
 
 // endpoint which handles rate limiting and forwards the events to mixpanel
@@ -55,10 +56,11 @@ type SystemInfo = {
 	arch: string
 	device_cpu: string
 	ip_address: string
-	location: {
-		country: string
-		region: string
-		city: string
+	location:
+		| {
+				country: string
+				region: string
+				city: string
 		  }
 		| ""
 }
@@ -77,21 +79,13 @@ const fetchSystemInfo = async (): Promise<SystemInfo> => {
 }
 
 const getSystemInfo = async (): Promise<SystemInfo> => {
-	try {
-		const cached = sessionStorage.getItem(SYSTEM_INFO_SESSION_KEY)
-		if (cached) {
-			return JSON.parse(cached) as SystemInfo
-		}
-	} catch (error) {
-		console.error("Error fetching system info:", error)
+	const cached = sessionStore.get<SystemInfo>(SYSTEM_INFO_SESSION_KEY)
+	if (cached) {
+		return cached
 	}
 
 	const systemInfo = await fetchSystemInfo()
-	try {
-		sessionStorage.setItem(SYSTEM_INFO_SESSION_KEY, JSON.stringify(systemInfo))
-	} catch (error) {
-		console.error("Error saving system info:", error)
-	}
+	sessionStore.set(SYSTEM_INFO_SESSION_KEY, systemInfo)
 	return systemInfo
 }
 
