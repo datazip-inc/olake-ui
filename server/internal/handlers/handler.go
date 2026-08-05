@@ -1,13 +1,14 @@
 package handlers
 
 import (
+	"os"
+
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/optimization"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
-	"os"
 )
 
 // acts as the orchestration layer for: ETL & Optimization handlers
