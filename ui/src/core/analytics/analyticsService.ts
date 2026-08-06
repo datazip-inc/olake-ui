@@ -4,7 +4,7 @@
 
 import axios from "axios"
 
-import sessionStore from "@/common/utils/session"
+import { sessionStore } from "@/common/utils"
 import { api } from "@/core/api"
 
 // endpoint which handles rate limiting and forwards the events to mixpanel

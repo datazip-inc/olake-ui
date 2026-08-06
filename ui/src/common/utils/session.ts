@@ -20,6 +20,4 @@ const set = <T>(key: string, value: T): void => {
 	}
 }
 
-const sessionStore = { get, set }
-
-export default sessionStore
+export const sessionStore = { get, set }

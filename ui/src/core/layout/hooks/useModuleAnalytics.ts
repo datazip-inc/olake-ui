@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 import { useLocation } from "react-router-dom"
 
-import sessionStore from "@/common/utils/session"
+import { sessionStore } from "@/common/utils"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { matchesPath, type NavModule } from "../nav-config"

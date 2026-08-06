@@ -16,11 +16,6 @@ export enum AnalyticsEvent {
 	HealthScoreTooltipViewed = "health_score_tooltip_viewed",
 	// Job configuration
 	ConfigureButtonClicked = "configure_button_clicked",
-	LiteFrequencySelected = "lite_frequency_selected",
-	MediumFrequencySelected = "medium_frequency_selected",
-	FullFrequencySelected = "full_frequency_selected",
-	FrequencyOptionClicked = "frequency_option_clicked",
-	TargetFileSizeCustomized = "target_file_size_customized",
 	ConfigurationSaveClicked = "configuration_save_clicked",
 	ConfigurationSaveSuccessful = "configuration_save_successful",
 	ConfigurationSaveFailed = "configuration_save_failed",
