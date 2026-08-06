@@ -47,6 +47,8 @@ func main() {
 	constants.Init()
 	logger.Init()
 
+	cfg := appconfig.Load()
+
 	db, err := database.Init()
 	if err != nil {
 		logger.Fatalf("Failed to initialize database: %s", err)
@@ -54,21 +56,20 @@ func main() {
 	}
 
 	// Initialize unified AppService
-	appSvc, err := services.InitAppService(db)
+	appSvc, err := services.InitAppService(db, cfg.EnableOptimization)
 	if err != nil {
 		logger.Fatalf("Failed to initialize services: %s", err)
 		return
 	}
 	logger.Info("Application services initialized successfully")
 
-	telemetry.InitTelemetry(db)
+	telemetry.InitTelemetry(db, cfg.EnableOptimization)
 
 	// Set Swagger Info version to match the application's runtime version.
 	if constants.AppVersion != "" {
 		docs.SwaggerInfo.Version = constants.AppVersion
 	}
 
-	cfg := appconfig.Load()
 	if cfg.EncryptionKey == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
