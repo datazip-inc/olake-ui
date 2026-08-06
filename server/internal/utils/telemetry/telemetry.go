@@ -105,6 +105,11 @@ func getOutboundIP() string {
 	if err != nil {
 		return IPNotFound
 	}
+	defer resp.Body.Close()
+	ipBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return IPNotFound
+	}
 	return string(ipBody)
 }
 

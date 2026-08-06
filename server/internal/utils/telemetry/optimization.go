@@ -32,5 +32,5 @@ func trackStartupEvent(event string, properties map[string]interface{}) {
 
 func TrackInstalledFusion(serviceHost string) {
 	mode := utils.Ternary(serviceHost != "", "helm", "docker")
-	trackStartupEvent(EventInstalledFusion, map[string]interface{}{"mode": mode})
+	trackStartupEvent(EventFusionInstalled, map[string]interface{}{"mode": mode})
 }
