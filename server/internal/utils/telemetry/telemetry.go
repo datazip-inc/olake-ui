@@ -15,17 +15,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
-var (
-	instance *Telemetry
-	// ready is closed once InitTelemetry's goroutine finishes (whether or not
-	// telemetry was actually enabled), so waiters can safely read instance.
-	ready = make(chan struct{})
-)
+var instance *Telemetry
 
 type LocationInfo struct {
 	Country string `json:"country"`
@@ -51,8 +48,9 @@ type Telemetry struct {
 }
 
 func InitTelemetry(db *database.Database) {
+	enableOptimization := appconfig.Load().EnableOptimization
+
 	go func() {
-		defer close(ready)
 		if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
 			return
 		}
@@ -95,6 +93,10 @@ func InitTelemetry(db *database.Database) {
 			TempUserID:     tempUserID,
 			locationInfo:   getLocationFromIP(ip),
 			db:             db,
+		}
+
+		if enableOptimization {
+			trackFusionInstalled()
 		}
 	}()
 }
@@ -231,4 +233,11 @@ func GetVersion() string {
 		return instance.OlakeUIVersion
 	}
 	return ""
+}
+
+func trackFusionInstalled() {
+	mode := utils.Ternary(os.Getenv("KUBERNETES_SERVICE_HOST") != "", "helm", "docker")
+	if err := TrackEvent(context.Background(), EventFusionInstalled, map[string]interface{}{"mode": mode}); err != nil {
+		logger.Debugf("Failed to track fusion installed event: %s", err)
+	}
 }
