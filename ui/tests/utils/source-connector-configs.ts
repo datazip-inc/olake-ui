@@ -36,7 +36,9 @@ export const createPostgresSourceConfig = (data: {
 	// SSH config fields
 	ssh_config?: {
 		type?:
-			"no_tunnel" | "ssh_key_authentication" | "ssh_password_authentication"
+			| "no_tunnel"
+			| "ssh_key_authentication"
+			| "ssh_password_authentication"
 		host?: string
 		port?: number
 		username?: string

@@ -45,7 +45,10 @@ export interface EntityEditModalProps {
 }
 
 export type EntitySavedModalType =
-	"source" | "destination" | "config" | "streams"
+	| "source"
+	| "destination"
+	| "config"
+	| "streams"
 
 export interface EntitySavedModalProps {
 	open: boolean

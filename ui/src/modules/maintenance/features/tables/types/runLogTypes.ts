@@ -1,5 +1,10 @@
 export type RunLogLevel =
-	"DEBUG" | "INFO" | "WARNING" | "WARN" | "ERROR" | "FATAL"
+	| "DEBUG"
+	| "INFO"
+	| "WARNING"
+	| "WARN"
+	| "ERROR"
+	| "FATAL"
 
 export interface RunLogEntry {
 	id: string

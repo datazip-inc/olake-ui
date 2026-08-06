@@ -2,7 +2,12 @@ import clsx from "clsx"
 import type { HTMLAttributes } from "react"
 
 export type TagColor =
-	"primary" | "success" | "warning" | "error" | "default" | "muted"
+	| "primary"
+	| "success"
+	| "warning"
+	| "error"
+	| "default"
+	| "muted"
 
 const tagBaseClassName =
 	"inline-flex h-5 min-h-0 max-w-full shrink-0 items-center justify-center whitespace-nowrap rounded-[20px] border-0 px-2 py-0 text-[10px] font-medium leading-[20px]"

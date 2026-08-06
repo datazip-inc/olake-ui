@@ -36,7 +36,10 @@ import SourceNamingConventionSectionBulk from "../streams/SourceNamingConvention
 import SyncModeSectionBulk from "../streams/SyncModeSectionBulk"
 
 type BulkConfigureStep =
-	"select-streams" | "apply-configurations" | "summary" | "success"
+	| "select-streams"
+	| "apply-configurations"
+	| "summary"
+	| "success"
 type BulkConfigurationTab = "config" | "partitioning" | "schema"
 
 type BulkConfig = {

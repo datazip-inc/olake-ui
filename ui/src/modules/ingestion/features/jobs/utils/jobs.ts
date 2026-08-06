@@ -132,32 +132,36 @@ export const parseCronExpression = (
 		const [minute, hour, dayOfMonth, month, dayOfWeek] = parts
 
 		// Check if it's a custom pattern first
-		if (!(
-			// Minutes pattern
-			(minute === "*" &&
-				hour === "*" &&
-				dayOfMonth === "*" &&
-				month === "*" &&
-				dayOfWeek === "*") ||
-			// Hours pattern
-			(minute === "0" &&
-				hour === "*" &&
-				dayOfMonth === "*" &&
-				month === "*" &&
-				dayOfWeek === "*") ||
-			// Days pattern
-			(minute === "0" &&
-				/^\d+$/.test(hour) &&
-				dayOfMonth === "*" &&
-				month === "*" &&
-				dayOfWeek === "*") ||
-			// Weeks pattern
-			(minute === "0" &&
-				/^\d+$/.test(hour) &&
-				dayOfMonth === "*" &&
-				month === "*" &&
-				/^[0-6]$/.test(dayOfWeek))
-		)) {
+		if (
+			!(
+				// Minutes pattern
+				(
+					(minute === "*" &&
+						hour === "*" &&
+						dayOfMonth === "*" &&
+						month === "*" &&
+						dayOfWeek === "*") ||
+					// Hours pattern
+					(minute === "0" &&
+						hour === "*" &&
+						dayOfMonth === "*" &&
+						month === "*" &&
+						dayOfWeek === "*") ||
+					// Days pattern
+					(minute === "0" &&
+						/^\d+$/.test(hour) &&
+						dayOfMonth === "*" &&
+						month === "*" &&
+						dayOfWeek === "*") ||
+					// Weeks pattern
+					(minute === "0" &&
+						/^\d+$/.test(hour) &&
+						dayOfMonth === "*" &&
+						month === "*" &&
+						/^[0-6]$/.test(dayOfWeek))
+				)
+			)
+		) {
 			return { frequency: "custom", customCronExpression: cronExpression }
 		}
 
