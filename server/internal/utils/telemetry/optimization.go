@@ -4,13 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 // startupEventTimeout bounds how long a startup event waits for InitTelemetry.
-var startupEventTimeout = appconfig.Load().OptimizationRequestTimeout
+const startupEventTimeout = 10 * time.Second
 
 // trackStartupEvent fires the event once InitTelemetry finishes, dropping it
 // if telemetry never became available.
