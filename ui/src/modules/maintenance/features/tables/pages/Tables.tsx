@@ -202,11 +202,6 @@ const Tables: React.FC = () => {
 				})
 			},
 			onToggleOptimizingStatus: (row, enabled) => {
-				trackEvent(
-					enabled
-						? AnalyticsEvent.StatusToggleOnClicked
-						: AnalyticsEvent.StatusToggleOffClicked,
-				)
 				const request: ToggleTableOptimizingRequest = {
 					catalog: selectedCatalog ?? "",
 					database: selectedDatabase ?? "",

@@ -31,8 +31,8 @@ func NewHandler(appSvc *services.AppService, cfg *appconfig.Config, db *database
 
 	if opt := appSvc.Optimization(); opt != nil {
 		handler.Optimization = optimization.NewHandler(opt)
-		KubernetesServiceHost := os.Getenv("KUBERNETES_SERVICE_HOST")
-		telemetry.TrackInstalledFusion(KubernetesServiceHost)
+		kubernetesServiceHost := os.Getenv("KUBERNETES_SERVICE_HOST")
+		telemetry.TrackInstalledFusion(kubernetesServiceHost)
 	}
 
 	return handler
