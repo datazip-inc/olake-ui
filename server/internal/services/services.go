@@ -1,7 +1,6 @@
 package services
 
 import (
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/services/optimization"

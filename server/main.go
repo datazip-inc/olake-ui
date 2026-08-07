@@ -71,7 +71,6 @@ func main() {
 		docs.SwaggerInfo.Version = constants.AppVersion
 	}
 
-	cfg := appconfig.Load()
 	if cfg.EncryptionKey == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}

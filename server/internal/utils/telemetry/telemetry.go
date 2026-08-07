@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
@@ -47,7 +46,7 @@ type Telemetry struct {
 	db             *database.Database
 }
 
-func InitTelemetry(db *database.Databas, enableOptimization bool) {
+func InitTelemetry(db *database.Database, enableOptimization bool) {
 	go func() {
 		if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
 			return
