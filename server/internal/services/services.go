@@ -13,7 +13,7 @@ type AppService struct {
 	opt *optimization.Service
 }
 
-func InitAppService(db *database.Database) (*AppService, error) {
+func InitAppService(db *database.Database, enableOptimization bool) (*AppService, error) {
 	// Initialize ETL service
 	etlSvc, err := etl.InitService(db)
 	if err != nil {
@@ -26,7 +26,6 @@ func InitAppService(db *database.Database) (*AppService, error) {
 		opt: nil,
 	}
 
-	enableOptimization := appconfig.Load().EnableOptimization
 	if enableOptimization {
 		optSvc, err := optimization.InitService()
 		if err != nil {
