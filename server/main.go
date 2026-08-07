@@ -53,7 +53,7 @@ func main() {
 		logger.Fatalf("Failed to initialize database: %s", err)
 		return
 	}
-	
+
 	enableOptimization := cfg.EnableOptimization
 
 	// Initialize unified AppService
