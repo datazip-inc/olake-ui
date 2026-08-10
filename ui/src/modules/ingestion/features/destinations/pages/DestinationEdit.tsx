@@ -180,6 +180,8 @@ const DestinationEdit: React.FC = () => {
 					? JSON.parse(destination.config)
 					: destination.config
 			setFormData(config)
+			setCatalog(config?.writer?.catalog_type ?? null)
+			setAuthType(config?.writer?.rest_auth_type ?? null)
 		}
 	}, [destination, destinationId])
 

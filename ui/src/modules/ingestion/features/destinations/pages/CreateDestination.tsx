@@ -182,6 +182,8 @@ const CreateDestination: React.FC = () => {
 
 	useEffect(() => {
 		setFormData({})
+		setCatalog(null)
+		setAuthType(null)
 	}, [connector])
 
 	const handleCancel = () => {
@@ -316,7 +318,7 @@ const CreateDestination: React.FC = () => {
 		)
 		if (!selectedDestination) return
 
-		const configObj =
+		const configObj: DestinationConfig =
 			selectedDestination.config &&
 			typeof selectedDestination.config === "object"
 				? selectedDestination.config
@@ -324,6 +326,8 @@ const CreateDestination: React.FC = () => {
 
 		setDestinationName(selectedDestination.name)
 		setFormData(configObj)
+		setCatalog(configObj?.writer?.catalog_type ?? null)
+		setAuthType(configObj?.writer?.rest_auth_type ?? null)
 		setExistingDestination(value)
 	}
 
