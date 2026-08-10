@@ -11,11 +11,36 @@
             "oneOf": [
               {
                 "properties": {
+                  "aws_access_key": {
+                    "description": "The AWS access key for authenticating S3 requests, typically a 20-character alphanumeric string",
+                    "format": "password",
+                    "title": "AWS Access Key",
+                    "type": "string"
+                  },
+                  "aws_region": {
+                    "description": "Specify the AWS region where the S3 bucket is hosted",
+                    "title": "AWS Region",
+                    "type": "string"
+                  },
+                  "aws_secret_key": {
+                    "description": "The AWS secret key for S3 authentication\u2014typically 40+ characters long",
+                    "format": "password",
+                    "title": "AWS Secret Key",
+                    "type": "string"
+                  },
+                  "catalog_name": {
+                    "description": "Name of the Iceberg catalog OLake Fusion registers tables under",
+                    "title": "Catalog Name",
+                    "type": "string"
+                  },
                   "catalog_type": {
                     "const": "jdbc"
                   },
+                  "iceberg_s3_path": {
+                    "description": "S3 bucket path where Iceberg data and metadata are stored"
+                  },
                   "jdbc_password": {
-                    "description": "Specifies the password used to authenticate with the PostgreSQL catalog",
+                    "description": "Password for PostgreSQL catalog authentication",
                     "format": "password",
                     "minLength": 1,
                     "title": "JDBC Password",
@@ -27,100 +52,168 @@
                     "type": "string"
                   },
                   "jdbc_username": {
-                    "description": "Specifies the username used to authenticate with the PostgreSQL catalog",
+                    "description": "Username for PostgreSQL catalog authentication",
                     "title": "JDBC Username",
                     "type": "string"
                   },
                   "s3_endpoint": {
-                    "description": "Specifies the endpoint URL for S3 compatible services (e.g., MinIO)",
+                    "description": "Specifies the endpoint URL for S3 compatible services (like MinIO)",
                     "title": "S3 Endpoint",
                     "type": "string"
                   },
                   "s3_path_style": {
                     "default": true,
-                    "description": "Specifies whether path-style access is used for S3; 'true' enables path-style addressing instead of the default virtual-hosted style",
+                    "description": "Use path-style URLs for S3 API Requests. Required for S3-compatible storages apart from AWS S3",
                     "title": "Use Path Style for S3",
                     "type": "boolean"
                   },
                   "s3_use_ssl": {
                     "default": false,
-                    "description": "Boolean flag indicating whether to use SSL when connecting to S3",
+                    "description": "Enable HTTPS for S3 connections. Required for AWS S3.",
                     "title": "Use SSL for S3",
                     "type": "boolean"
                   }
                 },
                 "required": [
+                  "catalog_name",
                   "jdbc_url",
                   "jdbc_username",
-                  "jdbc_password"
+                  "jdbc_password",
+                  "aws_region"
                 ]
               },
               {
                 "properties": {
+                  "aws_access_key": {
+                    "description": "The AWS access key for authenticating S3 requests, typically a 20-character alphanumeric string",
+                    "format": "password",
+                    "title": "AWS Access Key",
+                    "type": "string"
+                  },
+                  "aws_region": {
+                    "description": "Specify the AWS region where the S3 bucket is hosted",
+                    "title": "AWS Region",
+                    "type": "string"
+                  },
+                  "aws_secret_key": {
+                    "description": "The AWS secret key for S3 authentication\u2014typically 40+ characters long",
+                    "format": "password",
+                    "title": "AWS Secret Key",
+                    "type": "string"
+                  },
+                  "catalog_name": {
+                    "description": "Name of the Iceberg catalog OLake Fusion registers tables under",
+                    "title": "Catalog Name",
+                    "type": "string"
+                  },
                   "catalog_type": {
                     "const": "hive"
                   },
                   "hive_clients": {
-                    "description": "Specifies the number of Hive clients allocated to handle interactions with the Hive Metastore",
+                    "description": "Number of Hive clients allocated to handle connections to the Hive Metastore",
                     "title": "Hive Clients",
                     "type": "integer"
                   },
                   "hive_sasl_enabled": {
                     "default": false,
-                    "description": "Indicates if SASL authentication is enabled for the Hive connection; 'false' means SASL is disabled",
+                    "description": "Enable SASL authentication for Hive Metastore. Required if your metastore enforces SASL",
                     "title": "Enable SASL for Hive",
                     "type": "boolean"
                   },
                   "hive_uri": {
-                    "description": "Specifies the URI of the Hive Metastore service used for catalog interactions by the writer",
+                    "description": "Thrift endpoint URL for your Hive Metastore service",
                     "title": "Hive URI",
                     "type": "string"
                   },
                   "s3_endpoint": {
-                    "description": "Specifies the endpoint URL for S3 compatible services (e.g., MinIO)",
+                    "description": "Specifies the endpoint URL for S3 compatible services (like MinIO)",
                     "title": "S3 Endpoint",
                     "type": "string"
                   },
                   "s3_path_style": {
                     "default": false,
-                    "description": "Enables path-style addressing for S3 API requests",
+                    "description": "Use path-style URLs for S3 API Requests. Required for S3-compatible storages apart from AWS S3",
                     "title": "Use Path Style for S3",
                     "type": "boolean"
                   },
                   "s3_use_ssl": {
                     "default": false,
-                    "description": "Boolean flag indicating whether to use SSL when connecting to S3",
+                    "description": "Enable HTTPS for S3 connections. Required for AWS S3",
                     "title": "Use SSL for S3",
                     "type": "boolean"
                   }
                 },
                 "required": [
-                  "hive_uri"
+                  "catalog_name",
+                  "hive_uri",
+                  "hive_clients",
+                  "aws_region"
                 ]
               },
               {
                 "properties": {
+                  "aws_access_key": {
+                    "description": "The AWS access key for authenticating S3 requests, typically a 20-character alphanumeric string",
+                    "format": "password",
+                    "title": "AWS Access Key",
+                    "type": "string"
+                  },
+                  "aws_region": {
+                    "description": "Specify the AWS region where the S3 bucket is hosted",
+                    "title": "AWS Region",
+                    "type": "string"
+                  },
+                  "aws_secret_key": {
+                    "description": "The AWS secret key for S3 authentication\u2014typically 40+ characters long",
+                    "format": "password",
+                    "title": "AWS Secret Key",
+                    "type": "string"
+                  },
+                  "catalog_name": {
+                    "description": "Name of the Iceberg catalog OLake Fusion registers tables under",
+                    "title": "Catalog Name",
+                    "type": "string"
+                  },
                   "catalog_type": {
                     "const": "rest"
                   },
                   "credential": {
-                    "description": "Client secret or credential for OAuth2 (Usually id:secret)",
+                    "description": "OAuth2 client credentials in client_id:client_secret format",
                     "title": "REST Credential",
                     "type": "string"
                   },
+                  "gcp_auth_scopes": {
+                    "description": "OAuth2 access scopes, space-separated for more than one",
+                    "title": "GCP Auth Scopes",
+                    "type": "string"
+                  },
+                  "gcp_project_id": {
+                    "description": "Required for multi-bucket catalogs only. Identifies the GCP project for BigLake request routing and billing.",
+                    "title": "GCP Project ID",
+                    "type": "string"
+                  },
+                  "gcp_service_account_json": {
+                    "description": "JSON key file content from your GCP service account",
+                    "format": "password",
+                    "title": "GCP Service Account JSON",
+                    "type": "string"
+                  },
+                  "iceberg_s3_path": {
+                    "description": "S3 bucket path where Iceberg data and metadata are stored"
+                  },
                   "no_identifier_fields": {
                     "default": false,
-                    "description": "To create iceberg table without identifier fields. (Unity catalog only support tables with no identifier)",
+                    "description": "Create tables without identifier fields. Enable for Unity Catalog",
                     "title": "Disable Identifier Field For Tables",
                     "type": "boolean"
                   },
                   "oauth2_uri": {
-                    "description": "OAuth2 server URI for OAuth2 authentication",
+                    "description": "OAuth2 token endpoint URL for the OAuth2 authentication",
                     "title": "REST Auth URI",
                     "type": "string"
                   },
                   "rest_auth_type": {
-                    "description": "Authentication type (e.g., 'oauth2')",
+                    "description": "Authentication method for the REST catalog",
                     "title": "REST Auth Type",
                     "type": "string"
                   },
@@ -130,40 +223,600 @@
                     "type": "string"
                   },
                   "rest_signing_name": {
-                    "description": "Service name for AWS Signature V4 (e.g., 's3tables')",
+                    "description": "AWS service name for SigV4 signing",
                     "title": "REST Signing Name",
                     "type": "string"
                   },
                   "rest_signing_region": {
-                    "description": "Region for AWS Signature V4 signing",
+                    "description": "AWS region for SigV4 signing",
                     "title": "REST Signing Region",
                     "type": "string"
                   },
                   "rest_signing_v_4": {
-                    "default": true,
+                    "default": false,
                     "description": "Enable AWS Signature V4 signing (boolean)",
                     "title": "REST Enable Signature V4",
                     "type": "boolean"
                   },
                   "s3_endpoint": {
-                    "description": "Specifies the endpoint URL for S3 compatible services (e.g., MinIO)",
+                    "description": "Specifies the endpoint URL for S3 compatible services (like MinIO)",
                     "title": "S3 Endpoint",
                     "type": "string"
                   },
                   "scope": {
-                    "description": "OAuth2 scopes (space-separated)",
+                    "description": "OAuth2 access scopes (space separated for more than one)",
                     "title": "REST Scope",
                     "type": "string"
                   },
                   "token": {
-                    "description": "Bearer token for token-based authentication",
+                    "description": "Bearer token for REST catalog authentication",
                     "format": "password",
                     "title": "REST Token",
                     "type": "string"
                   }
                 },
                 "required": [
-                  "rest_catalog_url"
+                  "catalog_name",
+                  "rest_catalog_url",
+                  "aws_region"
+                ]
+              },
+              {
+                "dependencies": {
+                  "rest_auth_type": {
+                    "oneOf": [
+                      {
+                        "properties": {
+                          "rest_auth_type": {
+                            "const": "None"
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "credential": {
+                            "description": "OAuth2 client credentials in client_id:client_secret format",
+                            "title": "REST Credential",
+                            "type": "string"
+                          },
+                          "oauth2_uri": {
+                            "description": "OAuth2 token endpoint URL for the OAuth2 authentication",
+                            "title": "REST Auth URI",
+                            "type": "string"
+                          },
+                          "rest_auth_type": {
+                            "const": "OAuth2"
+                          },
+                          "scope": {
+                            "description": "OAuth2 access scopes (space separated for more than one)",
+                            "title": "REST Scope",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "credential",
+                          "oauth2_uri"
+                        ]
+                      },
+                      {
+                        "properties": {
+                          "rest_auth_type": {
+                            "const": "Token"
+                          },
+                          "token": {
+                            "description": "Bearer token for REST catalog authentication",
+                            "format": "password",
+                            "title": "REST Token",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "token"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "properties": {
+                  "aws_region": {
+                    "description": "AWS region where the S3 bucket is hosted (Optional if already set in your Lakekeeper warehouse)",
+                    "title": "AWS Region",
+                    "type": "string"
+                  },
+                  "catalog_name": {
+                    "description": "Name of the Iceberg catalog OLake Fusion registers tables under",
+                    "title": "Catalog Name",
+                    "type": "string"
+                  },
+                  "catalog_type": {
+                    "const": "lakekeeper"
+                  },
+                  "iceberg_s3_path": {
+                    "description": "Name of the warehouse created in your Lakekeeper catalog",
+                    "title": "Lakekeeper Warehouse"
+                  },
+                  "rest_auth_type": {
+                    "default": [
+                      "None"
+                    ],
+                    "description": "Authentication types supported by the catalog",
+                    "enum": [
+                      "None",
+                      "OAuth2",
+                      "Token"
+                    ],
+                    "title": "Authentication Type",
+                    "type": "string"
+                  },
+                  "rest_catalog_url": {
+                    "description": "Endpoint URL for the Lakekeeper REST catalog service",
+                    "title": "REST Catalog URI",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "catalog_name",
+                  "rest_catalog_url",
+                  "rest_auth_type"
+                ]
+              },
+              {
+                "dependencies": {
+                  "rest_auth_type": {
+                    "oneOf": [
+                      {
+                        "properties": {
+                          "rest_auth_type": {
+                            "const": "None"
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "credential": {
+                            "description": "Client secret or credential for OAuth2 (Usually id:secret)",
+                            "title": "REST Credential",
+                            "type": "string"
+                          },
+                          "oauth2_uri": {
+                            "description": "OAuth2 server URI for OAuth2 authentication",
+                            "title": "REST Auth URI",
+                            "type": "string"
+                          },
+                          "rest_auth_type": {
+                            "const": "OAuth2"
+                          },
+                          "scope": {
+                            "description": "OAuth2 access scopes (space separated for more than one)",
+                            "title": "REST Scope",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "credential",
+                          "oauth2_uri"
+                        ]
+                      },
+                      {
+                        "properties": {
+                          "rest_auth_type": {
+                            "const": "Token"
+                          },
+                          "token": {
+                            "description": "Bearer token for token-based authentication",
+                            "format": "password",
+                            "title": "REST Token",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "token"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "properties": {
+                  "aws_access_key": {
+                    "description": "The AWS access key for authenticating S3 requests, typically a 20-character alphanumeric string",
+                    "format": "password",
+                    "title": "AWS Access Key",
+                    "type": "string"
+                  },
+                  "aws_region": {
+                    "description": "Specify the AWS region where the S3 bucket is hosted",
+                    "title": "AWS Region",
+                    "type": "string"
+                  },
+                  "aws_secret_key": {
+                    "description": "The AWS secret key for S3 authentication\u2014typically 40+ characters long",
+                    "format": "password",
+                    "title": "AWS Secret Key",
+                    "type": "string"
+                  },
+                  "catalog_name": {
+                    "description": "Name of the Iceberg catalog OLake Fusion registers tables under",
+                    "title": "Catalog Name",
+                    "type": "string"
+                  },
+                  "catalog_type": {
+                    "const": "nessie"
+                  },
+                  "iceberg_s3_path": {
+                    "description": "S3 bucket path where Iceberg data and metadata are stored"
+                  },
+                  "rest_auth_type": {
+                    "default": [
+                      "None"
+                    ],
+                    "description": "Authentication types supported by the catalog",
+                    "enum": [
+                      "None",
+                      "OAuth2",
+                      "Token"
+                    ],
+                    "title": "Authentication Type",
+                    "type": "string"
+                  },
+                  "rest_catalog_url": {
+                    "description": "Endpoint URL for the Nessie REST catalog service",
+                    "title": "REST Catalog URI",
+                    "type": "string"
+                  },
+                  "s3_endpoint": {
+                    "description": "Specifies the endpoint URL for S3 compatible services (like MinIO)",
+                    "title": "S3 Endpoint",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "catalog_name",
+                  "rest_catalog_url",
+                  "rest_auth_type",
+                  "aws_region"
+                ]
+              },
+              {
+                "properties": {
+                  "aws_access_key": {
+                    "description": "The AWS access key for authenticating S3 requests, typically a 20-character alphanumeric string",
+                    "format": "password",
+                    "title": "AWS Access Key",
+                    "type": "string"
+                  },
+                  "aws_region": {
+                    "description": "Specify the AWS region where the S3 bucket is hosted",
+                    "title": "AWS Region",
+                    "type": "string"
+                  },
+                  "aws_secret_key": {
+                    "description": "The AWS secret key for S3 authentication\u2014typically 40+ characters long",
+                    "format": "password",
+                    "title": "AWS Secret Key",
+                    "type": "string"
+                  },
+                  "catalog_name": {
+                    "description": "Name of the Iceberg catalog OLake Fusion registers tables under",
+                    "title": "Catalog Name",
+                    "type": "string"
+                  },
+                  "catalog_type": {
+                    "const": "s3tables"
+                  },
+                  "iceberg_s3_path": {
+                    "description": "ARN of your S3 Tables table bucket",
+                    "title": "S3 Table Buckets ARN"
+                  },
+                  "rest_auth_type": {
+                    "default": [
+                      "sigv4"
+                    ],
+                    "description": "Authentication types supported by the catalog",
+                    "enum": [
+                      "sigv4"
+                    ],
+                    "title": "Authentication Type",
+                    "type": "string"
+                  },
+                  "rest_catalog_url": {
+                    "description": "Endpoint URL for the S3 Tables REST catalog service",
+                    "title": "REST Catalog URI",
+                    "type": "string"
+                  },
+                  "rest_signing_region": {
+                    "description": "AWS region for SigV4 signing",
+                    "title": "REST Signing Region",
+                    "type": "string"
+                  },
+                  "s3_endpoint": {
+                    "description": "Specifies the endpoint URL for S3 compatible services (like MinIO)",
+                    "title": "S3 Endpoint",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "catalog_name",
+                  "rest_catalog_url",
+                  "rest_auth_type",
+                  "rest_signing_region",
+                  "aws_region"
+                ]
+              },
+              {
+                "dependencies": {
+                  "rest_auth_type": {
+                    "oneOf": [
+                      {
+                        "properties": {
+                          "rest_auth_type": {
+                            "const": "OAuth2 U2M"
+                          },
+                          "token": {
+                            "description": "OAuth2 access token from Databricks U2M authorization flow",
+                            "format": "password",
+                            "title": "REST Token",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "token"
+                        ]
+                      },
+                      {
+                        "properties": {
+                          "credential": {
+                            "description": "OAuth2 client credentials in client_id:client_secret format",
+                            "title": "REST Credential",
+                            "type": "string"
+                          },
+                          "oauth2_uri": {
+                            "description": "OAuth2 token endpoint URL for Databricks",
+                            "title": "REST Auth URI",
+                            "type": "string"
+                          },
+                          "rest_auth_type": {
+                            "const": "OAuth2 M2M"
+                          },
+                          "scope": {
+                            "description": "OAuth2 access scopes (space separated for more than one)",
+                            "title": "REST Scope",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "credential",
+                          "oauth2_uri"
+                        ]
+                      },
+                      {
+                        "properties": {
+                          "rest_auth_type": {
+                            "const": "Token Federation"
+                          },
+                          "token": {
+                            "description": "Access token from your Databricks federation policy",
+                            "format": "password",
+                            "title": "REST Token",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "token"
+                        ]
+                      },
+                      {
+                        "properties": {
+                          "rest_auth_type": {
+                            "const": "Personal Access Token (PAT)"
+                          },
+                          "token": {
+                            "description": "Databricks personal access token",
+                            "format": "password",
+                            "title": "REST Token",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "token"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "properties": {
+                  "catalog_name": {
+                    "description": "Name of the Iceberg catalog OLake Fusion registers tables under",
+                    "title": "Catalog Name",
+                    "type": "string"
+                  },
+                  "catalog_type": {
+                    "const": "unity"
+                  },
+                  "iceberg_s3_path": {
+                    "description": "Name of the catalog in Unity",
+                    "title": "Unity Catalog Name"
+                  },
+                  "rest_auth_type": {
+                    "description": "Authentication types supported by the catalog",
+                    "enum": [
+                      "OAuth2 U2M",
+                      "OAuth2 M2M",
+                      "Token Federation",
+                      "Personal Access Token (PAT)"
+                    ],
+                    "title": "Authentication Type",
+                    "type": "string"
+                  },
+                  "rest_catalog_url": {
+                    "description": "Databricks workspace URL with Unity Catalog REST API endpoint",
+                    "title": "REST Catalog URI",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "catalog_name",
+                  "rest_catalog_url",
+                  "rest_auth_type"
+                ]
+              },
+              {
+                "dependencies": {
+                  "rest_auth_type": {
+                    "oneOf": [
+                      {
+                        "properties": {
+                          "credential": {
+                            "description": "OAuth2 client credentials in client_id:client_secret format",
+                            "title": "REST Credential",
+                            "type": "string"
+                          },
+                          "oauth2_uri": {
+                            "description": "OAuth2 token endpoint URL for the OAuth2 authentication",
+                            "title": "REST Auth URI",
+                            "type": "string"
+                          },
+                          "rest_auth_type": {
+                            "const": "OAuth2"
+                          },
+                          "scope": {
+                            "description": "OAuth2 access scopes (space separated for more than one)",
+                            "title": "REST Scope",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "credential",
+                          "oauth2_uri"
+                        ]
+                      },
+                      {
+                        "properties": {
+                          "rest_auth_type": {
+                            "const": "Token"
+                          },
+                          "token": {
+                            "description": "Bearer token for token-based authentication",
+                            "format": "password",
+                            "title": "REST Token",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "token"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "properties": {
+                  "aws_access_key": {
+                    "description": "The AWS access key for authenticating S3 requests, typically a 20-character alphanumeric string",
+                    "format": "password",
+                    "title": "AWS Access Key",
+                    "type": "string"
+                  },
+                  "aws_region": {
+                    "description": "Specify the AWS region where the S3 bucket is hosted",
+                    "title": "AWS Region",
+                    "type": "string"
+                  },
+                  "aws_secret_key": {
+                    "description": "The AWS secret key for S3 authentication\u2014typically 40+ characters long",
+                    "format": "password",
+                    "title": "AWS Secret Key",
+                    "type": "string"
+                  },
+                  "catalog_name": {
+                    "description": "Name of the Iceberg catalog OLake Fusion registers tables under",
+                    "title": "Catalog Name",
+                    "type": "string"
+                  },
+                  "catalog_type": {
+                    "const": "polaris"
+                  },
+                  "iceberg_s3_path": {
+                    "description": "Name of the catalog created in your Polaris instance",
+                    "title": "Polaris Catalog Name"
+                  },
+                  "rest_auth_type": {
+                    "description": "Authentication types supported by the catalog",
+                    "enum": [
+                      "OAuth2",
+                      "Token"
+                    ],
+                    "title": "Authentication Type",
+                    "type": "string"
+                  },
+                  "rest_catalog_url": {
+                    "description": "Endpoint URL for the Polaris REST catalog service",
+                    "title": "REST Catalog URI",
+                    "type": "string"
+                  },
+                  "s3_endpoint": {
+                    "description": "Specifies the endpoint URL for S3 compatible services (like MinIO)",
+                    "title": "S3 Endpoint",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "catalog_name",
+                  "rest_catalog_url",
+                  "rest_auth_type",
+                  "aws_region"
+                ]
+              },
+              {
+                "properties": {
+                  "catalog_name": {
+                    "description": "Name of the Iceberg catalog OLake Fusion registers tables under",
+                    "title": "Catalog Name",
+                    "type": "string"
+                  },
+                  "catalog_type": {
+                    "const": "biglake"
+                  },
+                  "gcp_auth_scopes": {
+                    "description": "OAuth2 access scopes, space-separated for more than one",
+                    "title": "GCP Auth Scopes",
+                    "type": "string"
+                  },
+                  "gcp_project_id": {
+                    "description": "Required for multi-bucket catalogs only. Identifies the GCP project for BigLake request routing and billing",
+                    "title": "GCP Project ID",
+                    "type": "string"
+                  },
+                  "gcp_service_account_json": {
+                    "description": "JSON key file content from your GCP service account",
+                    "format": "password",
+                    "title": "GCP Service Account JSON",
+                    "type": "string"
+                  },
+                  "iceberg_s3_path": {
+                    "description": "Path to your BigLake catalog",
+                    "title": "BigLake Catalog Path"
+                  },
+                  "rest_auth_type": {
+                    "default": [
+                      "GCP"
+                    ],
+                    "description": "Authentication types supported by the catalog",
+                    "enum": [
+                      "GCP"
+                    ],
+                    "title": "Authentication Type",
+                    "type": "string"
+                  },
+                  "rest_catalog_url": {
+                    "description": "Endpoint URL for the Big Lake REST catalog service",
+                    "title": "REST Catalog URI",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "catalog_name",
+                  "rest_auth_type",
+                  "rest_catalog_url",
+                  "gcp_service_account_json"
                 ]
               },
               {
@@ -215,6 +868,28 @@
                   }
                 },
                 "properties": {
+                  "aws_access_key": {
+                    "description": "The AWS access key for authenticating S3 requests, typically a 20-character alphanumeric string",
+                    "format": "password",
+                    "title": "AWS Access Key",
+                    "type": "string"
+                  },
+                  "aws_region": {
+                    "description": "Specify the AWS region where the S3 bucket is hosted",
+                    "title": "AWS Region",
+                    "type": "string"
+                  },
+                  "aws_secret_key": {
+                    "description": "The AWS secret key for S3 authentication\u2014typically 40+ characters long",
+                    "format": "password",
+                    "title": "AWS Secret Key",
+                    "type": "string"
+                  },
+                  "catalog_name": {
+                    "description": "Name of the Iceberg catalog OLake Fusion registers tables under",
+                    "title": "Catalog Name",
+                    "type": "string"
+                  },
                   "catalog_type": {
                     "const": "glue"
                   },
@@ -229,34 +904,16 @@
                     "title": "S3 Endpoint",
                     "type": "string"
                   }
-                }
+                },
+                "required": [
+                  "catalog_name",
+                  "aws_region"
+                ]
               }
             ]
           }
         },
         "properties": {
-          "aws_access_key": {
-            "description": "The AWS access key for authenticating S3 requests, typically a 20-character alphanumeric string",
-            "format": "password",
-            "title": "AWS Access Key",
-            "type": "string"
-          },
-          "aws_region": {
-            "description": "Specify the AWS region where the S3 bucket is hosted",
-            "title": "AWS Region",
-            "type": "string"
-          },
-          "aws_secret_key": {
-            "description": "The AWS secret key for S3 authentication—typically 40+ characters long",
-            "format": "password",
-            "title": "AWS Secret Key",
-            "type": "string"
-          },
-          "catalog_name": {
-            "description": "User defined catalog name",
-            "title": "Catalog Name",
-            "type": "string"
-          },
           "catalog_type": {
             "default": "glue",
             "description": "Type of catalog to use",
@@ -264,7 +921,13 @@
               "glue",
               "jdbc",
               "hive",
-              "rest"
+              "rest",
+              "lakekeeper",
+              "nessie",
+              "s3tables",
+              "unity",
+              "polaris",
+              "biglake"
             ],
             "title": "Catalog Type",
             "type": "string"
@@ -276,9 +939,7 @@
           }
         },
         "required": [
-          "catalog_name",
           "catalog_type",
-          "aws_region",
           "iceberg_s3_path"
         ],
         "type": "object"
@@ -289,5 +950,5 @@
     ],
     "type": "object"
   },
-  "uischema": "{\n  \"type\": {\n    \"ui:widget\": \"hidden\"\n  },\n  \"writer\": {\n    \"ui:grid\": [\n      { \"catalog_type\": 12, \"catalog_name\": 12 },\n      { \"rest_catalog_url\": 12, \"hive_uri\": 12 },\n      { \"jdbc_url\": 12, \"jdbc_username\": 12, \"jdbc_password\": 12 },\n      { \"iceberg_s3_path\": 12, \"hive_clients\": 12 },\n      { \"s3_use_ssl\": 12, \"hive_sasl_enabled\": 12 },\n      { \"s3_path_style\": 12, \"rest_auth_type\": 12 },\n      { \"token\": 12, \"oauth2_uri\": 12 },\n      { \"credential\": 12, \"no_identifier_fields\": 12 },\n      { \"rest_signing_name\": 12, \"rest_signing_region\": 12 },\n      { \"rest_signing_v_4\": 12, \"scope\": 12, \"s3_endpoint\": 12 },\n      { \"aws_access_key\": 12, \"aws_secret_key\": 12 },\n      { \"aws_region\": 12, \"glue_additional_config\": 12 },\n\t { \"glue_catalog_id\": 12, \"glue_access_key\": 12, \"glue_secret_key\": 12 },\n      { \"glue_endpoint\": 12, \"glue_region\": 12 }\n        ],\n    \"no_identifier_fields\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"rest_signing_v_4\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"s3_use_ssl\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"hive_sasl_enabled\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"s3_path_style\": {\n      \"ui:widget\": \"boolean\"\n    },\n       \"glue_additional_config\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"catalog_type\": {\n      \"ui:enumNames\": [\n        \"AWS Glue\",\n        \"JDBC\",\n        \"Hive\",\n        \"REST\"\n      ]\n    },\n    \"ui:options\": {\n      \"label\": false\n    }\n  }\n}"
+  "uischema": "{\n  \"type\": {\n    \"ui:widget\": \"hidden\"\n  },\n  \"writer\": {\n    \"ui:grid\": [\n      { \"catalog_type\": 12, \"rest_auth_type\": 12 },\n      { \"catalog_name\": 12, \"rest_catalog_url\": 12 }, \n      { \"jdbc_url\": 24},\n      { \"jdbc_username\": 12, \"jdbc_password\": 12},\n      { \"hive_uri\": 12, \"hive_clients\": 12 },\n      { \"hive_sasl_enabled\": 24 }, \n      { \"iceberg_s3_path\": 12, \"s3_endpoint\": 12},\n      { \"credential\": 12, \"oauth2_uri\": 12 },\n      { \"scope\": 12, \"token\": 12 },\n      { \"no_identifier_fields\": 24 },\n      { \"aws_access_key\": 12, \"aws_secret_key\": 12 },\n      { \"aws_region\": 12, \"s3_path_style\": 12 },\n      { \"s3_use_ssl\": 12 },\n      { \"rest_signing_name\": 12, \"rest_signing_region\": 12 },\n      { \"rest_signing_v_4\": 24 },\n      { \"gcp_service_account_json\": 12, \"gcp_auth_scopes\": 12 },\n      { \"gcp_project_id\": 12 },\n      { \"glue_additional_config\": 24 },\n      { \"glue_catalog_id\": 12, \"glue_endpoint\": 12},\n\t    { \"glue_access_key\": 12, \"glue_secret_key\": 12 }, \n      { \"glue_region\": 12 }\n    ],\n    \"gcp_service_account_json\": {\n      \"ui:widget\": \"textarea\",\n      \"ui:options\": {\n        \"rows\": 1\n      }\n    },\n    \"no_identifier_fields\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"rest_signing_v_4\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"s3_use_ssl\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"hive_sasl_enabled\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"s3_path_style\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"glue_additional_config\": {\n      \"ui:widget\": \"boolean\"\n    },\n    \"catalog_type\": {\n      \"ui:enumNames\": [\n        \"AWS Glue\",\n        \"JDBC\",\n        \"Hive\",\n        \"Generic REST\",\n        \"Lakekeeper\",\n        \"Nessie\",\n        \"S3 Tables\",\n        \"Unity\",\n        \"Polaris\",\n        \"Big Lake\"\n      ]\n    },\n    \"ui:options\": {\n      \"label\": false\n    }\n  }\n}"
 }
