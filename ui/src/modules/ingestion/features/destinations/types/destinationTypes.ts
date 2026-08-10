@@ -7,6 +7,7 @@ export interface DestinationConfig {
 	writer?: {
 		catalog?: string
 		catalog_type?: string
+		rest_auth_type?: string
 	}
 }
 
