@@ -336,9 +336,6 @@
                     "title": "Lakekeeper Warehouse"
                   },
                   "rest_auth_type": {
-                    "default": [
-                      "None"
-                    ],
                     "description": "Authentication types supported by the catalog",
                     "enum": [
                       "None",
@@ -446,9 +443,6 @@
                     "description": "S3 bucket path where Iceberg data and metadata are stored"
                   },
                   "rest_auth_type": {
-                    "default": [
-                      "None"
-                    ],
                     "description": "Authentication types supported by the catalog",
                     "enum": [
                       "None",
@@ -508,9 +502,6 @@
                     "title": "S3 Table Buckets ARN"
                   },
                   "rest_auth_type": {
-                    "default": [
-                      "sigv4"
-                    ],
                     "description": "Authentication types supported by the catalog",
                     "enum": [
                       "sigv4"
@@ -796,9 +787,6 @@
                     "title": "BigLake Catalog Path"
                   },
                   "rest_auth_type": {
-                    "default": [
-                      "GCP"
-                    ],
                     "description": "Authentication types supported by the catalog",
                     "enum": [
                       "GCP"
