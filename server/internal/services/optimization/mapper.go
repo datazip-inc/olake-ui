@@ -2,6 +2,7 @@ package optimization
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -87,6 +88,10 @@ func mapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
 		config.S3PathStyle = true
 	}
 
+	if catalog.Properties[constants.OptOLakeCatalogType] != "" {
+		config.CatalogType = models.CatalogType(catalog.Properties[constants.OptOLakeCatalogType])
+	}
+
 	return config, nil
 }
 
@@ -145,15 +150,34 @@ func mapAuthConfig(olakeConfig *models.Config, authConfig, cmpStorageConfig map[
 	}
 }
 
-func mapCatalogProperties(olakeConfig *models.Config, properties map[string]string, olakeCatalogType string) {
+func mapCatalogProperties(olakeConfig *models.Config, properties map[string]string) {
 	// if imported from destination
 	if olakeConfig.OLakeImported {
 		utils.SetIfNotEmpty(properties, constants.OptOLakeCreated, "true")
 	}
 
 	warehouse := olakeConfig.IcebergS3Path
+	// storing the original catalog type value so that we can map it back again as well
+	utils.SetIfNotEmpty(properties, constants.OptOLakeCatalogType, string(olakeConfig.CatalogType))
 
-	switch strings.ToLower(olakeCatalogType) {
+	//S3 tables use SigV4 authentication and require signing name to be set to "s3tables"
+	if olakeConfig.CatalogType == "s3tables" {
+		olakeConfig.RestSigningV4 = true
+		olakeConfig.RestSigningName = "s3tables"
+	}
+	//Unity Catalog doesn't support identifier fields (disable them)
+	if olakeConfig.CatalogType == "unity" {
+		olakeConfig.NoIdentifierFields = true
+	}
+	// BigLake requires GoogleAuthManager for authentication
+	if olakeConfig.CatalogType == "biglake" {
+		olakeConfig.RestAuthType = "org.apache.iceberg.gcp.auth.GoogleAuthManager"
+	}
+	if slices.Contains(constants.RESTCatalogs, string(olakeConfig.CatalogType)) {
+		olakeConfig.CatalogType = "rest"
+	}
+
+	switch strings.ToLower(string(olakeConfig.CatalogType)) {
 	case "glue":
 		properties["warehouse"] = warehouse
 
