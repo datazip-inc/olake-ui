@@ -160,12 +160,12 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 	// storing the original catalog type value so that we can map it back again as well
 	utils.SetIfNotEmpty(properties, constants.OptOLakeCatalogType, string(olakeConfig.CatalogType))
 
-	//S3 tables use SigV4 authentication and require signing name to be set to "s3tables"
+	// S3 tables use SigV4 authentication and require signing name to be set to "s3tables"
 	if olakeConfig.CatalogType == "s3tables" {
 		olakeConfig.RestSigningV4 = true
 		olakeConfig.RestSigningName = "s3tables"
 	}
-	//Unity Catalog doesn't support identifier fields (disable them)
+	// Unity Catalog doesn't support identifier fields (disable them)
 	if olakeConfig.CatalogType == "unity" {
 		olakeConfig.NoIdentifierFields = true
 	}
