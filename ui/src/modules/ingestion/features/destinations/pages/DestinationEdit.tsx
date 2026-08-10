@@ -76,6 +76,7 @@ const DestinationEdit: React.FC = () => {
 	const [activeTab, setActiveTab] = useState(TAB_TYPES.CONFIG)
 	const [connector, setConnector] = useState<string | null>(null)
 	const [catalog, setCatalog] = useState<string | null>(null)
+	const [authType, setAuthType] = useState<string | null>(null)
 	const [destinationName, setDestinationName] = useState("")
 	const [selectedVersion, setSelectedVersion] = useState("")
 	const [showAllJobs, setShowAllJobs] = useState(false)
@@ -515,6 +516,7 @@ const DestinationEdit: React.FC = () => {
 							setFormData(trimmedData)
 							const catalogValue = trimmedData?.writer?.catalog_type
 							if (catalogValue) setCatalog(catalogValue)
+							setAuthType(trimmedData?.writer?.rest_auth_type ?? null)
 						}}
 						transformErrors={transformErrors}
 						onSubmit={handleSaveChanges}
@@ -645,7 +647,7 @@ const DestinationEdit: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector || "", catalog ? catalog : "glue")}`}
+						docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector || "", catalog ? catalog : "glue", authType)}`}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}

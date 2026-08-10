@@ -67,6 +67,7 @@ const CreateDestination: React.FC = () => {
 		CONNECTOR_TYPES.AMAZON_S3,
 	)
 	const [catalog, setCatalog] = useState<string | null>(null)
+	const [authType, setAuthType] = useState<string | null>(null)
 	const [destinationName, setDestinationName] = useState("")
 	const [version, setVersion] = useState("")
 	const [formData, setFormData] = useState<DestinationConfig>({})
@@ -482,6 +483,7 @@ const CreateDestination: React.FC = () => {
 									setFormData(trimmedData)
 									const catalogValue = trimmedData?.writer?.catalog_type
 									if (catalogValue) setCatalog(catalogValue)
+									setAuthType(trimmedData?.writer?.rest_auth_type ?? null)
 								}}
 								onSubmit={handleCreate}
 								uiSchema={uiSchema}
@@ -559,7 +561,7 @@ const CreateDestination: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector, catalog)}`}
+						docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector, catalog, authType)}`}
 						showResizer={true}
 						isMinimized={docsMinimized}
 						onToggle={handleToggleDocPanel}
