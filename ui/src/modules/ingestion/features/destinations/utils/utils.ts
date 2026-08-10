@@ -35,10 +35,10 @@ export const getConnectorDocumentationPath = (
 				case "hive":
 					return "iceberg/catalog/hive"
 				case "glue":
-				case null:
-				case undefined:
 					return "iceberg/catalog/glue"
 				default: {
+					if (!catalog) return "iceberg/catalog/glue"
+
 					const catalogSlug = REST_CATALOG_SLUGS[catalog]
 					if (!catalogSlug) return "iceberg/catalog/glue"
 
