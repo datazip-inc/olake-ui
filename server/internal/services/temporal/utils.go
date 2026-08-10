@@ -87,7 +87,7 @@ func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[s
 	}
 
 	responsePath := filepath.Join(constants.DefaultConfigDir, response)
-	workflowResponse, err := ReadJSONFile(responsePath)
+	workflowResponse, err := utils.ReadJSONFile(responsePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read workflow response: %v", err)
 	}

@@ -2,7 +2,6 @@ package temporal
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,8 +15,8 @@ var (
 	AsyncCommands = []Command{Sync, ClearDestination}
 )
 
-// getWorkflowDirectory determines the directory name based on operation and workflow ID
-func getWorkflowDirectory(operation Command, originalWorkflowID string) string {
+// GetWorkflowDirectory determines the directory name based on operation and workflow ID
+func GetWorkflowDirectory(operation Command, originalWorkflowID string) string {
 	if slices.Contains(AsyncCommands, operation) {
 		return fmt.Sprintf("%x", sha256.Sum256([]byte(originalWorkflowID)))
 	}
@@ -45,23 +44,10 @@ func writeConfigFiles(workDir string, configs []JobConfig) error {
 	return nil
 }
 
-func ReadJSONFile(filePath string) (map[string]interface{}, error) {
-	fileOutput, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %v", err)
-	}
-	var result map[string]interface{}
-	if err := json.Unmarshal(fileOutput, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal file: %v", err)
-	}
-
-	return result, nil
-}
-
 // SetupConfigFiles creates the work directory and writes the config files to it
 // It writes to the mounted path and can be accessed by the worker.
 func SetupConfigFiles(cmd Command, workflowID string, configs []JobConfig) error {
-	subDir := getWorkflowDirectory(cmd, workflowID)
+	subDir := GetWorkflowDirectory(cmd, workflowID)
 	workDir := filepath.Join(constants.DefaultConfigDir, subDir)
 
 	if err := createDirectory(workDir, 0755); err != nil {

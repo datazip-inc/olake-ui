@@ -30,12 +30,12 @@ func New(cfg *appconfig.Config, h *handlers.Handler) *Server {
 
 	s.engine = gin.New()
 	s.engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
-		SkipPaths: []string{"/health"},
+		SkipPaths: []string{"/health", "/metrics"},
 	}))
 	s.engine.Use(gin.Recovery())
 
 	s.configureRequestLimits(cfg)
-	s.configureBaseRoutes()
+	s.configureBaseRoutes(cfg, h)
 
 	if cfg.RunMode == "localdev" {
 		s.engine.Use(s.defaultCORSMiddleware())
@@ -106,10 +106,21 @@ func (s *Server) configureRequestLimits(cfg *appconfig.Config) {
 	}
 }
 
-func (s *Server) configureBaseRoutes() {
+func (s *Server) configureBaseRoutes(cfg *appconfig.Config, h *handlers.Handler) {
 	s.engine.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+
+	// GET /metrics — real route so it beats the frontend catch-all, and outside the
+	// /api auth group. When METRICS_ENABLED=false the route returns "disabled" 404,
+	// so a disabled endpoint is distinguishable from an unreachable/undeployed one.
+	if cfg.MetricsEnabled {
+		s.engine.GET("/metrics", h.ETL.Metrics)
+	} else {
+		s.engine.GET("/metrics", func(c *gin.Context) {
+			c.JSON(http.StatusNotFound, gin.H{"message": "metrics endpoint is disabled", "success": false})
+		})
+	}
 }
 
 func (s *Server) configureStaticFrontend() {

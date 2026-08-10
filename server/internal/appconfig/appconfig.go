@@ -40,6 +40,7 @@ type Config struct {
 	ContainerRegistryInsecure      bool
 	ContainerRegistryTLSSkipVerify bool
 	ContainerRegistryCACert        string
+	MetricsEnabled                 bool
 	EnableOptimization             bool
 	OptimizationGroup              string
 	OptimizationBaseURL            string
@@ -65,6 +66,9 @@ func loadConfig() Config {
 	} else {
 		v.SetDefault("RUN_MODE", "dev")
 	}
+
+	// Prometheus /metrics is on by default; METRICS_ENABLED=false turns the route off.
+	v.SetDefault("METRICS_ENABLED", true)
 
 	// Note: config priority: env variables -> file (app.yaml)
 	v.SetConfigFile("./config/app.yaml")
@@ -108,6 +112,8 @@ func loadConfig() Config {
 		OlakePostgresPort:     strings.TrimSpace(v.GetString("OLAKE_POSTGRES_PORT")),
 		OlakePostgresDBName:   strings.TrimSpace(v.GetString("OLAKE_POSTGRES_DBNAME")),
 		OlakePostgresSSLMode:  strings.TrimSpace(v.GetString("OLAKE_POSTGRES_SSLMODE")),
+
+		MetricsEnabled: v.GetBool("METRICS_ENABLED"),
 
 		EnableOptimization:         v.GetBool("ENABLE_OPTIMIZATION"),
 		OptimizationGroup:          strings.TrimSpace(v.GetString("OPTIMIZATION_GROUP")),
