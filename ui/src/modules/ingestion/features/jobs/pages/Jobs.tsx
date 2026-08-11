@@ -3,6 +3,7 @@ import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 
+import { CommunityHelpBanner } from "@/common/components"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { JobTable, JobEmptyState, DeleteJobModal } from "../components"
@@ -116,7 +117,8 @@ const Jobs: React.FC = () => {
 				return savedJobs
 			case JOB_STATUS.FAILED:
 				return jobs.filter(
-					job => (job?.last_run_state ?? "").toLowerCase() === "failed",
+					job =>
+						(job?.last_run_state ?? "").toLowerCase() === JOB_STATUS.FAILED,
 				)
 			default:
 				return []
@@ -125,6 +127,20 @@ const Jobs: React.FC = () => {
 
 	const showEmpty =
 		!isLoadingJobs && jobs.length === 0 && savedJobs.length === 0
+
+	// Show the community banner only when the most recently run job's latest
+	// run failed
+	const latestRunJob = jobs.reduce<Job | null>(
+		(latest, job) =>
+			job?.last_run_time &&
+			(!latest?.last_run_time ||
+				new Date(job.last_run_time) > new Date(latest.last_run_time))
+				? job
+				: latest,
+		null,
+	)
+	const hasFailedJob =
+		(latestRunJob?.last_run_state ?? "").toLowerCase() === JOB_STATUS.FAILED
 
 	const tabItems = [
 		{ key: JOB_STATUS.ACTIVE, label: "Active jobs" },
@@ -170,6 +186,8 @@ const Jobs: React.FC = () => {
 			<p className="mb-6 text-gray-600">
 				A list of all your jobs stacked at one place for you to see
 			</p>
+
+			{hasFailedJob && <CommunityHelpBanner source="jobs" />}
 
 			{showEmpty ? (
 				<JobEmptyState />

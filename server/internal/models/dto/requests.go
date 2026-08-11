@@ -135,10 +135,11 @@ type UpsertProjectSettingsRequest struct {
 }
 
 type UpdateSyncTelemetryRequest struct {
-	JobID       int    `json:"job_id"`
-	WorkflowID  string `json:"workflow_id"`
-	Event       string `json:"event"`
-	Environment string `json:"environment"`
+	JobID        int    `json:"job_id"`
+	WorkflowID   string `json:"workflow_id"`
+	Event        string `json:"event"`
+	Environment  string `json:"environment"`
+	SyncRunCount int    `json:"sync_run_count"`
 }
 
 type UpdateStateFileRequest struct {

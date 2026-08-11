@@ -646,13 +646,21 @@ func (s Service) upsertDestination(ctx context.Context, config *dto.DriverConfig
 
 // worker service
 func (s Service) UpdateSyncTelemetry(ctx context.Context, req dto.UpdateSyncTelemetryRequest) error {
+	info := telemetry.SyncEventInfo{
+		JobID:                req.JobID,
+		WorkflowID:           req.WorkflowID,
+		ExecutionEnvironment: req.Environment,
+		SyncRunCount:         req.SyncRunCount,
+	}
 	switch strings.ToLower(req.Event) {
 	case "started":
-		telemetry.TrackSyncStart(ctx, req.JobID, req.WorkflowID, req.Environment)
+		telemetry.TrackSyncEvent(info, telemetry.EventSyncStarted)
 	case "completed":
-		telemetry.TrackSyncCompleted(req.JobID, req.WorkflowID, req.Environment)
+		telemetry.TrackSyncEvent(info, telemetry.EventSyncCompleted)
 	case "failed":
-		telemetry.TrackSyncFailed(req.JobID, req.WorkflowID, req.Environment)
+		telemetry.TrackSyncEvent(info, telemetry.EventSyncFailed)
+	case "cancelled":
+		telemetry.TrackSyncEvent(info, telemetry.EventSyncCancelled)
 	}
 
 	return nil
