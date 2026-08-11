@@ -85,6 +85,10 @@ const Jobs: React.FC = () => {
 
 	const handlePauseJob = async (id: string, checked: boolean) => {
 		await activateJob({ jobId: id, activate: !checked })
+		// checked = job was active, so this click paused it
+		if (checked) {
+			trackEvent(AnalyticsEvent.JobPaused, { job_id: id })
+		}
 	}
 
 	// cancels the running job
@@ -127,20 +131,6 @@ const Jobs: React.FC = () => {
 
 	const showEmpty =
 		!isLoadingJobs && jobs.length === 0 && savedJobs.length === 0
-
-	// Show the community banner only when the most recently run job's latest
-	// run failed
-	const latestRunJob = jobs.reduce<Job | null>(
-		(latest, job) =>
-			job?.last_run_time &&
-			(!latest?.last_run_time ||
-				new Date(job.last_run_time) > new Date(latest.last_run_time))
-				? job
-				: latest,
-		null,
-	)
-	const hasFailedJob =
-		(latestRunJob?.last_run_state ?? "").toLowerCase() === JOB_STATUS.FAILED
 
 	const tabItems = [
 		{ key: JOB_STATUS.ACTIVE, label: "Active jobs" },
@@ -187,7 +177,7 @@ const Jobs: React.FC = () => {
 				A list of all your jobs stacked at one place for you to see
 			</p>
 
-			{hasFailedJob && <CommunityHelpBanner source="jobs" />}
+			<CommunityHelpBanner source="jobs" />
 
 			{showEmpty ? (
 				<JobEmptyState />

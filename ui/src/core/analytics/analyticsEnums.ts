@@ -5,4 +5,5 @@ export enum AnalyticsEvent {
 	CreateSourceClicked = "create_source_clicked",
 	CreateDestinationClicked = "create_destination_clicked",
 	CommunityHelpClicked = "community_help_clicked",
+	JobPaused = "job_paused",
 }
