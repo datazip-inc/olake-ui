@@ -645,7 +645,7 @@ func (s Service) upsertDestination(ctx context.Context, config *dto.DriverConfig
 }
 
 // worker service
-func (s Service) UpdateSyncTelemetry(ctx context.Context, req dto.UpdateSyncTelemetryRequest) error {
+func (s Service) UpdateSyncTelemetry(_ context.Context, req dto.UpdateSyncTelemetryRequest) error {
 	info := telemetry.SyncEventInfo{
 		JobID:                req.JobID,
 		WorkflowID:           req.WorkflowID,
