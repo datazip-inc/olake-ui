@@ -177,7 +177,7 @@ const Jobs: React.FC = () => {
 				A list of all your jobs stacked at one place for you to see
 			</p>
 
-			<CommunityHelpBanner source="jobs" />
+			{jobs.length > 0 && <CommunityHelpBanner source="jobs" />}
 
 			{showEmpty ? (
 				<JobEmptyState />
