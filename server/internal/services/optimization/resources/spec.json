@@ -140,7 +140,7 @@
                     "type": "string"
                   },
                   "rest_signing_v_4": {
-                    "default": false,
+                    "default": true,
                     "description": "Enable AWS Signature V4 signing (boolean)",
                     "title": "REST Enable Signature V4",
                     "type": "boolean"
