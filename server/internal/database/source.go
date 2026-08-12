@@ -74,6 +74,28 @@ func (db *Database) ListSourcesByProjectID(projectID string) ([]*models.Source, 
 	return sources, nil
 }
 
+func (db *Database) GetSourceByName(projectID, name string) (*models.Source, error) {
+	var source models.Source
+	err := db.conn.
+		Where("project_id = ? AND name = ?", projectID, name).
+		Preload("CreatedBy").
+		Preload("UpdatedBy").
+		First(&source).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: source not found name[%s] project_id[%s]", constants.ErrSourceNotFound, name, projectID)
+		}
+		return nil, fmt.Errorf("failed to get source name[%s] project_id[%s]: %s", name, projectID, err)
+	}
+
+	dConfig, err := utils.Decrypt(source.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt source config id[%d]: %s", source.ID, err)
+	}
+	source.Config = dConfig
+	return &source, nil
+}
+
 func (db *Database) GetSourceByID(id int) (*models.Source, error) {
 	var source models.Source
 	err := db.conn.
