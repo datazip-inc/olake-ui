@@ -36,7 +36,7 @@ const (
 	// Start postgres test infrastructure
 	startPostgresCmd = `
         cd /mnt/server/tests &&
-        docker compose up -d &&
+        docker compose -p olake-source-test up -d &&
         for i in $(seq 1 30); do
             if docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1" 2>/dev/null; then
                 echo "PostgreSQL ready."
@@ -51,9 +51,9 @@ const (
 	// Start destination services (iceberg stack)
 	startDestinationCmd = `
         cd /mnt/server/tests &&
-        docker compose -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg &&
+        docker compose -p olake-destination-test -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg &&
         sleep 5 &&
-        docker compose -f docker-compose.destination.yml ps
+        docker compose -p olake-destination-test -f docker-compose.destination.yml ps
     `
 
 	// Start OLake application
