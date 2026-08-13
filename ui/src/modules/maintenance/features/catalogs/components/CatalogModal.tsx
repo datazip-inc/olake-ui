@@ -45,6 +45,11 @@ const getCatalogTypeFromFormData = (data: CatalogFormData): string => {
 	return writer?.catalog_type ?? "unknown"
 }
 
+const getOlakeImportedFromFormData = (data: CatalogFormData): boolean => {
+	const writer = (data as { writer?: { olake_imported?: boolean } }).writer
+	return !!writer?.olake_imported
+}
+
 /** API expects the writer object only, not `{ type, writer }`. */
 const getCatalogWriterPayload = (
 	data: CatalogFormData,
@@ -164,7 +169,6 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 		} catch {
 			message.error("Failed to load destination config")
 		}
-		trackEvent(AnalyticsEvent.ImportCatalogFromDestinationClicked)
 	}
 
 	const validateForm = async (): Promise<boolean> => {
@@ -186,6 +190,11 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 					config: getCatalogWriterPayload(formData) as CatalogFormData,
 				})
 				setCreatedCatalogName(catalogName!)
+				trackEvent(AnalyticsEvent.CatalogUpdated, {
+			catalog_type: getCatalogTypeFromFormData(formData),
+			olake_imported: getOlakeImportedFromFormData(formData),
+			status: "success",
+		})
 			} else {
 				await createCatalogMutation.mutateAsync(
 					getCatalogWriterPayload(
@@ -194,22 +203,28 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 					) as CatalogFormData,
 				)
 				setCreatedCatalogName(getCatalogNameFromFormData(formData))
-			}
-			trackEvent(AnalyticsEvent.CatalogConnectClicked)
-			if (!isEditMode) {
 				trackEvent(AnalyticsEvent.CatalogCreated, {
 					catalog_type: getCatalogTypeFromFormData(formData),
 					olake_imported: !!selectedIcebergDestinationId,
 					status: "success",
 				})
 			}
+			trackEvent(AnalyticsEvent.CatalogConnectClicked)
 			setActiveModal(ActiveCatalogModalState.CATALOG_SUCCESS)
 		} catch (e) {
+			if (isEditMode) {
+				trackEvent(AnalyticsEvent.CatalogUpdated, {
+					catalog_type: getCatalogTypeFromFormData(formData),
+					olake_imported: getOlakeImportedFromFormData(formData),
+					status: "failed",
+				})
+			} else {
 			trackEvent(AnalyticsEvent.CatalogCreated, {
 				catalog_type: getCatalogTypeFromFormData(formData),
-				olake_imported: !!selectedIcebergDestinationId,
-				status: "failed",
-			})
+					olake_imported: !!selectedIcebergDestinationId,
+					status: "failed",
+				})
+			}
 			const err = e as {
 				response?: { data?: { message?: string } }
 				message?: string

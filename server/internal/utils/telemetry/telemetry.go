@@ -232,13 +232,6 @@ func GetVersion() string {
 	return ""
 }
 
-func trackFusionInstalled() {
-	mode := utils.Ternary(os.Getenv("KUBERNETES_SERVICE_HOST") != "", "helm", "docker")
-	if err := TrackEvent(context.Background(), EventFusionInstalled, map[string]interface{}{"mode": mode}); err != nil {
-		logger.Debugf("Failed to track fusion installed event: %s", err)
-	}
-}
-
 func TrackConfigurationSaved(ctx context.Context, properties map[string]interface{}) {
 	go func() {
 		if instance == nil {

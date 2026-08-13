@@ -4,7 +4,6 @@ import clsx from "clsx"
 import { useEffect, useState } from "react"
 
 import { ErrorLogsModal } from "@/common/components/modals"
-import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
 import {
@@ -21,10 +20,6 @@ import type {
 	UpdateTableCronApiRequest,
 } from "../../types"
 import { getCronFromConfig, getEarliestNextRun, getNextRuns } from "../../utils"
-
-const getFrequencyOptionLabel = (frequencyValue: string): string =>
-	CRON_FREQUENCY_OPTIONS.find(option => option.value === frequencyValue)
-		?.label ?? "Custom"
 
 export type SaveCallbacks = {
 	onSuccess: () => void
@@ -187,14 +182,6 @@ const ConfigureOptimizationModalView: React.FC<
 	}, [open])
 
 	const handleSave = () => {
-		const configProperties = {
-			lite_frequency: getFrequencyOptionLabel(minorCron.frequency),
-			medium_frequency: getFrequencyOptionLabel(majorCron.frequency),
-			full_frequency: getFrequencyOptionLabel(fullCron.frequency),
-			target_file_size: targetFileSize,
-		}
-		trackEvent(AnalyticsEvent.ConfigurationSaveClicked, configProperties)
-
 		const payload: UpdateTableCronApiRequest = {
 			minor_cron: getCronFromConfig(minorCron),
 			major_cron: getCronFromConfig(majorCron),
@@ -205,11 +192,9 @@ const ConfigureOptimizationModalView: React.FC<
 
 		onSave(payload, {
 			onSuccess: () => {
-				trackEvent(AnalyticsEvent.ConfigurationSaveSuccessful)
 				setActiveModal(ActiveOptimizationModalState.SUCCESS)
 			},
 			onError: logs => {
-				trackEvent(AnalyticsEvent.ConfigurationSaveFailed)
 				setErrorLogs(logs)
 				setActiveModal(ActiveOptimizationModalState.ERROR_LOGS)
 			},

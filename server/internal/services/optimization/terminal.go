@@ -11,6 +11,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 )
 
 func convertConfigToMap(config dto.OptimizationTableConfig) map[string]string {
@@ -80,7 +81,25 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database string, c
 		pre = append(pre, t)
 	}
 
-	// ... existing alter + poll ...
+	alterTableQuery := make([]string, 0, len(tables))
+	for _, tableName := range tables {
+		alterTableQuery = append(alterTableQuery, createAlterQuery(database, tableName, properties))
+	}
+
+	var sessionResult dto.TerminalSessionResponse
+	requestBody := dto.TerminalExecuteRequest{
+		SQL: strings.Join(alterTableQuery, "\n"),
+	}
+
+	if err := s.DoInto(ctx, http.MethodPost, fmt.Sprintf(constants.OptPathTerminalExecute, catalog), url.Values{}, requestBody, &sessionResult); err != nil {
+		return nil, fmt.Errorf("failed to execute bulk ALTER TABLE for catalog %s, database %s: %w", catalog, database, err)
+	}
+
+	logInfo, err := s.pollForCompletion(ctx, sessionResult.SessionID)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to poll for completion: %w", err)
+	}
 
 	status := "failed"
 	if logInfo.LogStatus == "Finished" {
@@ -101,10 +120,10 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database string, c
 			props := map[string]interface{}{
 				"table_size":          t.tableSize,
 				"file_count":          t.fileCount,
-				"lite_frequency":      utils.DerefString(config.SQLInput.MinorCron),
-				"medium_frequency":    utils.DerefString(config.SQLInput.MajorCron),
-				"full_frequency":      utils.DerefString(config.SQLInput.FullCron),
-				"target_file_size":    utils.DerefInt64(config.SQLInput.TargetFileSize),
+				"lite_frequency":      properties[constants.OptMinorCron],
+				"medium_frequency":    properties[constants.OptMajorCron],
+				"full_frequency":      properties[constants.OptFullCron],
+				"target_file_size":    properties[constants.OptTargetFileSize],
 				"status":              status,
 				"bulk_configured":     bulkConfigured,
 				"compaction_enabled":  compactionEnabled,
@@ -114,7 +133,12 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database string, c
 		}
 	}
 
-	return &dto.TableProperties{ /* existing */ }, nil
+	// TODO: Fusion may return "Finished" even if the query fails, but query logs will contain error message
+	return &dto.TableProperties{
+		SessionID: sessionResult.SessionID,
+		Success:   logInfo.LogStatus == "Finished",
+		Logs:      logInfo.Logs,
+	}, nil
 }
 
 // pollForCompletion polls the terminal API for SQL execution completion

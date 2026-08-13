@@ -19,6 +19,5 @@ const (
 	EventDestinationCreated  = "destination_created"
 	EventSourcesUpdated      = "sources_updated"
 	EventDestinationsUpdated = "destinations_updated"
-	EventFusionInstalled     = "fusion_installed"
     EventConfigurationSaved = "configuration_saved"
 )
