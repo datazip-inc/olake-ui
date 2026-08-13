@@ -71,7 +71,7 @@ API group: `olake.io/v1`
 | `Source` | `projectId`, `userId`, `config` | Source connector JSON (same as POST `/sources`) |
 | `Destination` | `projectId`, `userId`, `config` | Destination connector JSON |
 | `Job` | `projectId`, `userId`, `config` | Job metadata; `config` uses `source` / `destination` **by name or numeric ID** |
-| `Streams` | `project_id`, `job`, `config` | Large streams catalog JSON; `job` is Job CR name or numeric ID |
+| `Streams` | `projectId`, `job`, `config` | Large streams catalog JSON; `job` is Job CR name or numeric ID |
 
 ### Job `spec.config` shape (git-facing)
 
@@ -103,7 +103,7 @@ The operator resolves names or IDs to database IDs before calling `CreateJob` / 
 
 ```yaml
 spec:
-  project_id: "123"
+  projectId: "123"
   job: smoke-job   # Job CR metadata.name, or OLake job ID string after sync
   config: |
     { "selected_streams": { ... } }
@@ -137,7 +137,7 @@ Audit fields (`created_by` / `updated_by`) come from `spec.userId` (OLake user I
 |---------|--------------|--------|
 | Argo CD Sync OK, Health Progressing forever | Operator not running | Check `GITOPS_ENABLED=true`, pod logs, in-cluster config |
 | `phase=Pending`, message "waiting for source …" | Source not in OLake yet | Wait for Source CR to reach Ready; Job requeues automatically |
-| `phase=Pending`, "waiting for Streams CR …" | Missing or wrong `job` ref | Add Streams CR with matching `spec.job` and `project_id` |
+| `phase=Pending`, "waiting for Streams CR …" | Missing or wrong `job` ref | Add Streams CR with matching `spec.job` and `projectId` |
 | `phase=Failed`, validation message | Bad `spec.config` | Fix JSON to match API DTOs; check connector types |
 | `phase=Failed` after DB error | Postgres/Temporal down | Fix infrastructure; operator will requeue |
 | Health Degraded, Sync Synced | Expected on operator failure | Read `.status.message` and pod logs |

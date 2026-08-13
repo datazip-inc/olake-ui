@@ -94,7 +94,7 @@ type JobList struct {
 // StreamsSpec holds large streams JSON referenced by a Job CR.
 // Job is the Job CR name or OLake job numeric ID (status.entityId after sync).
 type StreamsSpec struct {
-	ProjectID string `json:"project_id"`
+	ProjectID string `json:"projectId"`
 	Job       string `json:"job"`
 	Config    string `json:"config"`
 }
