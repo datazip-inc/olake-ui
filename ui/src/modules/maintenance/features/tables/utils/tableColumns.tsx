@@ -10,6 +10,7 @@ import type { MenuProps } from "antd/es/menu"
 import clsx from "clsx"
 
 import { Tag, type ColumnDef } from "@/common/components"
+
 import { RunStatusCell } from "../components"
 import type { Table } from "../types"
 import { getCancelRunID } from "./tableUtils"

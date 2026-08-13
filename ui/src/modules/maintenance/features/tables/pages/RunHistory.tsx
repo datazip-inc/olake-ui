@@ -15,7 +15,7 @@ import { getRunLogsStatusConfig } from "../utils"
 
 const getColumns = (
 	handleMetricsClick: (row: TableRun) => void,
-	handleLogsClick: (runId: string) => void,
+	handleLogsClick: (runId: TableRun) => void,
 ): ColumnDef<TableRun>[] => [
 	{
 		key: "runId",
@@ -90,7 +90,7 @@ const getColumns = (
 		render: row => (
 			<Button
 				size="small"
-				onClick={() => handleLogsClick(row.runId)}
+				onClick={() => handleLogsClick(row)}
 			>
 				View
 			</Button>
@@ -134,8 +134,19 @@ const RunHistory: React.FC = () => {
 
 	const totalPages = Math.max(1, Math.ceil(totalRuns / pageSize))
 
+	const getRunEventProperties = (row: TableRun) => ({
+		catalog: decodedCatalog,
+		database: decodedDatabase,
+		table_name: decodedTableName,
+		run_id: row.runId,
+		status: row.status,
+		type: row.type,
+		start_time: row.startTime,
+		duration: row.duration,
+	})
+
 	const handleMetricsClick = (row: TableRun) => {
-		trackEvent(AnalyticsEvent.ViewMetricsClicked)
+		trackEvent(AnalyticsEvent.ViewMetricsClicked, getRunEventProperties(row))
 		setSelectedRunId(row.runId)
 		setMetricsSidebarOpen(true)
 		setMetricsRows(row.metrics)
@@ -143,9 +154,9 @@ const RunHistory: React.FC = () => {
 	const getRunLogsPath = (runId: string) =>
 		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(runId)}/logs`
 
-	const handleLogsClick = (runId: string) => {
-		trackEvent(AnalyticsEvent.ViewLogsClicked)
-		navigate(getRunLogsPath(runId))
+	const handleLogsClick = (row: TableRun) => {
+		trackEvent(AnalyticsEvent.ViewLogsClicked, getRunEventProperties(row))
+		navigate(getRunLogsPath(row.runId))
 	}
 
 	const columns = getColumns(handleMetricsClick, handleLogsClick)
