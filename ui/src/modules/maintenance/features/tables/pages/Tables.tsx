@@ -144,7 +144,7 @@ const Tables: React.FC = () => {
 			message.info("Please select more than 1 table to bulk configure.")
 			return
 		}
-		trackEvent(AnalyticsEvent.ConfigureButtonClicked, { mode: "bulk" })
+		trackEvent(AnalyticsEvent.ConfigureButtonClicked)
 		setBulkModalOpen(true)
 	}
 
@@ -210,25 +210,11 @@ const Tables: React.FC = () => {
 				}
 				toggleTableOptimizing(request, {
 					onSuccess: result => {
-						trackEvent(
-							enabled
-								? AnalyticsEvent.StatusToggleOnClicked
-								: AnalyticsEvent.StatusToggleOffClicked,
-							{ success: result.success },
-						)
 						if (!result.success) {
 							setLastToggleRequest(request)
 							setOptimizationErrorLogs(result.logs ?? [])
 							setOptimizationErrorOpen(true)
 						}
-					},
-					onError: () => {
-						trackEvent(
-							request.enabled
-								? AnalyticsEvent.StatusToggleOnClicked
-								: AnalyticsEvent.StatusToggleOffClicked,
-							{ success: false },
-						)
 					},
 				})
 			},
@@ -238,7 +224,7 @@ const Tables: React.FC = () => {
 				setMetricsModalOpen(true)
 			},
 			onConfigure: row => {
-				trackEvent(AnalyticsEvent.ConfigureButtonClicked, { mode: "single" })
+				trackEvent(AnalyticsEvent.ConfigureButtonClicked)
 				setConfigureTable(row)
 				setConfigureModalOpen(true)
 			},
@@ -443,18 +429,10 @@ const Tables: React.FC = () => {
 					if (lastToggleRequest) {
 						toggleTableOptimizing(lastToggleRequest, {
 							onSuccess: result => {
-								trackEvent(AnalyticsEvent.StatusRetryClicked, {
-									success: result.success,
-								})
 								if (!result.success) {
 									setOptimizationErrorLogs(result.logs ?? [])
 									setOptimizationErrorOpen(true)
 								}
-							},
-							onError: () => {
-								trackEvent(AnalyticsEvent.StatusRetryClicked, {
-									success: false,
-								})
 							},
 						})
 					}

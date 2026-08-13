@@ -112,9 +112,6 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 					<span>Health Score</span>
 					<Tooltip
 						title="Overall table efficiency based on small files and deletes. Higher is better."
-						onOpenChange={open => {
-							if (open) trackEvent(AnalyticsEvent.HealthScoreTooltipViewed)
-						}}
 					>
 						<QuestionIcon
 							size={14}

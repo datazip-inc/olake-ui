@@ -8,21 +8,16 @@ export enum AnalyticsEvent {
 	CreateDestinationClicked = "create_destination_clicked",
 	// Catalog
 	AddCatalogClicked = "add_catalog_clicked",
-	ImportCatalogFromDestinationClicked = "import_catalog_from_destination_clicked",
 	CatalogConnectClicked = "catalog_connect_clicked",
+	CatalogCreated = "catalog_created",
+	CatalogUpdated = "catalog_updated",
 	// Metrics
 	ViewTableMetricsClicked = "view_table_metrics_clicked",
 	ViewMetricsClicked = "view_metrics_clicked",
-	HealthScoreTooltipViewed = "health_score_tooltip_viewed",
+	ViewRunsAndLogsClicked = "view_runs_and_logs_clicked",
 	// Job configuration
 	ConfigureButtonClicked = "configure_button_clicked",
-	ConfigurationSaveClicked = "configuration_save_clicked",
-	ConfigurationSaveSuccessful = "configuration_save_successful",
-	ConfigurationSaveFailed = "configuration_save_failed",
 	// Job status
-	StatusToggleOnClicked = "status_toggle_on_clicked",
-	StatusToggleOffClicked = "status_toggle_off_clicked",
-	StatusRetryClicked = "status_retry_clicked",
 	ViewLogsClicked = "view_logs_clicked",
 	// Maintenance
 	MaintenanceModuleOpened = "maintenance_module_opened",

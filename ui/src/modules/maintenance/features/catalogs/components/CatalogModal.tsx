@@ -40,6 +40,11 @@ const getCatalogNameFromFormData = (data: CatalogFormData): string => {
 	return catalog_name.trim()
 }
 
+const getCatalogTypeFromFormData = (data: CatalogFormData): string => {
+	const writer = (data as { writer?: { catalog_type?: string } }).writer
+	return writer?.catalog_type ?? "unknown"
+}
+
 /** API expects the writer object only, not `{ type, writer }`. */
 const getCatalogWriterPayload = (
 	data: CatalogFormData,
@@ -190,13 +195,20 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 				)
 				setCreatedCatalogName(getCatalogNameFromFormData(formData))
 			}
-			trackEvent(AnalyticsEvent.CatalogConnectClicked, {
-				success: true,
-			})
+			trackEvent(AnalyticsEvent.CatalogConnectClicked)
+			if (!isEditMode) {
+				trackEvent(AnalyticsEvent.CatalogCreated, {
+					catalog_type: getCatalogTypeFromFormData(formData),
+					olake_imported: !!selectedIcebergDestinationId,
+					status: "success",
+				})
+			}
 			setActiveModal(ActiveCatalogModalState.CATALOG_SUCCESS)
 		} catch (e) {
-			trackEvent(AnalyticsEvent.CatalogConnectClicked, {
-				success: false,
+			trackEvent(AnalyticsEvent.CatalogCreated, {
+				catalog_type: getCatalogTypeFromFormData(formData),
+				olake_imported: !!selectedIcebergDestinationId,
+				status: "failed",
 			})
 			const err = e as {
 				response?: { data?: { message?: string } }

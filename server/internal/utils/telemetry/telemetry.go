@@ -238,3 +238,14 @@ func trackFusionInstalled() {
 		logger.Debugf("Failed to track fusion installed event: %s", err)
 	}
 }
+
+func TrackConfigurationSaved(ctx context.Context, properties map[string]interface{}) {
+	go func() {
+		if instance == nil {
+			return
+		}
+		if err := TrackEvent(ctx, EventConfigurationSaved, properties); err != nil {
+			logger.Debug("Failed to track configuration saved event: %s", err)
+		}
+	}()
+}
