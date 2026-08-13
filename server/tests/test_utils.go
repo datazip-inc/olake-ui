@@ -33,14 +33,6 @@ const (
         update-ca-certificates
     `
 
-	// Download destination docker-compose
-	// TODO: Either move destination and source config into the same Docker Compose setup or download both from the same location for consistency.
-	downloadDestinationComposeCmd = `
-        cd /mnt &&
-        curl -fsSL -o docker-compose.destination.yml \
-            https://raw.githubusercontent.com/datazip-inc/olake/master/destination/iceberg/local-test/docker-compose.yml
-    `
-
 	// Start postgres test infrastructure
 	startPostgresCmd = `
         cd /mnt/server/tests &&
@@ -58,7 +50,7 @@ const (
 
 	// Start destination services (iceberg stack)
 	startDestinationCmd = `
-        cd /mnt &&
+        cd /mnt/server/tests &&
         docker compose -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg &&
         sleep 5 &&
         docker compose -f docker-compose.destination.yml ps
@@ -187,56 +179,50 @@ func DinDTestContainer(t *testing.T) error {
 		return fmt.Errorf("tools installation failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 2: Download destination docker-compose
-	t.Log("Downloading destination docker-compose...")
-	if code, out, err := ExecCommand(ctx, ctr, downloadDestinationComposeCmd); err != nil || code != 0 {
-		return fmt.Errorf("destination docker-compose download failed (%d): %s\n%s", code, err, out)
-	}
-
-	// Step 3: Start PostgreSQL test infrastructure
+	// Step 2: Start PostgreSQL test infrastructure
 	t.Log("Starting PostgreSQL test infrastructure...")
 	if code, out, err := ExecCommand(ctx, ctr, startPostgresCmd); err != nil || code != 0 {
 		return fmt.Errorf("postgres startup failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 4: Start destination services (Iceberg stack)
+	// Step 3: Start destination services (Iceberg stack)
 	t.Log("Starting destination services...")
 	if code, out, err := ExecCommand(ctx, ctr, startDestinationCmd); err != nil || code != 0 {
 		return fmt.Errorf("destination services startup failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 5: Patch docker-compose for local images
+	// Step 4: Patch docker-compose for local images
 	t.Log("Patching docker-compose to build local images...")
 	if err := PatchDockerCompose(ctx, t, ctr); err != nil {
 		return err
 	}
 
-	// Step 6: Start OLake application
+	// Step 5: Start OLake application
 	t.Log("Starting OLake docker-compose services...")
 	if code, out, err := ExecCommand(ctx, ctr, startOLakeCmd); err != nil || code != 0 {
 		return fmt.Errorf("OLake startup failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 7: Setup networks
+	// Step 6: Setup networks
 	t.Log("Setting up Docker networks...")
 	if code, out, err := ExecCommand(ctx, ctr, networkSetupCmd); err != nil || code != 0 {
 		t.Logf("Warning: Network setup failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 8: Query the postgres source
+	// Step 7: Query the postgres source
 	ExecuteQuery(ctx, t, "create", host, postgresPort.Port())
 	ExecuteQuery(ctx, t, "clean", host, postgresPort.Port())
 	ExecuteQuery(ctx, t, "add", host, postgresPort.Port())
 
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
 
-	// Step 9: Install Playwright
+	// Step 8: Install Playwright
 	t.Log("Installing Playwright and dependencies...")
 	if code, out, err := ExecCommand(ctx, ctr, installPlaywrightCmd); err != nil || code != 0 {
 		return fmt.Errorf("playwright installation failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 10: Run Playwright tests
+	// Step 9: Run Playwright tests
 	t.Log("Executing Playwright tests...")
 	if code, out, err := ExecCommandWithStreaming(ctx, t, ctr, runPlaywrightCmd); err != nil || code != 0 {
 		return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
@@ -247,7 +233,7 @@ func DinDTestContainer(t *testing.T) error {
 	t.Log("Waiting for 60 seconds before verifying iceberg data...")
 	time.Sleep(60 * time.Second)
 
-	// Step 11: Verify in iceberg
+	// Step 10: Verify in iceberg
 	t.Logf("Starting Iceberg data verification...")
 	VerifyIcebergTest(ctx, t, ctr, host, sparkPort.Port())
 	return nil
