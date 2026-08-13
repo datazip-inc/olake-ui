@@ -17,7 +17,6 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
-	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
@@ -90,10 +89,6 @@ func InitTelemetry(db *database.Database, enableOptimization bool) {
 			TempUserID:     tempUserID,
 			locationInfo:   getLocationFromIP(ip),
 			db:             db,
-		}
-
-		if enableOptimization {
-			trackFusionInstalled()
 		}
 	}()
 }
