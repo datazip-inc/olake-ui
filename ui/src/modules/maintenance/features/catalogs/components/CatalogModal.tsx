@@ -191,10 +191,10 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 				})
 				setCreatedCatalogName(catalogName!)
 				trackEvent(AnalyticsEvent.CatalogUpdated, {
-			catalog_type: getCatalogTypeFromFormData(formData),
-			olake_imported: getOlakeImportedFromFormData(formData),
-			status: "success",
-		})
+					catalog_type: getCatalogTypeFromFormData(formData),
+					olake_imported: getOlakeImportedFromFormData(formData),
+					status: "success",
+				})
 			} else {
 				await createCatalogMutation.mutateAsync(
 					getCatalogWriterPayload(
@@ -219,8 +219,8 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 					status: "failed",
 				})
 			} else {
-			trackEvent(AnalyticsEvent.CatalogCreated, {
-				catalog_type: getCatalogTypeFromFormData(formData),
+				trackEvent(AnalyticsEvent.CatalogCreated, {
+					catalog_type: getCatalogTypeFromFormData(formData),
 					olake_imported: !!selectedIcebergDestinationId,
 					status: "failed",
 				})

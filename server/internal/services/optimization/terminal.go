@@ -110,7 +110,6 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database string, c
 	if config.SQLInput.MinorCron != nil ||
 		config.SQLInput.MajorCron != nil ||
 		config.SQLInput.FullCron != nil {
-
 		compactionEnabled := false
 		if config.SQLInput.EnabledForOptimization != nil {
 			compactionEnabled = *config.SQLInput.EnabledForOptimization == "true"
