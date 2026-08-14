@@ -160,6 +160,7 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 	// storing the original catalog type value so that we can map it back again as well
 	utils.SetIfNotEmpty(properties, constants.OptOLakeCatalogType, string(olakeConfig.CatalogType))
 
+	// Below logic is similar to what we have in OLake-Go : destination/iceberg/config.go
 	// S3 tables use SigV4 authentication and require signing name to be set to "s3tables"
 	if olakeConfig.CatalogType == "s3tables" {
 		olakeConfig.RestSigningV4 = true
@@ -173,6 +174,8 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 	if olakeConfig.CatalogType == "biglake" {
 		olakeConfig.RestAuthType = "org.apache.iceberg.gcp.auth.GoogleAuthManager"
 	}
+
+	// mapping polaris, lakekeeper, etc. -> rest in optimization service
 	if slices.Contains(constants.RESTCatalogs, string(olakeConfig.CatalogType)) {
 		olakeConfig.CatalogType = "rest"
 	}
