@@ -118,16 +118,16 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database string, c
 
 		for _, t := range pre {
 			props := map[string]interface{}{
-				"table_size":          t.tableSize,
-				"file_count":          t.fileCount,
-				"lite_frequency":      properties[constants.OptMinorCron],
-				"medium_frequency":    properties[constants.OptMajorCron],
-				"full_frequency":      properties[constants.OptFullCron],
-				"target_file_size":    properties[constants.OptTargetFileSize],
-				"status":              status,
-				"bulk_configured":     bulkConfigured,
-				"compaction_enabled":  compactionEnabled,
-				"updated":             t.updated,
+				"table_size":         t.tableSize,
+				"file_count":         t.fileCount,
+				"lite_frequency":     properties[constants.OptMinorCron],
+				"medium_frequency":   properties[constants.OptMajorCron],
+				"full_frequency":     properties[constants.OptFullCron],
+				"target_file_size":   properties[constants.OptTargetFileSize],
+				"status":             status,
+				"bulk_configured":    bulkConfigured,
+				"compaction_enabled": compactionEnabled,
+				"updated":            t.updated,
 			}
 			telemetry.TrackConfigurationSaved(ctx, props)
 		}

@@ -45,7 +45,7 @@ type Telemetry struct {
 	db             *database.Database
 }
 
-func InitTelemetry(db *database.Database, enableOptimization bool) {
+func InitTelemetry(db *database.Database) {
 	go func() {
 		if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
 			return
