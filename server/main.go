@@ -62,9 +62,9 @@ func main() {
 		logger.Fatalf("Failed to initialize services: %s", err)
 		return
 	}
-	logger.Info("Application services initialized successfully")
+	logger.Info("Application services initialized successsfully")
 
-	telemetry.InitTelemetry(db, enableOptimization)
+	telemetry.InitTelemetry(db)
 
 	// Set Swagger Info version to match the application's runtime version.
 	if constants.AppVersion != "" {
