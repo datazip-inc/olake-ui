@@ -9,7 +9,7 @@ import type { ColumnDef } from "@/common/components"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { RunMetricsSidebar } from "../components"
-import { useRunHistoryFilters, useTableRuns } from "../hooks"
+import { useRunHistoryFilters, useTableDetails, useTableRuns } from "../hooks"
 import type { RunHistoryFilter, RunMetricRow, TableRun } from "../types"
 import { getRunLogsStatusConfig } from "../utils"
 
@@ -129,6 +129,12 @@ const RunHistory: React.FC = () => {
 		status,
 	)
 
+	const { data: tableDetails } = useTableDetails(
+		decodedCatalog,
+		decodedDatabase,
+		decodedTableName,
+	)
+
 	const runs = data?.runs ?? []
 	const totalRuns = data?.total ?? 0
 
@@ -138,6 +144,7 @@ const RunHistory: React.FC = () => {
 		catalog: decodedCatalog,
 		database: decodedDatabase,
 		table_name: decodedTableName,
+		table_size: tableDetails?.totalSize ?? "--",
 		run_id: row.runId,
 		status: row.status,
 		type: row.type,
