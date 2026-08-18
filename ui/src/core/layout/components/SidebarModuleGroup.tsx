@@ -23,50 +23,30 @@ const SidebarModuleGroup: React.FC<SidebarModuleGroupProps> = ({
 	onToggle,
 }) => {
 	const ModIcon = mod.icon
-	const HeaderAction = mod.headerAction
 
 	return (
 		<div>
-			{HeaderAction ? (
-				<div className="mb-2 flex h-8 w-full items-center gap-1 rounded-md px-2 text-[14px] leading-[22px] text-[#595959] hover:bg-[#f5f5f5]">
-					<button
-						type="button"
-						onClick={onToggle}
-						aria-expanded={isOpen}
-						className="flex min-w-0 flex-1 items-center gap-[9px]"
-					>
-						<ModIcon
-							size={16}
-							className={mod.iconClassName}
-						/>
-						<span className="truncate">{mod.moduleLabel}</span>
-						{mod.badge && <Tag>{mod.badge}</Tag>}
-					</button>
-					<HeaderAction />
-				</div>
-			) : (
-				<button
-					onClick={onToggle}
-					aria-expanded={isOpen}
-					className="mb-2 flex h-8 w-full items-center justify-between rounded-md px-2 text-[14px] leading-[22px] text-[#595959] hover:bg-[#f5f5f5]"
-				>
-					<div className="flex min-w-0 items-center gap-[9px]">
-						<ModIcon
-							size={16}
-							className={mod.iconClassName}
-						/>
-						<span className="truncate">{mod.moduleLabel}</span>
-						{mod.badge && <Tag>{mod.badge}</Tag>}
-					</div>
-					<CaretLeftIcon
-						className={clsx(
-							"transition-transform duration-200",
-							isOpen ? "-rotate-90" : "-rotate-180",
-						)}
-						size={14}
+			<button
+				onClick={onToggle}
+				aria-expanded={isOpen}
+				className="mb-2 flex h-8 w-full items-center justify-between rounded-md px-2 text-[14px] leading-[22px] text-[#595959] hover:bg-[#f5f5f5]"
+			>
+				<div className="flex min-w-0 items-center gap-[9px]">
+					<ModIcon
+						size={16}
+						className={mod.iconClassName}
 					/>
-				</button>
-			)}
+					<span className="truncate">{mod.moduleLabel}</span>
+					{mod.badge && <Tag>{mod.badge}</Tag>}
+				</div>
+				<CaretLeftIcon
+					className={clsx(
+						"transition-transform duration-200",
+						isOpen ? "-rotate-90" : "-rotate-180",
+					)}
+					size={14}
+				/>
+			</button>
 
 			<div
 				className={clsx(

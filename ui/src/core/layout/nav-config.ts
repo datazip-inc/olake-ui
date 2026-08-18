@@ -22,8 +22,8 @@ export type NavModule = {
 	iconClassName?: string
 	/** Optional badge text shown next to the module label (e.g. "New") */
 	badge?: string
-	/** Optional action rendered in the module header row (right of the caret). */
-	headerAction?: React.FC
+	/** Header shown above a module's items when it has no moduleLabel (always-open). */
+	sectionHeader?: React.FC
 	items: NavItem[]
 	/**
 	 * Optional per-module breadcrumb trail resolver.

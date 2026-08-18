@@ -286,31 +286,39 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		const streamDifferenceResponse = (
-			await jobService.getStreamDifference(
-				jobId,
-				JSON.stringify({
-					...streamsData,
-					selected_streams: formatSelectedStreamsPayload(streamsData),
-				}),
-			)
-		)?.difference_streams
+		setIsSubmitting(true)
+		try {
+			const streamDifferenceResponse = (
+				await jobService.getStreamDifference(
+					jobId,
+					JSON.stringify({
+						...streamsData,
+						selected_streams: formatSelectedStreamsPayload(streamsData),
+					}),
+				)
+			)?.difference_streams
 
-		const diff =
-			typeof streamDifferenceResponse === "string"
-				? JSON.parse(streamDifferenceResponse || "{}")
-				: streamDifferenceResponse || {}
-		const hasDiff = Object.keys(diff?.selected_streams ?? diff).length > 0
-		// if there is a stream difference, show the stream difference modal
-		if (hasDiff) {
-			setStreamDifference(streamDifferenceResponse)
-			setShowStreamDifferenceModal(true)
-			return
+			const diff =
+				typeof streamDifferenceResponse === "string"
+					? JSON.parse(streamDifferenceResponse || "{}")
+					: streamDifferenceResponse || {}
+			const hasDiff = Object.keys(diff?.selected_streams ?? diff).length > 0
+			// if there is a stream difference, show the stream difference modal
+			if (hasDiff) {
+				setStreamDifference(streamDifferenceResponse)
+				setShowStreamDifferenceModal(true)
+				return
+			}
+
+			// No difference - clear state and submit with null stream difference
+			setStreamDifference(null)
+			await handleJobSubmit(null)
+		} catch (error) {
+			console.error("Error checking stream difference:", error)
+			message.error("Failed to check stream difference. Please try again.")
+		} finally {
+			setIsSubmitting(false)
 		}
-
-		// No difference - clear state and submit with null stream difference
-		setStreamDifference(null)
-		handleJobSubmit(null)
 	}
 
 	// Handle job submission

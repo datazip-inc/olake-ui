@@ -172,16 +172,26 @@ const Sidebar: React.FC<{
 														onToggle={() => toggleModule(mod.key)}
 													/>,
 												]
-											: mod.items.map(({ path, label, icon }) => (
-													<SidebarNavItem
-														key={path}
-														path={path}
-														label={label}
-														icon={icon}
-														iconSize={16}
-														className="mb-2 h-8"
-													/>
-												)),
+											: [
+													mod.sectionHeader && (
+														<div
+															key={`${mod.key}-header`}
+															className="mb-2"
+														>
+															<mod.sectionHeader />
+														</div>
+													),
+													...mod.items.map(({ path, label, icon }) => (
+														<SidebarNavItem
+															key={path}
+															path={path}
+															label={label}
+															icon={icon}
+															iconSize={16}
+															className="mb-2 h-8"
+														/>
+													)),
+												],
 									)}
 							</div>
 						))}
