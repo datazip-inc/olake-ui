@@ -274,3 +274,16 @@ func ConvertMBToBytes(sizeMB int64) string {
 	sizeBytes := sizeMB * bytesPerMB
 	return strconv.FormatInt(sizeBytes, 10)
 }
+
+// ReadJSONFile reads a file and unmarshals its JSON content into a map.
+func ReadJSONFile(filePath string) (map[string]interface{}, error) {
+	fileOutput, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %v", err)
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal(fileOutput, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal file: %v", err)
+	}
+	return result, nil
+}
