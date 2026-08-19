@@ -52,14 +52,12 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database string, c
 
 	// Preload metrics + "updated" before ALTER (optional but needed for the contract).
 	type tableTelemetry struct {
-		name      string
 		tableSize string
 		fileCount float64
-		updated   bool
 	}
 	pre := make([]tableTelemetry, 0, len(tables))
 	for _, tableName := range tables {
-		t := tableTelemetry{name: tableName}
+		t := tableTelemetry{}
 		if details, err := s.getTableDetails(ctx, catalog, database, tableName); err == nil {
 			if detailsMap, ok := details.(map[string]interface{}); ok {
 				if bm, ok := detailsMap["baseMetrics"].(map[string]interface{}); ok {
@@ -69,12 +67,6 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database string, c
 					if fc, ok := bm["fileCount"].(float64); ok {
 						t.fileCount = fc
 					}
-				}
-				if props, ok := detailsMap["properties"].(map[string]interface{}); ok {
-					_, hasMinor := props[constants.OptMinorCron]
-					_, hasMajor := props[constants.OptMajorCron]
-					_, hasFull := props[constants.OptFullCron]
-					t.updated = hasMinor || hasMajor || hasFull
 				}
 			}
 		}

@@ -9,8 +9,6 @@ export enum AnalyticsEvent {
 	// Catalog
 	AddCatalogClicked = "add_catalog_clicked",
 	CatalogConnectClicked = "catalog_connect_clicked",
-	CatalogCreated = "catalog_created",
-	CatalogUpdated = "catalog_updated",
 	// Metrics
 	ViewTableMetricsClicked = "view_table_metrics_clicked",
 	ViewMetricsClicked = "view_metrics_clicked",
