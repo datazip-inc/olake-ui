@@ -24,14 +24,29 @@ x-envs:
     OLAKE_SECRET_KEY: *encryptionKey
     PERSISTENT_DIR: *hostPersistencePath
     ENABLE_OPTIMIZATION: ${ENABLE_OPTIMIZATION:-false}
+    # Shared storage → Iceberg local-test MinIO (destination/iceberg/local-test)
+    OLAKE_STORAGE_MODE: s3
+    OLAKE_S3_BUCKET: olake
+    OLAKE_S3_REGION: us-east-1
+    OLAKE_S3_PREFIX: ""
+    OLAKE_S3_ACCESS_KEY_ID: admin
+    OLAKE_S3_SECRET_ACCESS_KEY: password
+    OLAKE_S3_ENDPOINT: http://minio:9000
+    OLAKE_DOCKER_NETWORK: olake-network
 
 services:
   olake-ui:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
-    pull_policy: always
+    # image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
+    # pull_policy: always
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: olake-ui
     environment:
       <<: *sharedEnvs
+      # Local custom connector images (olakego/source-*:v0.0.0-local)
+      APP_ENV: development
+      CUSTOM_DRIVER_VERSION: v0.0.0-local
       # Request body size limits (64 MB in bytes)
       MAX_MEMORY: 67108864
       MAX_UPLOAD_SIZE: 67108864
@@ -110,8 +125,11 @@ services:
     restart: "no"
 
   temporal-worker:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui-worker:latest
-    pull_policy: always
+    # image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui-worker:latest
+    # pull_policy: always
+    build:
+      context: /Users/apple/Desktop/olake-helm/worker
+      dockerfile: Dockerfile
     container_name: olake-temporal-worker
     networks:
       - olake-network

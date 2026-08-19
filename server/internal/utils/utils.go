@@ -2,6 +2,7 @@ package utils
 
 import (
 	"archive/tar"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/json"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/oklog/ulid"
 
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -139,6 +141,11 @@ func RetryWithBackoff(fn func() error, maxRetries int, initialDelay time.Duratio
 	return fmt.Errorf("failed after %d retries: %s", maxRetries, errMsg)
 }
 
+// GetLogBaseRelPath returns the SHA256 hash directory name for a workflow ID.
+func GetLogBaseRelPath(workflowID string) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
+}
+
 // GetAndValidateLogBaseDir returns the base directory path for log files
 // based on the SHA256 hash of the filePath (workflow ID) and validates it exists
 func GetAndValidateLogBaseDir(filePath string) (string, error) {
@@ -146,9 +153,7 @@ func GetAndValidateLogBaseDir(filePath string) (string, error) {
 		return "", fmt.Errorf("file path cannot be empty")
 	}
 
-	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
-	homeDir := constants.DefaultConfigDir
-	baseDir := filepath.Join(homeDir, syncFolderName)
+	baseDir := filepath.Join(constants.DefaultConfigDir, GetLogBaseRelPath(filePath))
 
 	// Verify directory exists
 	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
@@ -215,8 +220,24 @@ func AddFileToArchive(tarWriter *tar.Writer, filePath, nameInArchive string) err
 	return nil
 }
 
-// GetLogArchiveFilename generates the filename for the log archive download
-func GetLogArchiveFilename(jobID int, filePath string) (string, error) {
+// GetLogArchiveFilename generates the filename for the log archive download.
+func GetLogArchiveFilename(ctx context.Context, jobID int, filePath string) (string, error) {
+	mode := strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode))
+	if mode == constants.StorageModeS3 {
+		baseRel, err := validateS3LogBase(ctx, filePath)
+		if err != nil {
+			return "", err
+		}
+
+		syncFolder, err := getS3SyncFolder(ctx, baseRel)
+		if err != nil {
+			return "", err
+		}
+
+		syncTimestamp := strings.ReplaceAll(strings.TrimPrefix(syncFolder, "sync_"), "_", "-")
+		return fmt.Sprintf("job-%d-logs-%s.tar.gz", jobID, syncTimestamp), nil
+	}
+
 	baseDir, err := GetAndValidateLogBaseDir(filePath)
 	if err != nil {
 		return "", err
@@ -228,9 +249,7 @@ func GetLogArchiveFilename(jobID int, filePath string) (string, error) {
 	}
 
 	syncTimestamp := strings.ReplaceAll(strings.TrimPrefix(syncFolderName, "sync_"), "_", "-")
-	filename := fmt.Sprintf("job-%d-logs-%s.tar.gz", jobID, syncTimestamp)
-
-	return filename, nil
+	return fmt.Sprintf("job-%d-logs-%s.tar.gz", jobID, syncTimestamp), nil
 }
 
 func MarshalToString(v interface{}) (string, error) {

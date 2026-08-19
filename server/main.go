@@ -61,7 +61,10 @@ func main() {
 	}
 	logger.Info("Application services initialized successfully")
 
-	telemetry.InitTelemetry(db)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	telemetry.InitTelemetry(ctx, db)
 
 	// Set Swagger Info version to match the application's runtime version.
 	if constants.AppVersion != "" {
@@ -72,9 +75,6 @@ func main() {
 	if cfg.EncryptionKey == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	api := handlers.NewHandler(appSvc, &cfg, db)
 	server := httpserver.New(&cfg, api)

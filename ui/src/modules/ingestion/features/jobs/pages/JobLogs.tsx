@@ -98,10 +98,17 @@ const JobLogs: React.FC = () => {
 		[searchText, showOnlyErrors],
 	)
 
-	const handleDownloadLogs = () => {
+	const handleDownloadLogs = async () => {
 		if (!jobId || !filePath) return
-		jobService.downloadTaskLogs(jobId, filePath)
-		message.success("Downloading logs...")
+		const hide = message.loading("Preparing log download...", 0)
+		try {
+			await jobService.downloadTaskLogs(jobId, filePath)
+			hide()
+			message.success("Logs downloaded")
+		} catch {
+			hide()
+			message.error("Failed to download logs. Please try again.")
+		}
 	}
 
 	// Fetch initial batch of task logs (or refetch after filters are cleared),

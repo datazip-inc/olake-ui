@@ -72,6 +72,14 @@ var (
 	EnvAppEnvironment    = "APP_ENV"
 	EnvCustomDriverImage = "CUSTOM_DRIVER_VERSION"
 
+	// job config storage
+	EnvOlakeStorageMode = "OLAKE_STORAGE_MODE"
+	EnvOlakeS3Bucket    = "OLAKE_S3_BUCKET"
+	EnvOlakeS3Region    = "OLAKE_S3_REGION"
+	EnvOlakeS3Prefix    = "OLAKE_S3_PREFIX"
+	StorageModeS3       = "s3"
+	StorageModeNFS      = "nfs"
+
 	// App environment supported values: production/development
 	AppEnvProduction  = "production"
 	AppEnvDevelopment = "development"
@@ -88,6 +96,22 @@ var (
 
 	// DefaultLogsDirection is the fallback pagination direction ("older" or "newer").
 	DefaultLogsDirection = "older"
+
+	// S3 sync logs are split into immutable chunk files in the same folder layout as NFS.
+	// Each API call downloads exactly one chunk file (limit query param applies to NFS line pagination only).
+	S3LogChunksPerRequest = 1
+
+	LogTypeConnector = "connector"
+	LogTypeWorker    = "worker"
+
+	ConnectorLogPrefix = "connector"
+	WorkerLogPrefix    = "worker"
+	WorkerLogsDir      = "worker"
+
+	// OlakeLogFile is the legacy single-file connector log on NFS.
+	OlakeLogFile = "olake.log"
+	// WorkerLogFile is the single-file worker log on NFS (helm writes logs/worker.log).
+	WorkerLogFile = "worker.log"
 
 	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.

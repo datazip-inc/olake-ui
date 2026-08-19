@@ -534,8 +534,9 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 		}
 	}
 	direction := c.DefaultQuery("direction", constants.DefaultLogsDirection)
+	logType := c.DefaultQuery("log_type", constants.LogTypeConnector)
 
-	logs, err := h.etl.GetTaskLogs(c.Request.Context(), id, req.FilePath, cursor, limit, direction)
+	logs, err := h.etl.GetTaskLogs(c.Request.Context(), id, req.FilePath, logType, cursor, limit, direction)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrJobNotFound) {
@@ -571,7 +572,7 @@ func (h *Handler) DownloadTaskLogs(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Download task logs initiated job_id[%d] file_path[%s]", id, filePath)
-	filename, err := utils.GetLogArchiveFilename(id, filePath)
+	filename, err := utils.GetLogArchiveFilename(c.Request.Context(), id, filePath)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, fmt.Sprintf("failed to prepare log archive: %s", err), err)
 		return
@@ -584,7 +585,7 @@ func (h *Handler) DownloadTaskLogs(c *gin.Context) {
 	// Expose Content-Disposition header so browser JS can access filename for download
 	c.Header("Access-Control-Expose-Headers", "Content-Disposition")
 
-	if err := h.etl.StreamLogArchive(id, filePath, c.Writer); err != nil {
+	if err := h.etl.StreamLogArchive(c.Request.Context(), id, filePath, c.Writer); err != nil {
 		logger.Errorf("failed to stream log archive job_id[%d]: %s", id, err)
 		return
 	}

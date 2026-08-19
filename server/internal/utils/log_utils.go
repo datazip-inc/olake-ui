@@ -3,6 +3,7 @@ package utils
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -44,6 +45,73 @@ func isValidLogLine(line string) bool {
 	}
 
 	return true
+}
+
+func parseLogLines(lines []string) []map[string]interface{} {
+	batch := make([]map[string]interface{}, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		var logEntry LogEntry
+
+		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
+			// Plain stdout lines (e.g. legacy counter output already uploaded to S3).
+			batch = append(batch, map[string]interface{}{
+				"level":   "info",
+				"time":    time.Now().UTC().Format(time.RFC3339),
+				"message": line,
+			})
+			continue
+		}
+
+		var messageStr string
+		var tmp interface{}
+		if err := json.Unmarshal(logEntry.Message, &tmp); err == nil {
+			switch v := tmp.(type) {
+			case string:
+				messageStr = v
+			default:
+				msgBytes, err := json.Marshal(v)
+				if err != nil {
+					messageStr = string(logEntry.Message)
+				} else {
+					messageStr = string(msgBytes)
+				}
+			}
+		} else {
+			messageStr = string(logEntry.Message)
+		}
+
+		batch = append(batch, map[string]interface{}{
+			"level":   logEntry.Level,
+			"time":    logEntry.Time.UTC().Format(time.RFC3339),
+			"message": messageStr,
+		})
+	}
+
+	return batch
+}
+
+func parseValidLogLinesFromBytes(content []byte) []string {
+	if len(content) == 0 {
+		return nil
+	}
+
+	lines := make([]string, 0)
+	scanner := bufio.NewScanner(bytes.NewReader(content))
+	// Allow up to 1MB lines within a chunk file.
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+
+	return lines
 }
 
 // ReadLinesBackward reads up to `limit` complete VALID log lines from file backwards starting at startOffset.
@@ -227,24 +295,8 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) 
 	return lines, currentOffset, hasMore, nil
 }
 
-// ReadLogs reads logs from the given mainLogDir and returns structured log entries.
-// Direction can be "older" or "newer". If cursor < 0, it tails from the end of the file.
-// Returns a TaskLogsResponse-like struct: oldest->newest logs plus cursors and hasMore flags.
-func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
-	// Check if mainLogDir exists
-	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("logs directory not found: %s: %s", mainLogDir, err)
-	}
-
-	// Resolve and validate logs/sync_* directory
-	logsDir, syncFolderName, err := GetAndValidateSyncDir(mainLogDir)
-	if err != nil {
-		return nil, err
-	}
-
-	logDir := filepath.Join(logsDir, syncFolderName)
-	logPath := filepath.Join(logDir, "olake.log")
-
+// ReadLogsFromFile reads paginated logs from a single local log file (byte-offset cursors).
+func ReadLogsFromFile(logPath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	logFile, err := os.Open(logPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read log file: %s: %s", logPath, err)
@@ -257,67 +309,22 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 	}
 	fileSize := stat.Size()
 
-	// Normalize limit
 	if limit <= 0 {
 		limit = constants.DefaultLogsLimit
 	}
 
-	// Clamp cursor to file size
 	if cursor > fileSize {
 		cursor = fileSize
 	}
 
-	// Normalize direction
 	dir := strings.ToLower(strings.TrimSpace(direction))
 	if dir != "newer" {
 		dir = constants.DefaultLogsDirection
 	}
 
-	// Initial tail: cursor < 0 means "from end of file"
 	isTail := cursor < 0
-
 	response := &dto.TaskLogsResponse{}
 
-	// Parse validated lines into response format
-	// Lines are already filtered (no empty, no invalid JSON, no debug) by ReadLines functions
-	parseLines := func(lines []string) []map[string]interface{} {
-		batch := make([]map[string]interface{}, 0, len(lines))
-		for _, line := range lines {
-			var logEntry LogEntry
-
-			if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
-				continue
-			}
-
-			var messageStr string
-			var tmp interface{}
-			if err := json.Unmarshal(logEntry.Message, &tmp); err == nil {
-				switch v := tmp.(type) {
-				case string:
-					messageStr = v
-				default:
-					msgBytes, err := json.Marshal(v)
-					if err != nil {
-						messageStr = string(logEntry.Message)
-					} else {
-						messageStr = string(msgBytes)
-					}
-				}
-			} else {
-				messageStr = string(logEntry.Message)
-			}
-
-			batch = append(batch, map[string]interface{}{
-				"level":   logEntry.Level,
-				"time":    logEntry.Time.UTC().Format(time.RFC3339),
-				"message": messageStr,
-			})
-		}
-
-		return batch
-	}
-
-	// Tail or "older" from a cursor: walk backwards
 	if isTail || dir == "older" {
 		if isTail {
 			cursor = fileSize
@@ -328,23 +335,18 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 			return nil, rerr
 		}
 
-		response.Logs = parseLines(lines)
-
-		// olderCursor points to the position BEFORE the oldest log we're returning
+		response.Logs = parseLogLines(lines)
 		response.OlderCursor = newOffset
 		response.NewerCursor = cursor
 		response.HasMoreOlder = more
 		response.HasMoreNewer = response.NewerCursor < fileSize
 	} else {
-		// dir == "newer": walk forwards
 		lines, newOffset, more, rerr := ReadLinesForward(logFile, cursor, limit, fileSize)
 		if rerr != nil {
 			return nil, rerr
 		}
 
-		response.Logs = parseLines(lines)
-
-		// newerCursor points to the position AFTER the newest log we have
+		response.Logs = parseLogLines(lines)
 		response.NewerCursor = newOffset
 		response.OlderCursor = cursor
 		response.HasMoreNewer = more
@@ -352,4 +354,33 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 	}
 
 	return response, nil
+}
+
+// ReadLogsFromDir reads paginated connector logs from a local NFS directory tree (single olake.log file).
+// For task sync logs use ReadTaskLogs, which selects NFS or S3 based on storage mode.
+func ReadLogsFromDir(mainLogDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
+	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("logs directory not found: %s: %s", mainLogDir, err)
+	}
+
+	logsDir, syncFolderName, err := GetAndValidateSyncDir(mainLogDir)
+	if err != nil {
+		return nil, err
+	}
+
+	logPath := filepath.Join(logsDir, syncFolderName, constants.OlakeLogFile)
+	return ReadLogsFromFile(logPath, cursor, limit, direction)
+}
+
+// ReadTestConnectionLogs returns connector logs for a test-connection workflow when available.
+// Short check runs in S3 mode often have no persisted log files; an empty slice is returned instead of an error.
+func ReadTestConnectionLogs(ctx context.Context, workflowID string) []map[string]interface{} {
+	mainLogDir := filepath.Join(constants.DefaultConfigDir, workflowID)
+	if logs, err := ReadLogsFromDir(mainLogDir, -1, 1000, "older"); err == nil {
+		return logs.Logs
+	}
+	if logs, err := ReadTaskLogs(ctx, workflowID, constants.LogTypeConnector, -1, 1000, "older"); err == nil {
+		return logs.Logs
+	}
+	return []map[string]interface{}{}
 }

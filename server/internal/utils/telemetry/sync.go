@@ -6,10 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
@@ -90,7 +94,7 @@ func trackSyncEvent(ctx context.Context, jobID int, workflowID, executionEnviron
 
 	properties := prepareCommonProperties(jobID, workflowID, executionEnvironment, details, time.Time{})
 	if eventType == EventSyncCompleted {
-		if err := enrichWithSyncStats(properties, workflowID); err != nil {
+		if err := enrichWithSyncStats(ctx, properties, workflowID); err != nil {
 			return err
 		}
 	}
@@ -101,24 +105,38 @@ func trackSyncEvent(ctx context.Context, jobID int, workflowID, executionEnviron
 	return nil
 }
 
-func enrichWithSyncStats(properties map[string]interface{}, workflowID string) error {
+func enrichWithSyncStats(ctx context.Context, properties map[string]interface{}, workflowID string) error {
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
-	mainSyncDir := filepath.Join(constants.DefaultConfigDir, syncFolderName)
-
-	if err := addStatsProperties(properties, mainSyncDir); err != nil {
+	statsData, err := readSyncJobFile(ctx, syncFolderName, "stats.json")
+	if err != nil {
+		return err
+	}
+	if err := addStatsProperties(properties, statsData); err != nil {
 		return err
 	}
 
-	return addStreamsProperties(properties, mainSyncDir)
-}
-
-func addStatsProperties(properties map[string]interface{}, mainSyncDir string) error {
-	statsPath := filepath.Join(mainSyncDir, "stats.json")
-	statsData, err := os.ReadFile(statsPath)
+	streamsData, err := readSyncJobFile(ctx, syncFolderName, "streams.json")
 	if err != nil {
 		return err
 	}
 
+	return addStreamsProperties(properties, streamsData)
+}
+
+func readSyncJobFile(ctx context.Context, syncFolderName, filename string) ([]byte, error) {
+	switch strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode)) {
+	case constants.StorageModeS3:
+		relPath := path.Join(syncFolderName, filename)
+		return storage.ReadFileFromS3AtRelPath(ctx, relPath)
+	case constants.StorageModeNFS:
+		filePath := filepath.Join(constants.DefaultConfigDir, syncFolderName, filename)
+		return os.ReadFile(filePath)
+	default:
+		return nil, fmt.Errorf("unsupported OLAKE_STORAGE_MODE: %q", appconfig.Load().OlakeStorageMode)
+	}
+}
+
+func addStatsProperties(properties map[string]interface{}, statsData []byte) error {
 	var stats map[string]interface{}
 	if err := json.Unmarshal(statsData, &stats); err != nil {
 		return err
@@ -129,16 +147,13 @@ func addStatsProperties(properties map[string]interface{}, mainSyncDir string) e
 	}
 	if memory, ok := stats["Memory"]; ok {
 		properties["memory_used"] = memory
+	} else if memory, ok := stats["Memory Usage Bytes"]; ok {
+		properties["memory_used"] = memory
 	}
 	return nil
 }
 
-func addStreamsProperties(properties map[string]interface{}, mainSyncDir string) error {
-	streamsPath := filepath.Join(mainSyncDir, "streams.json")
-	streamsData, err := os.ReadFile(streamsPath)
-	if err != nil {
-		return fmt.Errorf("failed to read streams.json: %s", err)
-	}
+func addStreamsProperties(properties map[string]interface{}, streamsData []byte) error {
 
 	var streamsConfig struct {
 		SelectedStreams map[string][]struct {
