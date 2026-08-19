@@ -46,7 +46,6 @@ import (
 func main() {
 	constants.Init()
 	logger.Init()
-	cfg := appconfig.Load()
 
 	db, err := database.Init()
 	if err != nil {
@@ -54,15 +53,13 @@ func main() {
 		return
 	}
 
-	enableOptimization := cfg.EnableOptimization
-
 	// Initialize unified AppService
-	appSvc, err := services.InitAppService(db, enableOptimization)
+	appSvc, err := services.InitAppService(db)
 	if err != nil {
 		logger.Fatalf("Failed to initialize services: %s", err)
 		return
 	}
-	logger.Info("Application services initialized successsfully")
+	logger.Info("Application services initialized successfully")
 
 	telemetry.InitTelemetry(db)
 
@@ -71,6 +68,7 @@ func main() {
 		docs.SwaggerInfo.Version = constants.AppVersion
 	}
 
+	cfg := appconfig.Load()
 	if cfg.EncryptionKey == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}

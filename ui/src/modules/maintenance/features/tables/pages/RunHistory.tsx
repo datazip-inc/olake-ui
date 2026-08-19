@@ -141,14 +141,9 @@ const RunHistory: React.FC = () => {
 	const totalPages = Math.max(1, Math.ceil(totalRuns / pageSize))
 
 	const getRunEventProperties = (row: TableRun) => ({
-		catalog: decodedCatalog,
-		database: decodedDatabase,
-		table_name: decodedTableName,
 		table_size: tableDetails?.totalSize ?? "--",
-		run_id: row.runId,
 		status: row.status,
 		type: row.type,
-		start_time: row.startTime,
 		duration: row.duration,
 	})
 

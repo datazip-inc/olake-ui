@@ -1,6 +1,7 @@
 package services
 
 import (
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/services/optimization"
@@ -12,7 +13,7 @@ type AppService struct {
 	opt *optimization.Service
 }
 
-func InitAppService(db *database.Database, enableOptimization bool) (*AppService, error) {
+func InitAppService(db *database.Database) (*AppService, error) {
 	// Initialize ETL service
 	etlSvc, err := etl.InitService(db)
 	if err != nil {
@@ -25,6 +26,7 @@ func InitAppService(db *database.Database, enableOptimization bool) (*AppService
 		opt: nil,
 	}
 
+	enableOptimization := appconfig.Load().EnableOptimization
 	if enableOptimization {
 		optSvc, err := optimization.InitService()
 		if err != nil {

@@ -191,9 +191,7 @@ const ConfigureOptimizationModalView: React.FC<
 		}
 
 		onSave(payload, {
-			onSuccess: () => {
-				setActiveModal(ActiveOptimizationModalState.SUCCESS)
-			},
+			onSuccess: () => setActiveModal(ActiveOptimizationModalState.SUCCESS),
 			onError: logs => {
 				setErrorLogs(logs)
 				setActiveModal(ActiveOptimizationModalState.ERROR_LOGS)
