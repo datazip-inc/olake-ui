@@ -144,7 +144,6 @@ const Tables: React.FC = () => {
 			message.info("Please select more than 1 table to bulk configure.")
 			return
 		}
-		trackEvent(AnalyticsEvent.ConfigureButtonClicked)
 		setBulkModalOpen(true)
 	}
 
@@ -190,7 +189,10 @@ const Tables: React.FC = () => {
 			cancelTableRunVariables?.tableName === tableName
 
 		const actions: TableActions = {
-			onViewLogs: row => navigate(getTableRunsPath(row.name)),
+			onViewLogs: row => {
+				trackEvent(AnalyticsEvent.ViewRunsAndLogsClicked)
+				navigate(getTableRunsPath(row.name))
+			},
 			onCancelRun: row => {
 				const runId = getCancelRunID(row)
 				if (!runId) return
@@ -224,7 +226,6 @@ const Tables: React.FC = () => {
 				setMetricsModalOpen(true)
 			},
 			onConfigure: row => {
-				trackEvent(AnalyticsEvent.ConfigureButtonClicked)
 				setConfigureTable(row)
 				setConfigureModalOpen(true)
 			},

@@ -94,16 +94,17 @@ func InitTelemetry(db *database.Database) {
 }
 
 func getOutboundIP() string {
-	client := http.Client{Timeout: TelemetryConfigTimeout}
-	resp, err := client.Get(IPUrl)
+	resp, err := http.Get(IPUrl)
 	if err != nil {
 		return IPNotFound
 	}
 	defer resp.Body.Close()
+
 	ipBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return IPNotFound
 	}
+
 	return string(ipBody)
 }
 
@@ -225,15 +226,4 @@ func GetVersion() string {
 		return instance.OlakeUIVersion
 	}
 	return ""
-}
-
-func TrackConfigurationSaved(ctx context.Context, properties map[string]interface{}) {
-	go func() {
-		if instance == nil {
-			return
-		}
-		if err := TrackEvent(ctx, EventConfigurationSaved, properties); err != nil {
-			logger.Debug("Failed to track configuration saved event: %s", err)
-		}
-	}()
 }

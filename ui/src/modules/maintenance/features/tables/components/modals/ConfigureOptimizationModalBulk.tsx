@@ -115,6 +115,10 @@ const ConfigureOptimizationModalBulk: React.FC<
 					: undefined
 			}
 			isSaving={isSaving}
+			telemetry={{
+				bulkConfigured: true,
+				tableCount: tables.length,
+			}}
 			onSave={(payload, { onSuccess, onError }) =>
 				mutate(
 					{ tables, sql_input: payload },

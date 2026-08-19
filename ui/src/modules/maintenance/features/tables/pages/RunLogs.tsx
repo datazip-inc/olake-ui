@@ -1,9 +1,7 @@
 import { useIsFetching } from "@tanstack/react-query"
 import { Spin } from "antd"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-
-import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { RunLogSidebar, RunLogsPanel } from "../components"
 import { DRIVER_SOURCE_KEY } from "../constants"
@@ -11,9 +9,6 @@ import { tableKeys } from "../constants/queryKeys"
 
 const RunLogs: React.FC = () => {
 	const navigate = useNavigate()
-	useEffect(() => {
-		trackEvent(AnalyticsEvent.ViewRunsAndLogsClicked)
-	}, [])
 	const { catalog, database, tableName, runId } = useParams<{
 		catalog: string
 		database: string

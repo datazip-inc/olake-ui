@@ -15,7 +15,7 @@ import { getRunLogsStatusConfig } from "../utils"
 
 const getColumns = (
 	handleMetricsClick: (row: TableRun) => void,
-	handleLogsClick: (runId: TableRun) => void,
+	handleLogsClick: (run: TableRun) => void,
 ): ColumnDef<TableRun>[] => [
 	{
 		key: "runId",
@@ -140,11 +140,11 @@ const RunHistory: React.FC = () => {
 
 	const totalPages = Math.max(1, Math.ceil(totalRuns / pageSize))
 
-	const getRunEventProperties = (row: TableRun) => ({
+	const getRunEventProperties = (run: TableRun) => ({
 		table_size: tableDetails?.totalSize ?? "--",
-		status: row.status,
-		type: row.type,
-		duration: row.duration,
+		status: run.status,
+		type: run.type,
+		duration: run.duration,
 	})
 
 	const handleMetricsClick = (row: TableRun) => {
