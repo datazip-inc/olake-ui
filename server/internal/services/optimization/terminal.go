@@ -11,7 +11,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
-	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 )
 
 func convertConfigToMap(config dto.OptimizationTableConfig) map[string]string {
@@ -48,30 +47,6 @@ func createAlterQuery(database, table string, properties map[string]string) stri
 func (s *Service) SetProperties(ctx context.Context, catalog, database string, config dto.OptimizationTableConfig) (*dto.TableProperties, error) {
 	tables := config.Tables
 	properties := convertConfigToMap(config)
-	bulkConfigured := len(tables) >= 2
-
-	// Preload metrics + "updated" before ALTER (optional but needed for the contract).
-	type tableTelemetry struct {
-		tableSize string
-		fileCount float64
-	}
-	pre := make([]tableTelemetry, 0, len(tables))
-	for _, tableName := range tables {
-		t := tableTelemetry{}
-		if details, err := s.getTableDetails(ctx, catalog, database, tableName); err == nil {
-			if detailsMap, ok := details.(map[string]interface{}); ok {
-				if bm, ok := detailsMap["baseMetrics"].(map[string]interface{}); ok {
-					if size, ok := bm["totalSize"].(string); ok {
-						t.tableSize = size
-					}
-					if fc, ok := bm["fileCount"].(float64); ok {
-						t.fileCount = fc
-					}
-				}
-			}
-		}
-		pre = append(pre, t)
-	}
 
 	alterTableQuery := make([]string, 0, len(tables))
 	for _, tableName := range tables {
@@ -91,37 +66,6 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database string, c
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to poll for completion: %w", err)
-	}
-
-	status := "failed"
-	if logInfo.LogStatus == "Finished" {
-		status = "success"
-	}
-
-	// Only emit for configure saves (modal always sends crons + target size).
-	if config.SQLInput.MinorCron != nil ||
-		config.SQLInput.MajorCron != nil ||
-		config.SQLInput.FullCron != nil {
-		compactionEnabled := false
-		if config.SQLInput.EnabledForOptimization != nil {
-			compactionEnabled = *config.SQLInput.EnabledForOptimization == "true"
-		}
-
-		for _, t := range pre {
-			props := map[string]interface{}{
-				"table_size":         t.tableSize,
-				"file_count":         t.fileCount,
-				"lite_frequency":     properties[constants.OptMinorCron],
-				"medium_frequency":   properties[constants.OptMajorCron],
-				"full_frequency":     properties[constants.OptFullCron],
-				"target_file_size":   properties[constants.OptTargetFileSize],
-				"status":             status,
-				"bulk_configured":    bulkConfigured,
-				"compaction_enabled": compactionEnabled,
-				"updated":            t.updated,
-			}
-			telemetry.TrackConfigurationSaved(ctx, props)
-		}
 	}
 
 	// TODO: Fusion may return "Finished" even if the query fails, but query logs will contain error message

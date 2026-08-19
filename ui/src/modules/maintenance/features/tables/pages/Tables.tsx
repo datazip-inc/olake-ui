@@ -144,7 +144,6 @@ const Tables: React.FC = () => {
 			message.info("Please select more than 1 table to bulk configure.")
 			return
 		}
-		trackEvent(AnalyticsEvent.ConfigureButtonClicked)
 		setBulkModalOpen(true)
 	}
 
@@ -224,7 +223,6 @@ const Tables: React.FC = () => {
 				setMetricsModalOpen(true)
 			},
 			onConfigure: row => {
-				trackEvent(AnalyticsEvent.ConfigureButtonClicked)
 				setConfigureTable(row)
 				setConfigureModalOpen(true)
 			},

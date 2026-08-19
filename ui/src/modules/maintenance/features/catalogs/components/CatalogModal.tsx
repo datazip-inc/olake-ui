@@ -40,16 +40,6 @@ const getCatalogNameFromFormData = (data: CatalogFormData): string => {
 	return catalog_name.trim()
 }
 
-const getCatalogTypeFromFormData = (data: CatalogFormData): string => {
-	const writer = (data as { writer?: { catalog_type?: string } }).writer
-	return writer?.catalog_type ?? "unknown"
-}
-
-const getOlakeImportedFromFormData = (data: CatalogFormData): boolean => {
-	const writer = (data as { writer?: { olake_imported?: boolean } }).writer
-	return !!writer?.olake_imported
-}
-
 /** API expects the writer object only, not `{ type, writer }`. */
 const getCatalogWriterPayload = (
 	data: CatalogFormData,

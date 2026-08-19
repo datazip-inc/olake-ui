@@ -53,6 +53,12 @@ const ConfigureOptimizationModalSingle: React.FC<
 			isConfigError={isConfigError}
 			onRetryConfig={() => void refetch()}
 			isSaving={isSaving}
+			telemetry={{
+				bulkConfigured: false,
+				tableCount: 1,
+				tableSize,
+				fileCount: initialConfig?.fileCount,
+			}}
 			onSave={(payload, { onSuccess, onError }) =>
 				mutate(payload, {
 					onSuccess: result =>
