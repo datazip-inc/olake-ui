@@ -4,7 +4,6 @@ import clsx from "clsx"
 import { useEffect, useState } from "react"
 
 import { ErrorLogsModal } from "@/common/components/modals"
-import { trackEvent } from "@/core/analytics"
 
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
 import {

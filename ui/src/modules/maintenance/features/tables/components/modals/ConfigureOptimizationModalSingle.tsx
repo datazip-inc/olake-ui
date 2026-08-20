@@ -1,9 +1,9 @@
 import { TableIcon } from "@phosphor-icons/react"
 
 import { trackConfigurationSaved } from "@/core/analytics/analyticsUtils"
+
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
 import { useTableDetails, useUpdateTableCronConfig } from "../../hooks"
-import { R } from "node_modules/@tanstack/react-query-devtools/build/modern/ReactQueryDevtools-ChNsB-ya"
 
 type ConfigureOptimizationModalSingleProps = {
 	open: boolean
@@ -75,7 +75,7 @@ const ConfigureOptimizationModalSingle: React.FC<
 						}
 						onError(result.logs ?? (result.message ? [result.message] : []))
 					},
-					onError: () => 
+					onError: () =>
 						trackConfigurationSaved(payload, {
 							...telemetryContext,
 							status: "failed",
