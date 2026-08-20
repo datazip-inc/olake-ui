@@ -85,7 +85,9 @@ const getSystemInfo = async (): Promise<SystemInfo> => {
 	}
 
 	const systemInfo = await fetchSystemInfo()
-	sessionStore.set(SYSTEM_INFO_SESSION_KEY, systemInfo)
+	if (systemInfo.ip_address && systemInfo.location) {
+		sessionStore.set(SYSTEM_INFO_SESSION_KEY, systemInfo)
+	}
 	return systemInfo
 }
 

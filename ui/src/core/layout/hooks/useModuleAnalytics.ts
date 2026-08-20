@@ -23,7 +23,7 @@ export const useModuleAnalytics = (modules: NavModule[]) => {
 		const key = `analytics_fired_${event}`
 		if (sessionStore.get<boolean>(key)) return
 
-		trackEvent(event, { path: pathname })
+		trackEvent(event)
 		sessionStore.set(key, true)
 	}, [pathname, modules])
 }

@@ -1,6 +1,7 @@
 import { TableIcon, WarningIcon, XIcon } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 
+import { trackConfigurationSaved } from "@/core/analytics/analyticsUtils"
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
 import { useBulkUpdateTableCronConfig } from "../../hooks"
 
@@ -115,23 +116,31 @@ const ConfigureOptimizationModalBulk: React.FC<
 					: undefined
 			}
 			isSaving={isSaving}
-			telemetry={{
-				bulkConfigured: true,
-				tableCount: tables.length,
-			}}
-			onSave={(payload, { onSuccess, onError }) =>
-				mutate(
-					{ tables, sql_input: payload },
-					{
-						onSuccess: result =>
-							result.success
-								? onSuccess()
-								: onError(
-										result.logs ?? (result.message ? [result.message] : []),
-									),
+			onSave={(payload, { onSuccess, onError }) => {
+				const telemetryContext = {
+					bulkConfigured: true,
+					tableCount: tables.length,
+				}
+				mutate({ tables, sql_input: payload }, {
+					onSuccess: result => {
+						trackConfigurationSaved(payload, {
+							...telemetryContext,
+							status: result.success ? "success" : "failed",
+						})
+						if (result.success) {
+							onSuccess()
+							return
+						}
+						onError(result.logs ?? (result.message ? [result.message] : []),
+						)
 					},
-				)
-			}
+					onError: () => 
+						trackConfigurationSaved(payload, {
+							...telemetryContext,
+							status: "failed",
+						}),
+				})
+			}}
 		/>
 	)
 }

@@ -1,7 +1,9 @@
 import { TableIcon } from "@phosphor-icons/react"
 
+import { trackConfigurationSaved } from "@/core/analytics/analyticsUtils"
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
 import { useTableDetails, useUpdateTableCronConfig } from "../../hooks"
+import { R } from "node_modules/@tanstack/react-query-devtools/build/modern/ReactQueryDevtools-ChNsB-ya"
 
 type ConfigureOptimizationModalSingleProps = {
 	open: boolean
@@ -53,22 +55,33 @@ const ConfigureOptimizationModalSingle: React.FC<
 			isConfigError={isConfigError}
 			onRetryConfig={() => void refetch()}
 			isSaving={isSaving}
-			telemetry={{
-				bulkConfigured: false,
-				tableCount: 1,
-				tableSize,
-				fileCount: initialConfig?.fileCount,
-			}}
-			onSave={(payload, { onSuccess, onError }) =>
+			onSave={(payload, { onSuccess, onError }) => {
+				const telemetryContext = {
+					bulkConfigured: false,
+					tableCount: 1,
+					tableSize,
+					fileCount: initialConfig?.fileCount,
+				}
+
 				mutate(payload, {
-					onSuccess: result =>
-						result.success
-							? onSuccess()
-							: onError(
-									result.logs ?? (result.message ? [result.message] : []),
-								),
+					onSuccess: result => {
+						trackConfigurationSaved(payload, {
+							...telemetryContext,
+							status: result.success ? "success" : "failed",
+						})
+						if (result.success) {
+							onSuccess()
+							return
+						}
+						onError(result.logs ?? (result.message ? [result.message] : []))
+					},
+					onError: () => 
+						trackConfigurationSaved(payload, {
+							...telemetryContext,
+							status: "failed",
+						}),
 				})
-			}
+			}}
 		/>
 	)
 }

@@ -172,7 +172,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 	const handleSaveCatalog = async () => {
 		const isValid = await validateForm()
 		if (!isValid) return
-
+		trackEvent(AnalyticsEvent.CatalogConnectClicked)
 		try {
 			if (isEditMode) {
 				await updateCatalogMutation.mutateAsync({
@@ -189,7 +189,6 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 				)
 				setCreatedCatalogName(getCatalogNameFromFormData(formData))
 			}
-			trackEvent(AnalyticsEvent.CatalogConnectClicked)
 			setActiveModal(ActiveCatalogModalState.CATALOG_SUCCESS)
 		} catch (e) {
 			const err = e as {

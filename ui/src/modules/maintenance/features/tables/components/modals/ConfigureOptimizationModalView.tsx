@@ -4,7 +4,7 @@ import clsx from "clsx"
 import { useEffect, useState } from "react"
 
 import { ErrorLogsModal } from "@/common/components/modals"
-import { trackEvent, AnalyticsEvent } from "@/core/analytics"
+import { trackEvent } from "@/core/analytics"
 
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
 import {
@@ -27,13 +27,6 @@ export type SaveCallbacks = {
 	onError: (logs: string[]) => void
 }
 
-export type ConfigureTelemetry = {
-	bulkConfigured: boolean
-	tableCount: number
-	tableSize?: string
-	fileCount?: number
-}
-
 export type ConfigureOptimizationModalViewProps = {
 	open: boolean
 	onClose: () => void
@@ -46,7 +39,6 @@ export type ConfigureOptimizationModalViewProps = {
 	initialConfig?: TableCronFormModel
 	onSave: (payload: UpdateTableCronApiRequest, callbacks: SaveCallbacks) => void
 	isSaving: boolean
-	telemetry?: ConfigureTelemetry
 }
 
 const ScheduleSection: React.FC<ScheduleSectionProps> = ({
@@ -153,7 +145,6 @@ const ConfigureOptimizationModalView: React.FC<
 	initialConfig,
 	onSave,
 	isSaving,
-	telemetry,
 }) => {
 	const [minorCron, setMinorCron] =
 		useState<CronConfigOption>(DEFAULT_CRON_CONFIG)
@@ -191,24 +182,6 @@ const ConfigureOptimizationModalView: React.FC<
 		}
 	}, [open])
 
-	const trackConfigureSaved = (
-		payload: UpdateTableCronApiRequest,
-		status: "success" | "failed",
-	) => {
-		trackEvent(AnalyticsEvent.ConfigureButtonClicked, {
-			table_size: telemetry?.tableSize,
-			file_count: telemetry?.fileCount,
-			lite_frequency: payload.minor_cron,
-			medium_frequency: payload.major_cron,
-			full_frequency: payload.full_cron,
-			target_file_size: payload.target_file_size,
-			status,
-			bulk_configured: telemetry?.bulkConfigured ?? false,
-			table_count: telemetry?.tableCount,
-			compaction_enabled: payload.enabled_for_optimization === "true",
-		})
-	}
-
 	const handleSave = () => {
 		const payload: UpdateTableCronApiRequest = {
 			minor_cron: getCronFromConfig(minorCron),
@@ -220,11 +193,9 @@ const ConfigureOptimizationModalView: React.FC<
 
 		onSave(payload, {
 			onSuccess: () => {
-				trackConfigureSaved(payload, "success")
 				setActiveModal(ActiveOptimizationModalState.SUCCESS)
 			},
 			onError: logs => {
-				trackConfigureSaved(payload, "failed")
 				setErrorLogs(logs)
 				setActiveModal(ActiveOptimizationModalState.ERROR_LOGS)
 			},

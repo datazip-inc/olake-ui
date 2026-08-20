@@ -2,6 +2,33 @@ import { TEST_CONNECTION_STATUS } from "@/common/constants"
 import { TestConnectionResponse } from "@/common/types"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import { EntityTestRequest } from "@/modules/ingestion/common/types"
+import { UpdateTableCronApiRequest } from "@/modules/maintenance/features/tables/types"
+
+type ConfigurationSavedContext = {
+	status: "success" | "failed"
+	bulkConfigured: boolean
+	tableCount: number
+	tableSize?: string
+	fileCount?: number
+}
+
+export const trackConfigurationSaved = (
+	payload: UpdateTableCronApiRequest,
+	context: ConfigurationSavedContext,
+) => {
+	trackEvent(AnalyticsEvent.ConfigureButtonClicked, {
+		table_size: context.tableSize,
+		file_count: context.fileCount,
+		lite_frequency: payload.minor_cron,
+		medium_frequency: payload.major_cron,
+		full_frequency: payload.full_cron,
+		target_file_size: payload.target_file_size,
+		status: context.status,
+		bulk_configured: context.bulkConfigured,
+		table_count: context.tableCount,
+		compaction_enabled: payload.enabled_for_optimization === "true",
+	})
+}
 
 export const trackTestConnection = async (
 	isSource: boolean,
