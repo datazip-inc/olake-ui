@@ -16,6 +16,7 @@ import {
 import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
 
 import {
+	DEFAULT_UPSERT_TYPE,
 	DESTINATION_SUPPORTED_INGESTION_MODES,
 	SOURCE_SUPPORTED_INGESTION_MODES,
 	STREAM_DEFAULTS,
@@ -75,9 +76,21 @@ export const getStreamsDataFromSourceStreamsResponse = (
 
 		if (matchingSelectedStream) {
 			// Stream is selected, use the selected stream configuration
+			const upsertMode =
+				!matchingSelectedStream.append_mode &&
+				isDestUpsertModeSupported &&
+				isSourceUpsertModeSupported
+			const { update_type: savedUpdateType, ...selectedStreamRest } =
+				matchingSelectedStream
+
 			mergedSelectedStreams[namespace].push({
-				...matchingSelectedStream,
+				...selectedStreamRest,
 				disabled: false,
+				// update_type only applies while the stream runs in upsert mode;
+				// older saved jobs carry no value, so fall back to the default.
+				...(upsertMode && {
+					update_type: savedUpdateType ?? DEFAULT_UPSERT_TYPE,
+				}),
 			})
 		} else {
 			// Stream is not selected, use defaults from default_stream_properties
@@ -94,6 +107,11 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				stream_name: streamName,
 				disabled: true,
 				append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported, // Default to append if either source or destination does not support upsert
+				// update_type only applies while the stream runs in upsert mode.
+				...(isDestUpsertModeSupported &&
+					isSourceUpsertModeSupported && {
+						update_type: DEFAULT_UPSERT_TYPE,
+					}),
 				// Add selected_columns only when the source supports it.
 				...(supportsColumnSelection && {
 					selected_columns: {
@@ -521,11 +539,14 @@ export const buildBulkSelectedStreams = (
 		sourceType,
 	)
 
+	const appendMode = !isDestUpsertModeSupported || !isSourceUpsertModeSupported
+
 	return {
 		...STREAM_DEFAULTS,
 		...commonStream.stream.default_stream_properties,
 		stream_name: commonStream.stream.name,
-		append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported,
+		append_mode: appendMode,
+		...(!appendMode && { update_type: DEFAULT_UPSERT_TYPE }),
 	}
 }
 // Returns the stream data and default selected stream data
