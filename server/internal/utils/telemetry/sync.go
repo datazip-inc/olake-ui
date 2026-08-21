@@ -20,6 +20,7 @@ type SyncEventInfo struct {
 	WorkflowID           string
 	ExecutionEnvironment string
 	SyncRunCount         int
+	Properties           map[string]any
 }
 
 type jobDetails struct {
@@ -140,14 +141,11 @@ func TrackSyncEvent(info SyncEventInfo, eventType string) {
 			return
 		}
 
-		details, err := getJobDetails(info.JobID)
+		properties, err := buildProperties(info, eventType)
 		if err != nil {
 			logger.Debugf("failed to track %s event: %s", eventType, err)
 			return
 		}
-
-		properties := prepareCommonProperties(info, eventType, details)
-		addStreamsProperties(properties, details.StreamsConfig)
 
 		// Best-effort: a missing or unparsable stats.json must not drop the
 		// event. There's nothing to enrich yet at "started".
@@ -159,6 +157,35 @@ func TrackSyncEvent(info SyncEventInfo, eventType string) {
 			logger.Debugf("failed to track %s event: %s", eventType, err)
 		}
 	}()
+}
+
+// buildProperties forwards the worker's pre-resolved properties when present
+// (newer workers always send them); otherwise falls back to enriching from
+// the DB - the legacy path for workers that don't send properties yet,
+// deletable once the min supported worker sends them.
+func buildProperties(info SyncEventInfo, eventType string) (map[string]interface{}, error) {
+	if len(info.Properties) > 0 {
+		props := make(map[string]interface{}, len(info.Properties)+2)
+		for k, v := range info.Properties {
+			props[k] = v
+		}
+		props["workflow_id"] = info.WorkflowID
+
+		timeKey := "ended_at"
+		if eventType == EventSyncStarted {
+			timeKey = "started_at"
+		}
+		props[timeKey] = time.Now().UTC().Format(time.RFC3339)
+		return props, nil
+	}
+
+	details, err := getJobDetails(info.JobID)
+	if err != nil {
+		return nil, err
+	}
+	properties := prepareCommonProperties(info, eventType, details)
+	addStreamsProperties(properties, details.StreamsConfig)
+	return properties, nil
 }
 
 // enrichWithSyncStats attaches records_synced/memory_used from stats.json when
