@@ -101,6 +101,7 @@ type JobResponse struct {
 	Source           DriverConfig      `json:"source"`
 	Destination      DriverConfig      `json:"destination"`
 	StreamsConfig    string            `json:"streams_config,omitempty"`
+	SchemaConfig     string            `json:"schema_config,omitempty"`
 	Frequency        string            `json:"frequency" example:"0 */6 * * *"`
 	LastRunTime      string            `json:"last_run_time,omitempty" example:"2024-01-09T12:00:00Z"`
 	LastRunState     string            `json:"last_run_state,omitempty" example:"completed"`

@@ -101,6 +101,7 @@ type CreateJobRequest struct {
 	Destination      *DriverConfig     `json:"destination" binding:"required"`
 	Frequency        string            `json:"frequency" binding:"required" example:"0 */6 * * *"`
 	StreamsConfig    string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	SchemaConfig     string            `json:"schema_config,omitempty" orm:"type(jsonb)"`
 	Activate         bool              `json:"activate,omitempty" example:"true"`
 	AdvancedSettings *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
@@ -111,6 +112,7 @@ type UpdateJobRequest struct {
 	Destination       *DriverConfig     `json:"destination" binding:"required"`
 	Frequency         string            `json:"frequency" binding:"required" example:"0 */12 * * *"`
 	StreamsConfig     string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	SchemaConfig      string            `json:"schema_config,omitempty" orm:"type(jsonb)"`
 	DifferenceStreams string            `json:"difference_streams,omitempty" example:"[]"`
 	Activate          bool              `json:"activate,omitempty" example:"true"`
 	AdvancedSettings  *AdvancedSettings `json:"advanced_settings,omitempty"`

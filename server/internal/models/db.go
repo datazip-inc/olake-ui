@@ -89,6 +89,7 @@ type Job struct {
 	Active           bool    `json:"active" gorm:"column:active"`
 	Frequency        string  `json:"frequency" gorm:"column:frequency;size:255"`
 	StreamsConfig    string  `json:"streams_config" gorm:"column:streams_config;type:jsonb"`
+	SchemaConfig     *string `json:"schema_config" gorm:"column:schema_config;type:jsonb"`
 	State            string  `json:"state" gorm:"column:state;type:jsonb"`
 	AdvancedSettings *string `json:"advanced_settings" gorm:"column:advanced_settings;type:jsonb"`
 	CreatedByID      int     `json:"-" gorm:"column:created_by_id"`

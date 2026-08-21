@@ -123,6 +123,7 @@ func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, proje
 		Active:           true,
 		Frequency:        req.Frequency,
 		StreamsConfig:    req.StreamsConfig,
+		SchemaConfig:     utils.StringPtr(req.SchemaConfig),
 		State:            "{}",
 		AdvancedSettings: advancedSettings,
 		ProjectID:        projectID,
@@ -207,6 +208,9 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 		"streams_config": req.StreamsConfig,
 		"project_id":     projectID,
 		"updated_by_id":  *userID,
+	}
+	if strings.TrimSpace(req.SchemaConfig) != "" {
+		updateParams["schema_config"] = req.SchemaConfig
 	}
 	if req.AdvancedSettings != nil {
 		b, err := json.Marshal(req.AdvancedSettings)
@@ -517,7 +521,10 @@ func (s Service) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, incl
 		Activate:  job.Active,
 	}
 
-	jobResp.StreamsConfig = utils.Ternary(includeConfig, job.StreamsConfig, "").(string)
+	if includeConfig {
+		jobResp.StreamsConfig = job.StreamsConfig
+		jobResp.SchemaConfig = utils.StringValue(job.SchemaConfig)
+	}
 
 	if job.Source != nil {
 		jobResp.Source = dto.DriverConfig{
