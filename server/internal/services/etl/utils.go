@@ -16,7 +16,6 @@ import (
 	workflowpb "go.temporal.io/api/workflow/v1"
 	workflowservice "go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/converter"
-	"golang.org/x/mod/semver"
 )
 
 // JobLastRunInfo holds the latest run of a job exactly as Temporal reports it.
@@ -262,14 +261,5 @@ func waitForSyncToStop(ctx context.Context, tempClient *temporal.Temporal, proje
 		return fmt.Errorf("timeout waiting for sync to stop after %v", maxWaitTime)
 	}
 
-	return nil
-}
-
-// checks the version compatibility for clear-destination and stream difference operation
-// supported in versions >= v0.3.0
-func CheckClearDestinationCompatibility(sourceVersion string) error {
-	if semver.Compare(sourceVersion, constants.DefaultClearDestinationVersion) < 0 && utils.GetCustomDriverVersion() == "" {
-		return fmt.Errorf("source version %s is not supported for clear destination. please update the source version to %s or higher", sourceVersion, constants.DefaultClearDestinationVersion)
-	}
 	return nil
 }

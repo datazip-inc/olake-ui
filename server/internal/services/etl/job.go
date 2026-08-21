@@ -340,7 +340,7 @@ func (s Service) ClearDestination(ctx context.Context, projectID string, jobID i
 	if job.Source == nil {
 		return fmt.Errorf("job source details not found")
 	}
-	if err := CheckClearDestinationCompatibility(job.Source.Version); err != nil {
+	if err := utils.CheckClearDestinationCompatibility(job.Source.Version); err != nil {
 		return err
 	}
 
@@ -392,7 +392,7 @@ func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, r
 	if job.Source == nil {
 		return nil, fmt.Errorf("job source details not found")
 	}
-	if err := CheckClearDestinationCompatibility(job.Source.Version); err != nil {
+	if err := utils.CheckClearDestinationCompatibility(job.Source.Version); err != nil {
 		return nil, err
 	}
 

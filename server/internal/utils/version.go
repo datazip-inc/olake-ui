@@ -1,15 +1,14 @@
 package utils
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"golang.org/x/mod/semver"
 )
 
-// SupportsSchemaSplit reports whether the source connector version accepts the
-// --schema catalog split flag.
-func SupportsSchemaSplit(version string) bool {
+func CompareAtLeast(version, minVersion string) bool {
 	version = strings.TrimSpace(version)
 	if version == "" {
 		return false
@@ -20,10 +19,48 @@ func SupportsSchemaSplit(version string) bool {
 	if !semver.IsValid(version) {
 		return false
 	}
-	return semver.Compare(version, constants.MinSchemaSplitVersion) >= 0
+
+	minVersion = strings.TrimSpace(minVersion)
+	if !strings.HasPrefix(minVersion, "v") {
+		minVersion = "v" + minVersion
+	}
+	if !semver.IsValid(minVersion) {
+		return false
+	}
+	return semver.Compare(version, minVersion) >= 0
 }
 
 // UseSchemaSplit reports whether schema_config should be mounted and --schema passed.
 func UseSchemaSplit(schemaConfig, version string) bool {
-	return strings.TrimSpace(schemaConfig) != "" && SupportsSchemaSplit(version)
+	return strings.TrimSpace(schemaConfig) != "" && CompareAtLeast(version, constants.MinSchemaSplitVersion)
+}
+
+// SupportsDestinationDatabasePrefix reports whether the driver accepts --destination-database-prefix.
+func SupportsDestinationDatabasePrefix(version string) bool {
+	return GetCustomDriverVersion() != "" || CompareAtLeast(version, constants.DefaultSpecVersion)
+}
+
+// SupportsMaxDiscoverThreads reports whether the driver accepts --max-discover-threads.
+func SupportsMaxDiscoverThreads(version string) bool {
+	return CompareAtLeast(version, constants.DefaultMaxDiscoverThreadsVersion)
+}
+
+// ResolveSpecVersion bumps the version to DefaultSpecVersion when below the minimum
+// required for `spec`, unless a custom driver version override is set.
+func ResolveSpecVersion(version string) string {
+	if GetCustomDriverVersion() == "" && !CompareAtLeast(version, constants.DefaultSpecVersion) {
+		return constants.DefaultSpecVersion
+	}
+	return version
+}
+
+func CheckClearDestinationCompatibility(sourceVersion string) error {
+	if GetCustomDriverVersion() != "" || CompareAtLeast(sourceVersion, constants.DefaultClearDestinationVersion) {
+		return nil
+	}
+	return fmt.Errorf(
+		"source version %s is not supported for clear destination. please update the source version to %s or higher",
+		sourceVersion,
+		constants.DefaultClearDestinationVersion,
+	)
 }

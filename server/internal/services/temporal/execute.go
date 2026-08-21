@@ -13,7 +13,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 	"go.temporal.io/sdk/client"
-	"golang.org/x/mod/semver"
 )
 
 type ExecutionRequest struct {
@@ -86,12 +85,11 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		"/mnt/config/config.json",
 	}
 
-	if jobName != "" && (utils.GetCustomDriverVersion() != "" || semver.Compare(version, "v0.2.0") >= 0) {
+	if jobName != "" && utils.SupportsDestinationDatabasePrefix(version) {
 		cmdArgs = append(cmdArgs, "--destination-database-prefix", jobName)
 	}
 
-	// Only add max-discover-threads flag for versions >= v0.3.18
-	if semver.Compare(version, constants.DefaultMaxDiscoverThreadsVersion) >= 0 {
+	if utils.SupportsMaxDiscoverThreads(version) {
 		threads := constants.DefaultMaxDiscoverThreads
 		if maxDiscoverThreads != nil && *maxDiscoverThreads > 0 {
 			threads = *maxDiscoverThreads
@@ -141,10 +139,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceType, version string) (dto.SpecOutput, error) {
 	workflowID := fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix())
 
-	// spec version >= DefaultSpecVersion is required
-	if semver.Compare(version, constants.DefaultSpecVersion) < 0 && utils.GetCustomDriverVersion() == "" {
-		version = constants.DefaultSpecVersion
-	}
+	version = utils.ResolveSpecVersion(version)
 
 	cmdArgs := []string{
 		"spec",
