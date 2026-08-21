@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,31 +34,27 @@ type jobDetails struct {
 	DestinationType    string
 	DestinationName    string
 	DestinationVersion string
-	Frequency          string
 	Catalog            string
-	StreamsConfig      string
 }
 
 func getJobDetails(jobID int) (*jobDetails, error) {
 	job, err := instance.db.GetJobByID(jobID, true)
-	if err != nil {
-		// A decryption failure must not cost us the whole event - retry
-		// without decrypt; catalog just falls back to "none" below.
+	if errors.Is(err, constants.ErrConfigDecrypt) {
+		// Decryption failure must not cost us the whole event - retry
+		// without decrypt; catalog falls back to "unknown" below.
 		job, err = instance.db.GetJobByID(jobID, false)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get job details: %s", err)
-		}
 	}
-	if job == nil {
-		return nil, fmt.Errorf("job not found")
+	if err != nil || job == nil {
+		if job == nil {
+			return nil, fmt.Errorf("job not found")
+		}
+		return nil, fmt.Errorf("failed to get job details: %s", err)
 	}
 
 	details := &jobDetails{
-		JobName:       job.Name,
-		CreatedAt:     job.CreatedAt,
-		Frequency:     job.Frequency,
-		StreamsConfig: job.StreamsConfig,
-		Catalog:       "unknown",
+		JobName:   job.Name,
+		CreatedAt: job.CreatedAt,
+		Catalog:   "unknown",
 	}
 
 	if job.CreatedBy != nil {
@@ -111,7 +108,6 @@ func prepareCommonProperties(info SyncEventInfo, eventType string, details *jobD
 		"destination_type":    details.DestinationType,
 		"destination_name":    details.DestinationName,
 		"destination_version": details.DestinationVersion,
-		"frequency":           details.Frequency,
 		"catalog":             details.Catalog,
 		"environment":         info.ExecutionEnvironment,
 	}
@@ -119,7 +115,6 @@ func prepareCommonProperties(info SyncEventInfo, eventType string, details *jobD
 	if info.SyncRunCount > 0 {
 		props["sync_run_count"] = info.SyncRunCount
 	}
-
 	timeKey := "ended_at"
 	if eventType == EventSyncStarted {
 		timeKey = "started_at"
@@ -147,10 +142,12 @@ func TrackSyncEvent(info SyncEventInfo, eventType string) {
 			return
 		}
 
-		// Best-effort: a missing or unparsable stats.json must not drop the
-		// event. There's nothing to enrich yet at "started".
+		// Best-effort: a missing or unparsable stats.json/streams.json must
+		// not drop the event. There's nothing to enrich yet at "started".
 		if eventType != EventSyncStarted {
-			enrichWithSyncStats(properties, info.WorkflowID)
+			if err := enrichWithSyncStats(properties, info.WorkflowID); err != nil {
+				logger.Debugf("failed to enrich %s event: %s", eventType, err)
+			}
 		}
 
 		if err := TrackEvent(context.Background(), eventType, properties); err != nil {
@@ -159,13 +156,11 @@ func TrackSyncEvent(info SyncEventInfo, eventType string) {
 	}()
 }
 
-// buildProperties forwards the worker's pre-resolved properties when present
-// (newer workers always send them); otherwise falls back to enriching from
-// the DB - the legacy path for workers that don't send properties yet,
-// deletable once the min supported worker sends them.
+// buildProperties forwards the worker's pre-resolved properties when present.
+// Falls back to enriching from the DB for legacy workers that don't send them.
 func buildProperties(info SyncEventInfo, eventType string) (map[string]interface{}, error) {
 	if len(info.Properties) > 0 {
-		props := make(map[string]interface{}, len(info.Properties)+2)
+		props := make(map[string]interface{}, len(info.Properties)+1)
 		for k, v := range info.Properties {
 			props[k] = v
 		}
@@ -176,33 +171,42 @@ func buildProperties(info SyncEventInfo, eventType string) (map[string]interface
 			timeKey = "started_at"
 		}
 		props[timeKey] = time.Now().UTC().Format(time.RFC3339)
+
+		if details, err := getJobDetails(info.JobID); err == nil {
+			props["catalog"] = details.Catalog
+		}
 		return props, nil
 	}
 
+	// Old worker - upgraded workers always send Properties, so this path is dead post-upgrade.
 	details, err := getJobDetails(info.JobID)
 	if err != nil {
 		return nil, err
 	}
-	properties := prepareCommonProperties(info, eventType, details)
-	addStreamsProperties(properties, details.StreamsConfig)
-	return properties, nil
+	return prepareCommonProperties(info, eventType, details), nil
 }
 
-// enrichWithSyncStats attaches records_synced/memory_used from stats.json when
-// available. Silently no-ops if the file is missing or unparsable - callers
-// must not treat that as a reason to drop the event.
-func enrichWithSyncStats(properties map[string]interface{}, workflowID string) {
+func enrichWithSyncStats(properties map[string]interface{}, workflowID string) error {
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
-	statsPath := filepath.Join(constants.DefaultConfigDir, syncFolderName, "stats.json")
+	mainSyncDir := filepath.Join(constants.DefaultConfigDir, syncFolderName)
 
+	if err := addStatsProperties(properties, mainSyncDir); err != nil {
+		return err
+	}
+
+	return addStreamsProperties(properties, mainSyncDir)
+}
+
+func addStatsProperties(properties map[string]interface{}, mainSyncDir string) error {
+	statsPath := filepath.Join(mainSyncDir, "stats.json")
 	statsData, err := os.ReadFile(statsPath)
 	if err != nil {
-		return
+		return err
 	}
 
 	var stats map[string]interface{}
 	if err := json.Unmarshal(statsData, &stats); err != nil {
-		return
+		return err
 	}
 
 	if recordsSynced, ok := stats["Synced Records"]; ok {
@@ -211,76 +215,40 @@ func enrichWithSyncStats(properties map[string]interface{}, workflowID string) {
 	if memory, ok := stats["Memory"]; ok {
 		properties["memory_used"] = memory
 	}
+	return nil
 }
 
-// addStreamsProperties computes sync-mode and stream-selection properties
-// from the job's DB-backed streams_config, mirroring olake core's
-// types.Catalog shape: {selected_streams: {ns: [{stream_name,...}]},
-// streams: [{stream: {name, namespace, sync_mode}}]}. Sourcing this from the
-// DB rather than the on-disk streams.json means it's available on every sync
-// event, not just sync_completed. Emits counts only - never stream names,
-// which are customer data.
-func addStreamsProperties(properties map[string]interface{}, streamsConfig string) {
-	if streamsConfig == "" {
-		return
+func addStreamsProperties(properties map[string]interface{}, mainSyncDir string) error {
+	streamsPath := filepath.Join(mainSyncDir, "streams.json")
+	streamsData, err := os.ReadFile(streamsPath)
+	if err != nil {
+		return fmt.Errorf("failed to read streams.json: %s", err)
 	}
 
-	var cfg struct {
+	var streamsConfig struct {
 		SelectedStreams map[string][]struct {
-			StreamName     string `json:"stream_name"`
 			Normalization  bool   `json:"normalization"`
 			PartitionRegex string `json:"partition_regex"`
 		} `json:"selected_streams"`
-		Streams []struct {
-			Stream struct {
-				Name      string `json:"name"`
-				Namespace string `json:"namespace"`
-				SyncMode  string `json:"sync_mode"`
-			} `json:"stream"`
-		} `json:"streams"`
-	}
-	if err := json.Unmarshal([]byte(streamsConfig), &cfg); err != nil {
-		return
 	}
 
-	selected := make(map[string]bool)
-	selectedCount, normalizedCount, partitionedCount := 0, 0, 0
-	for ns, streams := range cfg.SelectedStreams {
-		for _, s := range streams {
-			selected[ns+"."+s.StreamName] = true
-			selectedCount++
-			if s.Normalization {
+	if err := json.Unmarshal(streamsData, &streamsConfig); err != nil {
+		return fmt.Errorf("error unmarshalling streams.json: %s", err)
+	}
+
+	normalizedCount, partitionedCount := 0, 0
+	for _, streams := range streamsConfig.SelectedStreams {
+		for _, stream := range streams {
+			if stream.Normalization {
 				normalizedCount++
 			}
-			if s.PartitionRegex != "" {
+			if stream.PartitionRegex != "" {
 				partitionedCount++
 			}
 		}
 	}
 
-	var fullRefreshCount, incrementalCount, cdcCount, strictCDCCount int
-	for _, cs := range cfg.Streams {
-		key := cs.Stream.Namespace + "." + cs.Stream.Name
-		if !selected[key] {
-			continue
-		}
-		switch cs.Stream.SyncMode {
-		case "full_refresh":
-			fullRefreshCount++
-		case "incremental":
-			incrementalCount++
-		case "cdc":
-			cdcCount++
-		case "strict_cdc":
-			strictCDCCount++
-		}
-	}
-
-	properties["full_refresh_streams_count"] = fullRefreshCount
-	properties["incremental_streams_count"] = incrementalCount
-	properties["cdc_streams_count"] = cdcCount
-	properties["strict_cdc_streams_count"] = strictCDCCount
-	properties["selected_streams_count"] = selectedCount
 	properties["normalized_streams_count"] = normalizedCount
 	properties["partitioned_streams_count"] = partitionedCount
+	return nil
 }
