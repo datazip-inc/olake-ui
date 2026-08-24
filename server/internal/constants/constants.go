@@ -11,19 +11,19 @@ import (
 )
 
 var (
-	defaultPort      = 8000
-	version          = "Not Set"
-	commitsha        = "Not Set"
-	releasechannel   = "Not Set"
-	defaultBaseHost  = "localhost"
-	DefaultTimeZone  = "Asia/Kolkata"
-	DefaultUsername  = "olake"
-	DefaultPassword  = "password"
-	EncryptionKey    = "OLAKE_SECRET_KEY"
-	TableNameMap     = map[TableType]string{}
-	DefaultConfigDir  = "/tmp/olake-config"
-	DefaultFileMode   os.FileMode = 0o644
-	DefaultDirMode    os.FileMode = 0o755
+	defaultPort                  = 8000
+	version                      = "Not Set"
+	commitsha                    = "Not Set"
+	releasechannel               = "Not Set"
+	defaultBaseHost              = "localhost"
+	DefaultTimeZone              = "Asia/Kolkata"
+	DefaultUsername              = "olake"
+	DefaultPassword              = "password"
+	EncryptionKey                = "OLAKE_SECRET_KEY"
+	TableNameMap                 = map[TableType]string{}
+	DefaultConfigDir             = "/tmp/olake-config"
+	DefaultFileMode  os.FileMode = 0o644
+	DefaultDirMode   os.FileMode = 0o755
 
 	DefaultLogRetentionPeriod   = 30
 	DefaultCancelSyncWaitTime   = 30 * time.Second
@@ -33,7 +33,7 @@ var (
 	DefaultSpecVersion               = "v0.2.0"
 	DefaultClearDestinationVersion   = "v0.3.0"
 	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
-	// TODO: set to the actual release version before shipping.
+	// TODO(BEFORE_MERGE): set to the actual release version before shipping.
 	MinSchemaSplitVersion = "v0.8.0"
 
 	// logging
