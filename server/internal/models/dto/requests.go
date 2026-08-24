@@ -52,6 +52,9 @@ type StreamsRequest struct {
 	MaxDiscoverThreads *int   `json:"max_discover_threads,omitempty" example:"50"`
 	JobID              int    `json:"job_id" binding:"required" example:"1"`
 	JobName            string `json:"job_name" binding:"required" example:"my-sync-job"`
+	// SchemaSplit requests a split catalog response: streams_config (selected_streams only)
+	// and schema_config (streams[] only). Falls back to combined when unsupported
+	SchemaSplit bool `json:"schema_split,omitempty" example:"false"`
 }
 
 // TODO: frontend needs to send only version no need for source version

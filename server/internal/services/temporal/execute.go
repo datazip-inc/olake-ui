@@ -3,6 +3,7 @@ package temporal
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -66,7 +67,7 @@ const (
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
 
 // DiscoverStreams runs a workflow to discover catalog data
-func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int) (map[string]interface{}, error) {
+func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int, schemaSplit bool) (map[string]interface{}, map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
 
 	configs := []JobConfig{
@@ -76,7 +77,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	}
 
 	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
-		return nil, fmt.Errorf("failed to setup config files: %s", err)
+		return nil, nil, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	cmdArgs := []string{
@@ -99,6 +100,10 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 
 	if streamsConfig != "" {
 		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
+	}
+
+	if schemaSplit && utils.SupportsSchemaFlag(version) {
+		cmdArgs = append(cmdArgs, "--schema", "/mnt/config/schema.json")
 	}
 
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
@@ -124,15 +129,25 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 
 	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute discover workflow: %s", err)
+		return nil, nil, fmt.Errorf("failed to execute discover workflow: %s", err)
 	}
 
-	result, err := ExtractWorkflowResponse(ctx, run)
+	streamsResult, err := ExtractWorkflowResponse(ctx, run)
 	if err != nil {
-		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
+		return nil, nil, fmt.Errorf("failed to extract workflow response: %v", err)
 	}
 
-	return result, nil
+	if !schemaSplit || !utils.SupportsSchemaFlag(version) {
+		return streamsResult, nil, nil
+	}
+
+	schemaPath := filepath.Join(constants.DefaultConfigDir, workflowID, "schema.json")
+	schemaResult, err := utils.ReadJSONFile(schemaPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read schema.json from %s: %w", schemaPath, err)
+	}
+
+	return streamsResult, schemaResult, nil
 }
 
 // FetchSpec runs a workflow to fetch driver specifications

@@ -73,7 +73,7 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 	}, nil
 }
 
-// extractWorkflowResponse extracts and parses the JSON response from a workflow execution result
+// ExtractWorkflowResponse extracts and parses the JSON response from a workflow execution result
 func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 	if err := run.Get(ctx, &result); err != nil {

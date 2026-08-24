@@ -2,6 +2,7 @@ package etl
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -242,22 +243,22 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 	return result, logs.Logs, nil
 }
 
-func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) (map[string]interface{}, error) {
+func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) (dto.CatalogResponse, error) {
 	oldStreams := ""
 	if req.JobID >= 0 {
 		job, err := s.db.GetJobByID(req.JobID, true)
 		if err != nil {
-			return nil, fmt.Errorf("failed to find job for catalog: %s", err)
+			return dto.CatalogResponse{}, fmt.Errorf("failed to find job for catalog: %s", err)
 		}
 		oldStreams = job.StreamsConfig
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt config for catalog: %s", err)
+		return dto.CatalogResponse{}, fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 
-	newStreams, err := s.temporal.DiscoverStreams(
+	streamsMap, schemaMap, err := s.temporal.DiscoverStreams(
 		ctx,
 		req.Type,
 		req.Version,
@@ -265,12 +266,27 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) 
 		oldStreams,
 		req.JobName,
 		req.MaxDiscoverThreads,
+		req.SchemaSplit,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get catalog: %s", err)
+		return dto.CatalogResponse{}, fmt.Errorf("failed to get catalog: %s", err)
 	}
 
-	return newStreams, nil
+	streamsConfig, err := json.Marshal(streamsMap)
+	if err != nil {
+		return dto.CatalogResponse{}, fmt.Errorf("failed to marshal streams config: %s", err)
+	}
+
+	resp := dto.CatalogResponse{StreamsConfig: string(streamsConfig)}
+	if schemaMap != nil {
+		schemaConfig, err := json.Marshal(schemaMap)
+		if err != nil {
+			return dto.CatalogResponse{}, fmt.Errorf("failed to marshal schema config: %s", err)
+		}
+		resp.SchemaConfig = string(schemaConfig)
+	}
+
+	return resp, nil
 }
 
 func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {

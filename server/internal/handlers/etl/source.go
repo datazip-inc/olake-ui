@@ -228,9 +228,10 @@ func (h *Handler) TestSourceConnection(c *gin.Context) {
 // @Summary Get source stream catalog
 // @Tags Sources
 // @Description Discover and list available data streams from a source.
+// @Description Always returns dto.CatalogResponse: streams_config (JSON string) and optional schema_config when split discover ran.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.StreamsRequest true "streams request data"
-// @Success 200 {object} dto.JSONResponse{data=object}
+// @Success 200 {object} dto.JSONResponse{data=dto.CatalogResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 413 {object} dto.Error413Response "payload too large"

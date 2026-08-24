@@ -86,6 +86,14 @@ type StreamDifferenceResponse struct {
 	DifferenceStreams map[string]interface{} `json:"difference_streams" swaggertype:"object"`
 }
 
+// CatalogResponse is always returned by the discover (sources/streams) endpoint.
+// streams_config holds the catalog JSON from streams.json (combined or selected_streams only when split).
+// schema_config holds the schema JSON from schema.json when split discover ran
+type CatalogResponse struct {
+	StreamsConfig string `json:"streams_config"`
+	SchemaConfig  string `json:"schema_config,omitempty"`
+}
+
 type ClearDestinationStatusResponse struct {
 	Running bool `json:"running" example:"false"`
 }

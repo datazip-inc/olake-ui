@@ -40,6 +40,11 @@ func SupportsMaxDiscoverThreads(version string) bool {
 	return CompareAtLeast(version, constants.DefaultMaxDiscoverThreadsVersion)
 }
 
+// SupportsSchemaFlag reports whether the driver accepts --schema on discover.
+func SupportsSchemaFlag(version string) bool {
+	return GetCustomDriverVersion() != "" || CompareAtLeast(version, constants.MinSchemaSplitVersion)
+}
+
 // ResolveSpecVersion bumps the version to DefaultSpecVersion when below the minimum
 // required for `spec`, unless a custom driver version override is set.
 func ResolveSpecVersion(version string) string {
