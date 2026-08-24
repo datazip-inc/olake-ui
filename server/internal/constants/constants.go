@@ -33,8 +33,6 @@ var (
 	DefaultSpecVersion               = "v0.2.0"
 	DefaultClearDestinationVersion   = "v0.3.0"
 	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
-	// TODO: set to the actual release version before shipping.
-	MinSchemaSplitVersion = "v0.8.0"
 
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"

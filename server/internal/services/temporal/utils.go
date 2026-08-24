@@ -58,15 +58,6 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 		"--destination", "/mnt/config/destination.json",
 	}
 
-	if schema := utils.StringValue(job.SchemaConfig); utils.UseSchemaSplit(schema, job.Source.Version) {
-		schemaRelativePath := filepath.Join(streamsDir, "schema.json")
-		schemaPath := filepath.Join(constants.DefaultConfigDir, schemaRelativePath)
-		if err := utils.WriteFile(schemaPath, []byte(schema), constants.DefaultFileMode); err != nil {
-			return nil, fmt.Errorf("failed to write schema config to file: %v", err)
-		}
-		args = append(args, "--schema", "/mnt/config/schema.json")
-	}
-
 	return &ExecutionRequest{
 		Command:       ClearDestination,
 		ConnectorType: job.Source.Type,

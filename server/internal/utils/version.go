@@ -30,11 +30,6 @@ func CompareAtLeast(version, minVersion string) bool {
 	return semver.Compare(version, minVersion) >= 0
 }
 
-// UseSchemaSplit reports whether schema_config should be mounted and --schema passed.
-func UseSchemaSplit(schemaConfig, version string) bool {
-	return strings.TrimSpace(schemaConfig) != "" && CompareAtLeast(version, constants.MinSchemaSplitVersion)
-}
-
 // SupportsDestinationDatabasePrefix reports whether the driver accepts --destination-database-prefix.
 func SupportsDestinationDatabasePrefix(version string) bool {
 	return GetCustomDriverVersion() != "" || CompareAtLeast(version, constants.DefaultSpecVersion)
