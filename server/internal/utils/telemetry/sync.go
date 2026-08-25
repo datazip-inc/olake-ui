@@ -34,7 +34,7 @@ type jobDetails struct {
 	DestinationType    string
 	DestinationName    string
 	DestinationVersion string
-	Catalog            string
+	DestinationCatalog string
 }
 
 func getJobDetails(jobID int) (*jobDetails, error) {
@@ -54,7 +54,6 @@ func getJobDetails(jobID int) (*jobDetails, error) {
 	details := &jobDetails{
 		JobName:   job.Name,
 		CreatedAt: job.CreatedAt,
-		Catalog:   "unknown",
 	}
 
 	if job.CreatedBy != nil {
@@ -73,7 +72,7 @@ func getJobDetails(jobID int) (*jobDetails, error) {
 		details.DestinationType = job.Destination.DestType
 		details.DestinationName = job.Destination.Name
 		details.DestinationVersion = job.Destination.Version
-		details.Catalog = parseCatalogType(job.Destination.Config)
+		details.DestinationCatalog = parseCatalogType(job.Destination.Config)
 	}
 
 	return details, nil
@@ -95,6 +94,8 @@ func parseCatalogType(config string) string {
 	return "none"
 }
 
+// DEPRECATED: only used for legacy workers that don't send pre-resolved
+// properties. Upgraded workers always do; remove once no old workers remain.
 func prepareCommonProperties(info SyncEventInfo, eventType string, details *jobDetails) map[string]interface{} {
 	props := map[string]interface{}{
 		"job_id":              info.JobID,
@@ -108,7 +109,7 @@ func prepareCommonProperties(info SyncEventInfo, eventType string, details *jobD
 		"destination_type":    details.DestinationType,
 		"destination_name":    details.DestinationName,
 		"destination_version": details.DestinationVersion,
-		"catalog":             details.Catalog,
+		"catalog":             details.DestinationCatalog,
 		"environment":         info.ExecutionEnvironment,
 	}
 
@@ -173,12 +174,13 @@ func buildProperties(info SyncEventInfo, eventType string) (map[string]interface
 		props[timeKey] = time.Now().UTC().Format(time.RFC3339)
 
 		if details, err := getJobDetails(info.JobID); err == nil {
-			props["catalog"] = details.Catalog
+			props["catalog"] = details.DestinationCatalog
 		}
 		return props, nil
 	}
 
-	// Old worker - upgraded workers always send Properties, so this path is dead post-upgrade.
+	// DEPRECATED: legacy worker path. Upgraded workers always send Properties,
+	// so this is dead post-upgrade.
 	details, err := getJobDetails(info.JobID)
 	if err != nil {
 		return nil, err
