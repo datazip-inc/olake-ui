@@ -16,6 +16,7 @@ import {
 	handleSpecResponse,
 	formatApiErrorMessage,
 } from "@/common/utils"
+import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import {
 	useCatalogDetails,
@@ -171,7 +172,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 	const handleSaveCatalog = async () => {
 		const isValid = await validateForm()
 		if (!isValid) return
-
+		trackEvent(AnalyticsEvent.CatalogConnectClicked)
 		try {
 			if (isEditMode) {
 				await updateCatalogMutation.mutateAsync({

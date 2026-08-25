@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { DataTable, PageErrorState } from "@/common/components"
 import { ErrorLogsModal } from "@/common/components/modals"
 import { usePaginatedSearch } from "@/common/hooks"
+import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import { catalogKeys } from "@/modules/maintenance/features/catalogs/constants"
 import { useCatalogs } from "@/modules/maintenance/features/catalogs/hooks"
 
@@ -188,7 +189,10 @@ const Tables: React.FC = () => {
 			cancelTableRunVariables?.tableName === tableName
 
 		const actions: TableActions = {
-			onViewLogs: row => navigate(getTableRunsPath(row.name)),
+			onViewLogs: row => {
+				trackEvent(AnalyticsEvent.ViewRunsAndLogsClicked)
+				navigate(getTableRunsPath(row.name))
+			},
 			onCancelRun: row => {
 				const runId = getCancelRunID(row)
 				if (!runId) return
@@ -217,6 +221,7 @@ const Tables: React.FC = () => {
 				})
 			},
 			onViewMetrics: row => {
+				trackEvent(AnalyticsEvent.ViewTableMetricsClicked)
 				setMetricsTableName(row.name)
 				setMetricsModalOpen(true)
 			},
@@ -422,7 +427,16 @@ const Tables: React.FC = () => {
 				error={optimizationErrorLogs.join("\n")}
 				onAction={() => {
 					setOptimizationErrorOpen(false)
-					if (lastToggleRequest) toggleTableOptimizing(lastToggleRequest)
+					if (lastToggleRequest) {
+						toggleTableOptimizing(lastToggleRequest, {
+							onSuccess: result => {
+								if (!result.success) {
+									setOptimizationErrorLogs(result.logs ?? [])
+									setOptimizationErrorOpen(true)
+								}
+							},
+						})
+					}
 				}}
 				actionButtonText="Retry"
 			/>

@@ -4,10 +4,12 @@
 
 import axios from "axios"
 
+import { sessionStore } from "@/common/utils"
 import { api } from "@/core/api"
 
 // endpoint which handles rate limiting and forwards the events to mixpanel
 const ANALYTICS_ENDPOINT = "https://analytics.olake.io/mp/track"
+const SYSTEM_INFO_SESSION_KEY = "analytics_system_info"
 
 const sendAnalyticsEvent = async (
 	eventName: string,
@@ -49,7 +51,21 @@ const getLocationInfo = async (ip: string) => {
 	}
 }
 
-const getSystemInfo = async () => {
+type SystemInfo = {
+	os: string
+	arch: string
+	device_cpu: string
+	ip_address: string
+	location:
+		| {
+				country: string
+				region: string
+				city: string
+		  }
+		| ""
+}
+
+const fetchSystemInfo = async (): Promise<SystemInfo> => {
 	const ip = await getIPAddress()
 	const location = ip ? await getLocationInfo(ip) : null
 
@@ -59,8 +75,20 @@ const getSystemInfo = async () => {
 		device_cpu: navigator.hardwareConcurrency + " cores",
 		ip_address: ip,
 		location: location || "",
-		timestamp: new Date().toISOString(),
 	}
+}
+
+const getSystemInfo = async (): Promise<SystemInfo> => {
+	const cached = sessionStore.get<SystemInfo>(SYSTEM_INFO_SESSION_KEY)
+	if (cached) {
+		return cached
+	}
+
+	const systemInfo = await fetchSystemInfo()
+	if (systemInfo.ip_address && systemInfo.location) {
+		sessionStore.set(SYSTEM_INFO_SESSION_KEY, systemInfo)
+	}
+	return systemInfo
 }
 
 // returns a unique user id  and olake-ui version for the user to track them across sessions
@@ -100,6 +128,7 @@ export const trackEvent = async (
 			olake_ui_version: version,
 			...properties,
 			...systemInfo,
+			timestamp: new Date().toISOString(),
 			...(username && { username }),
 		}
 

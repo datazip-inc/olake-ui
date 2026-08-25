@@ -12,6 +12,7 @@ import { useState } from "react"
 import { DataTable, PageErrorState, Tag } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
 import { usePaginatedSearch } from "@/common/hooks"
+import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { CatalogModal } from "../components"
 import { useCatalogs, useDeleteCatalog } from "../hooks"
@@ -32,6 +33,12 @@ const Catalogs: React.FC = () => {
 		setModalOpen(false)
 		setActiveCatalogName(undefined)
 	}
+
+	const openNewCatalogModal = () => {
+		trackEvent(AnalyticsEvent.AddCatalogClicked)
+		setModalOpen(true)
+	}
+
 	const { data: catalogRows = [], isLoading, isError, refetch } = useCatalogs()
 
 	const {
@@ -155,7 +162,7 @@ const Catalogs: React.FC = () => {
 					<Button
 						type="primary"
 						icon={<PlusIcon size={16} />}
-						onClick={() => setModalOpen(true)}
+						onClick={openNewCatalogModal}
 					>
 						New Catalog
 					</Button>
@@ -190,7 +197,7 @@ const Catalogs: React.FC = () => {
 							title: "No Catalogs Available",
 							subtitle:
 								"Create a new catalog to view tables for optimizations.",
-							onRefetch: () => setModalOpen(true),
+							onRefetch: openNewCatalogModal,
 							refetchLabel: "New Catalog",
 						}}
 					/>

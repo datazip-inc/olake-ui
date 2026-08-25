@@ -6,15 +6,16 @@ import { useNavigate, useParams } from "react-router-dom"
 
 import { DataTable } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
+import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { RunMetricsSidebar } from "../components"
-import { useRunHistoryFilters, useTableRuns } from "../hooks"
+import { useRunHistoryFilters, useTableDetails, useTableRuns } from "../hooks"
 import type { RunHistoryFilter, RunMetricRow, TableRun } from "../types"
 import { getRunLogsStatusConfig } from "../utils"
 
 const getColumns = (
 	handleMetricsClick: (row: TableRun) => void,
-	handleLogsClick: (runId: string) => void,
+	handleLogsClick: (run: TableRun) => void,
 ): ColumnDef<TableRun>[] => [
 	{
 		key: "runId",
@@ -89,7 +90,7 @@ const getColumns = (
 		render: row => (
 			<Button
 				size="small"
-				onClick={() => handleLogsClick(row.runId)}
+				onClick={() => handleLogsClick(row)}
 			>
 				View
 			</Button>
@@ -128,12 +129,26 @@ const RunHistory: React.FC = () => {
 		status,
 	)
 
+	const { data: tableDetails } = useTableDetails(
+		decodedCatalog,
+		decodedDatabase,
+		decodedTableName,
+	)
+
 	const runs = data?.runs ?? []
 	const totalRuns = data?.total ?? 0
 
 	const totalPages = Math.max(1, Math.ceil(totalRuns / pageSize))
 
+	const getRunEventProperties = (run: TableRun) => ({
+		table_size: tableDetails?.totalSize ?? "--",
+		status: run.status,
+		type: run.type,
+		duration: run.duration,
+	})
+
 	const handleMetricsClick = (row: TableRun) => {
+		trackEvent(AnalyticsEvent.ViewMetricsClicked, getRunEventProperties(row))
 		setSelectedRunId(row.runId)
 		setMetricsSidebarOpen(true)
 		setMetricsRows(row.metrics)
@@ -141,9 +156,12 @@ const RunHistory: React.FC = () => {
 	const getRunLogsPath = (runId: string) =>
 		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(runId)}/logs`
 
-	const columns = getColumns(handleMetricsClick, runId =>
-		navigate(getRunLogsPath(runId)),
-	)
+	const handleLogsClick = (row: TableRun) => {
+		trackEvent(AnalyticsEvent.ViewLogsClicked, getRunEventProperties(row))
+		navigate(getRunLogsPath(row.runId))
+	}
+
+	const columns = getColumns(handleMetricsClick, handleLogsClick)
 
 	return (
 		<div className="min-h-full bg-white px-6 pt-6">
