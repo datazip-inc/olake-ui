@@ -94,7 +94,9 @@ func parseCatalogType(config string) string {
 	return "none"
 }
 
-// DEPRECATED: only used for legacy workers that don't send pre-resolved
+// prepareCommonProperties builds sync event properties from the DB.
+//
+// Deprecated: only used for legacy workers that don't send pre-resolved
 // properties. Upgraded workers always do; remove once no old workers remain.
 func prepareCommonProperties(info SyncEventInfo, eventType string, details *jobDetails) map[string]interface{} {
 	props := map[string]interface{}{
@@ -179,7 +181,7 @@ func buildProperties(info SyncEventInfo, eventType string) (map[string]interface
 		return props, nil
 	}
 
-	// DEPRECATED: legacy worker path. Upgraded workers always send Properties,
+	// Deprecated: legacy worker path. Upgraded workers always send Properties,
 	// so this is dead post-upgrade.
 	details, err := getJobDetails(info.JobID)
 	if err != nil {
