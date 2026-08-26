@@ -1,6 +1,8 @@
 package etl
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -695,11 +697,32 @@ func (s Service) RecoverFromClearDestination(ctx context.Context, projectID stri
 
 // StreamLogArchive creates and streams a tar.gz archive of job logs to the provided writer.
 func (s Service) StreamLogArchive(ctx context.Context, jobID int, taskLogFilePath string, writer io.Writer) error {
-	logger.Infof("Starting log archive creation for job_id[%d]", jobID)
-	if err := utils.StreamTaskLogArchive(ctx, taskLogFilePath, writer); err != nil {
+	baseDir, err := utils.GetAndValidateLogBaseDir(ctx, taskLogFilePath)
+	if err != nil {
 		return err
 	}
+
+	_, err = utils.GetAndValidateSyncFolder(ctx, baseDir)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("Starting log archive creation for job_id[%d]", jobID)
+
+	// Create streaming pipeline: tarWriter → gzipWriter → writer
+	gzipWriter := gzip.NewWriter(writer)
+	defer gzipWriter.Close()
+
+	tarWriter := tar.NewWriter(gzipWriter)
+	defer tarWriter.Close()
+
+	logger.Debugf("Adding files from %s to archive", baseDir)
+	if err := utils.AddFilesToArchive(ctx, baseDir, tarWriter); err != nil {
+		return err
+	}
+
 	logger.Infof("Successfully created log archive for job_id[%d]", jobID)
+
 	return nil
 }
 

@@ -1,16 +1,20 @@
 package utils
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
 	"path"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/storage"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 type logChunkFile struct {
@@ -20,12 +24,12 @@ type logChunkFile struct {
 
 // readLogsFromS3 reads the logs from S3 for a workflow.
 func readLogsFromS3(ctx context.Context, workflowID string, cursor int64, _ int, direction string) (*dto.TaskLogsResponse, error) {
-	workflowHash, err := validateS3LogBase(ctx, workflowID)
+	workflowHash, err := GetAndValidateS3LogBaseDir(ctx, workflowID)
 	if err != nil {
 		return nil, err
 	}
 
-	syncFolder, err := getS3SyncFolder(ctx, workflowHash)
+	syncFolder, err := GetAndValidateS3SyncDir(ctx, workflowHash)
 	if err != nil {
 		return nil, err
 	}
@@ -39,8 +43,8 @@ func readLogsFromS3(ctx context.Context, workflowID string, cursor int64, _ int,
 	return processS3Logs(ctx, syncLogDir, chunks, cursor, direction)
 }
 
-// validateS3LogBase validates the S3 log base directory.
-func validateS3LogBase(ctx context.Context, workflowID string) (string, error) {
+// GetAndValidateS3LogBaseDir validates the S3 log base directory.
+func GetAndValidateS3LogBaseDir(ctx context.Context, workflowID string) (string, error) {
 	workflowHash := WorkflowHash(workflowID)
 	exists, err := storage.PrefixExists(ctx, workflowHash)
 	if err != nil {
@@ -53,8 +57,8 @@ func validateS3LogBase(ctx context.Context, workflowID string) (string, error) {
 	return workflowHash, nil
 }
 
-// getS3SyncFolder gets the S3 sync folder name for a workflow.
-func getS3SyncFolder(ctx context.Context, workflowHash string) (string, error) {
+// GetAndValidateS3SyncDir gets the S3 sync folder name for a workflow.
+func GetAndValidateS3SyncDir(ctx context.Context, workflowHash string) (string, error) {
 	syncFolders, err := storage.ListFolderNamesWithPrefix(ctx, path.Join(workflowHash, "logs/sync_"))
 	if err != nil {
 		return "", err
@@ -108,7 +112,7 @@ func parseNumberedLogChunkName(name, prefix string) (int, bool) {
 // readS3ChunkLines reads the lines from a S3 log chunk.
 func readS3ChunkLines(ctx context.Context, syncLogDir string, chunk logChunkFile) ([]string, error) {
 	chunkPath := path.Join(syncLogDir, chunk.name)
-	content, err := storage.ReadFileFromS3(ctx, "", chunkPath, false)
+	content, _, err := storage.ReadFileFromS3(ctx, "", chunkPath, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read log chunk %s: %s", chunkPath, err)
 	}
@@ -164,4 +168,60 @@ func processS3Logs(ctx context.Context, syncLogDir string, chunks []logChunkFile
 		HasMoreOlder: currentFileNumber > firstFileNumber,
 		HasMoreNewer: currentFileNumber < lastFileNumber,
 	}, nil
+}
+
+func addS3FilesToArchive(ctx context.Context, workflowHash string, tarWriter *tar.Writer) error {
+	stateFile := path.Join(workflowHash, "state.json")
+	body, modTime, err := storage.ReadFileFromS3(ctx, "", stateFile, false)
+	if err != nil {
+		logger.Warnf("failed to add state.json to archive: %s", err)
+	} else if err := addBytesToArchive(tarWriter, "state.json", []byte(body), modTime); err != nil {
+		return err
+	}
+
+	objectPaths, err := storage.ListAllObjectRelPaths(ctx, path.Join(workflowHash, "logs"))
+	if err != nil {
+		return err
+	}
+
+	for _, objectPath := range objectPaths {
+		archiveName, ok := archiveNameUnderWorkflow(workflowHash, objectPath)
+		if !ok {
+			continue
+		}
+
+		body, modTime, err := storage.ReadFileFromS3(ctx, "", objectPath, false)
+		if err != nil {
+			logger.Warnf("failed to add %s to archive: %s", objectPath, err)
+			continue
+		}
+
+		if err := addBytesToArchive(tarWriter, archiveName, []byte(body), modTime); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func archiveNameUnderWorkflow(workflowHash, objectPath string) (string, bool) {
+	prefix := strings.TrimSuffix(workflowHash, "/") + "/"
+	name := strings.TrimPrefix(objectPath, prefix)
+	if strings.HasPrefix(name, "logs/") {
+		return path.Join("logs", path.Base(name)), true
+	}
+
+	return "", false
+}
+
+func addBytesToArchive(tarWriter *tar.Writer, nameInArchive string, data []byte, modTime time.Time) error {
+	header := &tar.Header{
+		Name:    nameInArchive,
+		Size:    int64(len(data)),
+		Mode:    0644,
+		ModTime: modTime,
+	}
+
+	_, err := writeToArchive(tarWriter, header, bytes.NewReader(data))
+	return err
 }

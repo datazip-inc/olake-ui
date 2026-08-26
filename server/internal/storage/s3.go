@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -19,10 +20,11 @@ import (
 	"github.com/spf13/viper"
 )
 
-// JobConfig is a named blob written to S3.
+// JobConfig is a blob written to S3. RelativePath is the object path under workDir
+// (a filename like config.json, or a nested path like telemetry/user_id.txt).
 type JobConfig struct {
-	Name string `json:"name"`
-	Data string `json:"data"`
+	RelativePath string `json:"relative_path"`
+	Data         string `json:"data"`
 }
 
 var (
@@ -104,7 +106,7 @@ func WriteFilesToS3(ctx context.Context, workDir string, configs []JobConfig) er
 	}
 
 	for _, jobConfig := range configs {
-		key, err := configStorageKey(workDir, jobConfig.Name, false)
+		key, err := configStorageKey(workDir, jobConfig.RelativePath, false)
 		if err != nil {
 			return err
 		}
@@ -115,16 +117,16 @@ func WriteFilesToS3(ctx context.Context, workDir string, configs []JobConfig) er
 			Body:   strings.NewReader(jobConfig.Data),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to upload %s to s3://%s/%s: %s", jobConfig.Name, bucket, key, err)
+			return fmt.Errorf("failed to upload %s to s3://%s/%s: %s", jobConfig.RelativePath, bucket, key, err)
 		}
 	}
 
 	return nil
 }
 
-// ReadFileFromS3 reads a file from the S3 bucket.
+// ReadFileFromS3 reads a file from the S3 bucket and its LastModified time.
 // When workDir is empty, relativePath is treated as a key under the configured prefix.
-func ReadFileFromS3(ctx context.Context, workDir, relativePath string, validateJSON bool) (string, error) {
+func ReadFileFromS3(ctx context.Context, workDir, relativePath string, validateJSON bool) (string, time.Time, error) {
 	var key string
 	var err error
 	if workDir == "" {
@@ -132,13 +134,13 @@ func ReadFileFromS3(ctx context.Context, workDir, relativePath string, validateJ
 	} else {
 		key, err = configStorageKey(workDir, relativePath, false)
 		if err != nil {
-			return "", err
+			return "", time.Time{}, err
 		}
 	}
 
 	client, bucket, err := getS3Client()
 	if err != nil {
-		return "", err
+		return "", time.Time{}, err
 	}
 
 	out, err := client.GetObject(ctx, &s3.GetObjectInput{
@@ -146,24 +148,29 @@ func ReadFileFromS3(ctx context.Context, workDir, relativePath string, validateJ
 		Key:    &key,
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to download %s from s3://%s/%s: %s", relativePath, bucket, key, err)
+		return "", time.Time{}, fmt.Errorf("failed to download %s from s3://%s/%s: %s", relativePath, bucket, key, err)
 	}
 	defer out.Body.Close()
 
 	body, err := io.ReadAll(out.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read %s from s3://%s/%s: %s", relativePath, bucket, key, err)
+		return "", time.Time{}, fmt.Errorf("failed to read %s from s3://%s/%s: %s", relativePath, bucket, key, err)
 	}
 
 	if validateJSON {
 		ref := fmt.Sprintf("s3://%s/%s", bucket, key)
 		var result map[string]interface{}
 		if err := json.Unmarshal(body, &result); err != nil {
-			return "", fmt.Errorf("failed to read %s: failed to parse JSON from %s: %s", relativePath, ref, err)
+			return "", time.Time{}, fmt.Errorf("failed to read %s: failed to parse JSON from %s: %s", relativePath, ref, err)
 		}
 	}
 
-	return string(body), nil
+	modTime := time.Time{}
+	if out.LastModified != nil {
+		modTime = *out.LastModified
+	}
+
+	return string(body), modTime, nil
 }
 
 // PrefixExists checks whether any object exists under the given workflow-relative prefix.

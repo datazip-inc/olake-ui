@@ -231,6 +231,7 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 	}
 
 	// Fetch the latest batch of logs by tailing from the end with default limit in the "older" direction.
+	// NOTE: test-connection logs are fetched only from the last file in the logs directory.
 	logs, err := utils.ReadLogs(ctx, workflowID, -1, -1, "older")
 	if err != nil {
 		return result, nil, fmt.Errorf("failed to read logs source_type[%s] source_version[%s]: %s",

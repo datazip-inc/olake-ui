@@ -1,15 +1,11 @@
 package utils
 
 import (
-	"archive/tar"
-	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -17,8 +13,6 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
@@ -144,116 +138,6 @@ func RetryWithBackoff(fn func() error, maxRetries int, initialDelay time.Duratio
 // WorkflowHash returns a deterministic hash string for a given workflowID.
 func WorkflowHash(workflowID string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
-}
-
-// GetAndValidateLogBaseDir returns the base directory path for log files
-// based on the SHA256 hash of the filePath (workflow ID) and validates it exists
-func GetAndValidateLogBaseDir(filePath string) (string, error) {
-	if filePath == "" {
-		return "", fmt.Errorf("file path cannot be empty")
-	}
-
-	syncFolderName := WorkflowHash(filePath)
-	homeDir := constants.DefaultConfigDir
-	baseDir := filepath.Join(homeDir, syncFolderName)
-
-	// Verify directory exists
-	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
-		return "", fmt.Errorf("logs directory not found: %s: %s", baseDir, err)
-	}
-
-	return baseDir, nil
-}
-
-// GetAndValidateSyncDir returns the logs directory and sync_* folder name under it
-func GetAndValidateSyncDir(baseDir string) (string, string, error) {
-	logsDir := filepath.Join(baseDir, "logs")
-
-	entries, err := os.ReadDir(logsDir)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to read logs directory: %s", err)
-	}
-	if len(entries) == 0 {
-		return "", "", fmt.Errorf("no sync log folders found in: %s", logsDir)
-	}
-
-	for _, entry := range entries {
-		// get the first directory that starts with "sync_"
-		if entry.IsDir() && strings.HasPrefix(entry.Name(), "sync_") {
-			return logsDir, entry.Name(), nil
-		}
-	}
-
-	return "", "", fmt.Errorf("no sync folder found in: %s", logsDir)
-}
-
-// addFileToArchive streams a file into the tar archive
-func AddFileToArchive(tarWriter *tar.Writer, filePath, nameInArchive string) error {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to open file %s: %s", filePath, err)
-	}
-	defer file.Close()
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to stat file %s: %s", filePath, err)
-	}
-
-	// tar header with file metadata
-	header := &tar.Header{
-		Name:    nameInArchive,
-		Size:    fileInfo.Size(),
-		Mode:    int64(fileInfo.Mode()),
-		ModTime: fileInfo.ModTime(),
-	}
-
-	if err := tarWriter.WriteHeader(header); err != nil {
-		return fmt.Errorf("failed to write tar header for %s: %s", nameInArchive, err)
-	}
-
-	bytesWritten, err := io.Copy(tarWriter, file)
-	if err != nil {
-		return fmt.Errorf("failed to write file content for %s: %s", nameInArchive, err)
-	}
-
-	logger.Debugf("Added %s to archive (%d bytes)", nameInArchive, bytesWritten)
-
-	return nil
-}
-
-// GetLogArchiveFilename generates the filename for the log archive download.
-func GetLogArchiveFilename(ctx context.Context, jobID int, filePath string) (string, error) {
-	switch storagemode.Get() {
-	case constants.StorageModeS3:
-		workflowHash, err := validateS3LogBase(ctx, filePath)
-		if err != nil {
-			return "", err
-		}
-
-		syncFolder, err := getS3SyncFolder(ctx, workflowHash)
-		if err != nil {
-			return "", err
-		}
-
-		syncTimestamp := strings.ReplaceAll(strings.TrimPrefix(syncFolder, "sync_"), "_", "-")
-		return fmt.Sprintf("job-%d-logs-%s.tar.gz", jobID, syncTimestamp), nil
-	default:
-		baseDir, err := GetAndValidateLogBaseDir(filePath)
-		if err != nil {
-			return "", err
-		}
-
-		_, syncFolderName, err := GetAndValidateSyncDir(baseDir)
-		if err != nil {
-			return "", err
-		}
-
-		syncTimestamp := strings.ReplaceAll(strings.TrimPrefix(syncFolderName, "sync_"), "_", "-")
-		filename := fmt.Sprintf("job-%d-logs-%s.tar.gz", jobID, syncTimestamp)
-
-		return filename, nil
-	}
 }
 
 func MarshalToString(v interface{}) (string, error) {

@@ -2,7 +2,9 @@ package temporal
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -11,6 +13,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/storage"
+	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"go.temporal.io/sdk/client"
 )
@@ -49,19 +52,17 @@ func buildExecutionReqForClearDestination(ctx context.Context, job *models.Job, 
 	streamsDir := fmt.Sprintf("%s-%d", workflowID, time.Now().Unix())
 	relativePath := filepath.Join(streamsDir, "streams.json")
 
-	switch strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode)) {
+	switch storagemode.Get() {
 	case constants.StorageModeS3:
-		if err := storage.WriteFilesToS3(ctx, constants.DefaultConfigDir, []storage.JobConfig{{Name: relativePath, Data: catalog}}); err != nil {
+		if err := storage.WriteFilesToS3(ctx, constants.DefaultConfigDir, []storage.JobConfig{{RelativePath: relativePath, Data: catalog}}); err != nil {
 			return nil, fmt.Errorf("failed to write streams config to s3: %v", err)
 		}
-	case constants.StorageModeNFS:
+	default:
 		streamsPath := filepath.Join(constants.DefaultConfigDir, relativePath)
 
 		if err := utils.WriteFile(streamsPath, []byte(catalog), 0644); err != nil {
 			return nil, fmt.Errorf("failed to write streams config to file: %v", err)
 		}
-	default:
-		return nil, fmt.Errorf("unsupported OLAKE_STORAGE_MODE: %q", appconfig.Load().OlakeStorageMode)
 	}
 
 	args := []string{
@@ -100,18 +101,26 @@ func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[s
 	}
 
 	responsePath := filepath.Join(constants.DefaultConfigDir, response)
-	switch strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode)) {
+	switch storagemode.Get() {
 	case constants.StorageModeS3:
-		return readJSONFileFromS3(ctx, response)
-	case constants.StorageModeNFS:
-		workflowResponse, err := readJSONFileFromNFS(responsePath)
+		body, _, err := storage.ReadFileFromS3(ctx, "", response, true)
+		if err != nil {
+			return nil, err
+		}
+
+		var workflowResponse map[string]interface{}
+		if err := json.Unmarshal([]byte(body), &workflowResponse); err != nil {
+			return nil, fmt.Errorf("failed to parse JSON from %s: %s", response, err)
+		}
+
+		return workflowResponse, nil
+	default:
+		workflowResponse, err := utils.ReadJSONFile(responsePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read workflow response: %v", err)
 		}
 
 		return workflowResponse, nil
-	default:
-		return nil, fmt.Errorf("unsupported OLAKE_STORAGE_MODE: %q", appconfig.Load().OlakeStorageMode)
 	}
 }
 
@@ -130,5 +139,27 @@ func GetWorkflowTimeout(op Command) time.Duration {
 	// check what can the fallback time be
 	default:
 		return time.Minute * 5
+	}
+}
+
+// workerConfigPath returns the config path passed to the worker command.
+//
+// NFS: /mnt/config/{file}.json — worker mounts the workflow subdirectory as a
+// volume subPath at /mnt/config, so the hash is not in the CLI arg.
+//
+// S3: s3://{bucket}/{prefix}/{workflow-dir}/{file}.json
+func workerConfigPath(cmd Command, workflowID, filename string) string {
+	switch storagemode.Get() {
+	case constants.StorageModeS3:
+		cfg := appconfig.Load()
+		bucket := strings.TrimSpace(cfg.OlakeS3Bucket)
+		jobDir := GetWorkflowDirectory(cmd, workflowID)
+		key := path.Join(jobDir, filename)
+		if prefix := strings.Trim(cfg.OlakeS3Prefix, "/"); prefix != "" {
+			key = path.Join(prefix, key)
+		}
+		return fmt.Sprintf("s3://%s/%s", bucket, key)
+	default:
+		return fmt.Sprintf("/mnt/config/%s", filename)
 	}
 }

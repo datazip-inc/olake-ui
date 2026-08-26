@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 type LineWithPos struct {
@@ -199,18 +201,59 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) 
 	return lines, currentOffset, hasMore, nil
 }
 
+// GetAndValidateNfsLogBaseDir returns the base directory path for log files
+// based on the SHA256 hash of the filePath (workflow ID) and validates it exists
+func GetAndValidateNfsLogBaseDir(filePath string) (string, error) {
+	if filePath == "" {
+		return "", fmt.Errorf("file path cannot be empty")
+	}
+
+	syncFolderName := WorkflowHash(filePath)
+	homeDir := constants.DefaultConfigDir
+	baseDir := filepath.Join(homeDir, syncFolderName)
+
+	// Verify directory exists
+	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
+		return "", fmt.Errorf("logs directory not found: %s: %s", baseDir, err)
+	}
+
+	return baseDir, nil
+}
+
+// GetAndValidateNfsSyncDir returns the logs directory and sync_* folder name under it
+func GetAndValidateNfsSyncDir(baseDir string) (string, string, error) {
+	logsDir := filepath.Join(baseDir, "logs")
+
+	entries, err := os.ReadDir(logsDir)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read logs directory: %s", err)
+	}
+	if len(entries) == 0 {
+		return "", "", fmt.Errorf("no sync log folders found in: %s", logsDir)
+	}
+
+	for _, entry := range entries {
+		// get the first directory that starts with "sync_"
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "sync_") {
+			return logsDir, entry.Name(), nil
+		}
+	}
+
+	return "", "", fmt.Errorf("no sync folder found in: %s", logsDir)
+}
+
 // readLogsFromNFS reads logs from the given mainLogDir and returns structured log entries.
 // Direction can be "older" or "newer". If cursor < 0, it tails from the end of the file.
 // Returns a TaskLogsResponse-like struct: oldest->newest logs plus cursors and hasMore flags.
 func readLogsFromNFS(workflowID string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	// Get and validate base directory from file path
-	mainSyncDir, err := GetAndValidateLogBaseDir(workflowID)
+	mainSyncDir, err := GetAndValidateNfsLogBaseDir(workflowID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Resolve and validate logs/sync_* directory
-	logsDir, syncFolderName, err := GetAndValidateSyncDir(mainSyncDir)
+	logsDir, syncFolderName, err := GetAndValidateNfsSyncDir(mainSyncDir)
 	if err != nil {
 		return nil, err
 	}
@@ -286,4 +329,59 @@ func readLogsFromNFS(workflowID string, cursor int64, limit int, direction strin
 	}
 
 	return response, nil
+}
+
+func addNfsFilesToArchive(baseDir string, tarWriter *tar.Writer) error {
+	stateFile := filepath.Join(baseDir, "state.json")
+	if err := addFileToArchive(tarWriter, stateFile, "state.json"); err != nil {
+		logger.Warnf("failed to add state.json to archive: %s", err)
+		// Continue anyway - state.json might not exist
+	}
+
+	logsRoot := filepath.Join(baseDir, "logs")
+	err := filepath.Walk(logsRoot, func(filePath string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		archivePath := filepath.Join("logs", filepath.Base(filePath))
+		return addFileToArchive(tarWriter, filePath, archivePath)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to add files from logs directory %s: %s", logsRoot, err)
+	}
+
+	return nil
+}
+
+// addFileToArchive streams a file into the tar archive
+func addFileToArchive(tarWriter *tar.Writer, filePath, nameInArchive string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s: %s", filePath, err)
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat file %s: %s", filePath, err)
+	}
+
+	header := &tar.Header{
+		Name:    nameInArchive,
+		Size:    fileInfo.Size(),
+		Mode:    int64(fileInfo.Mode()),
+		ModTime: fileInfo.ModTime(),
+	}
+
+	bytesWritten, err := writeToArchive(tarWriter, header, file)
+	if err != nil {
+		return err
+	}
+
+	logger.Debugf("Added %s to archive (%d bytes)", nameInArchive, bytesWritten)
+	return nil
 }
