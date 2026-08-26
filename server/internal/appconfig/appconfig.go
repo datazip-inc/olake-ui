@@ -48,6 +48,7 @@ type Config struct {
 	OptimizationPassword           string
 	OptimizationRequestTimeout     time.Duration
 	GitOpsEnabled                  bool
+	GitOpsFileDir                  string // file based configuration for olake
 }
 
 var cfg = loadConfig()
@@ -124,5 +125,6 @@ func loadConfig() Config {
 		OptimizationRequestTimeout: v.GetDuration("OPTIMIZATION_REQUEST_TIMEOUT"),
 
 		GitOpsEnabled: v.GetBool("GITOPS_ENABLED"),
+		GitOpsFileDir: strings.TrimSpace(v.GetString("GITOPS_FILE_DIR")),
 	}
 }

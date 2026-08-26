@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	olakev1 "github.com/datazip-inc/olake-ui/server/internal/gitops/api/v1"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -19,10 +22,7 @@ import (
 var scheme = runtime.NewScheme()
 
 func init() {
-	// Registers Kubernetes built-in types (Pods, Secrets, ConfigMaps, Namespaces, etc.) into scheme
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	// Registers OLake custom types into scheme
-	utilruntime.Must(olakev1.AddToScheme(scheme))
 }
 
 // Controller runs the embedded GitOps reconcilers.
@@ -31,56 +31,75 @@ type Controller struct {
 	app *services.AppService
 }
 
-// InitGitOps validates GitOps prerequisites when enabled and starts the controller
-// manager in a background goroutine. Returns an error on synchronous setup failure.
-func InitGitOps(ctx context.Context, enabled bool, app *services.AppService) error {
+// InitGitOps starts GitOps when enabled. In-cluster uses the ConfigMap
+// controller-runtime manager. Outside the cluster, GITOPS_FILE_DIR must be set.
+func InitGitOps(ctx context.Context, enabled bool, fileDir string, app *services.AppService) error {
 	if !enabled {
 		return nil
 	}
 
-	ctrl, err := Setup(app)
-	if err != nil {
-		return err
+	restConfig, err := rest.InClusterConfig()
+	if err == nil {
+		ctrlr, setupErr := Setup(app, restConfig)
+		if setupErr != nil {
+			return setupErr
+		}
+		go func() {
+			if runErr := ctrlr.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
+				logger.Errorf("GitOps controller manager stopped: %s", runErr)
+			}
+		}()
+		return nil
 	}
 
+	if fileDir == "" {
+		return fmt.Errorf("gitops enabled but not in-cluster and GITOPS_FILE_DIR is empty: %w", err)
+	}
+	return startFileMode(ctx, fileDir, app)
+}
+
+func startFileMode(ctx context.Context, fileDir string, app *services.AppService) error {
+	fw := newFileWatcher(fileDir, app.ETL(), app.ETL().Temporal())
 	go func() {
-		if err := ctrl.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			logger.Errorf("GitOps controller manager stopped: %s", err)
+		if err := fw.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			logger.Errorf("GitOps file watcher stopped: %s", err)
 		}
 	}()
-
+	logger.Infof("GitOps file watcher watching %s", fileDir)
 	return nil
 }
 
-// Setup validates GitOps prerequisites synchronously. Fails fast on misconfiguration
-// (in-cluster config, manager creation) before the HTTP server starts.
-func Setup(app *services.AppService) (*Controller, error) {
-	restConfig, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, fmt.Errorf("in-cluster kubernetes config: %w", err)
-	}
-
+// Setup validates GitOps prerequisites synchronously.
+func Setup(app *services.AppService, restConfig *rest.Config) (*Controller, error) {
 	ctrl.SetLogger(logger.Logr())
 
-	// Cluster-scoped cache; requires GitOps ClusterRole (olake.io resources only).
+	managed := labels.SelectorFromSet(labels.Set{LabelManaged: LabelManagedValue})
+
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme: scheme,
+		Cache: cache.Options{
+			ByObject: map[client.Object]cache.ByObject{
+				&corev1.ConfigMap{}: {Label: managed},
+			},
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create controller manager: %w", err)
 	}
 
-	logger.Info("GitOps controller manager configured for cluster-wide watch")
+	logger.Info("GitOps controller manager configured for labelled ConfigMap watch")
 	return &Controller{mgr: mgr, app: app}, nil
 }
 
-// Run registers reconcilers and blocks until ctx is cancelled. Call from a goroutine.
+// Run registers reconcilers and blocks until ctx is cancelled.
 func (c *Controller) Run(ctx context.Context) error {
 	etlSvc := c.app.ETL()
+	sink := NewK8sSink(c.mgr.GetClient(), c.mgr.GetEventRecorderFor("olake-gitops"), etlSvc.Temporal())
 
 	if err := (&SourceReconciler{
 		Client: c.mgr.GetClient(),
 		ETL:    etlSvc,
+		Sink:   sink,
 	}).Setup(c.mgr); err != nil {
 		return fmt.Errorf("setup source controller: %w", err)
 	}
@@ -88,6 +107,7 @@ func (c *Controller) Run(ctx context.Context) error {
 	if err := (&DestinationReconciler{
 		Client: c.mgr.GetClient(),
 		ETL:    etlSvc,
+		Sink:   sink,
 	}).Setup(c.mgr); err != nil {
 		return fmt.Errorf("setup destination controller: %w", err)
 	}
@@ -95,6 +115,7 @@ func (c *Controller) Run(ctx context.Context) error {
 	if err := (&JobReconciler{
 		Client: c.mgr.GetClient(),
 		ETL:    etlSvc,
+		Sink:   sink,
 	}).Setup(c.mgr); err != nil {
 		return fmt.Errorf("setup job controller: %w", err)
 	}

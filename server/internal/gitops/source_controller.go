@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 
-	k8srecord "k8s.io/client-go/tools/record"
+	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	olakev1 "github.com/datazip-inc/olake-ui/server/internal/gitops/api/v1"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
@@ -20,34 +18,35 @@ import (
 
 type SourceReconciler struct {
 	client.Client
-	ETL      *etl.Service
-	Recorder k8srecord.EventRecorder
+	ETL  *etl.Service
+	Sink StatusSink
 }
 
 func (r *SourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-	sw := NewStatusWriter(r.Client, r.Recorder)
-
-	var source olakev1.Source
-	if err := r.Get(ctx, req.NamespacedName, &source); err != nil {
+	var cm corev1.ConfigMap
+	if err := r.Get(ctx, req.NamespacedName, &cm); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	return r.sync(ctx, resourceFromCM(&cm))
+}
 
-	if skipReconcile(source.Status.Phase, source.Status.ObservedGeneration, source.Generation) {
+func (r *SourceReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	dataHash := ContentHash(res.Data)
+	if skipReconcile(res.Annotations, dataHash) {
 		return ctrl.Result{}, nil
 	}
 
-	_ = sw.SetStatusIfChanged(ctx, &source, olakev1.PhasePending, source.Generation, 0, "Reconciling to OLake", source.Status)
-
-	createReq, err := ParseAndValidateSource(source.Spec.Config)
+	createReq, err := ParseAndValidateSource(res.Config())
 	if err != nil {
-		return failCR(ctx, sw, &source, source.Generation, err)
+		return failResource(ctx, r.Sink, res, Permanent(err))
 	}
-	if err := requireSpec(source.Spec.ProjectID, source.Spec.UserID); err != nil {
-		return failCR(ctx, sw, &source, source.Generation, err)
+	userID, err := requireSpec(res.ProjectID(), res.UserID())
+	if err != nil {
+		return failResource(ctx, r.Sink, res, err)
 	}
 
-	existing, err := r.ETL.GetSourceByName(ctx, source.Spec.ProjectID, createReq.Name)
+	existing, err := r.ETL.GetSourceByName(ctx, res.ProjectID(), createReq.Name)
 	if err != nil && !errors.Is(err, constants.ErrSourceNotFound) {
 		logger.Error(err, "lookup source failed")
 		return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
@@ -57,17 +56,17 @@ func (r *SourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if existing == nil || changed {
 		if err := testSourceConnection(ctx, r.ETL, createReq.Type, createReq.Version, createReq.Config); err != nil {
 			logger.Error(err, "source connection test failed")
-			return failCR(ctx, sw, &source, source.Generation, err)
+			return failResource(ctx, r.Sink, res, Permanent(err))
 		}
 	}
 
 	switch {
 	case existing == nil:
-		if err := r.ETL.CreateSource(ctx, createReq, source.Spec.ProjectID, &source.Spec.UserID); err != nil {
+		if err := r.ETL.CreateSource(ctx, createReq, res.ProjectID(), &userID); err != nil {
 			logger.Error(err, "create source failed")
-			return failCR(ctx, sw, &source, source.Generation, err)
+			return failResource(ctx, r.Sink, res, Permanent(err))
 		}
-		existing, err = r.ETL.GetSourceByName(ctx, source.Spec.ProjectID, createReq.Name)
+		existing, err = r.ETL.GetSourceByName(ctx, res.ProjectID(), createReq.Name)
 		if err != nil {
 			logger.Error(err, "reload source after create failed")
 			return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
@@ -79,13 +78,13 @@ func (r *SourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			Version: createReq.Version,
 			Config:  createReq.Config,
 		}
-		if err := r.ETL.UpdateSource(ctx, source.Spec.ProjectID, existing.ID, updateReq, &source.Spec.UserID); err != nil {
+		if err := r.ETL.UpdateSource(ctx, res.ProjectID(), existing.ID, updateReq, &userID); err != nil {
 			logger.Error(err, "update source failed")
-			return failCR(ctx, sw, &source, source.Generation, err)
+			return failResource(ctx, r.Sink, res, Permanent(err))
 		}
 	}
 
-	if err := sw.SetStatus(ctx, &source, olakev1.PhaseReady, source.Generation, existing.ID, ""); err != nil {
+	if err := successResource(ctx, r.Sink, res, existing.ID); err != nil {
 		logger.Error(err, "update source status failed")
 		return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
 	}
@@ -93,10 +92,9 @@ func (r *SourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 }
 
 func (r *SourceReconciler) Setup(mgr ctrl.Manager) error {
-	r.Recorder = mgr.GetEventRecorderFor("olake-source-controller")
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&olakev1.Source{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		For(&corev1.ConfigMap{}).
+		WithEventFilter(kindPredicate(KindSource)).
 		Complete(r)
 }
 

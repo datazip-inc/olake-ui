@@ -3,14 +3,13 @@ package gitops
 import (
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 // ErrPermanent marks a sync error that will not succeed on retry
-// (bad spec, invalid config, failed credential test). Controllers
-// should set phase=Failed and not requeue.
+// (bad spec, invalid config, failed credential test).
 var ErrPermanent = errors.New("permanent sync error")
 
-// Permanent wraps err so callers can detect it with errors.Is(err, ErrPermanent).
 func Permanent(err error) error {
 	if err == nil {
 		return nil
@@ -21,12 +20,13 @@ func Permanent(err error) error {
 	return fmt.Errorf("%w: %w", ErrPermanent, err)
 }
 
-func requireSpec(projectID string, userID int) error {
+func requireSpec(projectID, userID string) (int, error) {
 	if projectID == "" {
-		return Permanent(fmt.Errorf("spec.projectId is required"))
+		return 0, Permanent(fmt.Errorf("data.projectId is required"))
 	}
-	if userID <= 0 {
-		return Permanent(fmt.Errorf("spec.userId is required"))
+	id, err := strconv.Atoi(userID)
+	if err != nil || id <= 0 {
+		return 0, Permanent(fmt.Errorf("data.userId must be a positive integer"))
 	}
-	return nil
+	return id, nil
 }

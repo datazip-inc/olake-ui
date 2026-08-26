@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 
-	k8srecord "k8s.io/client-go/tools/record"
+	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	olakev1 "github.com/datazip-inc/olake-ui/server/internal/gitops/api/v1"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
@@ -20,34 +18,35 @@ import (
 
 type DestinationReconciler struct {
 	client.Client
-	ETL      *etl.Service
-	Recorder k8srecord.EventRecorder
+	ETL  *etl.Service
+	Sink StatusSink
 }
 
 func (r *DestinationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-	sw := NewStatusWriter(r.Client, r.Recorder)
-
-	var destination olakev1.Destination
-	if err := r.Get(ctx, req.NamespacedName, &destination); err != nil {
+	var cm corev1.ConfigMap
+	if err := r.Get(ctx, req.NamespacedName, &cm); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	return r.sync(ctx, resourceFromCM(&cm))
+}
 
-	if skipReconcile(destination.Status.Phase, destination.Status.ObservedGeneration, destination.Generation) {
+func (r *DestinationReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	dataHash := ContentHash(res.Data)
+	if skipReconcile(res.Annotations, dataHash) {
 		return ctrl.Result{}, nil
 	}
 
-	_ = sw.SetStatusIfChanged(ctx, &destination, olakev1.PhasePending, destination.Generation, 0, "Reconciling to OLake", destination.Status)
-
-	createReq, err := ParseAndValidateDestination(destination.Spec.Config)
+	createReq, err := ParseAndValidateDestination(res.Config())
 	if err != nil {
-		return failCR(ctx, sw, &destination, destination.Generation, err)
+		return failResource(ctx, r.Sink, res, Permanent(err))
 	}
-	if err := requireSpec(destination.Spec.ProjectID, destination.Spec.UserID); err != nil {
-		return failCR(ctx, sw, &destination, destination.Generation, err)
+	userID, err := requireSpec(res.ProjectID(), res.UserID())
+	if err != nil {
+		return failResource(ctx, r.Sink, res, err)
 	}
 
-	existing, err := r.ETL.GetDestinationByName(ctx, destination.Spec.ProjectID, createReq.Name)
+	existing, err := r.ETL.GetDestinationByName(ctx, res.ProjectID(), createReq.Name)
 	if err != nil && !errors.Is(err, constants.ErrDestinationNotFound) {
 		logger.Error(err, "lookup destination failed")
 		return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
@@ -57,17 +56,17 @@ func (r *DestinationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if existing == nil || changed {
 		if err := testDestinationConnection(ctx, r.ETL, createReq.Type, createReq.Version, createReq.Config, "", ""); err != nil {
 			logger.Error(err, "destination connection test failed")
-			return failCR(ctx, sw, &destination, destination.Generation, err)
+			return failResource(ctx, r.Sink, res, Permanent(err))
 		}
 	}
 
 	switch {
 	case existing == nil:
-		if err := r.ETL.CreateDestination(ctx, createReq, destination.Spec.ProjectID, &destination.Spec.UserID); err != nil {
+		if err := r.ETL.CreateDestination(ctx, createReq, res.ProjectID(), &userID); err != nil {
 			logger.Error(err, "create destination failed")
-			return failCR(ctx, sw, &destination, destination.Generation, err)
+			return failResource(ctx, r.Sink, res, Permanent(err))
 		}
-		existing, err = r.ETL.GetDestinationByName(ctx, destination.Spec.ProjectID, createReq.Name)
+		existing, err = r.ETL.GetDestinationByName(ctx, res.ProjectID(), createReq.Name)
 		if err != nil {
 			logger.Error(err, "reload destination after create failed")
 			return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
@@ -79,13 +78,13 @@ func (r *DestinationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			Version: createReq.Version,
 			Config:  createReq.Config,
 		}
-		if err := r.ETL.UpdateDestination(ctx, existing.ID, destination.Spec.ProjectID, updateReq, &destination.Spec.UserID); err != nil {
+		if err := r.ETL.UpdateDestination(ctx, existing.ID, res.ProjectID(), updateReq, &userID); err != nil {
 			logger.Error(err, "update destination failed")
-			return failCR(ctx, sw, &destination, destination.Generation, err)
+			return failResource(ctx, r.Sink, res, Permanent(err))
 		}
 	}
 
-	if err := sw.SetStatus(ctx, &destination, olakev1.PhaseReady, destination.Generation, existing.ID, ""); err != nil {
+	if err := successResource(ctx, r.Sink, res, existing.ID); err != nil {
 		logger.Error(err, "update destination status failed")
 		return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
 	}
@@ -93,10 +92,9 @@ func (r *DestinationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 func (r *DestinationReconciler) Setup(mgr ctrl.Manager) error {
-	r.Recorder = mgr.GetEventRecorderFor("olake-destination-controller")
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&olakev1.Destination{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		For(&corev1.ConfigMap{}).
+		WithEventFilter(kindPredicate(KindDestination)).
 		Complete(r)
 }
 
