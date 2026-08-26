@@ -21,6 +21,3 @@ func ContentHash(data map[string]string) string {
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }
-
-// TODO: add support for Secrets — add bytesData(in map[string][]byte) map[string]string
-//       to convert Secret.Data before passing to ContentHash.

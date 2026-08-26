@@ -40,8 +40,8 @@ func (r *JobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 func (r *JobReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	dataHash := ContentHash(res.Data)
-	if skipReconcile(res.Annotations, dataHash) {
+	observed := r.reconcileHash(ctx, res)
+	if skipReconcile(res.Annotations, observed) {
 		if res.Annotations[AnnotationPhase] == PhaseFailed {
 			return ctrl.Result{}, nil
 		}
@@ -55,45 +55,45 @@ func (r *JobReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Result
 
 	jobCfg, err := ParseAndValidateJobConfig(res.Config())
 	if err != nil {
-		return r.failJob(ctx, res, nil, Permanent(err))
+		return r.failJob(ctx, res, nil, Permanent(err), observed)
 	}
 	userID, err := requireSpec(res.ProjectID(), res.UserID())
 	if err != nil {
-		return r.failJob(ctx, res, nil, err)
+		return r.failJob(ctx, res, nil, err, observed)
 	}
 	projectID := res.ProjectID()
 
 	source, err := r.resolveSource(ctx, projectID, jobCfg.Source)
 	if errors.Is(err, constants.ErrSourceNotFound) {
-		return waitResource(ctx, r.Sink, res, fmt.Sprintf("waiting for source %q", jobCfg.Source))
+		return waitResource(ctx, r.Sink, res, fmt.Sprintf("waiting for source %q", jobCfg.Source), observed)
 	}
 	if err != nil {
 		logger.Error(err, "lookup source failed")
-		return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
+		return requeueTransient(ctx, r.Sink, res, err, observed)
 	}
 
 	dest, err := r.resolveDestination(ctx, projectID, jobCfg.Destination)
 	if errors.Is(err, constants.ErrDestinationNotFound) {
-		return waitResource(ctx, r.Sink, res, fmt.Sprintf("waiting for destination %q", jobCfg.Destination))
+		return waitResource(ctx, r.Sink, res, fmt.Sprintf("waiting for destination %q", jobCfg.Destination), observed)
 	}
 	if err != nil {
 		logger.Error(err, "lookup destination failed")
-		return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
+		return requeueTransient(ctx, r.Sink, res, err, observed)
 	}
 
 	streamsRes, err := r.findStreams(ctx, res, projectID, res.EntityID())
 	if err != nil {
 		logger.Error(err, "find streams failed")
-		return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
+		return requeueTransient(ctx, r.Sink, res, err, observed)
 	}
 	if streamsRes == nil {
-		return waitResource(ctx, r.Sink, res, fmt.Sprintf("waiting for Streams referencing job %q", res.Name))
+		return waitResource(ctx, r.Sink, res, fmt.Sprintf("waiting for Streams referencing job %q", res.Name), observed)
 	}
 
 	existingJob, err := r.ETL.GetJobByName(ctx, projectID, jobCfg.Name)
 	if err != nil && !errors.Is(err, constants.ErrJobNotFound) {
 		logger.Error(err, "lookup job failed")
-		return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
+		return requeueTransient(ctx, r.Sink, res, err, observed)
 	}
 
 	streamsConfig := streamsRes.Config()
@@ -105,7 +105,7 @@ func (r *JobReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Result
 	if existingJob == nil || drift.connectors {
 		if err := r.testConnectors(ctx, source, dest); err != nil {
 			logger.Error(err, "job connection test failed")
-			return r.failJob(ctx, res, streamsRes, Permanent(err))
+			return r.failJob(ctx, res, streamsRes, Permanent(err), observed)
 		}
 	}
 
@@ -113,12 +113,12 @@ func (r *JobReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Result
 	case existingJob == nil:
 		if err := r.ETL.CreateJob(ctx, jobCfg.createRequest(source.ID, dest.ID, streamsConfig), projectID, &userID); err != nil {
 			logger.Error(err, "create job failed")
-			return r.failJob(ctx, res, streamsRes, Permanent(err))
+			return r.failJob(ctx, res, streamsRes, Permanent(err), observed)
 		}
 		existingJob, err = r.ETL.GetJobByName(ctx, projectID, jobCfg.Name)
 		if err != nil {
 			logger.Error(err, "reload job after create failed")
-			return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
+			return requeueTransient(ctx, r.Sink, res, err, observed)
 		}
 	case drift.any():
 		diffStreams := ""
@@ -126,33 +126,57 @@ func (r *JobReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Result
 			diffStreams, err = r.streamDifferenceJSON(ctx, projectID, existingJob.ID, streamsConfig)
 			if err != nil {
 				logger.Error(err, "stream difference failed")
-				return r.failJob(ctx, res, streamsRes, Permanent(err))
+				return r.failJob(ctx, res, streamsRes, Permanent(err), observed)
 			}
 		}
 		if err := r.ETL.UpdateJob(ctx, jobCfg.updateRequest(source.ID, dest.ID, streamsConfig, diffStreams), projectID, existingJob.ID, &userID); err != nil {
 			logger.Error(err, "update job failed")
-			return r.failJob(ctx, res, streamsRes, Permanent(err))
+			return r.failJob(ctx, res, streamsRes, Permanent(err), observed)
 		}
 	}
 
-	if err := successResource(ctx, r.Sink, res, existingJob.ID); err != nil {
+	if err := successResource(ctx, r.Sink, res, existingJob.ID, observed); err != nil {
 		logger.Error(err, "update job status failed")
-		return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
+		return requeueTransient(ctx, r.Sink, res, err, observed)
 	}
 	if streamsRes != nil {
-		if err := successResource(ctx, r.Sink, *streamsRes, existingJob.ID); err != nil {
+		if err := successResource(ctx, r.Sink, *streamsRes, existingJob.ID, ""); err != nil {
 			logger.Error(err, "update streams status failed")
 		}
 	}
 	return ctrl.Result{}, nil
 }
 
-func (r *JobReconciler) failJob(ctx context.Context, job ResourceData, streams *ResourceData, err error) (ctrl.Result, error) {
-	result, _ := failResource(ctx, r.Sink, job, err)
+func (r *JobReconciler) failJob(ctx context.Context, job ResourceData, streams *ResourceData, err error, observedHash string) (ctrl.Result, error) {
+	result, _ := failResource(ctx, r.Sink, job, err, observedHash)
 	if streams != nil {
-		_, _ = failResource(ctx, r.Sink, *streams, err)
+		_, _ = failResource(ctx, r.Sink, *streams, err, "")
 	}
 	return result, nil
+}
+
+// reconcileHash is olake.io/observed-hash for this job: ConfigMap data plus
+// referenced source/destination rows from DB. A Failed job retries when
+// connectors change without editing the job spec. Stream drift uses streamsSettled.
+func (r *JobReconciler) reconcileHash(ctx context.Context, res ResourceData) string {
+	connectors := ""
+	if jobCfg, err := ParseAndValidateJobConfig(res.Config()); err == nil && r.ETL != nil {
+		parts := map[string]string{}
+		projectID := res.ProjectID()
+		if src, err := r.resolveSource(ctx, projectID, jobCfg.Source); err == nil && src != nil {
+			parts["src"] = strconv.Itoa(src.ID) + "\x00" + src.Type + "\x00" + src.Version + "\x00" + src.Config
+		}
+		if dest, err := r.resolveDestination(ctx, projectID, jobCfg.Destination); err == nil && dest != nil {
+			parts["dst"] = strconv.Itoa(dest.ID) + "\x00" + dest.DestType + "\x00" + dest.Version + "\x00" + dest.Config
+		}
+		if len(parts) > 0 {
+			connectors = ContentHash(parts)
+		}
+	}
+	return ContentHash(map[string]string{
+		"data":       ContentHash(res.Data),
+		"connectors": connectors,
+	})
 }
 
 func (r *JobReconciler) testConnectors(ctx context.Context, source *models.Source, dest *models.Destination) error {
@@ -215,22 +239,20 @@ func (r *JobReconciler) findStreamsInCluster(ctx context.Context, job ResourceDa
 }
 
 func (r *JobReconciler) enqueueJobsForSource(ctx context.Context, obj client.Object) []reconcile.Request {
-	cm, ok := obj.(*corev1.ConfigMap)
+	res, ok := resourceFromObject(obj)
 	if !ok {
 		return nil
 	}
-	res := resourceFromCM(cm)
 	return r.enqueueJobsReferencing(ctx, res.Namespace, func(cfg *GitOpsJobConfig) bool {
 		return matchesNameOrID(cfg.Source, res.Name, res.EntityID())
 	})
 }
 
 func (r *JobReconciler) enqueueJobsForDestination(ctx context.Context, obj client.Object) []reconcile.Request {
-	cm, ok := obj.(*corev1.ConfigMap)
+	res, ok := resourceFromObject(obj)
 	if !ok {
 		return nil
 	}
-	res := resourceFromCM(cm)
 	return r.enqueueJobsReferencing(ctx, res.Namespace, func(cfg *GitOpsJobConfig) bool {
 		return matchesNameOrID(cfg.Destination, res.Name, res.EntityID())
 	})
@@ -336,10 +358,13 @@ func (r *JobReconciler) Setup(mgr ctrl.Manager) error {
 	dataChanged := predicate.ResourceVersionChangedPredicate{}
 
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("gitops-job").
 		For(&corev1.ConfigMap{}, builder.WithPredicates(kindPredicate(KindJob))).
 		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(r.enqueueJobsForSource), builder.WithPredicates(kindPredicate(KindSource))).
 		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(r.enqueueJobsForDestination), builder.WithPredicates(kindPredicate(KindDestination))).
 		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(r.enqueueJobForStreams), builder.WithPredicates(kindPredicate(KindStreams), dataChanged)).
+		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(r.enqueueJobsForSource), builder.WithPredicates(kindPredicate(KindSource))).
+		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(r.enqueueJobsForDestination), builder.WithPredicates(kindPredicate(KindDestination))).
 		Complete(r)
 }
 

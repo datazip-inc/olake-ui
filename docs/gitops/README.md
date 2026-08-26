@@ -1,23 +1,20 @@
 # GitOps for OLake
 
-Manage OLake sources, destinations, jobs, and stream selections as Kubernetes custom resources in git. Argo CD applies the manifests; an **embedded reconciler** inside `olake-ui` syncs each CR into OLake by calling the ETL service layer directly (same logic as the HTTP API).
+Manage OLake sources, destinations, jobs, and stream selections as labelled **ConfigMaps** (or, for Source/Destination, **Secrets**) in git. Argo CD or Flux applies the manifests; an **embedded reconciler** inside `olake-ui` syncs each object into OLake by calling the ETL service layer (same logic as the HTTP API).
 
 ## Prerequisites
 
-- Kubernetes cluster with OLake UI deployed **inside** the cluster (in-cluster kubeconfig).
-- CRDs installed via the [olake-helm](https://github.com/datazip-inc/olake-helm) chart (`helm/olake/crds/`).
-- `GITOPS_ENABLED=true` on the `olake-ui` Deployment (set by `gitops.enabled: true` in Helm).
-- Argo CD (optional but recommended) with custom health Lua from [olake-helm `argocd-health.yaml`](https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/docs/argocd-health.yaml).
+- Kubernetes: OLake UI deployed **inside** the cluster (in-cluster kubeconfig), or Docker Compose with `GITOPS_FILE_DIR` for file-based manifests.
+- `GITOPS_ENABLED=true` on the `olake-ui` Deployment (Helm `gitops.enabled: true`).
+- GitOps RBAC: namespace `Role` on `configmaps` and `secrets` (get/list/watch/update/patch each), and `events` (create/patch). **No `pods` permission on olake-ui.**
+
+**Secrets RBAC note:** granting `update`/`patch` on Secrets (needed because the operator writes `olake.io/*` status annotations back onto whichever object type a Source/Destination uses) applies to **every** Secret in the release namespace, not only ones managed by GitOps. Deploy OLake GitOps in a dedicated namespace, or accept that trust boundary.
 
 ## Quick start
 
-### 1. Install CRDs
+### 1. Enable GitOps
 
-CRDs are installed automatically when deploying via the [olake-helm](https://github.com/datazip-inc/olake-helm) chart (`helm/olake/crds/`). CRD schema YAML is maintained in **olake-helm only** — keep it in sync with the reconciler API types in `server/internal/gitops/api/v1/` when fields change.
-
-### 2. Enable GitOps on olake-ui
-
-**Kubernetes (recommended):** use the olake-helm chart:
+**Kubernetes (Helm):**
 
 ```yaml
 gitops:
@@ -28,31 +25,38 @@ olakeUI:
 
 See [olake-helm/docs/gitops.md](https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/docs/gitops.md).
 
-**Docker Compose:** set `GITOPS_ENABLED=true` only when running inside a cluster with in-cluster config (disabled by default in `docker-compose-v1.yml`).
+**Docker Compose:**
 
-**POC note:** With olake-helm (`gitops.enabled: true`, `gitops.rbac.create: true`), a ClusterRole for `olake.io` resources is created automatically so the reconciler can watch all namespaces. Run a **single** `olake-ui` replica (no leader election in POC).
+```yaml
+environment:
+  GITOPS_ENABLED: "true"
+  GITOPS_FILE_DIR: /etc/olake/gitops
+volumes:
+  - ./olake-gitops:/etc/olake/gitops
+```
 
-### 3. Configure Argo CD health (once per cluster)
+### 2. Apply sample manifests
 
-Merge the Lua snippets from [olake-helm `docs/argocd-health.yaml`](https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/docs/argocd-health.yaml) into the `argocd-cm` ConfigMap.
+Replace `projectId` with your OLake project ID. Examples: [olake-helm/examples/gitops/](https://github.com/datazip-inc/olake-helm/tree/master/helm/olake/examples/gitops).
 
-| Phase | Argo CD health |
-|-------|----------------|
-| `Ready` | Healthy |
-| `Failed` | Degraded (message from `.status.message`) |
-| `Pending` / empty | Progressing |
+### 3. Argo CD / Flux health
 
-Sync success in Argo CD only means YAML was applied. **Degraded** means the operator failed to sync into OLake.
+Status is written to **annotations** on the managed object (ConfigMap or Secret; not a status subresource):
 
-### 4. Apply sample manifests
+| Annotation | Meaning |
+|------------|---------|
+| `olake.io/phase` | `Pending`, `Ready`, or `Failed` |
+| `olake.io/message` | Human-readable detail |
+| `olake.io/entity-id` | OLake entity ID after sync |
+| `olake.io/observed-hash` | Content hash for skip logic |
 
-Replace `spec.projectId` with your OLake project ID. Examples: [olake-helm/examples/gitops/](https://github.com/datazip-inc/olake-helm/tree/master/helm/olake/examples/gitops).
+Kubernetes Events: reason `Synced` (normal) or `SyncFailed` (warning).
+
+**TODO:** Tool-specific health (Argo CD Lua, Flux) keyed off `olake.io/phase` — see olake-helm docs.
 
 ## Git repository layout
 
-Do **not** use Argo CD sync waves. The Job reconciler waits (Pending + requeue) if Source, Destination, or Streams are missing, then continues when they exist.
-
-Waves would wait for the previous wave to be Healthy before applying the next. Streams has no independent reconciler — the Job controller sets Streams `Ready` only after the Job syncs — so a Streams-before-Job wave deadlocks.
+Do **not** use Argo CD sync waves. The Job reconciler waits (Pending + 30s requeue) if Source, Destination, or Streams are missing.
 
 ```
 repo/olake/
@@ -62,107 +66,99 @@ repo/olake/
   job-smoke.yaml
 ```
 
-## CRD reference
+## ConfigMap / Secret reference
 
-API group: `olake.io/v1`
-
-| Kind | Spec | Purpose |
-|------|------|---------|
-| `Source` | `projectId`, `userId`, `config` | Source connector JSON (same as POST `/sources`) |
-| `Destination` | `projectId`, `userId`, `config` | Destination connector JSON |
-| `Job` | `projectId`, `userId`, `config` | Job metadata; `config` uses `source` / `destination` **by name or numeric ID** |
-| `Streams` | `projectId`, `job`, `config` | Large streams catalog JSON; `job` is Job CR name or numeric ID |
-
-### Job `spec.config` shape (git-facing)
-
-```json
-{
-  "name": "smoke-job",
-  "source": "smoke-source",
-  "destination": "smoke-dest",
-  "frequency": "0 */6 * * *",
-  "activate": true
-}
-```
-
-`source` and `destination` accept either the OLake entity **name** (same as the Source/Destination CR name or `config.name`) or the numeric **entity ID** (same as `status.entityId` after sync).
-
-```json
-{
-  "name": "smoke-job",
-  "source": "42",
-  "destination": "7",
-  "frequency": "0 */6 * * *",
-  "activate": true
-}
-```
-
-The operator resolves names or IDs to database IDs before calling `CreateJob` / `UpdateJob`.
-
-### Streams `spec` shape
+Label every managed object:
 
 ```yaml
-spec:
+metadata:
+  labels:
+    olake.io/managed: "true"
+    olake.io/kind: source   # source | destination | job | streams
+```
+
+| Kind | Object type | `data` keys | Purpose |
+|------|-------------|-------------|---------|
+| source | ConfigMap **or** Secret | `projectId`, `userId`, `config` | Source connector JSON (POST `/sources` shape) |
+| destination | ConfigMap **or** Secret | `projectId`, `userId`, `config` | Destination connector JSON |
+| job | ConfigMap only | `projectId`, `userId`, `config` | Job metadata; `config.source` / `destination` by name or numeric ID |
+| streams | ConfigMap only | `projectId`, `job`, `config` | Streams catalog; `job` matches Job ConfigMap name or job entity ID |
+
+### Credentials via Secrets (Source and Destination only)
+
+A Source or Destination can be defined directly as a **Secret** instead of a ConfigMap when the connector config holds credentials that shouldn't be plaintext in git. There is no separate reference field — the Secret itself carries the same `data` shape (`projectId`, `userId`, `config`) and the same `olake.io/managed`/`olake.io/kind` labels as the ConfigMap form. Pick exactly one object type per Source/Destination name; if both exist for the same name, the ConfigMap wins.
+
+**Docker Compose / `GITOPS_FILE_DIR`:** no Secret API in file mode — Source/Destination manifests there must be plain ConfigMaps with inline `data.config`.
+
+Example: `source-secret-smoke.yaml` in olake-helm.
+
+Example source as a Secret:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-postgres
+  labels:
+    olake.io/managed: "true"
+    olake.io/kind: source
+type: Opaque
+stringData:
   projectId: "123"
-  job: smoke-job   # Job CR metadata.name, or OLake job ID string after sync
+  userId: "1"
   config: |
-    { "selected_streams": { ... } }
+    {
+      "name": "my-postgres",
+      "type": "postgres",
+      "version": "v0.2.7",
+      "config": "{\"host\":\"...\",\"password\":\"...\"}"
+    }
 ```
 
-### Status
+Rotating the Secret's `data.config` re-triggers reconcile the same way editing the ConfigMap would (both are watched).
 
-All kinds share:
+Do **not** put `olake.io/phase` or other status annotations in git — the operator writes them.
 
-```yaml
-status:
-  phase: Pending | Ready | Failed
-  message: human-readable detail
-  entityId: OLake entity ID after sync
-  observedGeneration: ...
-```
+## Failure indicators
+
+On permanent reconcile failure, olake-ui starts Temporal **`IndicatorWorkflow`** (fire-and-forget). **olake-worker** creates a short-lived busybox Pod (K8s) or container (Docker) labelled `olake.io/indicator=true`. The container writes the error to `/dev/termination-log` and exits 1.
+
+Configure alerts on failed Pods with that label. olake-ui never creates Pods directly.
 
 ## Reconciliation behavior
 
-- **Create/update only** — removing a CR from git does **not** delete the OLake entity (v1). Disable Argo CD prune for `olake.io` kinds or clean up manually.
-- **Validation errors** (bad JSON, missing fields) → `phase=Failed`, no requeue. Fix git and re-sync.
-- **Missing dependencies** (job before source exists) → `phase=Pending`, requeue every 10s.
-- **Transient DB/service errors** → requeue with backoff, status may stay Pending or Failed with message.
-- **Stream updates** — Job controller watches `Streams` CRs; on change it runs stream-difference then `UpdateJob` (same as the UI API).
+- **Create/update only** — deleting a ConfigMap or Secret from git does **not** delete the OLake entity (v1).
+- **Validation errors** → `phase=Failed`, indicator spawned, no requeue until content changes.
+- **Failed job + source/destination fix** → retrying a Failed job does **not** require editing the job file. Changing the referenced source or destination (ConfigMap or Secret data) invalidates the skip hash and re-runs the job. Streams are not part of that hash (catalogs are large); a Failed job does not auto-retry on a streams-only edit.
+- **Missing dependencies** → `phase=Pending`, requeue every 30s, no indicator.
+- **Transient errors** → requeue, stay non-terminal.
+- **Streams** — no standalone reconciler; Job controller owns streams status and drift detection.
 
-Audit fields (`created_by` / `updated_by`) come from `spec.userId` (OLake user ID). Must match an existing user (e.g. `1` for the admin user from signup-init). Missing or invalid `userId` → `phase=Failed`.
+`userId` must be an existing OLake user ID (string in `data.userId`).
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Action |
-|---------|--------------|--------|
-| Argo CD Sync OK, Health Progressing forever | Operator not running | Check `GITOPS_ENABLED=true`, pod logs, in-cluster config |
-| `phase=Pending`, message "waiting for source …" | Source not in OLake yet | Wait for Source CR to reach Ready; Job requeues automatically |
-| `phase=Pending`, "waiting for Streams CR …" | Missing or wrong `job` ref | Add Streams CR with matching `spec.job` and `projectId` |
-| `phase=Failed`, validation message | Bad `spec.config` | Fix JSON to match API DTOs; check connector types |
-| `phase=Failed` after DB error | Postgres/Temporal down | Fix infrastructure; operator will requeue |
-| Health Degraded, Sync Synced | Expected on operator failure | Read `.status.message` and pod logs |
-| Secrets in git | Passwords in CR YAML | Use SealedSecrets / ExternalSecrets post-POC |
-
-Debug commands:
+| Symptom | Action |
+|---------|--------|
+| Pending, waiting for source | Ensure source ConfigMap reaches Ready first |
+| Failed, validation | Fix `data.config` JSON |
+| Failed, no indicator Pod | Check worker logs and Temporal; worker needs `pods` create |
+| Argo synced but phase empty | Operator may be disabled; check `GITOPS_ENABLED` |
 
 ```bash
-kubectl describe source smoke-source
-kubectl get events --field-selector involvedObject.kind=Source
-kubectl logs -l app=olake-ui | grep -i gitops
+kubectl describe configmap my-postgres
+kubectl get events --field-selector involvedObject.name=my-postgres
+kubectl logs -l app.kubernetes.io/name=olake-ui | grep -i gitops
 ```
 
 ## Security notes
 
-- GitOps RBAC is limited to `olake.io` resources (plus Events for controller diagnostics). It does **not** grant access to Secrets, Pods, or other cluster resources.
-- Cluster-wide list/watch means the olake-ui ServiceAccount can read every `olake.io` CR in every namespace, including connector credentials stored in `spec.config`. Treat CR YAML like sensitive config.
-- One olake-ui instance reconciles all matching CRs into its OLake database (keyed by `spec.projectId`). On shared clusters, isolate by project ID and namespace conventions, or run separate OLake installs per tenant.
-- Post-v0: leader election for multiple replicas, delete finalizers, sealed secrets.
+- olake-ui GitOps RBAC: ConfigMaps and Secrets (read/write status annotations on both), Events in the release namespace. **No pods create/delete.**
+- Secret `update`/`patch` (needed for status annotations) applies to all Secrets in the namespace, not only GitOps-managed ones — use a dedicated namespace for GitOps-managed OLake when possible.
+- Failure indicators use worker SA (already has `pods` create for connector jobs).
+- Prefer defining Source/Destination as a Secret over an inline ConfigMap when credentials must not appear in git in plaintext.
 
 ## Related files
 
-- GitOps API types (reconciler): `server/internal/gitops/api/v1/` — run `make generate-deepcopy` after type changes to refresh `zz_generated.deepcopy.go`
 - Reconcilers: `server/internal/gitops/`
-- CRD YAML (install): [olake-helm `helm/olake/crds/`](https://github.com/datazip-inc/olake-helm/tree/master/helm/olake/crds)
-- **Helm deploy (CRDs, RBAC, GITOPS_ENABLED):** [olake-helm](https://github.com/datazip-inc/olake-helm/tree/master/helm/olake)
-- Argo CD health: [olake-helm/docs/argocd-health.yaml](https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/docs/argocd-health.yaml)
-- Examples: [olake-helm/examples/gitops/](https://github.com/datazip-inc/olake-helm/tree/master/helm/olake/examples/gitops)
+- Helm RBAC and examples: [olake-helm](https://github.com/datazip-inc/olake-helm/tree/master/helm/olake)

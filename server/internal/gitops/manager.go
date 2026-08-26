@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -75,19 +76,25 @@ func Setup(app *services.AppService, restConfig *rest.Config) (*Controller, erro
 
 	managed := labels.SelectorFromSet(labels.Set{LabelManaged: LabelManagedValue})
 
+	cacheOpts := cache.Options{
+		ByObject: map[client.Object]cache.ByObject{
+			&corev1.ConfigMap{}: {Label: managed},
+			&corev1.Secret{}:    {Label: managed},
+		},
+	}
+	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
+		cacheOpts.DefaultNamespaces = map[string]cache.Config{ns: {}}
+	}
+
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme: scheme,
-		Cache: cache.Options{
-			ByObject: map[client.Object]cache.ByObject{
-				&corev1.ConfigMap{}: {Label: managed},
-			},
-		},
+		Cache:  cacheOpts,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create controller manager: %w", err)
 	}
 
-	logger.Info("GitOps controller manager configured for labelled ConfigMap watch")
+	logger.Info("GitOps controller manager configured for labelled ConfigMap/Secret watch in namespace scope")
 	return &Controller{mgr: mgr, app: app}, nil
 }
 

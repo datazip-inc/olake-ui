@@ -50,10 +50,10 @@ func newFileWatcher(dir string, etlSvc *etl.Service, t *temporal.Temporal) *File
 		Dir:            dir,
 		temporalClient: t,
 		index:          map[string]ResourceData{},
-		state:     map[string]resourceState{},
-		debounce:  map[string]*time.Timer{},
-		retries:   map[string]*time.Timer{},
-		reconcile: make(chan string, 64),
+		state:          map[string]resourceState{},
+		debounce:       map[string]*time.Timer{},
+		retries:        map[string]*time.Timer{},
+		reconcile:      make(chan string, 64),
 	}
 	sink := StatusSink(fw)
 	fw.source = &SourceReconciler{ETL: etlSvc, Sink: sink}
@@ -248,10 +248,11 @@ func (fw *FileWatcher) DeleteIndicator(ctx context.Context, r ResourceData) erro
 	return deleteIndicatorViaTemporal(ctx, fw.temporalClient, r)
 }
 
-func (fw *FileWatcher) SetPhase(_ context.Context, r ResourceData, phase, message, entityID string) error {
+func (fw *FileWatcher) SetPhase(_ context.Context, r ResourceData, phase, message, entityID, observedHash string) error {
+	hash := observedHashForResource(r, observedHash)
 	fw.mu.Lock()
 	fw.state[r.key()] = resourceState{
-		hash:     ContentHash(r.Data),
+		hash:     hash,
 		phase:    phase,
 		message:  message,
 		entityID: entityID,

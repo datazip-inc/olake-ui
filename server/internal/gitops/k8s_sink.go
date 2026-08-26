@@ -2,6 +2,7 @@ package gitops
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	k8srecord "k8s.io/client-go/tools/record"
@@ -36,42 +37,47 @@ func (s *K8sSink) DeleteIndicator(ctx context.Context, r ResourceData) error {
 	return deleteIndicatorViaTemporal(ctx, s.temporal, r)
 }
 
-func (s *K8sSink) SetPhase(ctx context.Context, r ResourceData, phase, message, entityID string) error {
-	dataHash := ContentHash(r.Data)
+func (s *K8sSink) SetPhase(ctx context.Context, r ResourceData, phase, message, entityID, observedHash string) error {
+	dataHash := observedHashForResource(r, observedHash)
 	key := client.ObjectKey{Name: r.Name, Namespace: r.Namespace}
 
 	// Patch annotations only; does not touch data. A concurrent Argo sync that
-	// replaces the whole ConfigMap can still drop these keys before we read —
+	// replaces the whole object can still drop these keys before we read —
 	// next reconcile will rewrite them, or skipReconcile may miss if hash is gone.
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		var cm corev1.ConfigMap
-		if err := s.client.Get(ctx, key, &cm); err != nil {
+		obj := newManagedObject(r.ObjectKind)
+		if err := s.client.Get(ctx, key, obj); err != nil {
 			return err
 		}
-		if cm.Annotations == nil {
-			cm.Annotations = map[string]string{}
+		ann := obj.GetAnnotations()
+		if ann == nil {
+			ann = map[string]string{}
 		}
-		if cm.Annotations[AnnotationPhase] == phase &&
-			cm.Annotations[AnnotationMessage] == message &&
-			cm.Annotations[AnnotationEntityID] == entityID &&
-			cm.Annotations[AnnotationObservedHash] == dataHash {
+		if ann[AnnotationPhase] == phase &&
+			ann[AnnotationMessage] == message &&
+			ann[AnnotationEntityID] == entityID &&
+			ann[AnnotationObservedHash] == dataHash {
 			return nil
 		}
-		original := cm.DeepCopy()
-		cm.Annotations[AnnotationPhase] = phase
-		cm.Annotations[AnnotationMessage] = message
-		cm.Annotations[AnnotationEntityID] = entityID
-		cm.Annotations[AnnotationObservedHash] = dataHash
-		return s.client.Patch(ctx, &cm, client.MergeFrom(original))
+		original, ok := obj.DeepCopyObject().(client.Object)
+		if !ok {
+			return fmt.Errorf("deep copy %T: not a client.Object", obj)
+		}
+		ann[AnnotationPhase] = phase
+		ann[AnnotationMessage] = message
+		ann[AnnotationEntityID] = entityID
+		ann[AnnotationObservedHash] = dataHash
+		obj.SetAnnotations(ann)
+		return s.client.Patch(ctx, obj, client.MergeFrom(original))
 	})
 	if err != nil {
 		return err
 	}
 
 	if s.recorder != nil {
-		var cm corev1.ConfigMap
-		cm.Name = r.Name
-		cm.Namespace = r.Namespace
+		evObj := newManagedObject(r.ObjectKind)
+		evObj.SetName(r.Name)
+		evObj.SetNamespace(r.Namespace)
 		eventType := corev1.EventTypeNormal
 		reason, eventMsg := "Pending", message
 		switch phase {
@@ -81,7 +87,7 @@ func (s *K8sSink) SetPhase(ctx context.Context, r ResourceData, phase, message, 
 			eventType = corev1.EventTypeWarning
 			reason, eventMsg = "SyncFailed", message
 		}
-		s.recorder.Event(&cm, eventType, reason, eventMsg)
+		s.recorder.Event(evObj, eventType, reason, eventMsg)
 	}
 	return nil
 }
