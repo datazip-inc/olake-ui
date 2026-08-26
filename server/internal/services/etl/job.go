@@ -650,7 +650,6 @@ func (s Service) UpdateSyncTelemetry(_ context.Context, req dto.UpdateSyncTeleme
 		JobID:                req.JobID,
 		WorkflowID:           req.WorkflowID,
 		ExecutionEnvironment: req.Environment,
-		SyncRunCount:         req.SyncRunCount,
 		Properties:           req.Properties,
 	}
 	switch strings.ToLower(req.Event) {

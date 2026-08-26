@@ -20,7 +20,6 @@ type SyncEventInfo struct {
 	JobID                int
 	WorkflowID           string
 	ExecutionEnvironment string
-	SyncRunCount         int
 	Properties           map[string]any
 }
 
@@ -115,9 +114,6 @@ func prepareCommonProperties(info SyncEventInfo, eventType string, details *jobD
 		"environment":         info.ExecutionEnvironment,
 	}
 
-	if info.SyncRunCount > 0 {
-		props["sync_run_count"] = info.SyncRunCount
-	}
 	timeKey := "ended_at"
 	if eventType == EventSyncStarted {
 		timeKey = "started_at"
