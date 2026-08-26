@@ -16,10 +16,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/storage"
+	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
@@ -56,7 +56,40 @@ func InitTelemetry(ctx context.Context, db *database.Database) {
 
 		ip := getOutboundIP()
 
-		tempUserID := loadOrCreateTelemetryUserID(ctx)
+		// Generate user ID during initialization
+		tempUserID := func() string {
+			configDir := filepath.Join(os.TempDir(), "olake-config", "telemetry")
+			idPath := filepath.Join(configDir, TelemetryUserIDFile)
+			relativePath := path.Join("telemetry", TelemetryUserIDFile)
+
+			switch storagemode.Get() {
+			case constants.StorageModeS3:
+				idBytes, _, err := storage.ReadFileFromS3(ctx, "", relativePath, false)
+				if err == nil {
+					return string(idBytes)
+				}
+			default:
+				idBytes, err := os.ReadFile(idPath)
+				if err == nil {
+					return string(idBytes)
+				}
+			}
+
+			hash := sha256.New()
+			hash.Write([]byte(time.Now().String()))
+			newID := hex.EncodeToString(hash.Sum(nil))[:32]
+
+			switch storagemode.Get() {
+			case constants.StorageModeS3:
+				_ = storage.WriteFilesToS3(ctx, constants.DefaultConfigDir, []storage.JobConfig{{RelativePath: relativePath, Data: newID}})
+			default:
+				if err := os.MkdirAll(configDir, 0755); err != nil {
+					return newID
+				}
+				_ = os.WriteFile(idPath, []byte(newID), 0600)
+			}
+			return newID
+		}()
 
 		logger.Infof("telemetry initialized with user ID: %s, and App version: %s", tempUserID, constants.AppVersion)
 
@@ -209,45 +242,4 @@ func GetVersion() string {
 		return instance.OlakeUIVersion
 	}
 	return ""
-}
-
-func loadOrCreateTelemetryUserID(ctx context.Context) string {
-	telemetryUserIDPath := path.Join("telemetry", TelemetryUserIDFile)
-
-	switch strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode)) {
-	case constants.StorageModeS3:
-		if id, _, err := storage.ReadFileFromS3(ctx, "", telemetryUserIDPath, false); err == nil && strings.TrimSpace(id) != "" {
-			return strings.TrimSpace(id)
-		}
-
-		userID := generateTelemetryUserID()
-		_ = storage.WriteFilesToS3(ctx, constants.DefaultConfigDir, []storage.JobConfig{{RelativePath: telemetryUserIDPath, Data: userID}})
-		return userID
-	case constants.StorageModeNFS:
-		return loadOrCreateTelemetryUserIDFromLocal()
-	}
-	return ""
-}
-
-func loadOrCreateTelemetryUserIDFromLocal() string {
-	configDir := filepath.Join(os.TempDir(), "olake-config", "telemetry")
-	idPath := filepath.Join(configDir, TelemetryUserIDFile)
-
-	idBytes, err := os.ReadFile(idPath)
-	if err != nil {
-		userID := generateTelemetryUserID()
-		if err := os.MkdirAll(configDir, 0755); err != nil {
-			return userID
-		}
-		_ = os.WriteFile(idPath, []byte(userID), 0600)
-		return userID
-	}
-
-	return string(idBytes)
-}
-
-func generateTelemetryUserID() string {
-	hash := sha256.New()
-	hash.Write([]byte(time.Now().String()))
-	return hex.EncodeToString(hash.Sum(nil))[:32]
 }

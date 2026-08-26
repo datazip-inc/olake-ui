@@ -6,14 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
-	"strings"
 	"time"
 
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/storage"
+	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
@@ -107,40 +105,21 @@ func trackSyncEvent(ctx context.Context, jobID int, workflowID, executionEnviron
 
 func enrichWithSyncStats(ctx context.Context, properties map[string]interface{}, workflowID string) error {
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
-	statsData, err := readSyncJobFile(ctx, syncFolderName, "stats.json")
+	mainSyncDir := filepath.Join(constants.DefaultConfigDir, syncFolderName)
+
+	if err := addStatsProperties(ctx, properties, mainSyncDir); err != nil {
+		return err
+	}
+
+	return addStreamsProperties(ctx, properties, mainSyncDir)
+}
+
+func addStatsProperties(ctx context.Context, properties map[string]interface{}, mainSyncDir string) error {
+	statsData, err := readSyncJobFile(ctx, mainSyncDir, "stats.json")
 	if err != nil {
 		return err
 	}
-	if err := addStatsProperties(properties, statsData); err != nil {
-		return err
-	}
 
-	streamsData, err := readSyncJobFile(ctx, syncFolderName, "streams.json")
-	if err != nil {
-		return err
-	}
-
-	return addStreamsProperties(properties, streamsData)
-}
-
-func readSyncJobFile(ctx context.Context, syncFolderName, filename string) ([]byte, error) {
-	switch strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode)) {
-	case constants.StorageModeS3:
-		relPath := path.Join(syncFolderName, filename)
-		body, _, err := storage.ReadFileFromS3(ctx, "", relPath, false)
-		if err != nil {
-			return nil, err
-		}
-		return []byte(body), nil
-	case constants.StorageModeNFS:
-		filePath := filepath.Join(constants.DefaultConfigDir, syncFolderName, filename)
-		return os.ReadFile(filePath)
-	default:
-		return nil, fmt.Errorf("unsupported OLAKE_STORAGE_MODE: %q", appconfig.Load().OlakeStorageMode)
-	}
-}
-
-func addStatsProperties(properties map[string]interface{}, statsData []byte) error {
 	var stats map[string]interface{}
 	if err := json.Unmarshal(statsData, &stats); err != nil {
 		return err
@@ -151,13 +130,15 @@ func addStatsProperties(properties map[string]interface{}, statsData []byte) err
 	}
 	if memory, ok := stats["Memory"]; ok {
 		properties["memory_used"] = memory
-	} else if memory, ok := stats["Memory Usage Bytes"]; ok {
-		properties["memory_used"] = memory
 	}
 	return nil
 }
 
-func addStreamsProperties(properties map[string]interface{}, streamsData []byte) error {
+func addStreamsProperties(ctx context.Context, properties map[string]interface{}, mainSyncDir string) error {
+	streamsData, err := readSyncJobFile(ctx, mainSyncDir, "streams.json")
+	if err != nil {
+		return fmt.Errorf("failed to read streams.json: %s", err)
+	}
 
 	var streamsConfig struct {
 		SelectedStreams map[string][]struct {
@@ -185,6 +166,19 @@ func addStreamsProperties(properties map[string]interface{}, streamsData []byte)
 	properties["normalized_streams_count"] = normalizedCount
 	properties["partitioned_streams_count"] = partitionedCount
 	return nil
+}
+
+func readSyncJobFile(ctx context.Context, mainSyncDir, filename string) ([]byte, error) {
+	switch storagemode.Get() {
+	case constants.StorageModeS3:
+		body, _, err := storage.ReadFileFromS3(ctx, mainSyncDir, filename, false)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(body), nil
+	default:
+		return os.ReadFile(filepath.Join(mainSyncDir, filename))
+	}
 }
 
 func TrackSyncStart(ctx context.Context, jobID int, workflowID, executionEnvironment string) {

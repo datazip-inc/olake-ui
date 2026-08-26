@@ -103,9 +103,6 @@ var (
 
 	ConnectorLogPrefix = "connector"
 
-	// OlakeLogFile is the legacy single-file connector log on NFS.
-	OlakeLogFile = "olake.log"
-
 	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.
 	ExecutorEnvironment = "docker"
