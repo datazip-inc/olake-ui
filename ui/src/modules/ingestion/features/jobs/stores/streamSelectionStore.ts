@@ -13,8 +13,9 @@ import {
 } from "@/modules/ingestion/common/types"
 import { IngestionMode } from "@/modules/ingestion/features/jobs/enums"
 
-import { DEFAULT_UPSERT_TYPE, STREAM_DEFAULTS } from "../constants"
+import { STREAM_DEFAULTS } from "../constants"
 import { extractNamespaceFromDestination } from "../utils"
+import { getDefaultUpsertTypeFor } from "../utils/streams"
 
 export interface BulkStreamConfig {
 	syncMode?: SyncMode
@@ -127,11 +128,14 @@ const initialState = {
 
 // update_type is only carried by streams running in upsert mode.
 // Mutates and returns the same object so callers can use it inline.
-const withUpsertTypeSynced = (stream: SelectedStream): SelectedStream => {
+const withUpsertTypeSynced = (
+	stream: SelectedStream,
+	defaultUpsertType?: UpsertType,
+): SelectedStream => {
 	if (stream.append_mode) {
 		delete stream.update_type
-	} else if (!stream.update_type) {
-		stream.update_type = DEFAULT_UPSERT_TYPE
+	} else if (!stream.update_type && defaultUpsertType) {
+		stream.update_type = defaultUpsertType
 	}
 	return stream
 }
@@ -179,7 +183,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 							disabled: false,
 							append_mode: ingestionMode === IngestionMode.APPEND,
 							...(ingestionMode !== IngestionMode.APPEND && {
-								update_type: DEFAULT_UPSERT_TYPE,
+								update_type: getDefaultUpsertTypeFor(prev.streams, stream),
 							}),
 						},
 					]
@@ -407,7 +411,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 						...prev.selected_streams,
 						[namespace]: prev.selected_streams[namespace].map(s =>
 							s.stream_name === streamName
-								? withUpsertTypeSynced({ ...s, append_mode: appendMode })
+								? withUpsertTypeSynced(
+										{ ...s, append_mode: appendMode },
+										getDefaultUpsertTypeFor(prev.streams, stream),
+									)
 								: s,
 						),
 					},
@@ -496,7 +503,13 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 						config.appendMode !== undefined ||
 						config.upsertType !== undefined
 					)
-						withUpsertTypeSynced(newStream)
+						withUpsertTypeSynced(
+							newStream,
+							getDefaultUpsertTypeFor(updatedStreams, {
+								streamName,
+								namespace,
+							}),
+						)
 					if (config.normalization !== undefined)
 						newStream.normalization = config.normalization
 					if (config.partitionRegex !== undefined)
@@ -557,7 +570,13 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 				Object.entries(prev.selected_streams).map(([ns, streams]) => [
 					ns,
 					streams.map(s =>
-						withUpsertTypeSynced({ ...s, append_mode: appendMode }),
+						withUpsertTypeSynced(
+							{ ...s, append_mode: appendMode },
+							getDefaultUpsertTypeFor(prev.streams, {
+								streamName: s.stream_name,
+								namespace: ns,
+							}),
+						),
 					),
 				]),
 			)

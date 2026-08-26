@@ -4,7 +4,7 @@ import clsx from "clsx"
 
 import { UpsertType } from "@/modules/ingestion/common/types"
 
-import { DEFAULT_UPSERT_TYPE, UPSERT_TYPE_OPTIONS } from "../../constants"
+import { UPSERT_TYPE_OPTIONS } from "../../constants"
 import { IngestionMode } from "../../enums"
 import {
 	isDestinationIngestionModeSupported,
@@ -70,7 +70,7 @@ const UpsertTypeSectionView = ({
 			<Radio.Group
 				disabled={!isSelected}
 				className="mb-4 grid grid-cols-2 gap-4"
-				value={upsertType ?? DEFAULT_UPSERT_TYPE}
+				value={upsertType}
 				onChange={e => onChange(e.target.value)}
 			>
 				{UPSERT_TYPE_OPTIONS.map(option => (

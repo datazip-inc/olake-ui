@@ -22,7 +22,7 @@ import {
 } from "@/modules/ingestion/common/types"
 import { BulkConfigureStreamsModalProps } from "@/modules/ingestion/features/jobs/types"
 
-import { CARD_STYLE, DEFAULT_UPSERT_TYPE } from "../../constants"
+import { CARD_STYLE } from "../../constants"
 import { useStreamSelectionStore } from "../../stores"
 import {
 	buildBulkStreamsData,
@@ -48,7 +48,7 @@ type BulkConfig = {
 	syncMode: SyncMode | undefined
 	cursorField: string | undefined
 	appendMode: boolean
-	upsertType: UpsertType
+	upsertType?: UpsertType
 	normalization: boolean
 	filter: string
 	filterConfig: FilterConfig | undefined
@@ -82,7 +82,7 @@ const INITIAL_BULK_CONFIG: BulkConfig = {
 	syncMode: SyncMode.FULL_REFRESH,
 	cursorField: undefined,
 	appendMode: false,
-	upsertType: DEFAULT_UPSERT_TYPE,
+	upsertType: undefined,
 	normalization: false,
 	filter: "",
 	filterConfig: undefined,
@@ -204,7 +204,7 @@ const BulkConfigureStreamsModal = ({
 			cursorField:
 				syncMode === SyncMode.INCREMENTAL ? sortedCursors[0] : undefined,
 			appendMode: bulkStreamDefaults.append_mode ?? false,
-			upsertType: bulkStreamDefaults.update_type ?? DEFAULT_UPSERT_TYPE,
+			upsertType: bulkStreamDefaults.update_type,
 			normalization: bulkStreamDefaults.normalization,
 			filter: "",
 			filterConfig: undefined,

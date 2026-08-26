@@ -26,8 +26,6 @@ export const STREAM_DEFAULTS = {
 	filter: "",
 } as const
 
-export const DEFAULT_UPSERT_TYPE = UpsertType.EQUALITY
-
 export const SYNC_MODE_MAP = {
 	FULL_REFRESH: "full_refresh",
 	INCREMENTAL: "incremental",
@@ -49,9 +47,6 @@ export const UPSERT_TYPE_OPTIONS = [
 			"Rows are deleted by their position in the existing data files before the new rows are written",
 	},
 ]
-
-export const UPSERT_TYPE_TOOLTIP =
-	"Choose how existing rows are deleted when an upsert writes new versions of them"
 
 export const PartitioningRegexTooltip =
 	"Choose a column to partition your data for faster reads and better performance"

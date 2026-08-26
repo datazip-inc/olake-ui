@@ -65,6 +65,9 @@ export type StreamData = {
 export interface DefaultStreamProperties {
 	normalization: boolean
 	append_mode: boolean
+	// Catalog-provided default upsert type. Stored on the selected stream as
+	// update_type. Absent on older olake versions.
+	update_mode?: UpsertType
 }
 
 export interface SelectedColumns {
