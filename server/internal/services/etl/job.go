@@ -479,7 +479,7 @@ func (s Service) GetJobTasks(ctx context.Context, projectID string, jobID int) (
 	return tasks, nil
 }
 
-func (s Service) GetTaskLogs(ctx context.Context, jobID int, filePath, logType string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
+func (s Service) GetTaskLogs(ctx context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		if errors.Is(err, constants.ErrJobNotFound) {
@@ -488,7 +488,7 @@ func (s Service) GetTaskLogs(ctx context.Context, jobID int, filePath, logType s
 		return nil, fmt.Errorf("failed to find job: %s", err)
 	}
 
-	logs, err := utils.ReadTaskLogs(ctx, filePath, logType, cursor, limit, direction)
+	logs, err := utils.ReadLogs(ctx, filePath, cursor, limit, direction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read logs: %s", err)
 	}

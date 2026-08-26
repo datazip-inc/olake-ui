@@ -1,5 +1,5 @@
-// analyze_task_logs fetches connector/worker logs from the OLake UI task logs API
-// and reports counter duplicates, sequence gaps (log loss), and worker restart/OOM signals.
+// analyze_task_logs fetches connector logs from the OLake UI task logs API
+// and reports counter duplicates and sequence gaps (log loss).
 //
 // Usage — paste your browser logs URL into target.url, then:
 //
@@ -37,17 +37,6 @@ const (
 var (
 	logPageURLRE   = regexp.MustCompile(`/jobs/([^/]+)/(?:history|tasks)/([^/]+)/logs`)
 	totalCounterRE = regexp.MustCompile(`^total\s+(\d+)$`)
-	oomPatterns    = []string{
-		"oom", "outofmemory", "out of memory", "oomkilled",
-		"sigkill", "exit 137", "exit code 137", "killed",
-		"evicted", "memory limit", "enomem", "cannot allocate memory",
-	}
-	restartPatterns = []string{
-		"recovering worker logs",
-		"starting olake worker",
-		"container removed successfully",
-		"stop request received for container",
-	}
 )
 
 type apiEnvelope struct {
@@ -166,12 +155,6 @@ func main() {
 	}
 	printConnectorReport(connectorReport)
 
-	workerReport, err := analyzeWorkerLogs(c, *projectID, *jobID, *taskID, *filePath, *limit)
-	if err != nil {
-		fail("worker analysis: %v", err)
-	}
-	printWorkerReport(workerReport)
-
 	fmt.Println("=== Overall ===")
 	if connectorReport.duplicates == 0 && connectorReport.gaps == 0 && connectorReport.numericLines > 0 {
 		fmt.Println("Connector counters: PASS (no duplicates, no gaps)")
@@ -181,15 +164,7 @@ func main() {
 		fmt.Println("Connector counters: FAIL (see details above)")
 	}
 
-	if workerReport.oomSignals == 0 && workerReport.workerChunks <= 1 {
-		fmt.Printf("Worker health: PASS (%d worker log file(s), no OOM signals)\n", workerReport.workerChunks)
-	} else if workerReport.oomSignals > 0 {
-		fmt.Printf("Worker health: FAIL (%d OOM-related log line(s))\n", workerReport.oomSignals)
-	} else {
-		fmt.Printf("Worker health: WARN (%d worker log file(s), likely worker/container restart — check worker log messages)\n", workerReport.workerChunks)
-	}
-
-	if connectorReport.duplicates > 0 || connectorReport.gaps > 0 || workerReport.oomSignals > 0 {
+	if connectorReport.duplicates > 0 || connectorReport.gaps > 0 {
 		os.Exit(1)
 	}
 }
@@ -204,14 +179,6 @@ type connectorReport struct {
 	duplicates   int
 	gaps         int
 	chunkDetails []chunkStats
-}
-
-type workerReport struct {
-	workerChunks   int
-	workerMessages int
-	oomSignals     int
-	restartSignals int
-	suspicious     []string
 }
 
 func (c *client) login(username, password string) error {
@@ -255,10 +222,10 @@ func (c *client) login(username, password string) error {
 	return nil
 }
 
-func (c *client) fetchLogs(projectID, jobID, taskID, filePath, logType string, cursor int64, limit int, direction string) (*taskLogsPayload, error) {
+func (c *client) fetchLogs(projectID, jobID, taskID, filePath string, cursor int64, limit int, direction string) (*taskLogsPayload, error) {
 	var lastErr error
 	for attempt := 1; attempt <= 5; attempt++ {
-		payload, err := c.fetchLogsOnce(projectID, jobID, taskID, filePath, logType, cursor, limit, direction)
+		payload, err := c.fetchLogsOnce(projectID, jobID, taskID, filePath, cursor, limit, direction)
 		if err == nil {
 			return payload, nil
 		}
@@ -282,7 +249,7 @@ func isRetryable(err error) bool {
 		strings.Contains(msg, "broken pipe")
 }
 
-func (c *client) fetchLogsOnce(projectID, jobID, taskID, filePath, logType string, cursor int64, limit int, direction string) (*taskLogsPayload, error) {
+func (c *client) fetchLogsOnce(projectID, jobID, taskID, filePath string, cursor int64, limit int, direction string) (*taskLogsPayload, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/project/%s/jobs/%s/tasks/%s/logs",
 		c.baseURL, url.PathEscape(projectID), url.PathEscape(jobID), url.PathEscape(taskID))
 
@@ -290,9 +257,6 @@ func (c *client) fetchLogsOnce(projectID, jobID, taskID, filePath, logType strin
 	q.Set("cursor", strconv.FormatInt(cursor, 10))
 	q.Set("limit", strconv.Itoa(limit))
 	q.Set("direction", direction)
-	if logType != "" {
-		q.Set("log_type", logType)
-	}
 
 	reqBody, err := json.Marshal(map[string]string{"file_path": filePath})
 	if err != nil {
@@ -342,7 +306,7 @@ func analyzeConnectorCounters(c *client, projectID, jobID, taskID, filePath stri
 
 	for {
 		chunkIndex++
-		page, err := c.fetchLogs(projectID, jobID, taskID, filePath, "connector", cursor, limit, "older")
+		page, err := c.fetchLogs(projectID, jobID, taskID, filePath, cursor, limit, "older")
 		if err != nil {
 			return nil, err
 		}
@@ -445,52 +409,6 @@ func inspectCounterChunk(logs []logEntry) chunkStats {
 	return stats
 }
 
-func analyzeWorkerLogs(c *client, projectID, jobID, taskID, filePath string, limit int) (*workerReport, error) {
-	report := &workerReport{}
-	cursor := int64(-1)
-	chunkIndex := 0
-
-	for {
-		chunkIndex++
-		page, err := c.fetchLogs(projectID, jobID, taskID, filePath, "worker", cursor, limit, "older")
-		if err != nil {
-			return nil, err
-		}
-
-		for _, log := range page.Logs {
-			report.workerMessages++
-			msg := strings.ToLower(strings.TrimSpace(log.Message))
-			if msg == "" {
-				continue
-			}
-
-			for _, pattern := range oomPatterns {
-				if strings.Contains(msg, pattern) {
-					report.oomSignals++
-					report.suspicious = append(report.suspicious, fmt.Sprintf("[oom] %s", log.Message))
-					break
-				}
-			}
-
-			for _, pattern := range restartPatterns {
-				if strings.Contains(msg, pattern) {
-					report.restartSignals++
-					report.suspicious = append(report.suspicious, fmt.Sprintf("[restart] %s", log.Message))
-					break
-				}
-			}
-		}
-
-		if !page.HasMoreOlder || len(page.Logs) == 0 {
-			report.workerChunks = chunkIndex
-			break
-		}
-		cursor = page.OlderCursor
-	}
-
-	return report, nil
-}
-
 func printConnectorReport(r *connectorReport) {
 	fmt.Println("--- Connector counter analysis ---")
 	fmt.Printf("Chunks fetched:     %d\n", r.chunks)
@@ -517,33 +435,6 @@ func printConnectorReport(r *connectorReport) {
 		last := r.chunkDetails[0]
 		fmt.Printf("Oldest chunk:       #%d count=%d range=%d..%d\n", first.index, first.count, first.min, first.max)
 		fmt.Printf("Newest chunk:       #%d count=%d range=%d..%d\n", last.index, last.count, last.min, last.max)
-	}
-	fmt.Println()
-}
-
-func printWorkerReport(r *workerReport) {
-	fmt.Println("--- Worker log analysis ---")
-	fmt.Printf("Worker log files/chunks: %d\n", r.workerChunks)
-	fmt.Printf("Worker log messages:     %d\n", r.workerMessages)
-	fmt.Printf("OOM-related signals:     %d\n", r.oomSignals)
-	fmt.Printf("Restart/cleanup signals: %d\n", r.restartSignals)
-
-	if r.workerChunks > 1 {
-		fmt.Println("NOTE: multiple worker log files usually mean worker/container restarts during the run.")
-	}
-
-	if len(r.suspicious) > 0 {
-		fmt.Println("Notable worker messages:")
-		limit := len(r.suspicious)
-		if limit > 20 {
-			limit = 20
-		}
-		for i := 0; i < limit; i++ {
-			fmt.Printf("  - %s\n", r.suspicious[i])
-		}
-		if len(r.suspicious) > limit {
-			fmt.Printf("  ... and %d more\n", len(r.suspicious)-limit)
-		}
 	}
 	fmt.Println()
 }

@@ -4,145 +4,164 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"path/filepath"
-	"sort"
+	"slices"
+	"strconv"
 	"strings"
 
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/storage"
 )
 
-func validateS3LogBase(ctx context.Context, workflowID string) (string, error) {
-	if workflowID == "" {
-		return "", fmt.Errorf("file path cannot be empty")
+type logChunkFile struct {
+	index int
+	name  string
+}
+
+// readLogsFromS3 reads the logs from S3 for a workflow.
+func readLogsFromS3(ctx context.Context, workflowID string, cursor int64, _ int, direction string) (*dto.TaskLogsResponse, error) {
+	workflowHash, err := validateS3LogBase(ctx, workflowID)
+	if err != nil {
+		return nil, err
 	}
 
-	baseRel := GetLogBaseRelPath(workflowID)
-	exists, err := storage.PrefixExists(ctx, baseRel)
+	syncFolder, err := getS3SyncFolder(ctx, workflowHash)
+	if err != nil {
+		return nil, err
+	}
+
+	syncLogDir := path.Join(workflowHash, "logs", syncFolder)
+	chunks, err := listS3LogChunks(ctx, syncLogDir)
+	if err != nil {
+		return nil, err
+	}
+
+	return processS3Logs(ctx, syncLogDir, chunks, cursor, direction)
+}
+
+// validateS3LogBase validates the S3 log base directory.
+func validateS3LogBase(ctx context.Context, workflowID string) (string, error) {
+	workflowHash := WorkflowHash(workflowID)
+	exists, err := storage.PrefixExists(ctx, workflowHash)
 	if err != nil {
 		return "", err
 	}
 	if !exists {
-		return "", fmt.Errorf("logs directory not found: %s", baseRel)
+		return "", fmt.Errorf("logs directory not found: %s", workflowHash)
 	}
 
-	return baseRel, nil
+	return workflowHash, nil
 }
 
-func getS3SyncFolder(ctx context.Context, baseRel string) (string, error) {
-	children, err := storage.ListCommonPrefixes(ctx, path.Join(baseRel, "logs"))
+// getS3SyncFolder gets the S3 sync folder name for a workflow.
+func getS3SyncFolder(ctx context.Context, workflowHash string) (string, error) {
+	syncFolders, err := storage.ListFolderNamesWithPrefix(ctx, path.Join(workflowHash, "logs/sync_"))
 	if err != nil {
 		return "", err
 	}
-
-	var syncFolders []string
-	for _, name := range children {
-		if strings.HasPrefix(name, "sync_") {
-			syncFolders = append(syncFolders, name)
-		}
-	}
 	if len(syncFolders) == 0 {
-		// Worker logs may exist before the first connector chunk is uploaded.
-		return "", fmt.Errorf("no sync folder found in: %s/logs", baseRel)
+		return "", fmt.Errorf("no sync folder found in: %s/logs", workflowHash)
 	}
 
-	// Prefer the latest session when multiple sync_* folders exist.
-	sort.Strings(syncFolders)
-	return syncFolders[len(syncFolders)-1], nil
+	return syncFolders[0], nil
 }
 
-func emptyTaskLogsResponse() *dto.TaskLogsResponse {
-	return &dto.TaskLogsResponse{
-		Logs:         []map[string]interface{}{},
-		OlderCursor:  0,
-		NewerCursor:  0,
-		HasMoreOlder: false,
-		HasMoreNewer: false,
-	}
-}
-
-func resolveS3LogDirRel(baseRel, syncFolder, logType string) (string, error) {
-	switch logType {
-	case constants.LogTypeWorker:
-		return path.Join(baseRel, "logs", constants.WorkerLogsDir), nil
-	case constants.LogTypeConnector:
-		if syncFolder == "" {
-			return "", fmt.Errorf("sync folder is required for connector logs")
-		}
-		return path.Join(baseRel, "logs", syncFolder), nil
-	default:
-		return "", fmt.Errorf("unsupported log type: %s", logType)
-	}
-}
-
-func readLogsFromS3(ctx context.Context, workflowID, logType string, cursor int64, _ int, direction string) (*dto.TaskLogsResponse, error) {
-	logType = NormalizeLogType(logType)
-	prefix := logPrefixForType(logType)
-
-	baseRel, err := validateS3LogBase(ctx, workflowID)
-	if err != nil {
-		if strings.Contains(err.Error(), "logs directory not found") {
-			return emptyTaskLogsResponse(), nil
-		}
-		return nil, err
-	}
-
-	var syncFolder string
-	if logType == constants.LogTypeConnector {
-		syncFolder, err = getS3SyncFolder(ctx, baseRel)
-		if err != nil {
-			if strings.Contains(err.Error(), "no sync folder found") {
-				// Connector chunks may not have been uploaded yet (only worker/ exists).
-				return emptyTaskLogsResponse(), nil
-			}
-			return nil, err
-		}
-	}
-
-	logDirRel, err := resolveS3LogDirRel(baseRel, syncFolder, logType)
+// listS3LogChunks lists the S3 log chunks for a workflow.
+func listS3LogChunks(ctx context.Context, syncLogDir string) ([]logChunkFile, error) {
+	names, err := storage.ListObjectNames(ctx, syncLogDir)
 	if err != nil {
 		return nil, err
 	}
 
-	chunks, err := listS3LogChunks(ctx, logDirRel, prefix)
-	if err != nil {
-		if strings.Contains(err.Error(), "no "+prefix+" log chunks found") {
-			return emptyTaskLogsResponse(), nil
+	chunks := make([]logChunkFile, 0, len(names))
+	for _, name := range names {
+		index, ok := parseNumberedLogChunkName(name, constants.ConnectorLogPrefix)
+		if !ok {
+			continue
 		}
-		return nil, err
+		chunks = append(chunks, logChunkFile{index: index, name: name})
 	}
 
-	return paginateLogChunks(chunks, cursor, direction, func(chunk logChunkFile) ([]string, error) {
-		return readS3ChunkLines(ctx, logDirRel, chunk)
+	slices.SortFunc(chunks, func(a, b logChunkFile) int {
+		return a.index - b.index
 	})
+	return chunks, nil
 }
 
-func ReadTaskLogs(ctx context.Context, workflowID, logType string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
-	logType = NormalizeLogType(logType)
+// parseNumberedLogChunkName parses names like connector-000001-<timestamp>.log.
+func parseNumberedLogChunkName(name, prefix string) (int, bool) {
+	body := strings.TrimSuffix(name, ".log")
+	remainder := body[len(prefix)+1:]
+	dash := strings.Index(remainder, "-")
+	if dash < 1 {
+		return 0, false
+	}
 
-	mode := strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode))
-	switch mode {
-	case constants.StorageModeS3:
-		return readLogsFromS3(ctx, workflowID, logType, cursor, limit, direction)
-	default:
-		mainSyncDir, err := GetAndValidateLogBaseDir(workflowID)
-		if err != nil {
-			return nil, err
+	index, err := strconv.Atoi(remainder[:dash])
+	if err != nil {
+		return 0, false
+	}
+
+	return index, true
+}
+
+// readS3ChunkLines reads the lines from a S3 log chunk.
+func readS3ChunkLines(ctx context.Context, syncLogDir string, chunk logChunkFile) ([]string, error) {
+	chunkPath := path.Join(syncLogDir, chunk.name)
+	content, err := storage.ReadFileFromS3(ctx, "", chunkPath, false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read log chunk %s: %s", chunkPath, err)
+	}
+
+	lines := make([]string, 0)
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if isValidLogLine(line) {
+			lines = append(lines, line)
 		}
-		return readLogsFromNFS(mainSyncDir, logType, cursor, limit, direction)
 	}
+
+	return lines, nil
 }
 
-func readLogsFromNFS(mainSyncDir, logType string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
-	switch logType {
-	case constants.LogTypeWorker:
-		workerLogPath := filepath.Join(mainSyncDir, "logs", constants.WorkerLogFile)
-		return ReadLogsFromFile(workerLogPath, cursor, limit, direction)
-	case constants.LogTypeConnector:
-		return ReadLogsFromDir(mainSyncDir, cursor, limit, direction)
-	default:
-		return nil, fmt.Errorf("unsupported log type: %s", logType)
+// processS3Logs processes the S3 logs for a workflow.
+func processS3Logs(ctx context.Context, syncLogDir string, chunks []logChunkFile, cursor int64, direction string) (*dto.TaskLogsResponse, error) {
+	dir := strings.ToLower(strings.TrimSpace(direction))
+	if dir != "newer" {
+		dir = constants.DefaultLogsDirection
 	}
+
+	var currentFileNumber int64
+	switch {
+	case cursor < 0:
+		currentFileNumber = int64(chunks[len(chunks)-1].index)
+	case dir == "older":
+		// Older: cursor is the file number the UI already has.
+		currentFileNumber = cursor - 1
+	default:
+		// Newer: cursor is the file number the UI wants next.
+		currentFileNumber = cursor
+	}
+
+	firstFileNumber := int64(chunks[0].index)
+	lastFileNumber := int64(chunks[len(chunks)-1].index)
+	// Calculate the position of the chunk in the list.
+	pos := int(currentFileNumber - firstFileNumber)
+	if pos < 0 || pos >= len(chunks) {
+		return &dto.TaskLogsResponse{Logs: []map[string]interface{}{}}, nil
+	}
+
+	// Read the lines from the chunk.
+	lines, err := readS3ChunkLines(ctx, syncLogDir, chunks[pos])
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.TaskLogsResponse{
+		Logs:         parseLines(lines),
+		OlderCursor:  currentFileNumber,
+		NewerCursor:  currentFileNumber + 1,
+		HasMoreOlder: currentFileNumber > firstFileNumber,
+		HasMoreNewer: currentFileNumber < lastFileNumber,
+	}, nil
 }

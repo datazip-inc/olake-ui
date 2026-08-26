@@ -127,7 +127,11 @@ func readSyncJobFile(ctx context.Context, syncFolderName, filename string) ([]by
 	switch strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode)) {
 	case constants.StorageModeS3:
 		relPath := path.Join(syncFolderName, filename)
-		return storage.ReadFileFromS3AtRelPath(ctx, relPath)
+		body, err := storage.ReadFileFromS3(ctx, "", relPath, false)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(body), nil
 	case constants.StorageModeNFS:
 		filePath := filepath.Join(constants.DefaultConfigDir, syncFolderName, filename)
 		return os.ReadFile(filePath)

@@ -216,12 +216,12 @@ func loadOrCreateTelemetryUserID(ctx context.Context) string {
 
 	switch strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode)) {
 	case constants.StorageModeS3:
-		if idBytes, err := storage.ReadFileFromS3AtRelPath(ctx, telemetryUserIDPath); err == nil && len(idBytes) > 0 {
-			return strings.TrimSpace(string(idBytes))
+		if id, err := storage.ReadFileFromS3(ctx, "", telemetryUserIDPath, false); err == nil && strings.TrimSpace(id) != "" {
+			return strings.TrimSpace(id)
 		}
 
 		userID := generateTelemetryUserID()
-		_ = storage.WriteFileToS3AtRelPath(ctx, telemetryUserIDPath, []byte(userID))
+		_ = storage.WriteFilesToS3(ctx, constants.DefaultConfigDir, []storage.JobConfig{{Name: telemetryUserIDPath, Data: userID}})
 		return userID
 	case constants.StorageModeNFS:
 		return loadOrCreateTelemetryUserIDFromLocal()

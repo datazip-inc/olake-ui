@@ -534,9 +534,8 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 		}
 	}
 	direction := c.DefaultQuery("direction", constants.DefaultLogsDirection)
-	logType := c.DefaultQuery("log_type", constants.LogTypeConnector)
 
-	logs, err := h.etl.GetTaskLogs(c.Request.Context(), id, req.FilePath, logType, cursor, limit, direction)
+	logs, err := h.etl.GetTaskLogs(c.Request.Context(), id, req.FilePath, cursor, limit, direction)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrJobNotFound) {

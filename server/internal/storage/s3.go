@@ -1,93 +1,179 @@
 package storage
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
+	"github.com/spf13/viper"
 )
 
-func newS3Client(ctx context.Context) (*s3.Client, string, error) {
-	cfg := appconfig.Load()
+// JobConfig is a named blob written to S3.
+type JobConfig struct {
+	Name string `json:"name"`
+	Data string `json:"data"`
+}
 
-	configOpts := []func(*config.LoadOptions) error{}
-	if cfg.OlakeS3Region != "" {
-		configOpts = append(configOpts, config.WithRegion(cfg.OlakeS3Region))
+var (
+	s3Client *s3.Client
+	s3Bucket string
+)
+
+// InitStorage initializes the shared S3 client when storage mode is S3. No-op for NFS.
+func InitStorage(ctx context.Context) error {
+	if storagemode.Get() != constants.StorageModeS3 {
+		return nil
 	}
 
-	if cfg.OlakeS3AccessKeyID != "" && cfg.OlakeS3SecretAccessKey != "" {
+	configOpts := []func(*config.LoadOptions) error{}
+	if region := viper.GetString(constants.EnvS3Region); region != "" {
+		configOpts = append(configOpts, config.WithRegion(region))
+	}
+
+	accessKey := viper.GetString(constants.EnvS3AccessKeyID)
+	secretKey := viper.GetString(constants.EnvS3SecretAccessKey)
+	if accessKey != "" && secretKey != "" {
 		configOpts = append(configOpts, config.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(cfg.OlakeS3AccessKeyID, cfg.OlakeS3SecretAccessKey, cfg.OlakeS3SessionToken),
+			credentials.NewStaticCredentialsProvider(accessKey, secretKey, viper.GetString(constants.EnvS3SessionToken)),
 		))
 	}
 
 	awsCfg, err := config.LoadDefaultConfig(ctx, configOpts...)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to load AWS config: %s", err)
+		return fmt.Errorf("failed to load AWS config: %s", err)
 	}
 
 	var s3Opts []func(*s3.Options)
-	if endpoint := cfg.OlakeS3Endpoint; endpoint != "" {
+	if endpoint := viper.GetString(constants.EnvS3Endpoint); endpoint != "" {
 		// Path-style is required for MinIO and other S3-compatible endpoints (virtual-hosted
 		// style would resolve bucket as a subdomain, e.g. olake.host.docker.internal).
 		s3Opts = append(s3Opts, func(o *s3.Options) {
 			o.BaseEndpoint = aws.String(endpoint)
 			o.UsePathStyle = true
 		})
-	} else {
-		s3Opts = append(s3Opts, func(o *s3.Options) {
-			o.UsePathStyle = true
+	}
+
+	s3Client = s3.NewFromConfig(awsCfg, s3Opts...)
+	s3Bucket = viper.GetString(constants.EnvS3Bucket)
+	if s3Bucket == "" {
+		return fmt.Errorf("s3 bucket is required when storage mode is s3")
+	}
+	return nil
+}
+
+func getS3Client() (*s3.Client, string, error) {
+	if s3Client == nil {
+		return nil, "", fmt.Errorf("s3 storage not initialized")
+	}
+	return s3Client, s3Bucket, nil
+}
+
+// configStorageKey mirrors the NFS layout as an S3 object key.
+// With isDirectory true, returns a directory prefix ending with "/".
+// Otherwise returns <prefix>/<workflow-dir>/<relativePath> as an object key without a trailing slash.
+func configStorageKey(workDir, relativePath string, isDirectory bool) (string, error) {
+	workRel, err := filepath.Rel(constants.DefaultConfigDir, workDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve storage path for %s: %s", workDir, err)
+	}
+
+	prefix := strings.Trim(viper.GetString(constants.EnvS3Prefix), "/")
+	key := path.Join(prefix, workRel, relativePath)
+	if isDirectory {
+		return strings.TrimSuffix(key, "/") + "/", nil
+	}
+	return key, nil
+}
+
+// WriteFilesToS3 writes config files to the S3 bucket under workDir.
+func WriteFilesToS3(ctx context.Context, workDir string, configs []JobConfig) error {
+	client, bucket, err := getS3Client()
+	if err != nil {
+		return err
+	}
+
+	for _, jobConfig := range configs {
+		key, err := configStorageKey(workDir, jobConfig.Name, false)
+		if err != nil {
+			return err
+		}
+
+		_, err = client.PutObject(ctx, &s3.PutObjectInput{
+			Bucket: &bucket,
+			Key:    &key,
+			Body:   strings.NewReader(jobConfig.Data),
 		})
-	}
-
-	client := s3.NewFromConfig(awsCfg, s3Opts...)
-	return client, cfg.OlakeS3Bucket, nil
-}
-
-func s3ObjectKey(relPath string) string {
-	key := path.Clean(strings.Trim(relPath, "/"))
-	prefix := strings.Trim(strings.TrimSpace(appconfig.Load().OlakeS3Prefix), "/")
-	if prefix != "" {
-		key = path.Join(prefix, key)
-	}
-	return key
-}
-
-// s3DirPrefix returns an S3 key prefix for a directory. The trailing slash is required for
-// delimiter listings — path.Clean strips it, so it is re-appended after key normalization.
-func s3DirPrefix(relDir string) string {
-	return s3ObjectKey(relDir) + "/"
-}
-
-// keyToRelPath converts an S3 object key back to a workflow-relative path (without configured prefix).
-func keyToRelPath(key string) string {
-	key = strings.TrimPrefix(key, "/")
-	prefix := strings.Trim(strings.TrimSpace(appconfig.Load().OlakeS3Prefix), "/")
-	if prefix != "" {
-		prefix = prefix + "/"
-		if strings.HasPrefix(key, prefix) {
-			return strings.TrimPrefix(key, prefix)
+		if err != nil {
+			return fmt.Errorf("failed to upload %s to s3://%s/%s: %s", jobConfig.Name, bucket, key, err)
 		}
 	}
-	return key
+
+	return nil
+}
+
+// ReadFileFromS3 reads a file from the S3 bucket.
+// When workDir is empty, relativePath is treated as a key under the configured prefix.
+func ReadFileFromS3(ctx context.Context, workDir, relativePath string, validateJSON bool) (string, error) {
+	var key string
+	var err error
+	if workDir == "" {
+		key = s3ObjectKey(relativePath, false)
+	} else {
+		key, err = configStorageKey(workDir, relativePath, false)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	client, bucket, err := getS3Client()
+	if err != nil {
+		return "", err
+	}
+
+	out, err := client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: &bucket,
+		Key:    &key,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to download %s from s3://%s/%s: %s", relativePath, bucket, key, err)
+	}
+	defer out.Body.Close()
+
+	body, err := io.ReadAll(out.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read %s from s3://%s/%s: %s", relativePath, bucket, key, err)
+	}
+
+	if validateJSON {
+		ref := fmt.Sprintf("s3://%s/%s", bucket, key)
+		var result map[string]interface{}
+		if err := json.Unmarshal(body, &result); err != nil {
+			return "", fmt.Errorf("failed to read %s: failed to parse JSON from %s: %s", relativePath, ref, err)
+		}
+	}
+
+	return string(body), nil
 }
 
 // PrefixExists checks whether any object exists under the given workflow-relative prefix.
 func PrefixExists(ctx context.Context, relPrefix string) (bool, error) {
-	client, bucket, err := newS3Client(ctx)
+	client, bucket, err := getS3Client()
 	if err != nil {
 		return false, err
 	}
 
-	prefix := s3DirPrefix(relPrefix)
+	prefix := s3ObjectKey(relPrefix, true)
 	out, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 		Bucket:  &bucket,
 		Prefix:  &prefix,
@@ -97,155 +183,126 @@ func PrefixExists(ctx context.Context, relPrefix string) (bool, error) {
 		return false, fmt.Errorf("failed to list s3://%s/%s: %s", bucket, prefix, err)
 	}
 
-	return len(out.Contents) > 0 || len(out.CommonPrefixes) > 0, nil
+	return len(out.Contents) > 0, nil
 }
 
-// ListCommonPrefixes lists immediate child "directories" under a workflow-relative prefix.
-func ListCommonPrefixes(ctx context.Context, relPrefix string) ([]string, error) {
-	client, bucket, err := newS3Client(ctx)
+func listS3Objects(ctx context.Context, relPrefix string, delimiter *string, isDirectory bool) ([]types.Object, []types.CommonPrefix, error) {
+	client, bucket, err := getS3Client()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	prefix := s3ObjectKey(relPrefix, isDirectory)
+	paginator := s3.NewListObjectsV2Paginator(client, &s3.ListObjectsV2Input{
+		Bucket:    &bucket,
+		Prefix:    &prefix,
+		Delimiter: delimiter,
+	})
+
+	var objects []types.Object
+	var commonPrefixes []types.CommonPrefix
+
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to list s3://%s/%s: %s", bucket, prefix, err)
+		}
+
+		objects = append(objects, page.Contents...)
+		commonPrefixes = append(commonPrefixes, page.CommonPrefixes...)
+	}
+
+	return objects, commonPrefixes, nil
+}
+
+// ListFolderNamesWithPrefix lists one-level folder names whose keys start with relPrefix.
+// relPrefix is not a complete directory (no trailing slash), so "<hash>/logs/sync_"
+// matches "sync_2026-08-25_18-10-00" and not "worker".
+func ListFolderNamesWithPrefix(ctx context.Context, relPrefix string) ([]string, error) {
+	_, prefixes, err := listS3Objects(ctx, relPrefix, aws.String("/"), false)
 	if err != nil {
 		return nil, err
 	}
 
-	prefix := s3DirPrefix(relPrefix)
-	out, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
-		Bucket:    &bucket,
-		Prefix:    &prefix,
-		Delimiter: aws.String("/"),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list s3://%s/%s: %s", bucket, prefix, err)
-	}
-
-	children := make([]string, 0, len(out.CommonPrefixes))
-	for _, cp := range out.CommonPrefixes {
+	folderNames := make([]string, 0, len(prefixes))
+	for _, cp := range prefixes {
 		if cp.Prefix == nil {
 			continue
 		}
-		rel := keyToRelPath(strings.TrimSuffix(*cp.Prefix, "/"))
-		name := path.Base(rel)
-		if name != "" && name != "." {
-			children = append(children, name)
-		}
+		folderNames = append(folderNames, path.Base(keyToRelPath(*cp.Prefix)))
 	}
 
-	return children, nil
+	return folderNames, nil
 }
 
 // ListObjectNames lists object base names directly under a workflow-relative directory prefix.
 func ListObjectNames(ctx context.Context, relDir string) ([]string, error) {
-	client, bucket, err := newS3Client(ctx)
+	objects, _, err := listS3Objects(ctx, relDir, aws.String("/"), true)
 	if err != nil {
 		return nil, err
 	}
 
-	prefix := s3DirPrefix(relDir)
-	paginator := s3.NewListObjectsV2Paginator(client, &s3.ListObjectsV2Input{
-		Bucket:    &bucket,
-		Prefix:    &prefix,
-		Delimiter: aws.String("/"),
-	})
-
-	names := make([]string, 0)
-	for paginator.HasMorePages() {
-		page, err := paginator.NextPage(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list s3://%s/%s: %s", bucket, prefix, err)
+	names := make([]string, 0, len(objects))
+	for _, obj := range objects {
+		if obj.Key == nil {
+			continue
 		}
-
-		for _, obj := range page.Contents {
-			if obj.Key == nil {
-				continue
-			}
-			rel := keyToRelPath(*obj.Key)
-			name := path.Base(rel)
-			if name != "" && name != "." {
-				names = append(names, name)
-			}
-		}
+		// Appends the file name to the list
+		names = append(names, path.Base(keyToRelPath(*obj.Key)))
 	}
 
 	return names, nil
 }
 
-// ReadObjectBytes downloads an object by workflow-relative path.
-func ReadObjectBytes(ctx context.Context, relPath string) ([]byte, error) {
-	return ReadFileFromS3AtRelPath(ctx, relPath)
-}
-
 // ListAllObjectRelPaths lists every object key under a prefix (recursive).
 func ListAllObjectRelPaths(ctx context.Context, relPrefix string) ([]string, error) {
-	client, bucket, err := newS3Client(ctx)
+	objects, _, err := listS3Objects(ctx, relPrefix, nil, true)
 	if err != nil {
 		return nil, err
 	}
 
-	prefix := s3DirPrefix(relPrefix)
-	paginator := s3.NewListObjectsV2Paginator(client, &s3.ListObjectsV2Input{
-		Bucket: &bucket,
-		Prefix: &prefix,
-	})
-
-	paths := make([]string, 0)
-	for paginator.HasMorePages() {
-		page, err := paginator.NextPage(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list s3://%s/%s: %s", bucket, prefix, err)
+	paths := make([]string, 0, len(objects))
+	for _, obj := range objects {
+		if obj.Key == nil {
+			continue
 		}
-
-		for _, obj := range page.Contents {
-			if obj.Key == nil {
-				continue
-			}
-			if obj.Size != nil && *obj.Size == 0 && strings.HasSuffix(*obj.Key, "/") {
-				continue
-			}
-			paths = append(paths, keyToRelPath(*obj.Key))
-		}
+		// Appends entire path to the list
+		paths = append(paths, keyToRelPath(*obj.Key))
 	}
 
 	return paths, nil
 }
 
-func ReadFileFromS3AtRelPath(ctx context.Context, relPath string) ([]byte, error) {
-	client, bucket, err := newS3Client(ctx)
-	if err != nil {
-		return nil, err
+// s3ObjectKey turns a path inside the workflow folder into the S3 object key
+// (OLAKE_S3_PREFIX + that path). Example prefix "olake":
+//
+//	"<hash>/logs/sync_20260825T181000Z" → "olake/<hash>/logs/sync_20260825T181000Z"
+//
+// Pass isDirectory true when listing a folder. That adds a trailing slash so S3
+// only matches keys under that path, not a sibling with the same name prefix:
+//
+//	"…/sync_20260825T181000Z/"
+func s3ObjectKey(relPath string, isDirectory bool) string {
+	prefix := strings.Trim(viper.GetString(constants.EnvS3Prefix), "/")
+	key := path.Join(prefix, path.Clean(strings.Trim(relPath, "/")))
+	if isDirectory {
+		return strings.TrimSuffix(key, "/") + "/"
 	}
-
-	key := s3ObjectKey(relPath)
-	out, err := client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: &bucket,
-		Key:    &key,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to download s3://%s/%s: %s", bucket, key, err)
-	}
-	defer out.Body.Close()
-
-	body, err := io.ReadAll(out.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read s3://%s/%s: %s", bucket, key, err)
-	}
-
-	return body, nil
+	return key
 }
 
-func WriteFileToS3AtRelPath(ctx context.Context, relPath string, data []byte) error {
-	client, bucket, err := newS3Client(ctx)
-	if err != nil {
-		return err
+// keyToRelPath strips OLAKE_S3_PREFIX from a bucket key (inverse of s3ObjectKey).
+//
+//	"olake/<hash>/logs/sync_20260825T181000Z/connector-000001-….log"
+//	→ "<hash>/logs/sync_20260825T181000Z/connector-000001-….log"
+func keyToRelPath(key string) string {
+	key = strings.TrimPrefix(key, "/")
+	prefix := strings.Trim(viper.GetString(constants.EnvS3Prefix), "/")
+	if prefix != "" {
+		prefix = prefix + "/"
+		if strings.HasPrefix(key, prefix) {
+			return strings.TrimPrefix(key, prefix)
+		}
 	}
-
-	key := s3ObjectKey(relPath)
-	_, err = client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: &bucket,
-		Key:    &key,
-		Body:   bytes.NewReader(data),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to upload to s3://%s/%s: %s", bucket, key, err)
-	}
-
-	return nil
+	return key
 }

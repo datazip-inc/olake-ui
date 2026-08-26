@@ -51,7 +51,7 @@ func buildExecutionReqForClearDestination(ctx context.Context, job *models.Job, 
 
 	switch strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode)) {
 	case constants.StorageModeS3:
-		if err := storage.WriteFileToS3AtRelPath(ctx, relativePath, []byte(catalog)); err != nil {
+		if err := storage.WriteFilesToS3(ctx, constants.DefaultConfigDir, []storage.JobConfig{{Name: relativePath, Data: catalog}}); err != nil {
 			return nil, fmt.Errorf("failed to write streams config to s3: %v", err)
 		}
 	case constants.StorageModeNFS:

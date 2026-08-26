@@ -37,6 +37,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
 	"github.com/datazip-inc/olake-ui/server/internal/httpserver"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 
@@ -63,6 +64,11 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	if err := storage.InitStorage(ctx); err != nil {
+		logger.Fatalf("Failed to initialize storage: %s", err)
+		return
+	}
 
 	telemetry.InitTelemetry(ctx, db)
 

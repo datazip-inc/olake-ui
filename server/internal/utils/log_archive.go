@@ -89,7 +89,7 @@ func streamTaskLogArchiveNFS(baseDir string, writer io.Writer) error {
 }
 
 func streamTaskLogArchiveS3(ctx context.Context, workflowID string, writer io.Writer) error {
-	baseRel, err := validateS3LogBase(ctx, workflowID)
+	workflowHash, err := validateS3LogBase(ctx, workflowID)
 	if err != nil {
 		return err
 	}
@@ -100,33 +100,33 @@ func streamTaskLogArchiveS3(ctx context.Context, workflowID string, writer io.Wr
 	tarWriter := tar.NewWriter(gzipWriter)
 	defer tarWriter.Close()
 
-	stateRel := path.Join(baseRel, "state.json")
-	if body, err := storage.ReadObjectBytes(ctx, stateRel); err == nil {
-		if err := AddBytesToArchive(tarWriter, "state.json", body); err != nil {
+	stateRel := path.Join(workflowHash, "state.json")
+	if body, err := storage.ReadFileFromS3(ctx, "", stateRel, false); err == nil {
+		if err := AddBytesToArchive(tarWriter, "state.json", []byte(body)); err != nil {
 			return err
 		}
 	} else {
 		logger.Warnf("failed to add state.json to archive: %s", err)
 	}
 
-	objectPaths, err := storage.ListAllObjectRelPaths(ctx, path.Join(baseRel, "logs"))
+	objectPaths, err := storage.ListAllObjectRelPaths(ctx, path.Join(workflowHash, "logs"))
 	if err != nil {
 		return err
 	}
 
 	for _, relPath := range objectPaths {
-		archiveName, ok := archiveNameUnderWorkflow(baseRel, relPath)
+		archiveName, ok := archiveNameUnderWorkflow(workflowHash, relPath)
 		if !ok {
 			continue
 		}
 
-		body, err := storage.ReadObjectBytes(ctx, relPath)
+		body, err := storage.ReadFileFromS3(ctx, "", relPath, false)
 		if err != nil {
 			logger.Warnf("failed to add %s to archive: %s", relPath, err)
 			continue
 		}
 
-		if err := AddBytesToArchive(tarWriter, archiveName, body); err != nil {
+		if err := AddBytesToArchive(tarWriter, archiveName, []byte(body)); err != nil {
 			return err
 		}
 	}
@@ -134,8 +134,8 @@ func streamTaskLogArchiveS3(ctx context.Context, workflowID string, writer io.Wr
 	return nil
 }
 
-func archiveNameUnderWorkflow(baseRel, relPath string) (string, bool) {
-	prefix := strings.TrimSuffix(baseRel, "/") + "/"
+func archiveNameUnderWorkflow(workflowHash, relPath string) (string, bool) {
+	prefix := strings.TrimSuffix(workflowHash, "/") + "/"
 	if !strings.HasPrefix(relPath, prefix) {
 		return "", false
 	}

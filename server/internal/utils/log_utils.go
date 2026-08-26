@@ -1,17 +1,12 @@
 package utils
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 )
@@ -23,9 +18,14 @@ type LogEntry struct {
 	Message json.RawMessage `json:"message"` // store raw JSON
 }
 
-type LineWithPos struct {
-	content  string
-	startPos int64 // byte position where this line starts
+func ReadLogs(ctx context.Context, workflowID string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
+	mode := strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode))
+	switch mode {
+	case constants.StorageModeS3:
+		return readLogsFromS3(ctx, workflowID, cursor, limit, direction)
+	default:
+		return readLogsFromNFS(workflowID, cursor, limit, direction)
+	}
 }
 
 // isValidLogLine checks if a line is a valid, non-debug log entry
@@ -47,23 +47,12 @@ func isValidLogLine(line string) bool {
 	return true
 }
 
-func parseLogLines(lines []string) []map[string]interface{} {
+func parseLines(lines []string) []map[string]interface{} {
 	batch := make([]map[string]interface{}, 0, len(lines))
 	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
 		var logEntry LogEntry
 
 		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
-			// Plain stdout lines (e.g. legacy counter output already uploaded to S3).
-			batch = append(batch, map[string]interface{}{
-				"level":   "info",
-				"time":    time.Now().UTC().Format(time.RFC3339),
-				"message": line,
-			})
 			continue
 		}
 
@@ -93,294 +82,4 @@ func parseLogLines(lines []string) []map[string]interface{} {
 	}
 
 	return batch
-}
-
-func parseValidLogLinesFromBytes(content []byte) []string {
-	if len(content) == 0 {
-		return nil
-	}
-
-	lines := make([]string, 0)
-	scanner := bufio.NewScanner(bytes.NewReader(content))
-	// Allow up to 1MB lines within a chunk file.
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line != "" {
-			lines = append(lines, line)
-		}
-	}
-
-	return lines
-}
-
-// ReadLinesBackward reads up to `limit` complete VALID log lines from file backwards starting at startOffset.
-// Filters out empty lines, invalid JSON, and debug-level logs DURING reading.
-// startOffset is treated as exclusive - we read lines that END BEFORE startOffset.
-// Returns: valid lines (oldest->newest), newOffset (byte position before first returned line), hasMore, error.
-func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64) ([]string, int64, bool, error) {
-	if limit <= 0 {
-		return nil, 0, false, fmt.Errorf("limit must be greater than 0")
-	}
-
-	// startOffset beyond file size, clamp it to file size
-	startOffset = min(startOffset, fileSize)
-
-	// startOffset at beginning or negative, return empty result
-	if startOffset <= 0 {
-		return []string{}, 0, false, nil
-	}
-
-	offset := startOffset
-
-	// 'tail' holds the partial line fragment at the start of a chunk.
-	// This will be prepended to the NEXT chunk (which comes chronologically BEFORE this one).
-	var tail []byte
-
-	// valid lines we collected (newest first)
-	foundLines := make([]LineWithPos, 0, limit)
-
-	// read lines backwards until we have enough VALID lines or reach the beginning of the file
-	for offset > 0 && len(foundLines) < limit {
-		toRead := min(offset, int64(constants.LogReadChunkSize))
-		readPos := offset - toRead
-
-		chunk := make([]byte, toRead)
-		n, rerr := f.ReadAt(chunk, readPos)
-
-		// io.EOF is expected when reading near file boundaries
-		if rerr != nil && rerr != io.EOF {
-			return nil, 0, false, rerr
-		}
-
-		if int64(n) != toRead {
-			chunk = chunk[:n]
-		}
-
-		data := make([]byte, 0, len(chunk)+len(tail))
-		data = append(data, chunk...)
-		data = append(data, tail...)
-
-		// Extract lines from Right to Left
-		for len(foundLines) < limit {
-			// Find the last newline in the buffer
-			lastNL := bytes.LastIndexByte(data, '\n')
-
-			if lastNL == -1 {
-				// No more newlines. The whole buffer is a partial line.
-				// Save it as 'tail' for the next iteration.
-				tail = data
-				break
-			}
-
-			// The text AFTER the newline is a complete log line
-			lineBytes := data[lastNL+1:]
-			lineContent := string(lineBytes)
-
-			// Calculate absolute file position of this line
-			// readPos (start of chunk) + lastNL (relative index) + 1 (char after \n)
-			linePos := readPos + int64(lastNL) + 1
-
-			if isValidLogLine(lineContent) {
-				foundLines = append(foundLines, LineWithPos{
-					content:  lineContent,
-					startPos: linePos,
-				})
-			}
-
-			// CROP the buffer: remove the line we just processed
-			data = data[:lastNL]
-		}
-
-		offset = readPos
-		if offset == 0 {
-			// Process the first line of the file if it's in the tail
-			if len(tail) > 0 && len(foundLines) < limit {
-				lineContent := string(tail)
-				if isValidLogLine(lineContent) {
-					foundLines = append(foundLines, LineWithPos{
-						content:  lineContent,
-						startPos: 0, // First line starts at position 0
-					})
-				}
-			}
-			break
-		}
-	}
-
-	// no valid lines found
-	if len(foundLines) == 0 {
-		return []string{}, 0, false, nil
-	}
-
-	// Extract just the line content for return
-	lines := make([]string, len(foundLines))
-	for i, line := range foundLines {
-		lines[len(foundLines)-1-i] = line.content // Reverse order
-	}
-
-	// The oldest line we returned is the last element in newestFirst
-	newOffset := foundLines[len(foundLines)-1].startPos
-
-	// hasMore is true only if we hit the limit with more file content remaining
-	hasMore := newOffset > 0 && len(foundLines) == limit
-
-	// If no more logs exist, return cursor at beginning (0)
-	if !hasMore {
-		newOffset = 0
-	}
-
-	return lines, newOffset, hasMore, nil
-}
-
-// ReadLinesForward reads up to `limit` complete VALID log lines from file forwards starting at startOffset.
-// Filters out empty lines, invalid JSON, and debug-level logs DURING reading.
-// startOffset is treated as inclusive - we start reading from exactly that position.
-// Returns: valid lines (oldest->newest), newOffset (byte position after last returned line), hasMore, error.
-func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) ([]string, int64, bool, error) {
-	if limit <= 0 {
-		return nil, 0, false, fmt.Errorf("limit must be greater than 0")
-	}
-
-	// Ensure startOffset is at least 0
-	startOffset = max(startOffset, 0)
-
-	// If already at or past EOF, nothing to read
-	if startOffset >= fileSize {
-		return []string{}, fileSize, false, nil
-	}
-
-	// Seek to the startOffset position in the file before beginning to read lines
-	if _, err := f.Seek(startOffset, io.SeekStart); err != nil {
-		return nil, 0, false, err
-	}
-
-	reader := bufio.NewReader(f)
-
-	lines := make([]string, 0, limit)
-	currentOffset := startOffset
-
-	for len(lines) < limit {
-		lineBytes, rerr := reader.ReadBytes('\n')
-
-		if len(lineBytes) > 0 {
-			// Update offset by bytes read
-			currentOffset += int64(len(lineBytes))
-
-			// Remove trailing newline and check if valid
-			line := strings.TrimRight(string(lineBytes), "\r\n")
-			if isValidLogLine(line) {
-				lines = append(lines, line)
-			}
-		}
-
-		if rerr != nil {
-			// ReadBytes may return data and io.EOF together
-			// so treat EOF as normal end-of-file and stop reading, return other errors
-			if rerr == io.EOF {
-				break
-			}
-			return nil, 0, false, rerr
-		}
-	}
-
-	// hasMore is true only if we hit the limit with more file content remaining
-	hasMore := currentOffset < fileSize && len(lines) == limit
-
-	// If no more logs exist, return cursor at end (fileSize)
-	if !hasMore {
-		currentOffset = fileSize
-	}
-
-	return lines, currentOffset, hasMore, nil
-}
-
-// ReadLogsFromFile reads paginated logs from a single local log file (byte-offset cursors).
-func ReadLogsFromFile(logPath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
-	logFile, err := os.Open(logPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read log file: %s: %s", logPath, err)
-	}
-	defer logFile.Close()
-
-	stat, err := logFile.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("failed to stat log file: %s", err)
-	}
-	fileSize := stat.Size()
-
-	if limit <= 0 {
-		limit = constants.DefaultLogsLimit
-	}
-
-	if cursor > fileSize {
-		cursor = fileSize
-	}
-
-	dir := strings.ToLower(strings.TrimSpace(direction))
-	if dir != "newer" {
-		dir = constants.DefaultLogsDirection
-	}
-
-	isTail := cursor < 0
-	response := &dto.TaskLogsResponse{}
-
-	if isTail || dir == "older" {
-		if isTail {
-			cursor = fileSize
-		}
-
-		lines, newOffset, more, rerr := ReadLinesBackward(logFile, cursor, limit, fileSize)
-		if rerr != nil {
-			return nil, rerr
-		}
-
-		response.Logs = parseLogLines(lines)
-		response.OlderCursor = newOffset
-		response.NewerCursor = cursor
-		response.HasMoreOlder = more
-		response.HasMoreNewer = response.NewerCursor < fileSize
-	} else {
-		lines, newOffset, more, rerr := ReadLinesForward(logFile, cursor, limit, fileSize)
-		if rerr != nil {
-			return nil, rerr
-		}
-
-		response.Logs = parseLogLines(lines)
-		response.NewerCursor = newOffset
-		response.OlderCursor = cursor
-		response.HasMoreNewer = more
-		response.HasMoreOlder = response.OlderCursor > 0
-	}
-
-	return response, nil
-}
-
-// ReadLogsFromDir reads paginated connector logs from a local NFS directory tree (single olake.log file).
-// For task sync logs use ReadTaskLogs, which selects NFS or S3 based on storage mode.
-func ReadLogsFromDir(mainLogDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
-	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("logs directory not found: %s: %s", mainLogDir, err)
-	}
-
-	logsDir, syncFolderName, err := GetAndValidateSyncDir(mainLogDir)
-	if err != nil {
-		return nil, err
-	}
-
-	logPath := filepath.Join(logsDir, syncFolderName, constants.OlakeLogFile)
-	return ReadLogsFromFile(logPath, cursor, limit, direction)
-}
-
-// ReadTestConnectionLogs returns connector logs for a test-connection workflow when available.
-// Short check runs in S3 mode often have no persisted log files; an empty slice is returned instead of an error.
-func ReadTestConnectionLogs(ctx context.Context, workflowID string) []map[string]interface{} {
-	mainLogDir := filepath.Join(constants.DefaultConfigDir, workflowID)
-	if logs, err := ReadLogsFromDir(mainLogDir, -1, 1000, "older"); err == nil {
-		return logs.Logs
-	}
-	if logs, err := ReadTaskLogs(ctx, workflowID, constants.LogTypeConnector, -1, 1000, "older"); err == nil {
-		return logs.Logs
-	}
-	return []map[string]interface{}{}
 }
