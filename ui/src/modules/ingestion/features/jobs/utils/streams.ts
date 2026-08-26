@@ -30,13 +30,13 @@ import {
 } from "./filterUtils"
 
 // The catalog carries the default upsert type on the stream as
-// default_stream_properties.update_mode; the selected stream stores it as
+// default_stream_properties.update_type; the selected stream stores it as
 // update_type. Older olake versions omit it, in which case the backend applies
 // its own default and the UI leaves update_type unset.
 export const getDefaultUpsertType = (
 	stream?: StreamData,
 ): UpsertType | undefined =>
-	stream?.stream.default_stream_properties?.update_mode
+	stream?.stream.default_stream_properties?.update_type
 
 // Same lookup, from the streams list by stream identifier.
 export const getDefaultUpsertTypeFor = (
@@ -561,9 +561,9 @@ export const buildBulkSelectedStreams = (
 
 	const appendMode = !isDestUpsertModeSupported || !isSourceUpsertModeSupported
 
-	// update_mode is the catalog's key for the default upsert type; it is carried
+	// update_type is the catalog's key for the default upsert type; it is carried
 	// on the selected stream as update_type instead.
-	const { update_mode: defaultUpsertType, ...defaultProperties } =
+	const { update_type: defaultUpsertType, ...defaultProperties } =
 		commonStream.stream.default_stream_properties ?? {}
 
 	return {
