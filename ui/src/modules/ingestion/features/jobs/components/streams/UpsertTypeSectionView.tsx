@@ -41,7 +41,9 @@ const UpsertTypeSectionView = ({
 
 	// Visible only while the stream actually runs in upsert mode.
 	if (!isDestUpsertModeSupported || !isSourceUpsertSupported) return null
-	if (appendMode) return null
+	// upsertType is seeded from the catalog's default_stream_properties.update_mode;
+	// when absent the driver version doesn't support update_type.
+	if (appendMode || upsertType === undefined) return null
 
 	return (
 		<div
@@ -63,8 +65,8 @@ const UpsertTypeSectionView = ({
 						!isSelected ? "text-gray-500" : "text-neutral-700",
 					)}
 				>
-					Specify iceberg delete mode (for faster read and multi query engines
-					use positional)
+					Specify Iceberg delete mode (for faster reads and multi query engine
+					support use positional)
 				</div>
 			</div>
 			<Radio.Group
