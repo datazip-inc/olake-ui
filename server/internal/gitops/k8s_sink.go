@@ -18,7 +18,7 @@ import (
 // subresource. Git applies labels+data; we apply olake.io/* annotations only
 // via MergeFrom patch. Annotation loss is possible when GitOps uses replace
 // semantics or overwrites metadata — then reconcilers re-run as if never
-// synced (skipReconcile returns false). Not an issue for file mode (GITOPS_FILE_DIR).
+// synced (skipReconcile returns false).
 type K8sSink struct {
 	client   client.Client
 	recorder k8srecord.EventRecorder
