@@ -24,7 +24,7 @@ jobs:
           node-version: 20
     
       - name: Install pnpm
-        run: npm install -g pnpm
+        run: npm install -g pnpm@10
 
       - name: Install Dependencies
         run: pnpm install
@@ -52,7 +52,7 @@ jobs:
           node-version: 20
 
       - name: Install pnpm
-        run: npm install -g pnpm
+        run: npm install -g pnpm@10
 
       - name: Install Dependencies
         run: pnpm install

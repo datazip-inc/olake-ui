@@ -25,7 +25,7 @@ FROM node:20-alpine AS node-builder
 WORKDIR /app/ui
 
 # Install pnpm globally
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10
 
 # Copy package files
 COPY ui/package.json ui/pnpm-lock.yaml ./

@@ -2,7 +2,7 @@ FROM node:20-alpine
 
 WORKDIR /app/ui
 
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10
 
 # Copy package files first to leverage Docker caching
 COPY package.json pnpm-lock.yaml ./
