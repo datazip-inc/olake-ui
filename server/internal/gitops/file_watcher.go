@@ -152,7 +152,7 @@ func (fw *FileWatcher) process(ctx context.Context, path string) {
 	}
 	fw.mu.Unlock()
 
-	result, syncErr := fw.sync(ctx, *res)
+	result, syncErr := fw.sync(ctx, res)
 	if syncErr != nil {
 		logger.Errorf("reconcile %s: %s", path, syncErr)
 	}
@@ -186,13 +186,13 @@ func (fw *FileWatcher) reconcileJobs(ctx context.Context) {
 		}
 	}
 	fw.mu.Unlock()
-	for _, job := range jobs {
-		job.Annotations = fw.annotationsFor(job)
-		_, _ = fw.job.sync(ctx, job)
+	for i := range jobs {
+		jobs[i].Annotations = fw.annotationsFor(&jobs[i])
+		_, _ = fw.job.sync(ctx, &jobs[i])
 	}
 }
 
-func (fw *FileWatcher) sync(ctx context.Context, res ResourceData) (ctrl.Result, error) {
+func (fw *FileWatcher) sync(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
 	switch res.Kind {
 	case KindSource:
 		return fw.source.sync(ctx, res)
@@ -207,7 +207,7 @@ func (fw *FileWatcher) sync(ctx context.Context, res ResourceData) (ctrl.Result,
 	}
 }
 
-func (fw *FileWatcher) findStreams(_ context.Context, job ResourceData, projectID string, entityID int) (*ResourceData, error) {
+func (fw *FileWatcher) findStreams(_ context.Context, job *ResourceData, projectID string, entityID int) (*ResourceData, error) {
 	fw.mu.Lock()
 	defer fw.mu.Unlock()
 	for _, r := range fw.index {
@@ -222,10 +222,10 @@ func (fw *FileWatcher) findStreams(_ context.Context, job ResourceData, projectI
 			return &cp, nil
 		}
 	}
-	return nil, nil
+	return nil, ErrStreamsNotFound
 }
 
-func (fw *FileWatcher) annotationsFor(r ResourceData) map[string]string {
+func (fw *FileWatcher) annotationsFor(r *ResourceData) map[string]string {
 	fw.mu.Lock()
 	defer fw.mu.Unlock()
 	st, ok := fw.state[r.key()]
@@ -240,15 +240,15 @@ func (fw *FileWatcher) annotationsFor(r ResourceData) map[string]string {
 	}
 }
 
-func (fw *FileWatcher) SpawnIndicator(ctx context.Context, r ResourceData, errMsg string) error {
-	return spawnIndicatorViaTemporal(ctx, fw.temporalClient, r, errMsg)
+func (fw *FileWatcher) SpawnIndicator(ctx context.Context, r *ResourceData, errMsg string) error {
+	return spawnIndicator(ctx, fw.temporalClient, r, errMsg)
 }
 
-func (fw *FileWatcher) DeleteIndicator(ctx context.Context, r ResourceData) error {
-	return deleteIndicatorViaTemporal(ctx, fw.temporalClient, r)
+func (fw *FileWatcher) DeleteIndicator(ctx context.Context, r *ResourceData) error {
+	return deleteIndicator(ctx, fw.temporalClient, r)
 }
 
-func (fw *FileWatcher) SetPhase(_ context.Context, r ResourceData, phase, message, entityID, observedHash string) error {
+func (fw *FileWatcher) SetPhase(_ context.Context, r *ResourceData, phase, message, entityID, observedHash string) error {
 	hash := observedHashForResource(r, observedHash)
 	fw.mu.Lock()
 	fw.state[r.key()] = resourceState{
