@@ -4,6 +4,7 @@ import {
 	MIN_COLUMN_SELECTION_SOURCE_VERSION,
 	MIN_JSON_FILTER_VERSION,
 	MIN_SOURCE_NAMING_CONVENTION_VERSION,
+	SOURCE_INTERNAL_TYPES,
 } from "@/modules/ingestion/common/constants"
 import {
 	SelectedStreamsByNamespace,
@@ -95,6 +96,7 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				disabled: true,
 				append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported, // Default to append if either source or destination does not support upsert
 				// Add selected_columns only when the source supports it.
+				dedup_keys: [],
 				...(supportsColumnSelection && {
 					selected_columns: {
 						columns: Object.keys(stream.stream.type_schema?.properties ?? {}),
@@ -192,6 +194,7 @@ export const formatSelectedStreamsPayload = (
 // Returns null if all selected stream configurations are valid, or a descriptive error string otherwise.
 export const validateStreams = (
 	streamsConfig: StreamsDataStructure,
+	sourceType: string,
 ): string | null => {
 	// Map typeSchemaProperties by stream name for quick lookup
 	const typeSchemaByName = new Map(
@@ -217,12 +220,35 @@ export const validateStreams = (
 					{ streamName: sel.stream_name, namespace },
 					typeSchemaProps,
 				)
+
 				if (error) return error
+			}
+			const isKafka =
+				normalizeConnectorType(sourceType).toLowerCase() ===
+				SOURCE_INTERNAL_TYPES.KAFKA
+			if (isKafka && !sel.append_mode && (sel.dedup_keys?.length ?? 0) === 0) {
+				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Upsert requires atleast one dedup key`
 			}
 		}
 	}
 
 	return null
+}
+
+const KAFKA_META_COLUMNS = new Set([
+	"_kafka_key",
+	"_kafka_offset",
+	"_kafka_partition",
+	"_kafka_timestamp",
+])
+
+export const getDedupKeyOptions = (stream: StreamData): string[] => {
+	const props = stream.stream.type_schema?.properties ?? {}
+	const fields = Object.entries(props)
+		.filter(([name, p]) => !p?.olake_column && !KAFKA_META_COLUMNS.has(name))
+		.map(([name]) => name)
+
+	return ["_kafka_key", ...fields]
 }
 
 export const getIngestionMode = (
@@ -526,6 +552,7 @@ export const buildBulkSelectedStreams = (
 		...commonStream.stream.default_stream_properties,
 		stream_name: commonStream.stream.name,
 		append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported,
+		dedup_keys: [],
 	}
 }
 // Returns the stream data and default selected stream data

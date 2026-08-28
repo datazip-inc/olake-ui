@@ -19,6 +19,7 @@ export interface BulkStreamConfig {
 	syncMode?: SyncMode
 	cursorField?: string
 	appendMode?: boolean
+	dedupKeys?: string[]
 	normalization?: boolean
 	partitionRegex?: string
 	filterValue?: string
@@ -87,6 +88,8 @@ interface StreamSelectionState {
 	setUseFilterConfig: (value: boolean) => void
 
 	updateIngestionMode: (stream: StreamIdentifier, appendMode: boolean) => void
+
+	updateDedupKeys: (stream: StreamIdentifier, keys: string[]) => void
 
 	bulkUpdateStreams: (
 		streamsToUpdate: StreamIdentifier[],
@@ -162,6 +165,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 							stream_name: streamName,
 							disabled: false,
 							append_mode: ingestionMode === IngestionMode.APPEND,
+							dedup_keys: [],
 						},
 					]
 					changed = true
@@ -388,8 +392,36 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 						...prev.selected_streams,
 						[namespace]: prev.selected_streams[namespace].map(s =>
 							s.stream_name === streamName
-								? { ...s, append_mode: appendMode }
+								? {
+										...s,
+										append_mode: appendMode,
+										dedup_keys: appendMode ? [] : s.dedup_keys,
+									}
 								: s,
+						),
+					},
+				},
+			}
+		}),
+
+	updateDedupKeys: (stream, keys) =>
+		set(state => {
+			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
+
+			const prev = state.streamsData
+			const streamExists = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+			if (!streamExists) return state
+
+			return {
+				streamsData: {
+					...prev,
+					selected_streams: {
+						...prev.selected_streams,
+						[namespace]: prev.selected_streams[namespace].map(s =>
+							s.stream_name === streamName ? { ...s, dedup_keys: keys } : s,
 						),
 					},
 				},
@@ -443,8 +475,12 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 				if (streamIndex !== -1) {
 					const newStream = { ...streamList[streamIndex] }
 
-					if (config.appendMode !== undefined)
+					if (config.appendMode !== undefined) {
 						newStream.append_mode = config.appendMode
+						if (config.appendMode) newStream.dedup_keys = []
+					}
+					if (config.dedupKeys !== undefined)
+						newStream.dedup_keys = config.dedupKeys
 					if (config.normalization !== undefined)
 						newStream.normalization = config.normalization
 					if (config.partitionRegex !== undefined)
@@ -504,7 +540,11 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			const updatedSelected = Object.fromEntries(
 				Object.entries(prev.selected_streams).map(([ns, streams]) => [
 					ns,
-					streams.map(s => ({ ...s, append_mode: appendMode })),
+					streams.map(s => ({
+						...s,
+						append_mode: appendMode,
+						dedup_keys: appendMode ? [] : s.dedup_keys,
+					})),
 				]),
 			)
 

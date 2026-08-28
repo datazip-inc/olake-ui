@@ -272,7 +272,7 @@ const JobCreation: React.FC = () => {
 			}
 			case JOB_CREATION_STEPS.STREAMS: {
 				if (!streamsData) return
-				const error = validateStreams(streamsData)
+				const error = validateStreams(streamsData, sourceConnectorPayload.type)
 				if (error) {
 					message.error(error)
 					return
