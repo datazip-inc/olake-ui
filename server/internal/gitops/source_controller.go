@@ -28,10 +28,10 @@ func (r *SourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	return r.sync(ctx, *res)
+	return r.sync(ctx, res)
 }
 
-func (r *SourceReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Result, error) {
+func (r *SourceReconciler) sync(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	observedHash := ContentHash(res.Data)

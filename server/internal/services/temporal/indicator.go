@@ -21,7 +21,7 @@ type IndicatorRequest struct {
 }
 
 // StartIndicator submits IndicatorWorkflow fire-and-forget (no wait for result).
-func (t *Temporal) StartIndicator(ctx context.Context, req IndicatorRequest) error {
+func (t *Temporal) StartIndicator(ctx context.Context, req *IndicatorRequest) error {
 	workflowID := fmt.Sprintf("indicator-%s-%s-%s-%d", req.Namespace, req.Name, req.Action, time.Now().Unix())
 	_, err := t.Client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
 		ID:        workflowID,

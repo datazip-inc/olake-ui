@@ -84,9 +84,9 @@ func (r ResourceData) EntityID() int {
 
 // StatusSink writes phase and failure indicators.
 type StatusSink interface {
-	SpawnIndicator(ctx context.Context, r ResourceData, errMsg string) error
-	DeleteIndicator(ctx context.Context, r ResourceData) error
-	SetPhase(ctx context.Context, r ResourceData, phase, message, entityID, observedHash string) error
+	SpawnIndicator(ctx context.Context, r *ResourceData, errMsg string) error
+	DeleteIndicator(ctx context.Context, r *ResourceData) error
+	SetPhase(ctx context.Context, r *ResourceData, phase, message, entityID, observedHash string) error
 }
 
 func resourceFromCM(cm *corev1.ConfigMap) ResourceData {
