@@ -104,12 +104,12 @@ func (r *JobReconciler) sync(ctx context.Context, res *ResourceData) (ctrl.Resul
 	}
 
 	streamsRes, err := r.findStreams(ctx, res, projectID, res.EntityID())
+	if errors.Is(err, ErrStreamsNotFound) {
+		return waitResource(ctx, r.Sink, res, fmt.Sprintf("waiting for Streams referencing job %q", res.Name), observed)
+	}
 	if err != nil {
 		logger.Error(err, "find streams failed")
 		return requeueTransient(ctx, r.Sink, res, err, observed)
-	}
-	if streamsRes == nil {
-		return waitResource(ctx, r.Sink, res, fmt.Sprintf("waiting for Streams referencing job %q", res.Name), observed)
 	}
 
 	existingJob, err := r.ETL.GetJobByName(ctx, projectID, jobCfg.Name)
@@ -205,7 +205,7 @@ func (r *JobReconciler) sync(ctx context.Context, res *ResourceData) (ctrl.Resul
 	return ctrl.Result{}, nil
 }
 
-func (r *JobReconciler) failJob(ctx context.Context, job *ResourceData, streams *ResourceData, err error, observedHash string) (ctrl.Result, error) {
+func (r *JobReconciler) failJob(ctx context.Context, job, streams *ResourceData, err error, observedHash string) (ctrl.Result, error) {
 	result, _ := failResource(ctx, r.Sink, job, err, observedHash)
 	if streams != nil {
 		_, _ = failResource(ctx, r.Sink, streams, err, "")
@@ -257,7 +257,10 @@ func (r *JobReconciler) streamsSettled(ctx context.Context, job *ResourceData) (
 		return false, nil
 	}
 	streamsRes, err := r.findStreams(ctx, job, projectID, job.EntityID())
-	if err != nil || streamsRes == nil {
+	if errors.Is(err, ErrStreamsNotFound) {
+		return false, nil
+	}
+	if err != nil {
 		return false, err
 	}
 	return streamsCMApplied(streamsRes.Annotations, streamsRes.Data), nil
@@ -322,7 +325,7 @@ func (r *JobReconciler) findStreamsInCluster(ctx context.Context, job *ResourceD
 			return &cp, nil
 		}
 	}
-	return nil, nil
+	return nil, ErrStreamsNotFound
 }
 
 func (r *JobReconciler) enqueueJobsForSource(ctx context.Context, obj client.Object) []reconcile.Request {
