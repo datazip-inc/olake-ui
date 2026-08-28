@@ -37,7 +37,7 @@ func discoverJobID(job *models.Job) int {
 }
 
 // streamsCMApplied is true when this Streams object was last synced as Ready for the current CM fingerprint
-func streamsCMApplied(annotations map[string]string, data map[string]string) bool {
+func streamsCMApplied(annotations, data map[string]string) bool {
 	if annotations == nil {
 		return false
 	}

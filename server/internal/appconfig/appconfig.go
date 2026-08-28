@@ -47,7 +47,7 @@ type Config struct {
 	OptimizationUsername           string
 	OptimizationPassword           string
 	OptimizationRequestTimeout     time.Duration
-	GitOpsEnabled bool
+	GitOpsEnabled                  bool
 }
 
 var cfg = loadConfig()

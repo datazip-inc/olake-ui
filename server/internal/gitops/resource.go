@@ -68,16 +68,16 @@ type ResourceData struct {
 	Annotations map[string]string
 }
 
-func (r ResourceData) key() string {
+func (r *ResourceData) key() string {
 	return r.Kind + "/" + r.Namespace + "/" + r.Name
 }
 
-func (r ResourceData) ProjectID() string { return r.Data[DataProjectID] }
-func (r ResourceData) UserID() string    { return r.Data[DataUserID] }
-func (r ResourceData) Config() string    { return r.Data[DataConfig] }
-func (r ResourceData) JobRef() string    { return r.Data[DataJob] }
+func (r *ResourceData) ProjectID() string { return r.Data[DataProjectID] }
+func (r *ResourceData) UserID() string    { return r.Data[DataUserID] }
+func (r *ResourceData) Config() string    { return r.Data[DataConfig] }
+func (r *ResourceData) JobRef() string    { return r.Data[DataJob] }
 
-func (r ResourceData) EntityID() int {
+func (r *ResourceData) EntityID() int {
 	n, _ := strconv.Atoi(r.Annotations[AnnotationEntityID])
 	return n
 }
