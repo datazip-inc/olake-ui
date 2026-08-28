@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -82,9 +83,11 @@ func Setup(app *services.AppService, restConfig *rest.Config) (*Controller, erro
 			&corev1.Secret{}:    {Label: managed},
 		},
 	}
-	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
-		cacheOpts.DefaultNamespaces = map[string]cache.Config{ns: {}}
+	ns := strings.TrimSpace(os.Getenv("POD_NAMESPACE"))
+	if ns == "" {
+		return nil, fmt.Errorf("POD_NAMESPACE is required for in-cluster GitOps (namespace-scoped RBAC)")
 	}
+	cacheOpts.DefaultNamespaces = map[string]cache.Config{ns: {}}
 
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme: scheme,
