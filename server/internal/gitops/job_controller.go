@@ -27,7 +27,7 @@ type JobReconciler struct {
 	client.Client
 	ETL         *etl.Service
 	Sink        StatusSink
-	findStreams func(ctx context.Context, job ResourceData, projectID string, entityID int) (*ResourceData, error)
+	findStreams func(ctx context.Context, job *ResourceData, projectID string, entityID int) (*ResourceData, error)
 }
 
 func (r *JobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -35,7 +35,8 @@ func (r *JobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if err := r.Get(ctx, req.NamespacedName, &cm); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	return r.sync(ctx, resourceFromCM(&cm))
+	res := resourceFromCM(&cm)
+	return r.sync(ctx, &res)
 }
 
 /*
@@ -62,7 +63,7 @@ Why discover here:
   - GitOps: you edit the CM first; discover takes that as input and merges with
     the source (sync_new_columns, new tables in schema, etc.).
 */
-func (r *JobReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Result, error) {
+func (r *JobReconciler) sync(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	observed := r.reconcileHash(ctx, res)
 	if skipReconcile(res.Annotations, observed) {
@@ -197,17 +198,17 @@ func (r *JobReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Result
 		logger.Error(err, "update job status failed")
 		return requeueTransient(ctx, r.Sink, res, err, observed)
 	}
-	if err := successResource(ctx, r.Sink, *streamsRes, existingJob.ID, ""); err != nil {
+	if err := successResource(ctx, r.Sink, streamsRes, existingJob.ID, ""); err != nil {
 		logger.Error(err, "update streams status failed")
 		return requeueTransient(ctx, r.Sink, res, err, observed)
 	}
 	return ctrl.Result{}, nil
 }
 
-func (r *JobReconciler) failJob(ctx context.Context, job ResourceData, streams *ResourceData, err error, observedHash string) (ctrl.Result, error) {
+func (r *JobReconciler) failJob(ctx context.Context, job *ResourceData, streams *ResourceData, err error, observedHash string) (ctrl.Result, error) {
 	result, _ := failResource(ctx, r.Sink, job, err, observedHash)
 	if streams != nil {
-		_, _ = failResource(ctx, r.Sink, *streams, err, "")
+		_, _ = failResource(ctx, r.Sink, streams, err, "")
 	}
 	return result, nil
 }
@@ -221,7 +222,7 @@ Streams are excluded (large catalogs); streamsSettled covers streams-only drift.
 Why connectors are in the hash: a Failed job (e.g. bad credentials) must retry
 when the Source/Destination CM is fixed, without requiring a Job CM edit.
 */
-func (r *JobReconciler) reconcileHash(ctx context.Context, res ResourceData) string {
+func (r *JobReconciler) reconcileHash(ctx context.Context, res *ResourceData) string {
 	connectors := ""
 	if jobCfg, err := ParseAndValidateJobConfig(res.Config()); err == nil && r.ETL != nil {
 		parts := map[string]string{}
@@ -250,7 +251,7 @@ func (r *JobReconciler) testConnectors(ctx context.Context, source *models.Sourc
 }
 
 // streamsSettled: skip job reconcile when streams do not need another apply
-func (r *JobReconciler) streamsSettled(ctx context.Context, job ResourceData) (bool, error) {
+func (r *JobReconciler) streamsSettled(ctx context.Context, job *ResourceData) (bool, error) {
 	projectID := job.ProjectID()
 	if projectID == "" {
 		return false, nil
@@ -262,7 +263,7 @@ func (r *JobReconciler) streamsSettled(ctx context.Context, job ResourceData) (b
 	return streamsCMApplied(streamsRes.Annotations, streamsRes.Data), nil
 }
 
-func (r *JobReconciler) discoverCatalog(ctx context.Context, source *models.Source, jobCfg *GitOpsJobConfig, existingJob *models.Job, streamsCatalogOverride string, schemaSplit bool) (dto.CatalogResponse, error) {
+func (r *JobReconciler) discoverCatalog(ctx context.Context, source *models.Source, jobCfg *JobConfig, existingJob *models.Job, streamsCatalogOverride string, schemaSplit bool) (dto.CatalogResponse, error) {
 	req := &dto.StreamsRequest{
 		Name:        source.Name,
 		Type:        source.Type,
@@ -306,7 +307,7 @@ func (r *JobReconciler) resolveDestination(ctx context.Context, projectID, ref s
 	return r.ETL.GetDestinationByName(ctx, projectID, ref)
 }
 
-func (r *JobReconciler) findStreamsInCluster(ctx context.Context, job ResourceData, projectID string, entityID int) (*ResourceData, error) {
+func (r *JobReconciler) findStreamsInCluster(ctx context.Context, job *ResourceData, projectID string, entityID int) (*ResourceData, error) {
 	var list corev1.ConfigMapList
 	if err := r.List(ctx, &list, client.InNamespace(job.Namespace), client.MatchingLabels(managedLabels(KindStreams))); err != nil {
 		return nil, err
@@ -329,7 +330,7 @@ func (r *JobReconciler) enqueueJobsForSource(ctx context.Context, obj client.Obj
 	if !ok {
 		return nil
 	}
-	return r.enqueueJobsReferencing(ctx, res.Namespace, func(cfg *GitOpsJobConfig) bool {
+	return r.enqueueJobsReferencing(ctx, res.Namespace, func(cfg *JobConfig) bool {
 		return matchesNameOrID(cfg.Source, res.Name, res.EntityID())
 	})
 }
@@ -339,12 +340,12 @@ func (r *JobReconciler) enqueueJobsForDestination(ctx context.Context, obj clien
 	if !ok {
 		return nil
 	}
-	return r.enqueueJobsReferencing(ctx, res.Namespace, func(cfg *GitOpsJobConfig) bool {
+	return r.enqueueJobsReferencing(ctx, res.Namespace, func(cfg *JobConfig) bool {
 		return matchesNameOrID(cfg.Destination, res.Name, res.EntityID())
 	})
 }
 
-func (r *JobReconciler) enqueueJobsReferencing(ctx context.Context, namespace string, match func(*GitOpsJobConfig) bool) []reconcile.Request {
+func (r *JobReconciler) enqueueJobsReferencing(ctx context.Context, namespace string, match func(*JobConfig) bool) []reconcile.Request {
 	var list corev1.ConfigMapList
 	if err := r.List(ctx, &list, client.InNamespace(namespace), client.MatchingLabels(managedLabels(KindJob))); err != nil {
 		return nil
@@ -389,7 +390,7 @@ type jobDrift struct {
 
 func (d jobDrift) any() bool { return d.connectors || d.streams || d.other }
 
-func diffJob(existing *models.Job, cfg *GitOpsJobConfig, sourceID, destID int) jobDrift {
+func diffJob(existing *models.Job, cfg *JobConfig, sourceID, destID int) jobDrift {
 	return jobDrift{
 		connectors: existing.SourceID != sourceID || existing.DestID != destID,
 		other: existing.Name != cfg.Name ||
@@ -399,7 +400,7 @@ func diffJob(existing *models.Job, cfg *GitOpsJobConfig, sourceID, destID int) j
 	}
 }
 
-func (cfg *GitOpsJobConfig) createRequest(sourceID, destID int, streamsConfig, schemaConfig string) *dto.CreateJobRequest {
+func (cfg *JobConfig) createRequest(sourceID, destID int, streamsConfig, schemaConfig string) *dto.CreateJobRequest {
 	return &dto.CreateJobRequest{
 		JobMetadata:   cfg.JobMetadata,
 		StreamsConfig: streamsConfig,
@@ -409,7 +410,7 @@ func (cfg *GitOpsJobConfig) createRequest(sourceID, destID int, streamsConfig, s
 	}
 }
 
-func (cfg *GitOpsJobConfig) updateRequest(sourceID, destID int, streamsConfig, schemaConfig, differenceStreams string) *dto.UpdateJobRequest {
+func (cfg *JobConfig) updateRequest(sourceID, destID int, streamsConfig, schemaConfig, differenceStreams string) *dto.UpdateJobRequest {
 	return &dto.UpdateJobRequest{
 		JobMetadata:       cfg.JobMetadata,
 		StreamsConfig:     streamsConfig,

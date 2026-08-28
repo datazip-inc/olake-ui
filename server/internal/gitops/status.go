@@ -32,14 +32,14 @@ func skipReconcile(annotations map[string]string, dataHash string) bool {
 	return phase == PhaseReady || phase == PhaseFailed
 }
 
-func observedHashForResource(r ResourceData, override string) string {
+func observedHashForResource(r *ResourceData, override string) string {
 	if override != "" {
 		return override
 	}
 	return ContentHash(r.Data)
 }
 
-func failResource(ctx context.Context, sink StatusSink, r ResourceData, err error, observedHash string) (ctrl.Result, error) {
+func failResource(ctx context.Context, sink StatusSink, r *ResourceData, err error, observedHash string) (ctrl.Result, error) {
 	retryMap.Delete(r.key())
 	msg := err.Error()
 	hash := observedHashForResource(r, observedHash)
@@ -48,7 +48,7 @@ func failResource(ctx context.Context, sink StatusSink, r ResourceData, err erro
 	return ctrl.Result{}, nil
 }
 
-func waitResource(ctx context.Context, sink StatusSink, r ResourceData, msg, observedHash string) (ctrl.Result, error) {
+func waitResource(ctx context.Context, sink StatusSink, r *ResourceData, msg, observedHash string) (ctrl.Result, error) {
 	retryMap.Delete(r.key())
 	hash := observedHashForResource(r, observedHash)
 	_ = sink.SetPhase(ctx, r, PhasePending, msg, "", hash)
@@ -57,7 +57,7 @@ func waitResource(ctx context.Context, sink StatusSink, r ResourceData, msg, obs
 
 // requeueTransient retries a transient error as Pending. After syncRetryTimeout
 // it fails with an indicator. Dependency waits use waitResource (no timeout).
-func requeueTransient(ctx context.Context, sink StatusSink, r ResourceData, err error, observedHash string) (ctrl.Result, error) {
+func requeueTransient(ctx context.Context, sink StatusSink, r *ResourceData, err error, observedHash string) (ctrl.Result, error) {
 	now := time.Now()
 	started := now
 	if v, ok := retryMap.Load(r.key()); ok {
@@ -73,7 +73,7 @@ func requeueTransient(ctx context.Context, sink StatusSink, r ResourceData, err 
 	return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
 }
 
-func successResource(ctx context.Context, sink StatusSink, r ResourceData, entityID int, observedHash string) error {
+func successResource(ctx context.Context, sink StatusSink, r *ResourceData, entityID int, observedHash string) error {
 	retryMap.Delete(r.key())
 	_ = sink.DeleteIndicator(ctx, r)
 	hash := observedHashForResource(r, observedHash)

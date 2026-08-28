@@ -29,15 +29,15 @@ func NewK8sSink(c client.Client, recorder k8srecord.EventRecorder, t *temporal.T
 	return &K8sSink{client: c, recorder: recorder, temporal: t}
 }
 
-func (s *K8sSink) SpawnIndicator(ctx context.Context, r ResourceData, errMsg string) error {
-	return spawnIndicatorViaTemporal(ctx, s.temporal, r, errMsg)
+func (s *K8sSink) SpawnIndicator(ctx context.Context, r *ResourceData, errMsg string) error {
+	return spawnIndicator(ctx, s.temporal, r, errMsg)
 }
 
-func (s *K8sSink) DeleteIndicator(ctx context.Context, r ResourceData) error {
-	return deleteIndicatorViaTemporal(ctx, s.temporal, r)
+func (s *K8sSink) DeleteIndicator(ctx context.Context, r *ResourceData) error {
+	return deleteIndicator(ctx, s.temporal, r)
 }
 
-func (s *K8sSink) SetPhase(ctx context.Context, r ResourceData, phase, message, entityID, observedHash string) error {
+func (s *K8sSink) SetPhase(ctx context.Context, r *ResourceData, phase, message, entityID, observedHash string) error {
 	dataHash := observedHashForResource(r, observedHash)
 	key := client.ObjectKey{Name: r.Name, Namespace: r.Namespace}
 

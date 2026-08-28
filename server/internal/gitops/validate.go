@@ -15,9 +15,9 @@ func init() {
 	validate.SetTagName("binding")
 }
 
-// GitOpsJobConfig is the JSON shape stored in Job ConfigMap data.config.
+// JobConfig is the JSON shape stored in Job ConfigMap data.config.
 // Source/Destination are name or numeric ID refs (not *DriverConfig like the HTTP API).
-type GitOpsJobConfig struct {
+type JobConfig struct {
 	dto.JobMetadata
 	Source      string `json:"source" binding:"required"`      // OLake source name or numeric ID
 	Destination string `json:"destination" binding:"required"` // OLake destination name or numeric ID
@@ -51,8 +51,8 @@ func ParseAndValidateDestination(config string) (*dto.CreateDestinationRequest, 
 	return &req, nil
 }
 
-func ParseAndValidateJobConfig(config string) (*GitOpsJobConfig, error) {
-	var req GitOpsJobConfig
+func ParseAndValidateJobConfig(config string) (*JobConfig, error) {
+	var req JobConfig
 	if err := json.Unmarshal([]byte(config), &req); err != nil {
 		return nil, NonRetryableError(fmt.Errorf("invalid spec.config JSON: %w", err))
 	}
