@@ -269,14 +269,18 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 	return result, logs.Logs, nil
 }
 
-func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) (dto.CatalogResponse, error) {
-	oldStreams := ""
+func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, streamsCatalogOverride string) (dto.CatalogResponse, error) {
+	oldStreams := streamsCatalogOverride
+	oldSchema := ""
 	if req.JobID >= 0 {
 		job, err := s.db.GetJobByID(req.JobID, true)
 		if err != nil {
 			return dto.CatalogResponse{}, fmt.Errorf("failed to find job for catalog: %s", err)
 		}
-		oldStreams = job.StreamsConfig
+		if oldStreams == "" {
+			oldStreams = job.StreamsConfig
+		}
+		oldSchema = utils.StringValue(job.SchemaConfig)
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config.String())
@@ -290,6 +294,7 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) 
 		req.Version,
 		encryptedConfig,
 		oldStreams,
+		oldSchema,
 		req.JobName,
 		req.MaxDiscoverThreads,
 		req.SchemaSplit,

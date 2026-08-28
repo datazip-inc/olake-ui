@@ -84,6 +84,43 @@ metadata:
 | job | ConfigMap only | `projectId`, `userId`, `config` | Job metadata; `config.source` / `destination` by name or numeric ID |
 | streams | ConfigMap only | `projectId`, `job`, `config` | Streams catalog; `job` matches Job ConfigMap name or job entity ID |
 
+### Streams catalog formats
+
+Two formats are accepted in the Streams ConfigMap `data.config` JSON. **Pick one format at job creation and keep it** — switching between legacy and split after the job exists is unsupported and may leave `schema_config` inconsistent (the operator does not enforce this; it is your responsibility).
+
+**Legacy (default)** — full catalog in git:
+
+```json
+{
+  "streams": [ ... stream metadata ... ],
+  "selected_streams": { "public": [ { "stream_name": "users", "sync_mode": "cdc", ... } ] }
+}
+```
+
+Stored as `streams_config` in the DB; `schema_config` is empty. No discover step at reconcile time.
+
+**Split (GitOps-optimized)** — user choices only in git:
+
+```json
+{
+  "selected_streams": {
+    "public": [
+      {
+        "stream_name": "users",
+        "sync_mode": "cdc",
+        "normalization": true,
+        "selected_columns": { "columns": [], "sync_new_columns": true }
+      }
+    ]
+  }
+}
+```
+
+- `streams[]` must **not** be present in the CM.
+- `selected_streams` must be non-empty (deselect-all fails reconcile).
+- On reconcile the operator runs discover against the source and stores discovered `streams[]` metadata as `schema_config` in the DB. The CM `selected_streams` are the merge input; after discover, `mergeCatalogs` (CLI) may update `selected_columns` when `sync_new_columns` is true and refreshes `streams[]` when the source schema changes. On create the CM is stored as-is; on update the merged discover output is persisted for both configs.
+- Sync/clear mount both files at runtime (requires source connector version that supports `--schema`; version gating is handled by temporal/worker, not the gitops reconciler).
+
 ### Credentials via Secrets (Source and Destination only)
 
 A Source or Destination can be defined directly as a **Secret** instead of a ConfigMap when the connector config holds credentials that shouldn't be plaintext in git. There is no separate reference field — the Secret itself carries the same `data` shape (`projectId`, `userId`, `config`) and the same `olake.io/managed`/`olake.io/kind` labels as the ConfigMap form. Pick exactly one object type per Source/Destination name; if both exist for the same name, the ConfigMap wins.

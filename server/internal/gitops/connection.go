@@ -15,7 +15,7 @@ func testSourceConnection(ctx context.Context, etlSvc *etl.Service, sourceType, 
 		Config:  config,
 	})
 	if err != nil {
-		return Permanent(fmt.Errorf("source connection test failed: %w", err))
+		return NonRetryableError(fmt.Errorf("source connection test failed: %w", err))
 	}
 	return nil
 }
@@ -29,7 +29,7 @@ func testDestinationConnection(ctx context.Context, etlSvc *etl.Service, destTyp
 		SourceVersion: sourceVersion,
 	})
 	if err != nil {
-		return Permanent(fmt.Errorf("destination connection test failed: %w", err))
+		return NonRetryableError(fmt.Errorf("destination connection test failed: %w", err))
 	}
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
@@ -67,13 +68,16 @@ const (
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
 
 // DiscoverStreams runs a workflow to discover catalog data
-func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int, schemaSplit bool) (map[string]interface{}, map[string]interface{}, error) {
+func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, schemaConfig, jobName string, maxDiscoverThreads *int, schemaSplit bool) (map[string]interface{}, map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
 
 	configs := []JobConfig{
 		{Name: "config.json", Data: config},
 		{Name: "streams.json", Data: streamsConfig},
 		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
+	}
+	if schemaConfig != "" && schemaSplit && utils.SupportsSchemaFlag(version) {
+		configs = append(configs, JobConfig{Name: "schema.json", Data: schemaConfig})
 	}
 
 	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
@@ -296,15 +300,23 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		{Name: "new_streams.json", Data: newConfig},
 	}
 
-	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
-		return nil, fmt.Errorf("failed to setup config files: %s", err)
-	}
-
 	cmdArgs := []string{
 		"discover",
 		"--streams", "/mnt/config/old_streams.json",
 		"--difference", "/mnt/config/new_streams.json",
 	}
+	if job.SchemaConfig != nil {
+		schemaConfig := strings.TrimSpace(*job.SchemaConfig)
+		if schemaConfig != "" && utils.SupportsSchemaFlag(job.Source.Version) {
+			configs = append(configs, JobConfig{Name: "schema.json", Data: schemaConfig})
+			cmdArgs = append(cmdArgs, "--schema", "/mnt/config/schema.json")
+		}
+	}
+
+	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+		return nil, fmt.Errorf("failed to setup config files: %s", err)
+	}
+
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}

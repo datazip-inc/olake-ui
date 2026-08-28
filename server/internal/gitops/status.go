@@ -15,9 +15,12 @@ const (
 	syncRetryTimeout = 5 * time.Minute
 )
 
-// retryStarted tracks when a transient retry window began (process-local).
-var retryStarted sync.Map // ResourceData.key() -> time.Time
+// retryMap tracks retries
+var retryMap sync.Map // ResourceData.key() -> time.Time (when retry started)
 
+// skipReconcile: true when this resource was already synced for the current fingerprint.
+// How: observed-hash matches dataHash AND phase is Ready or Failed.
+// Hash mismatch (content/connectors changed) or non-terminal phase → run reconcile.
 func skipReconcile(annotations map[string]string, dataHash string) bool {
 	if annotations == nil {
 		return false
@@ -37,7 +40,7 @@ func observedHashForResource(r ResourceData, override string) string {
 }
 
 func failResource(ctx context.Context, sink StatusSink, r ResourceData, err error, observedHash string) (ctrl.Result, error) {
-	retryStarted.Delete(r.key())
+	retryMap.Delete(r.key())
 	msg := err.Error()
 	hash := observedHashForResource(r, observedHash)
 	_ = sink.SetPhase(ctx, r, PhaseFailed, msg, "", hash)
@@ -46,7 +49,7 @@ func failResource(ctx context.Context, sink StatusSink, r ResourceData, err erro
 }
 
 func waitResource(ctx context.Context, sink StatusSink, r ResourceData, msg, observedHash string) (ctrl.Result, error) {
-	retryStarted.Delete(r.key())
+	retryMap.Delete(r.key())
 	hash := observedHashForResource(r, observedHash)
 	_ = sink.SetPhase(ctx, r, PhasePending, msg, "", hash)
 	return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
@@ -57,13 +60,13 @@ func waitResource(ctx context.Context, sink StatusSink, r ResourceData, msg, obs
 func requeueTransient(ctx context.Context, sink StatusSink, r ResourceData, err error, observedHash string) (ctrl.Result, error) {
 	now := time.Now()
 	started := now
-	if v, ok := retryStarted.Load(r.key()); ok {
+	if v, ok := retryMap.Load(r.key()); ok {
 		started = v.(time.Time)
 	} else {
-		retryStarted.Store(r.key(), now)
+		retryMap.Store(r.key(), now)
 	}
 	if now.Sub(started) >= syncRetryTimeout {
-		return failResource(ctx, sink, r, Permanent(fmt.Errorf("sync retry timed out after %s: %w", syncRetryTimeout, err)), observedHash)
+		return failResource(ctx, sink, r, NonRetryableError(fmt.Errorf("sync retry timed out after %s: %w", syncRetryTimeout, err)), observedHash)
 	}
 	hash := observedHashForResource(r, observedHash)
 	_ = sink.SetPhase(ctx, r, PhasePending, fmt.Sprintf("retrying: %s", err), "", hash)
@@ -71,7 +74,7 @@ func requeueTransient(ctx context.Context, sink StatusSink, r ResourceData, err 
 }
 
 func successResource(ctx context.Context, sink StatusSink, r ResourceData, entityID int, observedHash string) error {
-	retryStarted.Delete(r.key())
+	retryMap.Delete(r.key())
 	_ = sink.DeleteIndicator(ctx, r)
 	hash := observedHashForResource(r, observedHash)
 	return sink.SetPhase(ctx, r, PhaseReady, "", strconvEntityID(entityID), hash)

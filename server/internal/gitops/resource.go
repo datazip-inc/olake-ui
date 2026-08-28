@@ -195,6 +195,20 @@ func managedLabels(kind string) map[string]string {
 	}
 }
 
+// parseResourceID treats a pure positive integer ref as a DB entity id.
+func parseResourceID(ref string) (int, bool) {
+	id, err := strconv.Atoi(ref)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+	return id, true
+}
+
+// matchesNameOrID is true when ref is the resource name or its entity id string.
+func matchesNameOrID(ref, name string, entityID int) bool {
+	return ref == name || (entityID > 0 && ref == strconv.Itoa(entityID))
+}
+
 // indicatorName returns "<name>-olake-<kind>" truncated to 63 chars.
 func indicatorName(name, kind string) string {
 	suffix := "-olake-" + kind

@@ -41,7 +41,7 @@ func (r *SourceReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Res
 
 	createReq, err := ParseAndValidateSource(res.Config())
 	if err != nil {
-		return failResource(ctx, r.Sink, res, Permanent(err), observedHash)
+		return failResource(ctx, r.Sink, res, NonRetryableError(err), observedHash)
 	}
 	userID, err := requireSpec(res.ProjectID(), res.UserID())
 	if err != nil {
@@ -58,7 +58,7 @@ func (r *SourceReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Res
 	if existing == nil || changed {
 		if err := testSourceConnection(ctx, r.ETL, createReq.Type, createReq.Version, createReq.Config); err != nil {
 			logger.Error(err, "source connection test failed")
-			return failResource(ctx, r.Sink, res, Permanent(err), observedHash)
+			return failResource(ctx, r.Sink, res, NonRetryableError(err), observedHash)
 		}
 	}
 
@@ -66,7 +66,7 @@ func (r *SourceReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Res
 	case existing == nil:
 		if err := r.ETL.CreateSource(ctx, createReq, res.ProjectID(), &userID); err != nil {
 			logger.Error(err, "create source failed")
-			return failResource(ctx, r.Sink, res, Permanent(err), observedHash)
+			return failResource(ctx, r.Sink, res, NonRetryableError(err), observedHash)
 		}
 		existing, err = r.ETL.GetSourceByName(ctx, res.ProjectID(), createReq.Name)
 		if err != nil {
@@ -82,7 +82,7 @@ func (r *SourceReconciler) sync(ctx context.Context, res ResourceData) (ctrl.Res
 		}
 		if err := r.ETL.UpdateSource(ctx, res.ProjectID(), existing.ID, updateReq, &userID); err != nil {
 			logger.Error(err, "update source failed")
-			return failResource(ctx, r.Sink, res, Permanent(err), observedHash)
+			return failResource(ctx, r.Sink, res, NonRetryableError(err), observedHash)
 		}
 	}
 

@@ -41,7 +41,7 @@ func (r *DestinationReconciler) sync(ctx context.Context, res ResourceData) (ctr
 
 	createReq, err := ParseAndValidateDestination(res.Config())
 	if err != nil {
-		return failResource(ctx, r.Sink, res, Permanent(err), observedHash)
+		return failResource(ctx, r.Sink, res, NonRetryableError(err), observedHash)
 	}
 	userID, err := requireSpec(res.ProjectID(), res.UserID())
 	if err != nil {
@@ -58,7 +58,7 @@ func (r *DestinationReconciler) sync(ctx context.Context, res ResourceData) (ctr
 	if existing == nil || changed {
 		if err := testDestinationConnection(ctx, r.ETL, createReq.Type, createReq.Version, createReq.Config, "", ""); err != nil {
 			logger.Error(err, "destination connection test failed")
-			return failResource(ctx, r.Sink, res, Permanent(err), observedHash)
+			return failResource(ctx, r.Sink, res, NonRetryableError(err), observedHash)
 		}
 	}
 
@@ -66,7 +66,7 @@ func (r *DestinationReconciler) sync(ctx context.Context, res ResourceData) (ctr
 	case existing == nil:
 		if err := r.ETL.CreateDestination(ctx, createReq, res.ProjectID(), &userID); err != nil {
 			logger.Error(err, "create destination failed")
-			return failResource(ctx, r.Sink, res, Permanent(err), observedHash)
+			return failResource(ctx, r.Sink, res, NonRetryableError(err), observedHash)
 		}
 		existing, err = r.ETL.GetDestinationByName(ctx, res.ProjectID(), createReq.Name)
 		if err != nil {
@@ -82,7 +82,7 @@ func (r *DestinationReconciler) sync(ctx context.Context, res ResourceData) (ctr
 		}
 		if err := r.ETL.UpdateDestination(ctx, existing.ID, res.ProjectID(), updateReq, &userID); err != nil {
 			logger.Error(err, "update destination failed")
-			return failResource(ctx, r.Sink, res, Permanent(err), observedHash)
+			return failResource(ctx, r.Sink, res, NonRetryableError(err), observedHash)
 		}
 	}
 

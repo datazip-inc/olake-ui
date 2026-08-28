@@ -98,27 +98,29 @@ type AdvancedSettings struct {
 	MaxDiscoverThreads *int `json:"max_discover_threads,omitempty" example:"50"`
 }
 
-type CreateJobRequest struct {
+// JobMetadata is shared job fields used by HTTP create/update and GitOps Job CM.
+type JobMetadata struct {
 	Name             string            `json:"name" binding:"required" example:"my-sync-job"`
-	Source           *DriverConfig     `json:"source" binding:"required"`
-	Destination      *DriverConfig     `json:"destination" binding:"required"`
 	Frequency        string            `json:"frequency" binding:"required" example:"0 */6 * * *"`
-	StreamsConfig    string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
-	SchemaConfig     string            `json:"schema_config,omitempty" orm:"type(jsonb)"`
 	Activate         bool              `json:"activate,omitempty" example:"true"`
 	AdvancedSettings *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
+type CreateJobRequest struct {
+	JobMetadata
+	Source        *DriverConfig `json:"source" binding:"required"`
+	Destination   *DriverConfig `json:"destination" binding:"required"`
+	StreamsConfig string        `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	SchemaConfig  string        `json:"schema_config,omitempty" orm:"type(jsonb)"`
+}
+
 type UpdateJobRequest struct {
-	Name              string            `json:"name" binding:"required" example:"my-sync-job-updated"`
-	Source            *DriverConfig     `json:"source" binding:"required"`
-	Destination       *DriverConfig     `json:"destination" binding:"required"`
-	Frequency         string            `json:"frequency" binding:"required" example:"0 */12 * * *"`
-	StreamsConfig     string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
-	SchemaConfig      string            `json:"schema_config,omitempty" orm:"type(jsonb)"`
-	DifferenceStreams string            `json:"difference_streams,omitempty" example:"[]"`
-	Activate          bool              `json:"activate,omitempty" example:"true"`
-	AdvancedSettings  *AdvancedSettings `json:"advanced_settings,omitempty"`
+	JobMetadata
+	Source            *DriverConfig `json:"source" binding:"required"`
+	Destination       *DriverConfig `json:"destination" binding:"required"`
+	StreamsConfig     string        `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	SchemaConfig      string        `json:"schema_config,omitempty" orm:"type(jsonb)"`
+	DifferenceStreams string        `json:"difference_streams,omitempty" example:"[]"`
 }
 
 type StreamDifferenceRequest struct {
