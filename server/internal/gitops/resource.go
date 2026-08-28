@@ -23,10 +23,8 @@ const (
 	KindJob         = "job"
 	KindStreams     = "streams"
 
-	LabelManaged   = "olake.io/managed"
-	LabelKind      = "olake.io/kind"
-	LabelIndicator = "olake.io/indicator"
-	LabelCR        = "olake.io/cr"
+	LabelManaged = "olake.io/managed"
+	LabelKind    = "olake.io/kind"
 
 	// Status annotations (operator-owned). Git/Argo manifests should only set
 	// metadata.labels and data — not these keys. Unlike a CRD status subresource,
@@ -39,7 +37,6 @@ const (
 	AnnotationMessage      = "olake.io/message"
 	AnnotationEntityID     = "olake.io/entity-id"
 	AnnotationObservedHash = "olake.io/observed-hash"
-	AnnotationError        = "olake.io/error"
 
 	DataProjectID = "projectId"
 	DataUserID    = "userId"

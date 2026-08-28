@@ -19,11 +19,6 @@ build:
 	gofmt -l -s -w .
 	cd server; go build -o olake-server main.go
 
-# Regenerate DeepCopy methods for GitOps API types (zz_generated.deepcopy.go).
-generate-deepcopy:
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.2
-	cd server && $(GOPATH)/bin/controller-gen object paths=./internal/gitops/api/v1/...
-
 frontend-format-check:
 	cd ui; pnpm run format:check
 
