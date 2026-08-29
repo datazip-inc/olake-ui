@@ -49,14 +49,22 @@ type Config struct {
 	OptimizationRequestTimeout     time.Duration
 }
 
-var cfg = loadConfig()
+var (
+	v   *viper.Viper
+	cfg = loadConfig()
+)
 
 func Load() Config {
 	return cfg
 }
 
+// GetString returns a trimmed config value from app.yaml (env overrides via AutomaticEnv).
+func GetString(key string) string {
+	return strings.TrimSpace(v.GetString(key))
+}
+
 func loadConfig() Config {
-	v := viper.New()
+	v = viper.New()
 
 	// Auto-detect RUN_MODE default based on execution environment.
 	// KUBERNETES_SERVICE_HOST is automatically injected into every pod by Kubernetes.

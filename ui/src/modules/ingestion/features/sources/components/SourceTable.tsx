@@ -6,6 +6,7 @@ import {
 import { Table, Input, Button, Dropdown, Pagination, Tooltip } from "antd"
 import React, { useState } from "react"
 
+import { resolveActionMenuItem } from "@/common/components/action"
 import { DeleteModal } from "@/modules/ingestion/common/components"
 import JobConnection from "@/modules/ingestion/common/components/JobConnection"
 import { PAGE_SIZE } from "@/modules/ingestion/common/constants"
@@ -72,7 +73,9 @@ const SourceTable: React.FC<SourceTableProps> = ({
 									}
 								},
 							},
-						],
+						]
+							.map(resolveActionMenuItem)
+							.filter(Boolean),
 					}}
 					trigger={["click"]}
 					overlayStyle={{ minWidth: "170px" }}

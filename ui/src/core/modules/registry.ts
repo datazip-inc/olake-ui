@@ -2,7 +2,7 @@
  * SINGLE SOURCE OF TRUTH for all application modules.
  *
  * To add a new module:
- *   1. Create src/modules/<name>/index.ts exporting an AppModule descriptor.
+ *   1. Create src/modules/<name>/index.ts (or src/core/<name>/index.ts) exporting an AppModule descriptor.
  *   2. Import it here and add it to this array.
  *   3. Add a corresponding hook call in useActiveModuleKeys (maintain order).
  *
@@ -10,10 +10,15 @@
  *   - The order routes are matched (first match wins in React Router v6).
  *   - The order modules appear in the nav sidebar.
  */
+import { settingsModule } from "@/core/settings"
 import { ingestionModule } from "@/modules/ingestion/index"
 import { maintenanceModule } from "@/modules/maintenance/index"
 
-export const moduleRegistry = [ingestionModule, maintenanceModule]
+export const moduleRegistry = [
+	ingestionModule,
+	maintenanceModule,
+	settingsModule,
+]
 
 /**
  * Returns the set of nav keys for modules that are currently enabled.
@@ -25,6 +30,7 @@ export function useActiveModuleKeys(): Set<string> {
 	const flags = [
 		ingestionModule.useEnabled?.() ?? true,
 		maintenanceModule.useEnabled?.() ?? true,
+		settingsModule.useEnabled?.() ?? true,
 	]
 	return new Set(moduleRegistry.filter((_, i) => flags[i]).map(m => m.nav.key))
 }

@@ -3,7 +3,7 @@ import {
 	ArrowRightIcon,
 	DownloadSimpleIcon,
 } from "@phosphor-icons/react"
-import { message } from "antd"
+import { Button, message } from "antd"
 import { useState, useEffect } from "react"
 import { useNavigate, Link, useLocation } from "react-router-dom"
 import { v4 as uuidv4 } from "uuid"
@@ -128,6 +128,7 @@ const JobCreation: React.FC = () => {
 	const [showFailureModal, setShowFailureModal] = useState(false)
 	const [showEntitySavedModal, setShowEntitySavedModal] = useState(false)
 	const [showCancelModal, setShowCancelModal] = useState(false)
+	const [isSubmitting, setIsSubmitting] = useState(false)
 	const { mutateAsync: addJob } = useCreateJob()
 	const testSourceMutation = useTestSourceConnection()
 	const testDestinationMutation = useTestDestinationConnection()
@@ -250,38 +251,43 @@ const JobCreation: React.FC = () => {
 
 	// Main next handler — 2-step flow: CONFIG → STREAMS
 	const handleNext = async () => {
-		switch (currentStep) {
-			case JOB_CREATION_STEPS.CONFIG: {
-				if (!validateConfig()) return
+		setIsSubmitting(true)
+		try {
+			switch (currentStep) {
+				case JOB_CREATION_STEPS.CONFIG: {
+					if (!validateConfig()) return
 
-				// Check job name uniqueness
-				const isUnique = await validationService.checkUniqueName(
-					jobName,
-					ENTITY_TYPES.JOB,
-				)
-				if (!isUnique) return
+					// Check job name uniqueness
+					const isUnique = await validationService.checkUniqueName(
+						jobName,
+						ENTITY_TYPES.JOB,
+					)
+					if (!isUnique) return
 
-				const sourceOk = await runConnectionTest(true)
-				if (!sourceOk) return
+					const sourceOk = await runConnectionTest(true)
+					if (!sourceOk) return
 
-				const destOk = await runConnectionTest(false)
-				if (!destOk) return
+					const destOk = await runConnectionTest(false)
+					if (!destOk) return
 
-				setCurrentStep(JOB_CREATION_STEPS.STREAMS)
-				break
-			}
-			case JOB_CREATION_STEPS.STREAMS: {
-				if (!streamsData) return
-				const error = validateStreams(streamsData)
-				if (error) {
-					message.error(error)
-					return
+					setCurrentStep(JOB_CREATION_STEPS.STREAMS)
+					break
 				}
-				await handleJobCreation()
-				break
+				case JOB_CREATION_STEPS.STREAMS: {
+					if (!streamsData) return
+					const error = validateStreams(streamsData)
+					if (error) {
+						message.error(error)
+						return
+					}
+					await handleJobCreation()
+					break
+				}
+				default:
+					console.warn("Unknown step:", currentStep)
 			}
-			default:
-				console.warn("Unknown step:", currentStep)
+		} finally {
+			setIsSubmitting(false)
 		}
 	}
 
@@ -403,21 +409,24 @@ const JobCreation: React.FC = () => {
 							onClick={handleBack}
 							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb] disabled:cursor-not-allowed disabled:opacity-50"
 							disabled={
-								currentStep === JOB_CREATION_STEPS.STREAMS && isDiscovering
+								(currentStep === JOB_CREATION_STEPS.STREAMS && isDiscovering) ||
+								isSubmitting
 							}
 						>
 							Back
 						</button>
 					)}
-					<button
-						type="button"
+					<Button
+						type="primary"
 						data-testid="create-job-wizard-submit"
 						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
 						onClick={handleNext}
+						loading={isSubmitting}
+						disabled={isSubmitting}
 					>
 						{currentStep === JOB_CREATION_STEPS.STREAMS ? "Create Job" : "Next"}
-						<ArrowRightIcon className="size-4 text-white" />
-					</button>
+						{!isSubmitting && <ArrowRightIcon className="size-4 text-white" />}
+					</Button>
 					<TestConnectionModal
 						open={showTestingModal}
 						connectionType={connectionTestType}

@@ -1,6 +1,8 @@
 import { lazy } from "react"
 import { RouteObject } from "react-router-dom"
 
+import { Action } from "@/common/components/action"
+
 const lazyComponents = {
 	Jobs: lazy(() => import("./features/jobs/pages/Jobs")),
 	JobHistory: lazy(() => import("./features/jobs/pages/JobHistory")),
@@ -29,11 +31,19 @@ export const ingestionRoutes: RouteObject[] = [
 	},
 	{
 		path: "jobs/new",
-		element: <lazyComponents.JobCreation />,
+		element: (
+			<Action>
+				<lazyComponents.JobCreation />
+			</Action>
+		),
 	},
 	{
 		path: "jobs/:jobId/edit",
-		element: <lazyComponents.JobEdit />,
+		element: (
+			<Action>
+				<lazyComponents.JobEdit />
+			</Action>
+		),
 	},
 	{
 		path: "jobs/:jobId/history",
@@ -49,7 +59,11 @@ export const ingestionRoutes: RouteObject[] = [
 	},
 	{
 		path: "jobs/:jobId/settings",
-		element: <lazyComponents.JobSettings />,
+		element: (
+			<Action>
+				<lazyComponents.JobSettings />
+			</Action>
+		),
 	},
 	{
 		path: "sources",
@@ -57,11 +71,19 @@ export const ingestionRoutes: RouteObject[] = [
 	},
 	{
 		path: "sources/new",
-		element: <lazyComponents.CreateSource />,
+		element: (
+			<Action>
+				<lazyComponents.CreateSource />
+			</Action>
+		),
 	},
 	{
 		path: "sources/:sourceId",
-		element: <lazyComponents.SourceEdit />,
+		element: (
+			<Action>
+				<lazyComponents.SourceEdit />
+			</Action>
+		),
 	},
 	{
 		path: "destinations",
@@ -69,10 +91,18 @@ export const ingestionRoutes: RouteObject[] = [
 	},
 	{
 		path: "destinations/new",
-		element: <lazyComponents.CreateDestination />,
+		element: (
+			<Action>
+				<lazyComponents.CreateDestination />
+			</Action>
+		),
 	},
 	{
 		path: "destinations/:destinationId",
-		element: <lazyComponents.DestinationEdit />,
+		element: (
+			<Action>
+				<lazyComponents.DestinationEdit />
+			</Action>
+		),
 	},
 ]

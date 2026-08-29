@@ -7,6 +7,8 @@ import {
 import type { ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
 
+import { Action } from "@/common/components/action"
+
 const StepCard = ({
 	step,
 	title,
@@ -101,18 +103,20 @@ const JobEmptyState = () => {
 				<p className="text-xs font-medium text-[#212121]">
 					What&apos;s Next: Create your first source
 				</p>
-				<button
-					onClick={() => {
-						navigate("/sources/new")
-					}}
-					className="flex h-10 min-w-[172px] items-center justify-center gap-2 rounded-lg bg-brand-blue px-6 text-base text-white transition-opacity hover:opacity-95"
-				>
-					<span>Create Source</span>
-					<ArrowRightIcon
-						size={16}
-						weight="bold"
-					/>
-				</button>
+				<Action>
+					<button
+						onClick={() => {
+							navigate("/sources/new")
+						}}
+						className="flex h-10 min-w-[172px] items-center justify-center gap-2 rounded-lg bg-brand-blue px-6 text-base text-white transition-opacity hover:opacity-95"
+					>
+						<span>Create Source</span>
+						<ArrowRightIcon
+							size={16}
+							weight="bold"
+						/>
+					</button>
+				</Action>
 			</div>
 		</div>
 	)

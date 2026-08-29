@@ -14,6 +14,7 @@ import { formatDistanceToNow } from "date-fns"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
+import { resolveActionMenuItem } from "@/common/components/action"
 import { getStatusClass, getStatusLabel } from "@/common/utils"
 import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
 import { PAGE_SIZE } from "@/modules/ingestion/common/constants"
@@ -66,7 +67,7 @@ const JobTable: React.FC<JobTableProps> = ({
 			key: "actions",
 			width: 100,
 			render: (_: unknown, record: Job | SavedJobDraft) => {
-				const menuItems =
+				const menuItems = (
 					jobType === "saved"
 						? [
 								{
@@ -127,7 +128,7 @@ const JobTable: React.FC<JobTableProps> = ({
 									{
 										key: "history",
 										icon: <ClockCounterClockwiseIcon className="size-4" />,
-										label: "Job Logs & History",
+										label: "Job History",
 										disabled: !j.activate,
 										onClick: () => handleViewHistory(record.id.toString()),
 									},
@@ -147,6 +148,9 @@ const JobTable: React.FC<JobTableProps> = ({
 									},
 								]
 							})()
+				)
+					.map(resolveActionMenuItem)
+					.filter(Boolean)
 
 				return (
 					<Dropdown

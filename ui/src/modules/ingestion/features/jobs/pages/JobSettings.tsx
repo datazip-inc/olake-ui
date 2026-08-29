@@ -8,6 +8,7 @@ import { Cron } from "croner"
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 
+import { Action } from "@/common/components/action"
 import { getConnectorImage } from "@/modules/ingestion/common/utils"
 
 import {
@@ -477,15 +478,17 @@ const JobSettings: React.FC = () => {
 												the destination.
 											</div>
 										</div>
-										<button
-											onClick={handleClearDestination}
-											className="rounded-md border bg-danger px-4 py-1 font-light text-white hover:bg-danger-dark disabled:cursor-not-allowed disabled:opacity-50"
-											disabled={
-												selectedClearDestinationRunning || !job?.activate
-											}
-										>
-											Clear Destination
-										</button>
+										<Action>
+											<button
+												onClick={handleClearDestination}
+												className="rounded-md border bg-danger px-4 py-1 font-light text-white hover:bg-danger-dark disabled:cursor-not-allowed disabled:opacity-50"
+												disabled={
+													selectedClearDestinationRunning || !job?.activate
+												}
+											>
+												Clear Destination
+											</button>
+										</Action>
 									</div>
 								</div>
 							</div>
@@ -498,12 +501,14 @@ const JobSettings: React.FC = () => {
 												No data will be deleted in your source and destination.
 											</div>
 										</div>
-										<button
-											onClick={handleDeleteJob}
-											className="rounded-md border bg-danger px-4 py-1 font-light text-white hover:bg-danger-dark"
-										>
-											Delete this job
-										</button>
+										<Action>
+											<button
+												onClick={handleDeleteJob}
+												className="rounded-md border bg-danger px-4 py-1 font-light text-white hover:bg-danger-dark"
+											>
+												Delete this job
+											</button>
+										</Action>
 									</div>
 								</div>
 								<DeleteJobModal fromJobSettings={true} />
@@ -514,13 +519,15 @@ const JobSettings: React.FC = () => {
 				</div>
 
 				<div className="flex justify-end border-t border-gray-200 bg-white p-4 shadow-sm">
-					<Button
-						type="primary"
-						onClick={handleSaveSettings}
-						className="flex items-center gap-1 bg-primary hover:bg-primary-600"
-					>
-						Save
-					</Button>
+					<Action>
+						<Button
+							type="primary"
+							onClick={handleSaveSettings}
+							className="flex items-center gap-1 bg-primary hover:bg-primary-600"
+						>
+							Save
+						</Button>
+					</Action>
 				</div>
 			</div>
 			<ClearDestinationModal />
