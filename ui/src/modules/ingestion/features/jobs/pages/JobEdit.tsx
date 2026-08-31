@@ -280,7 +280,10 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		const streamValidationError = validateStreams(streamsData)
+		const streamValidationError = validateStreams(
+			streamsData,
+			sourceSnapshot.type,
+		)
 		if (streamValidationError) {
 			message.error(streamValidationError)
 			return
@@ -328,7 +331,10 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		const submitValidationError = validateStreams(streamsConfig)
+		const submitValidationError = validateStreams(
+			streamsConfig,
+			sourceSnapshot.type,
+		)
 		if (submitValidationError) {
 			message.error(submitValidationError)
 			return

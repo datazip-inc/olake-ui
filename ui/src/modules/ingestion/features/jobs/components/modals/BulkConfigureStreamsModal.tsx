@@ -14,21 +14,25 @@ import { Button, Modal } from "antd"
 import clsx from "clsx"
 import { useEffect, useMemo, useState } from "react"
 
+import { SOURCE_INTERNAL_TYPES } from "@/modules/ingestion/common/constants"
 import {
 	FilterConfig,
 	StreamIdentifier,
 	SyncMode,
 } from "@/modules/ingestion/common/types"
+import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
 import { BulkConfigureStreamsModalProps } from "@/modules/ingestion/features/jobs/types"
 
 import { CARD_STYLE } from "../../constants"
 import { useStreamSelectionStore } from "../../stores"
 import {
 	buildBulkStreamsData,
+	getDedupKeyOptions,
 	isUseSourceColumnNamesSupported,
 } from "../../utils/streams"
 import BulkStreamSelectorList from "../streams/BulkStreamSelectorList"
 import DataFilterSectionBulk from "../streams/DataFilterSectionBulk"
+import DedupKeysSectionBulk from "../streams/dedupKeys/dedupKeysSectionBulk"
 import IngestionModeSectionBulk from "../streams/IngestionModeSectionBulk"
 import NormalizationSectionBulk from "../streams/NormalizationSectionBulk"
 import PartitionRegexSectionBulk from "../streams/PartitionRegexSectionBulk"
@@ -46,6 +50,7 @@ type BulkConfig = {
 	syncMode: SyncMode | undefined
 	cursorField: string | undefined
 	appendMode: boolean
+	dedupKeys: string[]
 	normalization: boolean
 	filter: string
 	filterConfig: FilterConfig | undefined
@@ -56,6 +61,7 @@ type BulkConfig = {
 enum BulkDirtyFieldKey {
 	SyncMode = "syncMode",
 	AppendMode = "appendMode",
+	DedupKeys = "dedupKeys",
 	Normalization = "normalization",
 	Filter = "filter",
 	PartitionRegex = "partitionRegex",
@@ -67,6 +73,7 @@ type BulkDirtyFields = Record<BulkDirtyFieldKey, boolean>
 const INITIAL_DIRTY_FIELDS: BulkDirtyFields = {
 	[BulkDirtyFieldKey.SyncMode]: false,
 	[BulkDirtyFieldKey.AppendMode]: false,
+	[BulkDirtyFieldKey.DedupKeys]: false,
 	[BulkDirtyFieldKey.Normalization]: false,
 	[BulkDirtyFieldKey.Filter]: false,
 	[BulkDirtyFieldKey.PartitionRegex]: false,
@@ -77,6 +84,7 @@ const INITIAL_BULK_CONFIG: BulkConfig = {
 	syncMode: SyncMode.FULL_REFRESH,
 	cursorField: undefined,
 	appendMode: false,
+	dedupKeys: [],
 	normalization: false,
 	filter: "",
 	filterConfig: undefined,
@@ -107,6 +115,10 @@ const BulkConfigureStreamsModal = ({
 	sourceVersion,
 	destinationType,
 }: BulkConfigureStreamsModalProps) => {
+	const isKafka =
+		!!sourceType &&
+		normalizeConnectorType(sourceType).toLowerCase() ===
+			SOURCE_INTERNAL_TYPES.KAFKA
 	const schemaTabVisible = isUseSourceColumnNamesSupported(sourceVersion)
 	const [step, setStep] = useState<BulkConfigureStep>("select-streams")
 	const [activeTab, setActiveTab] = useState<BulkConfigurationTab>("config")
@@ -198,6 +210,7 @@ const BulkConfigureStreamsModal = ({
 			cursorField:
 				syncMode === SyncMode.INCREMENTAL ? sortedCursors[0] : undefined,
 			appendMode: bulkStreamDefaults.append_mode ?? false,
+			dedupKeys: bulkStreamDefaults.dedup_keys ?? [],
 			normalization: bulkStreamDefaults.normalization,
 			filter: "",
 			filterConfig: undefined,
@@ -239,7 +252,12 @@ const BulkConfigureStreamsModal = ({
 			}),
 			...(dirtyFields[BulkDirtyFieldKey.AppendMode] && {
 				appendMode: bulkConfig.appendMode,
+				...(bulkConfig.appendMode ? { dedupKeys: [] } : {}),
 			}),
+			...(dirtyFields[BulkDirtyFieldKey.DedupKeys] &&
+				!bulkConfig.appendMode && {
+					dedupKeys: bulkConfig.dedupKeys,
+				}),
 			...(dirtyFields[BulkDirtyFieldKey.Normalization] && {
 				normalization: bulkConfig.normalization,
 			}),
@@ -465,7 +483,8 @@ const BulkConfigureStreamsModal = ({
 										<div className="absolute inset-0 z-10 cursor-not-allowed" />
 										<div className="pointer-events-none flex flex-col gap-4 opacity-60">
 											{(dirtyFields[BulkDirtyFieldKey.SyncMode] ||
-												dirtyFields[BulkDirtyFieldKey.AppendMode]) && (
+												dirtyFields[BulkDirtyFieldKey.AppendMode] ||
+												dirtyFields[BulkDirtyFieldKey.DedupKeys]) && (
 												<div className={CARD_STYLE}>
 													<span className="mb-2 block text-sm font-medium text-olake-text">
 														Ingestion Settings
@@ -484,6 +503,16 @@ const BulkConfigureStreamsModal = ({
 															bulkAppendMode={bulkConfig.appendMode}
 														/>
 													)}
+													{isKafka &&
+														dirtyFields[BulkDirtyFieldKey.DedupKeys] &&
+														!bulkConfig.appendMode && (
+															<DedupKeysSectionBulk
+																options={getDedupKeyOptions(bulkStream)}
+																value={bulkConfig.dedupKeys}
+																isDirty
+																onChange={() => {}}
+															/>
+														)}
 												</div>
 											)}
 											{dirtyFields[BulkDirtyFieldKey.Normalization] && (
@@ -724,6 +753,19 @@ const BulkConfigureStreamsModal = ({
 																		markDirty(BulkDirtyFieldKey.AppendMode)
 																	}}
 																/>
+																{isKafka && !bulkConfig.appendMode && (
+																	<DedupKeysSectionBulk
+																		isDirty={
+																			dirtyFields[BulkDirtyFieldKey.DedupKeys]
+																		}
+																		options={getDedupKeyOptions(bulkStream)}
+																		value={bulkConfig.dedupKeys}
+																		onChange={keys => {
+																			setBulkConfigField("dedupKeys", keys)
+																			markDirty(BulkDirtyFieldKey.DedupKeys)
+																		}}
+																	/>
+																)}
 															</>
 														)}
 													</div>

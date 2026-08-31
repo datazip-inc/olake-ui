@@ -74,6 +74,7 @@ export interface SelectedStream {
 	filter?: string
 	disabled?: boolean
 	append_mode?: boolean
+	dedup_keys?: string[]
 	use_source_column_names?: boolean
 	selected_columns?: SelectedColumns
 	filter_config?: FilterConfig
