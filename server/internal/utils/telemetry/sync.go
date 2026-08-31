@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,18 +16,35 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
+// SyncEventInfo carries everything needed to track a sync event, forwarded
+// by the worker's sync-telemetry callback.
+type SyncEventInfo struct {
+	JobID                int
+	WorkflowID           string
+	ExecutionEnvironment string
+	Properties           map[string]any
+}
+
 type jobDetails struct {
-	JobName         string
-	CreatedAt       time.Time
-	CreatedBy       string
-	SourceType      string
-	SourceName      string
-	DestinationType string
-	DestinationName string
+	JobName            string
+	CreatedAt          time.Time
+	CreatedBy          string
+	SourceType         string
+	SourceName         string
+	SourceVersion      string
+	DestinationType    string
+	DestinationName    string
+	DestinationVersion string
+	DestinationCatalog string
 }
 
 func getJobDetails(jobID int) (*jobDetails, error) {
-	job, err := instance.db.GetJobByID(jobID, false)
+	job, err := instance.db.GetJobByID(jobID, true)
+	if errors.Is(err, constants.ErrConfigDecrypt) {
+		// Decryption failure must not cost us the whole event - retry
+		// without decrypt; catalog falls back to "unknown" below.
+		job, err = instance.db.GetJobByID(jobID, false)
+	}
 	if err != nil || job == nil {
 		if job == nil {
 			return nil, fmt.Errorf("job not found")
@@ -48,74 +66,141 @@ func getJobDetails(jobID int) (*jobDetails, error) {
 	if job.Source != nil {
 		details.SourceType = job.Source.Type
 		details.SourceName = job.Source.Name
+		details.SourceVersion = job.Source.Version
 	}
 
 	if job.Destination != nil {
 		details.DestinationType = job.Destination.DestType
 		details.DestinationName = job.Destination.Name
+		details.DestinationVersion = job.Destination.Version
+		details.DestinationCatalog = parseCatalogType(job.Destination.Config)
 	}
 
 	return details, nil
 }
 
-func prepareCommonProperties(jobID int, workflowID, executionEnvironment string, details *jobDetails, eventTime time.Time) map[string]interface{} {
+// parseCatalogType extracts config.writer.catalog_type from a destination
+// config JSON string. "none" means the config has no catalog_type (e.g.
+// Parquet); "unknown" means it couldn't be determined (unparsable config).
+func parseCatalogType(config string) string {
+	var configMap map[string]interface{}
+	if err := json.Unmarshal([]byte(config), &configMap); err != nil {
+		return "unknown"
+	}
+	if writer, ok := configMap["writer"].(map[string]interface{}); ok {
+		if catalogType, ok := writer["catalog_type"].(string); ok && catalogType != "" {
+			return catalogType
+		}
+	}
+	return "none"
+}
+
+// prepareCommonProperties builds sync event properties from the DB.
+//
+// Deprecated: only used for legacy workers that don't send pre-resolved
+// properties. Upgraded workers always do; remove once no old workers remain.
+func prepareCommonProperties(info SyncEventInfo, eventType string, details *jobDetails) map[string]interface{} {
 	props := map[string]interface{}{
-		"job_id":           jobID,
-		"workflow_id":      workflowID,
-		"job_name":         details.JobName,
-		"created_at":       details.CreatedAt.Format(time.RFC3339),
-		"created_by":       details.CreatedBy,
-		"source_type":      details.SourceType,
-		"source_name":      details.SourceName,
-		"destination_type": details.DestinationType,
-		"destination_name": details.DestinationName,
-		"environment":      executionEnvironment,
+		"job_id":              info.JobID,
+		"workflow_id":         info.WorkflowID,
+		"job_name":            details.JobName,
+		"created_at":          details.CreatedAt.Format(time.RFC3339),
+		"created_by":          details.CreatedBy,
+		"source_type":         details.SourceType,
+		"source_name":         details.SourceName,
+		"source_version":      details.SourceVersion,
+		"destination_type":    details.DestinationType,
+		"destination_name":    details.DestinationName,
+		"destination_version": details.DestinationVersion,
+		"catalog":             details.DestinationCatalog,
+		"environment":         info.ExecutionEnvironment,
 	}
 
-	if eventTime.IsZero() {
-		eventTime = time.Now().UTC()
+	timeKey := "ended_at"
+	if eventType == EventSyncStarted {
+		timeKey = "started_at"
 	}
-	timeKey := "started_at"
-	if eventTime != props["created_at"] {
-		timeKey = "ended_at"
-	}
-	props[timeKey] = eventTime.Format(time.RFC3339)
+	props[timeKey] = time.Now().UTC().Format(time.RFC3339)
 
 	return props
 }
 
-func trackSyncEvent(ctx context.Context, jobID int, workflowID, executionEnvironment, eventType string) error {
-	details, err := getJobDetails(jobID)
-	if err != nil {
-		return err
-	}
-
-	properties := prepareCommonProperties(jobID, workflowID, executionEnvironment, details, time.Time{})
-	if eventType == EventSyncCompleted {
-		if err := enrichWithSyncStats(ctx, properties, workflowID); err != nil {
-			return err
+// TrackSyncEvent sends a sync event (EventSyncStarted/Completed/Failed/Cancelled)
+func TrackSyncEvent(info SyncEventInfo, eventType string) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Debugf("recovered panic tracking %s: %v", eventType, r)
+			}
+		}()
+		if instance == nil {
+			return
 		}
-	}
 
-	if err := TrackEvent(ctx, eventType, properties); err != nil {
-		return err
-	}
-	return nil
+		properties, err := buildProperties(info, eventType)
+		if err != nil {
+			logger.Debugf("failed to track %s event: %s", eventType, err)
+			return
+		}
+
+		// Best-effort: a missing or unparsable stats.json/streams.json must
+		// not drop the event. There's nothing to enrich yet at "started".
+		if eventType != EventSyncStarted {
+			if err := enrichWithSyncStats(properties, info.WorkflowID); err != nil {
+				logger.Debugf("failed to enrich %s event: %s", eventType, err)
+			}
+		}
+
+		if err := TrackEvent(context.Background(), eventType, properties); err != nil {
+			logger.Debugf("failed to track %s event: %s", eventType, err)
+		}
+	}()
 }
 
-func enrichWithSyncStats(ctx context.Context, properties map[string]interface{}, workflowID string) error {
+// buildProperties forwards the worker's pre-resolved properties when present.
+// Falls back to enriching from the DB for legacy workers that don't send them.
+func buildProperties(info SyncEventInfo, eventType string) (map[string]interface{}, error) {
+	if len(info.Properties) > 0 {
+		props := make(map[string]interface{}, len(info.Properties)+1)
+		for k, v := range info.Properties {
+			props[k] = v
+		}
+		props["workflow_id"] = info.WorkflowID
+
+		timeKey := "ended_at"
+		if eventType == EventSyncStarted {
+			timeKey = "started_at"
+		}
+		props[timeKey] = time.Now().UTC().Format(time.RFC3339)
+
+		if details, err := getJobDetails(info.JobID); err == nil {
+			props["catalog"] = details.DestinationCatalog
+		}
+		return props, nil
+	}
+
+	// Deprecated: legacy worker path. Upgraded workers always send Properties,
+	// so this is dead post-upgrade.
+	details, err := getJobDetails(info.JobID)
+	if err != nil {
+		return nil, err
+	}
+	return prepareCommonProperties(info, eventType, details), nil
+}
+
+func enrichWithSyncStats(properties map[string]interface{}, workflowID string) error {
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
 	mainSyncDir := filepath.Join(constants.DefaultConfigDir, syncFolderName)
 
-	if err := addStatsProperties(ctx, properties, mainSyncDir); err != nil {
+	if err := addStatsProperties(properties, mainSyncDir); err != nil {
 		return err
 	}
 
-	return addStreamsProperties(ctx, properties, mainSyncDir)
+	return addStreamsProperties(properties, mainSyncDir)
 }
 
-func addStatsProperties(ctx context.Context, properties map[string]interface{}, mainSyncDir string) error {
-	statsData, err := readSyncJobFile(ctx, mainSyncDir, "stats.json")
+func addStatsProperties(properties map[string]interface{}, mainSyncDir string) error {
+	statsData, err := readSyncJobFile(mainSyncDir, "stats.json")
 	if err != nil {
 		return err
 	}
@@ -134,8 +219,8 @@ func addStatsProperties(ctx context.Context, properties map[string]interface{}, 
 	return nil
 }
 
-func addStreamsProperties(ctx context.Context, properties map[string]interface{}, mainSyncDir string) error {
-	streamsData, err := readSyncJobFile(ctx, mainSyncDir, "streams.json")
+func addStreamsProperties(properties map[string]interface{}, mainSyncDir string) error {
+	streamsData, err := readSyncJobFile(mainSyncDir, "streams.json")
 	if err != nil {
 		return fmt.Errorf("failed to read streams.json: %s", err)
 	}
@@ -168,10 +253,10 @@ func addStreamsProperties(ctx context.Context, properties map[string]interface{}
 	return nil
 }
 
-func readSyncJobFile(ctx context.Context, mainSyncDir, filename string) ([]byte, error) {
+func readSyncJobFile(mainSyncDir, filename string) ([]byte, error) {
 	switch storagemode.Get() {
 	case constants.StorageModeS3:
-		body, _, err := storage.ReadFileFromS3(ctx, mainSyncDir, filename, false)
+		body, _, err := storage.ReadFileFromS3(context.Background(), mainSyncDir, filename, false)
 		if err != nil {
 			return nil, err
 		}
@@ -179,43 +264,4 @@ func readSyncJobFile(ctx context.Context, mainSyncDir, filename string) ([]byte,
 	default:
 		return os.ReadFile(filepath.Join(mainSyncDir, filename))
 	}
-}
-
-func TrackSyncStart(ctx context.Context, jobID int, workflowID, executionEnvironment string) {
-	go func() {
-		if instance == nil {
-			return
-		}
-
-		err := trackSyncEvent(ctx, jobID, workflowID, executionEnvironment, EventSyncStarted)
-		if err != nil {
-			logger.Debug("failed to track sync start event: %s", err)
-		}
-	}()
-}
-
-func TrackSyncFailed(jobID int, workflowID, executionEnvironment string) {
-	go func() {
-		if instance == nil {
-			return
-		}
-
-		err := trackSyncEvent(context.Background(), jobID, workflowID, executionEnvironment, EventSyncFailed)
-		if err != nil {
-			logger.Debug("failed to track sync failed event: %s", err)
-		}
-	}()
-}
-
-func TrackSyncCompleted(jobID int, workflowID, executionEnvironment string) {
-	go func() {
-		if instance == nil {
-			return
-		}
-
-		err := trackSyncEvent(context.Background(), jobID, workflowID, executionEnvironment, EventSyncCompleted)
-		if err != nil {
-			logger.Debug("failed to track sync completed event: %s", err)
-		}
-	}()
 }

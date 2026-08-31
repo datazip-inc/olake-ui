@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
@@ -24,8 +23,7 @@ type LogEntry struct {
 }
 
 func ReadLogs(ctx context.Context, logDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
-	mode := strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode))
-	switch mode {
+	switch storagemode.Get() {
 	case constants.StorageModeS3:
 		if workRel, err := filepath.Rel(constants.DefaultConfigDir, logDir); err == nil {
 			logDir = workRel
