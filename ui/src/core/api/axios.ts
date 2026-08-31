@@ -59,14 +59,6 @@ api.interceptors.response.use(
 		const config = response.config
 		const payload = response.data
 
-		// Binary downloads (log archives, exports) are not JSON envelopes.
-		if (
-			config.responseType === "blob" ||
-			config.responseType === "arraybuffer"
-		) {
-			return response
-		}
-
 		// Show toast only if explicitly enabled for this request
 		if (config.showNotification === true) {
 			notificationService.success(payload.message)

@@ -223,7 +223,7 @@ func listS3Objects(ctx context.Context, relPrefix string, delimiter *string, isD
 }
 
 // ListFolderNamesWithPrefix lists one-level folder names whose keys start with relPrefix.
-// relPrefix is not a complete directory (no trailing slash), so "<hash>/logs/sync_"
+// relPrefix is not a complete directory (no trailing slash), so "<workflow-dir>/logs/sync_"
 // matches "sync_2026-08-25_18-10-00" and not "worker".
 func ListFolderNamesWithPrefix(ctx context.Context, relPrefix string) ([]string, error) {
 	_, prefixes, err := listS3Objects(ctx, relPrefix, aws.String("/"), false)
@@ -283,7 +283,7 @@ func ListAllObjectRelPaths(ctx context.Context, relPrefix string) ([]string, err
 // s3ObjectKey turns a path inside the workflow folder into the S3 object key
 // (OLAKE_S3_PREFIX + that path). Example prefix "olake":
 //
-//	"<hash>/logs/sync_20260825T181000Z" → "olake/<hash>/logs/sync_20260825T181000Z"
+//	"<workflow-dir>/logs/sync_20260825T181000Z" → "olake/<workflow-dir>/logs/sync_20260825T181000Z"
 //
 // Pass isDirectory true when listing a folder. That adds a trailing slash so S3
 // only matches keys under that path, not a sibling with the same name prefix:
@@ -300,13 +300,13 @@ func s3ObjectKey(relPath string, isDirectory bool) string {
 
 // keyToRelPath strips OLAKE_S3_PREFIX from a bucket key (inverse of s3ObjectKey).
 //
-//	"olake/<hash>/logs/sync_20260825T181000Z/connector-000001-….log"
-//	→ "<hash>/logs/sync_20260825T181000Z/connector-000001-….log"
+//	"olake/<workflow-dir>/logs/sync_20260825T181000Z/connector-000001-….log"
+//	→ "<workflow-dir>/logs/sync_20260825T181000Z/connector-000001-….log"
 func keyToRelPath(key string) string {
 	key = strings.TrimPrefix(key, "/")
 	prefix := strings.Trim(viper.GetString(constants.EnvS3Prefix), "/")
 	if prefix != "" {
-		prefix = prefix + "/"
+		prefix += "/"
 		if strings.HasPrefix(key, prefix) {
 			return strings.TrimPrefix(key, prefix)
 		}

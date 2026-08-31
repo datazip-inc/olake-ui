@@ -231,33 +231,25 @@ export const jobService = {
 			file_path: filePath,
 		})
 
-		const url = `${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/logs/download?${params.toString()}`
+		const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/logs/download?${params.toString()}`
 
-		const response = await api.get<Blob>(url, {
-			responseType: "blob",
-			timeout: 0,
-			disableErrorNotification: true,
-		})
+		try {
+			// Pre-flight check to verify endpoint is accessible
+			// Check endpoint with minimal data transfer
+			await api.get(url, {
+				headers: { Range: "bytes=0-0" },
+				responseType: "blob",
+			})
 
-		const disposition = response.headers["content-disposition"] as
-			| string
-			| undefined
-		let filename = "logs.tar.gz"
-		if (disposition) {
-			const match = /filename="?([^"]+)"?/i.exec(disposition)
-			if (match?.[1]) {
-				filename = match[1]
-			}
+			// if successful, trigger download
+			const link = document.createElement("a")
+			link.href = url
+			link.style.display = "none"
+			document.body.appendChild(link)
+			link.click()
+			document.body.removeChild(link)
+		} catch (error) {
+			throw error
 		}
-
-		const blobUrl = URL.createObjectURL(response.data)
-		const link = document.createElement("a")
-		link.href = blobUrl
-		link.download = filename
-		link.style.display = "none"
-		document.body.appendChild(link)
-		link.click()
-		document.body.removeChild(link)
-		URL.revokeObjectURL(blobUrl)
 	},
 }

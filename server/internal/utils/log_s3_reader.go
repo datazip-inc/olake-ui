@@ -23,18 +23,13 @@ type logChunkFile struct {
 }
 
 // readLogsFromS3 reads the logs from S3 for a workflow.
-func readLogsFromS3(ctx context.Context, workflowID string, cursor int64, _ int, direction string) (*dto.TaskLogsResponse, error) {
-	workflowHash, err := GetAndValidateS3LogBaseDir(ctx, workflowID)
+func readLogsFromS3(ctx context.Context, workflowDir string, cursor int64, _ int, direction string) (*dto.TaskLogsResponse, error) {
+	syncFolder, err := GetAndValidateS3SyncDir(ctx, workflowDir)
 	if err != nil {
 		return nil, err
 	}
 
-	syncFolder, err := GetAndValidateS3SyncDir(ctx, workflowHash)
-	if err != nil {
-		return nil, err
-	}
-
-	syncLogDir := path.Join(workflowHash, "logs", syncFolder)
+	syncLogDir := path.Join(workflowDir, "logs", syncFolder)
 	chunks, err := listS3LogChunks(ctx, syncLogDir)
 	if err != nil {
 		return nil, err
@@ -43,28 +38,29 @@ func readLogsFromS3(ctx context.Context, workflowID string, cursor int64, _ int,
 	return processS3Logs(ctx, syncLogDir, chunks, cursor, direction)
 }
 
-// GetAndValidateS3LogBaseDir validates the S3 log base directory.
+// GetAndValidateS3LogBaseDir validates the hashed job log prefix.
+// Used only for sync/clear job logs (same as staging NFS hashing).
 func GetAndValidateS3LogBaseDir(ctx context.Context, workflowID string) (string, error) {
-	workflowHash := WorkflowHash(workflowID)
-	exists, err := storage.PrefixExists(ctx, workflowHash)
+	workflowDir := WorkflowHash(workflowID)
+	exists, err := storage.PrefixExists(ctx, workflowDir)
 	if err != nil {
 		return "", err
 	}
 	if !exists {
-		return "", fmt.Errorf("logs directory not found: %s", workflowHash)
+		return "", fmt.Errorf("logs directory not found: %s", workflowDir)
 	}
 
-	return workflowHash, nil
+	return workflowDir, nil
 }
 
 // GetAndValidateS3SyncDir gets the S3 sync folder name for a workflow.
-func GetAndValidateS3SyncDir(ctx context.Context, workflowHash string) (string, error) {
-	syncFolders, err := storage.ListFolderNamesWithPrefix(ctx, path.Join(workflowHash, "logs/sync_"))
+func GetAndValidateS3SyncDir(ctx context.Context, workflowDir string) (string, error) {
+	syncFolders, err := storage.ListFolderNamesWithPrefix(ctx, path.Join(workflowDir, "logs/sync_"))
 	if err != nil {
 		return "", err
 	}
 	if len(syncFolders) == 0 {
-		return "", fmt.Errorf("no sync folder found in: %s/logs", workflowHash)
+		return "", fmt.Errorf("no sync folder found in: %s/logs", workflowDir)
 	}
 
 	return syncFolders[0], nil
@@ -170,8 +166,8 @@ func processS3Logs(ctx context.Context, syncLogDir string, chunks []logChunkFile
 	}, nil
 }
 
-func addS3FilesToArchive(ctx context.Context, workflowHash string, tarWriter *tar.Writer) error {
-	stateFile := path.Join(workflowHash, "state.json")
+func addS3FilesToArchive(ctx context.Context, workflowDir string, tarWriter *tar.Writer) error {
+	stateFile := path.Join(workflowDir, "state.json")
 	body, modTime, err := storage.ReadFileFromS3(ctx, "", stateFile, false)
 	if err != nil {
 		logger.Warnf("failed to add state.json to archive: %s", err)
@@ -179,13 +175,13 @@ func addS3FilesToArchive(ctx context.Context, workflowHash string, tarWriter *ta
 		return err
 	}
 
-	objectPaths, err := storage.ListAllObjectRelPaths(ctx, path.Join(workflowHash, "logs"))
+	objectPaths, err := storage.ListAllObjectRelPaths(ctx, path.Join(workflowDir, "logs"))
 	if err != nil {
 		return err
 	}
 
 	for _, objectPath := range objectPaths {
-		archiveName, ok := archiveNameUnderWorkflow(workflowHash, objectPath)
+		archiveName, ok := archiveNameUnderWorkflow(workflowDir, objectPath)
 		if !ok {
 			continue
 		}
@@ -204,11 +200,11 @@ func addS3FilesToArchive(ctx context.Context, workflowHash string, tarWriter *ta
 	return nil
 }
 
-func archiveNameUnderWorkflow(workflowHash, objectPath string) (string, bool) {
-	prefix := strings.TrimSuffix(workflowHash, "/") + "/"
+func archiveNameUnderWorkflow(workflowDir, objectPath string) (string, bool) {
+	prefix := strings.TrimSuffix(workflowDir, "/") + "/"
 	name := strings.TrimPrefix(objectPath, prefix)
 	if strings.HasPrefix(name, "logs/") {
-		return path.Join("logs", path.Base(name)), true
+		return name, true
 	}
 
 	return "", false

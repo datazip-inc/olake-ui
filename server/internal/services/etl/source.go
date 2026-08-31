@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -230,9 +231,10 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 		return result, nil, fmt.Errorf("connection test failed: %s", err)
 	}
 
+	homeDir := constants.DefaultConfigDir
+	mainLogDir := filepath.Join(homeDir, workflowID)
 	// Fetch the latest batch of logs by tailing from the end with default limit in the "older" direction.
-	// NOTE: test-connection logs are fetched only from the last file in the logs directory.
-	logs, err := utils.ReadLogs(ctx, workflowID, -1, -1, "older")
+	logs, err := utils.ReadLogs(ctx, mainLogDir, -1, -1, "older")
 	if err != nil {
 		return result, nil, fmt.Errorf("failed to read logs source_type[%s] source_version[%s]: %s",
 			req.Type, req.Version, err)

@@ -490,7 +490,12 @@ func (s Service) GetTaskLogs(ctx context.Context, jobID int, filePath string, cu
 		return nil, fmt.Errorf("failed to find job: %s", err)
 	}
 
-	logs, err := utils.ReadLogs(ctx, filePath, cursor, limit, direction)
+	mainSyncDir, err := utils.GetAndValidateLogBaseDir(ctx, filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	logs, err := utils.ReadLogs(ctx, mainSyncDir, cursor, limit, direction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read logs: %s", err)
 	}

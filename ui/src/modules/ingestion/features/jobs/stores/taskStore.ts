@@ -19,8 +19,7 @@ export interface TaskState {
 	taskLogsNewerCursor: number
 	taskLogsHasMoreOlder: boolean
 	taskLogsHasMoreNewer: boolean
-	// Exclusive upper chunk index already loaded from the initial tail fetch.
-	taskLogsLoadedNewerBound: number | null
+	// Task log actions
 	fetchInitialTaskLogs: (
 		jobId: string,
 		taskId: string,
@@ -44,12 +43,12 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 	taskLogsNewerCursor: LOGS_CONFIG.DEFAULT_CURSOR,
 	taskLogsHasMoreOlder: true,
 	taskLogsHasMoreNewer: false,
-	taskLogsLoadedNewerBound: null,
 	isLoadingTaskLogs: false,
 	isLoadingOlderLogs: false,
 	isLoadingNewerLogs: false,
 	taskLogsError: null,
 
+	// Fetch initial batch of logs (first load)
 	fetchInitialTaskLogs: async (jobId, taskId, filePath) => {
 		set({
 			isLoadingTaskLogs: true,
@@ -59,7 +58,6 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 			taskLogsNewerCursor: LOGS_CONFIG.DEFAULT_CURSOR,
 			taskLogsHasMoreOlder: true,
 			taskLogsHasMoreNewer: false,
-			taskLogsLoadedNewerBound: null,
 			isLoadingOlderLogs: false,
 			isLoadingNewerLogs: false,
 		})
@@ -82,7 +80,6 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 				taskLogsNewerCursor: response.newer_cursor,
 				taskLogsHasMoreOlder: response.has_more_older,
 				taskLogsHasMoreNewer: response.has_more_newer,
-				taskLogsLoadedNewerBound: response.newer_cursor,
 				isLoadingTaskLogs: false,
 			})
 		} catch (error) {
@@ -102,7 +99,6 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 			taskLogsHasMoreOlder,
 			isLoadingOlderLogs,
 			taskLogs,
-			taskLogsLoadedNewerBound,
 		} = state
 
 		if (isLoadingOlderLogs || !taskLogsHasMoreOlder) {
@@ -124,33 +120,26 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 				paginationParams,
 			)
 
-			const hasMoreNewer =
-				taskLogsLoadedNewerBound !== null &&
-				response.newer_cursor < taskLogsLoadedNewerBound
-					? false
-					: response.has_more_newer
-
 			if (state.taskLogs.length >= LOGS_CONFIG.MAX_LOGS_IN_MEMORY) {
 				set({
-					taskLogs: mapLogEntriesToTaskLogEntries(response.logs),
+					taskLogs: mapLogEntriesToTaskLogEntries(response.logs), // Replace with ONLY the new batch
 					taskLogsOlderCursor: response.older_cursor,
 					taskLogsNewerCursor: response.newer_cursor,
 					taskLogsHasMoreOlder: response.has_more_older,
-					taskLogsHasMoreNewer: hasMoreNewer,
+					taskLogsHasMoreNewer: response.has_more_newer,
 					isLoadingOlderLogs: false,
 				})
 				return
 			}
 
+			// Prepend older logs to the top
 			const normalizedLogs = mapLogEntriesToTaskLogEntries(response.logs)
 			const updatedLogs = [...normalizedLogs, ...taskLogs]
 
 			set({
 				taskLogs: updatedLogs,
 				taskLogsOlderCursor: response.older_cursor,
-				taskLogsNewerCursor: response.newer_cursor,
 				taskLogsHasMoreOlder: response.has_more_older,
-				taskLogsHasMoreNewer: hasMoreNewer,
 				isLoadingOlderLogs: false,
 			})
 		} catch (error) {
@@ -165,6 +154,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 		}
 	},
 
+	// Fetch newer logs when scrolling towards the bottom
 	fetchNewerTaskLogs: async (jobId, taskId, filePath) => {
 		const state = get()
 		const {
@@ -172,20 +162,9 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 			taskLogsHasMoreNewer,
 			isLoadingNewerLogs,
 			taskLogs,
-			taskLogsLoadedNewerBound,
 		} = state
 
 		if (isLoadingNewerLogs || !taskLogsHasMoreNewer) {
-			return
-		}
-
-		// Tail chunks from the initial load are already in memory; skip re-fetch
-		// after scrolling up (fetchOlder moves newer_cursor below loadedNewerBound).
-		if (
-			taskLogsLoadedNewerBound !== null &&
-			taskLogsNewerCursor < taskLogsLoadedNewerBound
-		) {
-			set({ taskLogsHasMoreNewer: false })
 			return
 		}
 
@@ -206,27 +185,24 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 
 			if (state.taskLogs.length >= LOGS_CONFIG.MAX_LOGS_IN_MEMORY) {
 				set({
-					taskLogs: mapLogEntriesToTaskLogEntries(response.logs),
+					taskLogs: mapLogEntriesToTaskLogEntries(response.logs), // Replace with ONLY the new batch
 					taskLogsOlderCursor: response.older_cursor,
 					taskLogsNewerCursor: response.newer_cursor,
 					taskLogsHasMoreOlder: response.has_more_older,
 					taskLogsHasMoreNewer: response.has_more_newer,
-					taskLogsLoadedNewerBound: response.newer_cursor,
 					isLoadingNewerLogs: false,
 				})
 				return
 			}
 
+			// append newer logs to the bottom
 			const normalizedLogs = mapLogEntriesToTaskLogEntries(response.logs)
 			const updatedLogs = [...taskLogs, ...normalizedLogs]
 
 			set({
 				taskLogs: updatedLogs,
-				taskLogsOlderCursor: response.older_cursor,
 				taskLogsNewerCursor: response.newer_cursor,
-				taskLogsHasMoreOlder: response.has_more_older,
 				taskLogsHasMoreNewer: response.has_more_newer,
-				taskLogsLoadedNewerBound: response.newer_cursor,
 				isLoadingNewerLogs: false,
 			})
 		} catch (error) {

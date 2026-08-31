@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
@@ -202,13 +203,13 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) 
 }
 
 // GetAndValidateNfsLogBaseDir returns the base directory path for log files
-// based on the SHA256 hash of the filePath (workflow ID) and validates it exists
+// based on the SHA256 hash of the filePath (workflow ID) and validates it exists.
 func GetAndValidateNfsLogBaseDir(filePath string) (string, error) {
 	if filePath == "" {
 		return "", fmt.Errorf("file path cannot be empty")
 	}
 
-	syncFolderName := WorkflowHash(filePath)
+	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
 	homeDir := constants.DefaultConfigDir
 	baseDir := filepath.Join(homeDir, syncFolderName)
 
@@ -245,15 +246,14 @@ func GetAndValidateNfsSyncDir(baseDir string) (string, string, error) {
 // readLogsFromNFS reads logs from the given mainLogDir and returns structured log entries.
 // Direction can be "older" or "newer". If cursor < 0, it tails from the end of the file.
 // Returns a TaskLogsResponse-like struct: oldest->newest logs plus cursors and hasMore flags.
-func readLogsFromNFS(workflowID string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
-	// Get and validate base directory from file path
-	mainSyncDir, err := GetAndValidateNfsLogBaseDir(workflowID)
-	if err != nil {
-		return nil, err
+func readLogsFromNFS(mainLogDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
+	// Check if mainLogDir exists
+	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("logs directory not found: %s: %s", mainLogDir, err)
 	}
 
 	// Resolve and validate logs/sync_* directory
-	logsDir, syncFolderName, err := GetAndValidateNfsSyncDir(mainSyncDir)
+	logsDir, syncFolderName, err := GetAndValidateNfsSyncDir(mainLogDir)
 	if err != nil {
 		return nil, err
 	}

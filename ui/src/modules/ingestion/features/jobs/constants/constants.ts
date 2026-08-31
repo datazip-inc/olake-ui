@@ -55,7 +55,7 @@ export const operatorOptions = [
 
 // Logs pagination configuration
 export const LOGS_CONFIG = {
-	DEFAULT_CURSOR: -1, // last page (NFS: end of file; S3: last chunk file number)
+	DEFAULT_CURSOR: -1, // -1 means start from end of file
 	INITIAL_BATCH_SIZE: 1000, // First load
 	SUBSEQUENT_BATCH_SIZE: 500, // Subsequent loads
 	MAX_LOGS_IN_MEMORY: 10000, // Maximum logs to keep in memory

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,13 +23,16 @@ type LogEntry struct {
 	Message json.RawMessage `json:"message"` // store raw JSON
 }
 
-func ReadLogs(ctx context.Context, workflowID string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
+func ReadLogs(ctx context.Context, logDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	mode := strings.ToLower(strings.TrimSpace(appconfig.Load().OlakeStorageMode))
 	switch mode {
 	case constants.StorageModeS3:
-		return readLogsFromS3(ctx, workflowID, cursor, limit, direction)
+		if workRel, err := filepath.Rel(constants.DefaultConfigDir, logDir); err == nil {
+			logDir = workRel
+		}
+		return readLogsFromS3(ctx, logDir, cursor, limit, direction)
 	default:
-		return readLogsFromNFS(workflowID, cursor, limit, direction)
+		return readLogsFromNFS(logDir, cursor, limit, direction)
 	}
 }
 
