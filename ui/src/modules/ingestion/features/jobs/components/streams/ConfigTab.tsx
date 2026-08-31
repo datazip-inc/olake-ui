@@ -2,6 +2,7 @@ import DataFilterSectionSingle from "./DataFilterSectionSingle"
 import IngestionModeSectionSingle from "./IngestionModeSectionSingle"
 import NormalizationSectionSingle from "./NormalizationSectionSingle"
 import SyncModeSectionSingle from "./SyncModeSectionSingle"
+import UpsertTypeSectionSingle from "./UpsertTypeSectionSingle"
 import { CARD_STYLE } from "../../constants"
 
 interface ConfigTabProps {
@@ -15,6 +16,10 @@ const ConfigTab = ({ sourceType, destinationType }: ConfigTabProps) => {
 			<div className={CARD_STYLE}>
 				<SyncModeSectionSingle />
 				<IngestionModeSectionSingle
+					sourceType={sourceType}
+					destinationType={destinationType}
+				/>
+				<UpsertTypeSectionSingle
 					sourceType={sourceType}
 					destinationType={destinationType}
 				/>
