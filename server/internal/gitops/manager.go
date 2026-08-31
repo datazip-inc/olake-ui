@@ -61,6 +61,7 @@ func InitGitOps(ctx context.Context, enabled bool, fileDir string, app *services
 }
 
 func startFileMode(ctx context.Context, fileDir string, app *services.AppService) error {
+	ctrl.SetLogger(logger.Logr())
 	fw := newFileWatcher(fileDir, app.ETL(), app.ETL().Temporal())
 	go func() {
 		if err := fw.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {

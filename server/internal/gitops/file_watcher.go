@@ -19,7 +19,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
-const fileDebounce = 200 * time.Millisecond
+const fileDebounce = 5 * time.Second
 
 type resourceState struct {
 	hash     string
@@ -38,7 +38,7 @@ type FileWatcher struct {
 	temporalClient *temporal.Temporal
 
 	mu        sync.Mutex
-	index     map[string]ResourceData
+	resources map[string]ResourceData
 	state     map[string]resourceState
 	debounce  map[string]*time.Timer
 	retries   map[string]*time.Timer
@@ -49,7 +49,7 @@ func newFileWatcher(dir string, etlSvc *etl.Service, t *temporal.Temporal) *File
 	fw := &FileWatcher{
 		Dir:            dir,
 		temporalClient: t,
-		index:          map[string]ResourceData{},
+		resources:      map[string]ResourceData{},
 		state:          map[string]resourceState{},
 		debounce:       map[string]*time.Timer{},
 		retries:        map[string]*time.Timer{},
@@ -95,7 +95,7 @@ func (fw *FileWatcher) Start(ctx context.Context) error {
 			if event.Op&(fsnotify.Create|fsnotify.Write) != 0 && isYAML(event.Name) {
 				fw.enqueue(event.Name, fileDebounce)
 			}
-			// DELETE is a no-op (same as k8s v0: entity stays in DB).
+			// v0: delete is no-op
 		case err, ok := <-watcher.Errors:
 			if !ok {
 				return nil
@@ -131,17 +131,14 @@ func (fw *FileWatcher) process(ctx context.Context, path string) {
 		logger.Errorf("read %s: %s", path, err)
 		return
 	}
-	res, skip, err := ParseManagedConfigMap(raw, filepath.Base(path))
+	res, err := ParseManagedConfigMap(raw)
 	if err != nil {
 		logger.Errorf("parse %s: %s", path, err)
 		return
 	}
-	if skip {
-		return
-	}
 
 	fw.mu.Lock()
-	fw.index[res.key()] = *res
+	fw.resources[res.key()] = *res
 	if st, ok := fw.state[res.key()]; ok {
 		res.Annotations = map[string]string{
 			AnnotationObservedHash: st.hash,
@@ -180,7 +177,7 @@ func (fw *FileWatcher) scheduleRetry(path string, after time.Duration) {
 func (fw *FileWatcher) reconcileJobs(ctx context.Context) {
 	fw.mu.Lock()
 	var jobs []ResourceData
-	for _, r := range fw.index {
+	for _, r := range fw.resources {
 		if r.Kind == KindJob {
 			jobs = append(jobs, r)
 		}
@@ -203,14 +200,14 @@ func (fw *FileWatcher) sync(ctx context.Context, res *ResourceData) (ctrl.Result
 	case KindStreams:
 		return ctrl.Result{}, nil
 	default:
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, fmt.Errorf("unsupported olake.io/kind %q", res.Kind)
 	}
 }
 
 func (fw *FileWatcher) findStreams(_ context.Context, job *ResourceData, projectID string, entityID int) (*ResourceData, error) {
 	fw.mu.Lock()
 	defer fw.mu.Unlock()
-	for _, r := range fw.index {
+	for _, r := range fw.resources {
 		if r.Kind != KindStreams {
 			continue
 		}
@@ -261,31 +258,44 @@ func (fw *FileWatcher) SetPhase(_ context.Context, r *ResourceData, phase, messa
 	return nil
 }
 
-// ParseManagedConfigMap unmarshals a ConfigMap YAML document. skip is true when
-// the document is not an OLake-managed ConfigMap.
-func ParseManagedConfigMap(raw []byte, filename string) (*ResourceData, bool, error) {
+// ParseManagedConfigMap unmarshals and validates an OLake GitOps ConfigMap YAML
+// document. File mode requires every YAML file in GITOPS_FILE_DIR to be a
+// labelled ConfigMap (Secrets are not supported on the filesystem).
+func ParseManagedConfigMap(raw []byte) (*ResourceData, error) {
 	var cm corev1.ConfigMap
 	if err := yaml.Unmarshal(raw, &cm); err != nil {
-		return nil, false, fmt.Errorf("yaml: %w", err)
+		return nil, fmt.Errorf("yaml: %w", err)
 	}
-	if cm.Kind != "" && cm.Kind != "ConfigMap" {
-		return nil, true, nil
+	if cm.Kind != "ConfigMap" {
+		if cm.Kind == "" {
+			return nil, fmt.Errorf("missing kind: file mode requires kind: ConfigMap")
+		}
+		return nil, fmt.Errorf("unsupported kind %q: file mode only supports ConfigMap", cm.Kind)
 	}
 	if cm.Labels[LabelManaged] != LabelManagedValue {
-		return nil, true, nil
+		return nil, fmt.Errorf("missing or invalid label %s=%q (required %q)", LabelManaged, cm.Labels[LabelManaged], LabelManagedValue)
 	}
 	kind := cm.Labels[LabelKind]
 	if kind == "" {
-		return nil, true, nil
+		return nil, fmt.Errorf("missing label %q", LabelKind)
 	}
-	name := cm.Name
-	if name == "" {
-		name = strings.TrimSuffix(filename, filepath.Ext(filename))
+	if !isValidManagedKind(kind) {
+		return nil, fmt.Errorf("invalid label %s=%q (want source, destination, job, or streams)", LabelKind, kind)
+	}
+	if cm.Name == "" {
+		return nil, fmt.Errorf("metadata.name is required")
 	}
 	res := resourceFromCM(&cm)
-	res.Name = name
-	res.Kind = kind
-	return &res, false, nil
+	return &res, nil
+}
+
+func isValidManagedKind(kind string) bool {
+	switch kind {
+	case KindSource, KindDestination, KindJob, KindStreams:
+		return true
+	default:
+		return false
+	}
 }
 
 func isYAML(name string) bool {

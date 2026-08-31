@@ -55,10 +55,7 @@ const (
 	terminationLogMax = 4096
 )
 
-// ResourceData is the view of an OLake-managed resource. It may be backed by
-// either a ConfigMap or a Secret (see ObjectKind) — Source and Destination
-// accept either so credentials can live in a Secret instead of git-tracked
-// ConfigMap data. Job and Streams are ConfigMap-only (no credentials)
+// ResourceData is the view of an OLake-managed resource.
 type ResourceData struct {
 	Kind        string
 	ObjectKind  string
