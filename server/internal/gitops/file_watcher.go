@@ -43,6 +43,7 @@ type FileWatcher struct {
 	debounce  map[string]*time.Timer
 	retries   map[string]*time.Timer
 	reconcile chan string
+	watcher   *fsnotify.Watcher
 }
 
 func newFileWatcher(dir string, etlSvc *etl.Service, t *temporal.Temporal) *FileWatcher {
@@ -62,17 +63,22 @@ func newFileWatcher(dir string, etlSvc *etl.Service, t *temporal.Temporal) *File
 	return fw
 }
 
-func (fw *FileWatcher) Start(ctx context.Context) error {
+func (fw *FileWatcher) setup() error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return fmt.Errorf("fsnotify: %w", err)
 	}
-	defer watcher.Close()
 
-	if err := watcher.Add(fw.Dir); err != nil {
+	if err = watcher.Add(fw.Dir); err != nil {
+		watcher.Close()
 		return fmt.Errorf("watch %s: %w", fw.Dir, err)
 	}
+	fw.watcher = watcher
+	return nil
+}
 
+func (fw *FileWatcher) run(ctx context.Context) error {
+	defer fw.watcher.Close()
 	entries, err := os.ReadDir(fw.Dir)
 	if err != nil {
 		return fmt.Errorf("read %s: %w", fw.Dir, err)
@@ -88,7 +94,7 @@ func (fw *FileWatcher) Start(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case event, ok := <-watcher.Events:
+		case event, ok := <-fw.watcher.Events:
 			if !ok {
 				return nil
 			}
@@ -96,7 +102,7 @@ func (fw *FileWatcher) Start(ctx context.Context) error {
 				fw.enqueue(event.Name, fileDebounce)
 			}
 			// v0: delete is no-op
-		case err, ok := <-watcher.Errors:
+		case err, ok := <-fw.watcher.Errors:
 			if !ok {
 				return nil
 			}
@@ -138,15 +144,8 @@ func (fw *FileWatcher) process(ctx context.Context, path string) {
 	}
 
 	fw.mu.Lock()
+	res.Annotations = fw.annotationsFor(res)
 	fw.resources[res.key()] = *res
-	if st, ok := fw.state[res.key()]; ok {
-		res.Annotations = map[string]string{
-			AnnotationObservedHash: st.hash,
-			AnnotationPhase:        st.phase,
-			AnnotationMessage:      st.message,
-			AnnotationEntityID:     st.entityID,
-		}
-	}
 	fw.mu.Unlock()
 
 	result, syncErr := fw.sync(ctx, res)
@@ -157,9 +156,8 @@ func (fw *FileWatcher) process(ctx context.Context, path string) {
 		fw.scheduleRetry(path, result.RequeueAfter)
 	}
 
-	switch res.Kind {
-	case KindSource, KindDestination, KindStreams:
-		fw.reconcileJobs(ctx)
+	if res.Kind == KindStreams {
+		fw.reconcileJobs(ctx, res)
 	}
 }
 
@@ -174,17 +172,22 @@ func (fw *FileWatcher) scheduleRetry(path string, after time.Duration) {
 	})
 }
 
-func (fw *FileWatcher) reconcileJobs(ctx context.Context) {
+func (fw *FileWatcher) reconcileJobs(ctx context.Context, streams *ResourceData) {
 	fw.mu.Lock()
 	var jobs []ResourceData
 	for _, r := range fw.resources {
-		if r.Kind == KindJob {
-			jobs = append(jobs, r)
+		if r.Kind != KindJob {
+			continue
 		}
+		cp := r
+		cp.Annotations = fw.annotationsFor(&cp)
+		if !matchesNameOrID(streams.JobRef(), cp.Name, cp.EntityID()) {
+			continue
+		}
+		jobs = append(jobs, cp)
 	}
 	fw.mu.Unlock()
 	for i := range jobs {
-		jobs[i].Annotations = fw.annotationsFor(&jobs[i])
 		_, _ = fw.job.sync(ctx, &jobs[i])
 	}
 }
@@ -216,15 +219,15 @@ func (fw *FileWatcher) findStreams(_ context.Context, job *ResourceData, project
 		}
 		if matchesNameOrID(r.JobRef(), job.Name, entityID) {
 			cp := r
+			cp.Annotations = fw.annotationsFor(&cp)
 			return &cp, nil
 		}
 	}
 	return nil, ErrStreamsNotFound
 }
 
+// annotationsFor reads fw.state. Caller must hold fw.mu.
 func (fw *FileWatcher) annotationsFor(r *ResourceData) map[string]string {
-	fw.mu.Lock()
-	defer fw.mu.Unlock()
 	st, ok := fw.state[r.key()]
 	if !ok {
 		return map[string]string{}
