@@ -19,8 +19,6 @@ Manage OLake sources, destinations, jobs, and stream selections as labelled **Co
 ```yaml
 gitops:
   enabled: true
-olakeUI:
-  replicaCount: 1
 ```
 
 See [olake-helm/docs/gitops.md](https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/docs/gitops.md).
@@ -55,8 +53,6 @@ Kubernetes Events: reason `Synced` (normal) or `SyncFailed` (warning).
 **TODO:** Tool-specific health (Argo CD Lua, Flux) keyed off `olake.io/phase` — see olake-helm docs.
 
 ## Git repository layout
-
-Do **not** use Argo CD sync waves. The Job reconciler waits (Pending + 30s requeue) if Source, Destination, or Streams are missing.
 
 ```
 repo/olake/
@@ -193,9 +189,3 @@ kubectl logs -l app.kubernetes.io/name=olake-ui | grep -i gitops
 - olake-ui GitOps RBAC: ConfigMaps and Secrets (read/write status annotations on both), Events in the release namespace. **No pods create/delete.**
 - Secret `update`/`patch` (needed for status annotations) applies to all Secrets in the namespace, not only GitOps-managed ones — use a dedicated namespace for GitOps-managed OLake when possible.
 - Failure indicators use worker SA (already has `pods` create for connector jobs).
-- Prefer defining Source/Destination as a Secret over an inline ConfigMap when credentials must not appear in git in plaintext.
-
-## Related files
-
-- Reconcilers: `server/internal/gitops/`
-- Helm RBAC and examples: [olake-helm](https://github.com/datazip-inc/olake-helm/tree/master/helm/olake)
