@@ -126,33 +126,47 @@ func readS3ChunkLines(ctx context.Context, syncLogDir string, chunk logChunkFile
 
 // processS3Logs processes the S3 logs for a workflow.
 func processS3Logs(ctx context.Context, syncLogDir string, chunks []logChunkFile, cursor int64, direction string) (*dto.TaskLogsResponse, error) {
+	if len(chunks) == 0 {
+		return &dto.TaskLogsResponse{Logs: []map[string]interface{}{}}, nil
+	}
+
 	dir := strings.ToLower(strings.TrimSpace(direction))
 	if dir != "newer" {
 		dir = constants.DefaultLogsDirection
 	}
 
-	var currentFileNumber int64
+	var chunk logChunkFile
+	found := false
 	switch {
 	case cursor < 0:
-		currentFileNumber = int64(chunks[len(chunks)-1].index)
+		chunk = chunks[len(chunks)-1]
+		found = true
 	case dir == "older":
-		// Older: cursor is the file number the UI already has.
-		currentFileNumber = cursor - 1
+		for i := len(chunks) - 1; i >= 0; i-- {
+			if int64(chunks[i].index) < cursor {
+				chunk = chunks[i]
+				found = true
+				break
+			}
+		}
 	default:
-		// Newer: cursor is the file number the UI wants next.
-		currentFileNumber = cursor
+		for i := range chunks {
+			if int64(chunks[i].index) >= cursor {
+				chunk = chunks[i]
+				found = true
+				break
+			}
+		}
 	}
-
-	firstFileNumber := int64(chunks[0].index)
-	lastFileNumber := int64(chunks[len(chunks)-1].index)
-	// Calculate the position of the chunk in the list.
-	pos := int(currentFileNumber - firstFileNumber)
-	if pos < 0 || pos >= len(chunks) {
+	if !found {
 		return &dto.TaskLogsResponse{Logs: []map[string]interface{}{}}, nil
 	}
 
+	currentFileNumber := int64(chunk.index)
+	firstFileNumber := int64(chunks[0].index)
+	lastFileNumber := int64(chunks[len(chunks)-1].index)
 	// Read the lines from the chunk.
-	lines, err := readS3ChunkLines(ctx, syncLogDir, chunks[pos])
+	lines, err := readS3ChunkLines(ctx, syncLogDir, chunk)
 	if err != nil {
 		return nil, err
 	}
