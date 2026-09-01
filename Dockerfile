@@ -19,16 +19,16 @@ COPY server/ ./server/
 RUN cd server && go build -ldflags="-w -s" -o /app/olake-server .
 
 # Stage 2: Frontend Builder
-FROM node:20-alpine AS node-builder
+FROM node:22-alpine AS node-builder
 
 # Reuse build-time arguments during UI build if needed
 WORKDIR /app/ui
 
 # Install pnpm globally
-RUN npm install -g pnpm
+RUN npm install -g pnpm@11.24.0
 
 # Copy package files
-COPY ui/package.json ui/pnpm-lock.yaml ./
+COPY ui/package.json ui/pnpm-lock.yaml ui/pnpm-workspace.yaml ./
 # Install dependencies
 RUN pnpm install
 
