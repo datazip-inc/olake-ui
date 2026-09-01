@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -14,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 	"github.com/spf13/viper"
@@ -71,6 +72,45 @@ func InitStorage(ctx context.Context) error {
 	if s3Bucket == "" {
 		return fmt.Errorf("s3 bucket is required when storage mode is s3")
 	}
+	return ensureS3Bucket(ctx, s3Client, s3Bucket)
+}
+
+// ensureS3Bucket verifies the configured bucket exists. For S3-compatible endpoints
+// (MinIO), it creates the bucket when missing and retries while the server starts.
+func ensureS3Bucket(ctx context.Context, client *s3.Client, bucket string) error {
+	customEndpoint := viper.GetString(constants.EnvS3Endpoint) != ""
+
+	if !customEndpoint {
+		_, err := client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucket)})
+		if err != nil {
+			return fmt.Errorf("s3 bucket %q is not accessible: %s", bucket, err)
+		}
+		return nil
+	}
+
+	const maxAttempts = 60
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		if _, err := client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucket)}); err == nil {
+			return nil
+		}
+
+		_, err := client.CreateBucket(ctx, &s3.CreateBucketInput{Bucket: aws.String(bucket)})
+		if err == nil {
+			return nil
+		}
+
+		var alreadyExists *s3types.BucketAlreadyExists
+		var alreadyOwned *s3types.BucketAlreadyOwnedByYou
+		if errors.As(err, &alreadyExists) || errors.As(err, &alreadyOwned) {
+			return nil
+		}
+
+		if attempt == maxAttempts {
+			return fmt.Errorf("failed to ensure s3 bucket %q after %d attempts: %s", bucket, maxAttempts, err)
+		}
+		time.Sleep(5 * time.Second)
+	}
+
 	return nil
 }
 
@@ -193,7 +233,7 @@ func PrefixExists(ctx context.Context, relPrefix string) (bool, error) {
 	return len(out.Contents) > 0, nil
 }
 
-func listS3Objects(ctx context.Context, relPrefix string, delimiter *string, isDirectory bool) ([]types.Object, []types.CommonPrefix, error) {
+func listS3Objects(ctx context.Context, relPrefix string, delimiter *string, isDirectory bool) ([]s3types.Object, []s3types.CommonPrefix, error) {
 	client, bucket, err := getS3Client()
 	if err != nil {
 		return nil, nil, err
@@ -206,8 +246,8 @@ func listS3Objects(ctx context.Context, relPrefix string, delimiter *string, isD
 		Delimiter: delimiter,
 	})
 
-	var objects []types.Object
-	var commonPrefixes []types.CommonPrefix
+	var objects []s3types.Object
+	var commonPrefixes []s3types.CommonPrefix
 
 	for paginator.HasMorePages() {
 		page, err := paginator.NextPage(ctx)
