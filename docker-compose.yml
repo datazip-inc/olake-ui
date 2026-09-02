@@ -104,6 +104,9 @@ services:
     environment:
       <<: *sharedEnvs
       OLAKE_CALLBACK_URL: "http://olake-ui:8000/internal/worker/callback"
+      OLAKE_INDEX_DB_DIR: /index-db
+      OLAKE_INDEX_DB_CACHE_SIZE: 512  # in mb
+      OLAKE_INDEX_DB_MAX_OPEN_FILES: 1000  # max open files
     depends_on:
       temporal:
         condition: service_started # Or service_healthy if temporal has a healthcheck
