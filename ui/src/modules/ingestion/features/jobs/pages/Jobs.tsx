@@ -3,6 +3,7 @@ import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 
+import { CommunityHelpBanner } from "@/common/components"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { JobTable, JobEmptyState, DeleteJobModal } from "../components"
@@ -84,6 +85,10 @@ const Jobs: React.FC = () => {
 
 	const handlePauseJob = async (id: string, checked: boolean) => {
 		await activateJob({ jobId: id, activate: !checked })
+		// checked = job was active, so this click paused it
+		if (checked) {
+			trackEvent(AnalyticsEvent.JobPaused, { job_id: id })
+		}
 	}
 
 	// cancels the running job
@@ -116,7 +121,8 @@ const Jobs: React.FC = () => {
 				return savedJobs
 			case JOB_STATUS.FAILED:
 				return jobs.filter(
-					job => (job?.last_run_state ?? "").toLowerCase() === "failed",
+					job =>
+						(job?.last_run_state ?? "").toLowerCase() === JOB_STATUS.FAILED,
 				)
 			default:
 				return []
@@ -170,6 +176,10 @@ const Jobs: React.FC = () => {
 			<p className="mb-6 text-gray-600">
 				A list of all your jobs stacked at one place for you to see
 			</p>
+
+			{jobs.some(job => job?.activate === true) && (
+				<CommunityHelpBanner source="jobs" />
+			)}
 
 			{showEmpty ? (
 				<JobEmptyState />
