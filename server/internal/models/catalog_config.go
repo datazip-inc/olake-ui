@@ -17,6 +17,7 @@ const (
 	RestCatalog CatalogType = "rest"
 )
 
+// TODO: Test BigLake with Optimization Service or Suppress it until further testing
 type Config struct {
 	// S3-compatible Storage Configuration
 	Region             string `json:"aws_region,omitempty"`
@@ -69,6 +70,12 @@ type Config struct {
 	RestAuthType      string `json:"rest_auth_type,omitempty"`
 	RestScope         string `json:"scope,omitempty"`
 	RestCredential    string `json:"credential,omitempty"`
+
+	// GCP auth for GoogleAuthManager (e.g. BigLake). Inline SA key JSON;
+	GCPServiceAccountJSON string `json:"gcp_service_account_json,omitempty"`
+	GCPAuthScopes         string `json:"gcp_auth_scopes,omitempty"`
+	// Required by BigLake for request routing/billing (sent as the x-goog-user-project header).
+	GCPProjectID string `json:"gcp_project_id,omitempty"`
 
 	UseArrowWrites bool `json:"arrow_writes,omitempty"`
 
