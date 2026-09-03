@@ -54,3 +54,8 @@ ui/test-results/
 ui/playwright-report/
 ui/blob-report/
 ui/tests/.auth/
+
+# ----------------------------
+# Local dev notes (not committed)
+# ----------------------------
+examples/
