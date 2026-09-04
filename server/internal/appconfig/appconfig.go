@@ -47,6 +47,7 @@ type Config struct {
 	OptimizationUsername           string
 	OptimizationPassword           string
 	OptimizationRequestTimeout     time.Duration
+	GitOpsEnabled                  bool
 }
 
 var cfg = loadConfig()
@@ -121,5 +122,7 @@ func loadConfig() Config {
 		OptimizationUsername:       strings.TrimSpace(v.GetString("USERNAME")),
 		OptimizationPassword:       strings.TrimSpace(v.GetString("PASSWORD")),
 		OptimizationRequestTimeout: v.GetDuration("OPTIMIZATION_REQUEST_TIMEOUT"),
+
+		GitOpsEnabled: v.GetBool("GITOPS_ENABLED"),
 	}
 }
