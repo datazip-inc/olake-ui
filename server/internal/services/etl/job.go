@@ -115,22 +115,22 @@ func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, proje
 	}
 
 	job := &models.Job{
-		Name:             req.Name,
-		SourceID:         source.ID,
-		DestID:           dest.ID,
-		Source:           source,
-		Destination:      dest,
-		Active:           true,
-		Frequency:        req.Frequency,
-		StreamsConfig:    req.StreamsConfig,
-		SchemaConfig:     utils.StringPtr(req.SchemaConfig),
-		State:            "{}",
-		AdvancedSettings: advancedSettings,
-		ProjectID:        projectID,
-		CreatedByID:      user.ID,
-		UpdatedByID:      user.ID,
-		CreatedBy:        user,
-		UpdatedBy:        user,
+		Name:                  req.Name,
+		SourceID:              source.ID,
+		DestID:                dest.ID,
+		Source:                source,
+		Destination:           dest,
+		Active:                true,
+		Frequency:             req.Frequency,
+		StreamsConfig:         req.StreamsConfig,
+		SelectedStreamsConfig: utils.StringPtr(req.SelectedStreamsConfig),
+		State:                 "{}",
+		AdvancedSettings:      advancedSettings,
+		ProjectID:             projectID,
+		CreatedByID:           user.ID,
+		UpdatedByID:           user.ID,
+		CreatedBy:             user,
+		UpdatedBy:             user,
 	}
 	if err := s.db.CreateJob(job); err != nil {
 		return fmt.Errorf("failed to create job: %s", err)
@@ -209,8 +209,8 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 		"project_id":     projectID,
 		"updated_by_id":  *userID,
 	}
-	if strings.TrimSpace(req.SchemaConfig) != "" {
-		updateParams["schema_config"] = req.SchemaConfig
+	if strings.TrimSpace(req.SelectedStreamsConfig) != "" {
+		updateParams["selected_streams_config"] = req.SelectedStreamsConfig
 	}
 	if req.AdvancedSettings != nil {
 		b, err := json.Marshal(req.AdvancedSettings)
@@ -523,7 +523,7 @@ func (s Service) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, incl
 
 	if includeConfig {
 		jobResp.StreamsConfig = job.StreamsConfig
-		jobResp.SchemaConfig = utils.StringValue(job.SchemaConfig)
+		jobResp.SelectedStreamsConfig = utils.StringValue(job.SelectedStreamsConfig)
 	}
 
 	if job.Source != nil {

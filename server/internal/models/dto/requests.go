@@ -52,9 +52,10 @@ type StreamsRequest struct {
 	MaxDiscoverThreads *int   `json:"max_discover_threads,omitempty" example:"50"`
 	JobID              int    `json:"job_id" binding:"required" example:"1"`
 	JobName            string `json:"job_name" binding:"required" example:"my-sync-job"`
-	// SchemaSplit requests a split catalog response: streams_config (selected_streams only)
-	// and schema_config (streams[] only). Falls back to combined when unsupported
-	SchemaSplit bool `json:"schema_split,omitempty" example:"false"`
+	// SplitStreams requests the opt-in split file layout: streams_config is
+	// streams[] from streams.json, and selected_streams_config is selected_streams
+	// from selected_streams.json. Falls back to a combined streams_config when unsupported.
+	SplitStreams bool `json:"split_streams,omitempty" example:"false"`
 }
 
 // TODO: frontend needs to send only version no need for source version
@@ -99,26 +100,26 @@ type AdvancedSettings struct {
 }
 
 type CreateJobRequest struct {
-	Name             string            `json:"name" binding:"required" example:"my-sync-job"`
-	Source           *DriverConfig     `json:"source" binding:"required"`
-	Destination      *DriverConfig     `json:"destination" binding:"required"`
-	Frequency        string            `json:"frequency" binding:"required" example:"0 */6 * * *"`
-	StreamsConfig    string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
-	SchemaConfig     string            `json:"schema_config,omitempty" orm:"type(jsonb)"`
-	Activate         bool              `json:"activate,omitempty" example:"true"`
-	AdvancedSettings *AdvancedSettings `json:"advanced_settings,omitempty"`
+	Name                  string            `json:"name" binding:"required" example:"my-sync-job"`
+	Source                *DriverConfig     `json:"source" binding:"required"`
+	Destination           *DriverConfig     `json:"destination" binding:"required"`
+	Frequency             string            `json:"frequency" binding:"required" example:"0 */6 * * *"`
+	StreamsConfig         string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	SelectedStreamsConfig string            `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
+	Activate              bool              `json:"activate,omitempty" example:"true"`
+	AdvancedSettings      *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
 type UpdateJobRequest struct {
-	Name              string            `json:"name" binding:"required" example:"my-sync-job-updated"`
-	Source            *DriverConfig     `json:"source" binding:"required"`
-	Destination       *DriverConfig     `json:"destination" binding:"required"`
-	Frequency         string            `json:"frequency" binding:"required" example:"0 */12 * * *"`
-	StreamsConfig     string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
-	SchemaConfig      string            `json:"schema_config,omitempty" orm:"type(jsonb)"`
-	DifferenceStreams string            `json:"difference_streams,omitempty" example:"[]"`
-	Activate          bool              `json:"activate,omitempty" example:"true"`
-	AdvancedSettings  *AdvancedSettings `json:"advanced_settings,omitempty"`
+	Name                  string            `json:"name" binding:"required" example:"my-sync-job-updated"`
+	Source                *DriverConfig     `json:"source" binding:"required"`
+	Destination           *DriverConfig     `json:"destination" binding:"required"`
+	Frequency             string            `json:"frequency" binding:"required" example:"0 */12 * * *"`
+	StreamsConfig         string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	SelectedStreamsConfig string            `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
+	DifferenceStreams     string            `json:"difference_streams,omitempty" example:"[]"`
+	Activate              bool              `json:"activate,omitempty" example:"true"`
+	AdvancedSettings      *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
 type StreamDifferenceRequest struct {

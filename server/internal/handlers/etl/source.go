@@ -228,7 +228,7 @@ func (h *Handler) TestSourceConnection(c *gin.Context) {
 // @Summary Get source stream catalog
 // @Tags Sources
 // @Description Discover and list available data streams from a source.
-// @Description Always returns dto.CatalogResponse: streams_config (JSON string) and optional schema_config when split discover ran.
+// @Description Always returns dto.CatalogResponse: streams_config (JSON string) and optional selected_streams_config when split discover ran.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.StreamsRequest true "streams request data"
 // @Success 200 {object} dto.JSONResponse{data=dto.CatalogResponse}
