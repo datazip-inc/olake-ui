@@ -54,3 +54,7 @@ ui/test-results/
 ui/playwright-report/
 ui/blob-report/
 ui/tests/.auth/
+CLAUDE.local.md
+
+# CocoIndex Code (ccc)
+/.cocoindex_code/

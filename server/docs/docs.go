@@ -2963,6 +2963,10 @@ const docTemplate = `{
         "dto.AdvancedSettings": {
             "type": "object",
             "properties": {
+                "index_required": {
+                    "type": "boolean",
+                    "example": true
+                },
                 "max_discover_threads": {
                     "type": "integer",
                     "example": 50

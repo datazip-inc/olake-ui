@@ -93,6 +93,9 @@ type UpdateDestinationRequest struct {
 
 type AdvancedSettings struct {
 	MaxDiscoverThreads *int `json:"max_discover_threads,omitempty" example:"50"`
+	// IndexRequired is derived by the UI: true when any selected stream upserts
+	// with positional deletes.
+	IndexRequired *bool `json:"index_required,omitempty" example:"true"`
 }
 
 type CreateJobRequest struct {
