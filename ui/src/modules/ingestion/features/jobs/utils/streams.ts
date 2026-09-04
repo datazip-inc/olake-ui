@@ -95,19 +95,38 @@ export const getStreamsDataFromSourceStreamsResponse = (
 		)
 
 		if (matchingSelectedStream) {
-			// Stream is selected, use the selected stream configuration
-			const upsertMode =
-				!matchingSelectedStream.append_mode &&
-				isDestUpsertModeSupported &&
-				isSourceUpsertModeSupported
+			// Stream is selected. Lean first-discover selected_streams may omit
+			// normalization / append_mode / selected_columns — fill those from
+			// default_stream_properties (and type_schema for columns) when absent.
+			const streamDefaults = {
+				...STREAM_DEFAULTS,
+				...stream.stream.default_stream_properties,
+			}
+			const forceAppend =
+				!isDestUpsertModeSupported || !isSourceUpsertModeSupported
+			const appendMode = forceAppend
+				? true
+				: (matchingSelectedStream.append_mode ?? streamDefaults.append_mode)
+			const upsertMode = !appendMode
 			const { update_type: savedUpdateType, ...selectedStreamRest } =
 				matchingSelectedStream
 
 			mergedSelectedStreams[namespace].push({
 				...selectedStreamRest,
 				disabled: false,
-				// update_type only applies while the stream runs in upsert mode;
-				// older saved jobs carry no value, so fall back to the catalog default.
+				append_mode: appendMode,
+				normalization:
+					matchingSelectedStream.normalization ?? streamDefaults.normalization,
+				selected_columns:
+					matchingSelectedStream.selected_columns ??
+					(supportsColumnSelection
+						? {
+								columns: Object.keys(
+									stream.stream.type_schema?.properties ?? {},
+								),
+								sync_new_columns: true,
+							}
+						: undefined),
 				...(upsertMode && {
 					update_type: savedUpdateType ?? getDefaultUpsertType(stream),
 				}),

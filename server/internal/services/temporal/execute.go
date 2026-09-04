@@ -68,7 +68,7 @@ const (
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
 
 // DiscoverStreams runs a workflow to discover catalog data
-func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, schemaConfig, jobName string, maxDiscoverThreads *int, schemaSplit bool) (map[string]interface{}, map[string]interface{}, error) {
+func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, selectedStreamsConfig, jobName string, maxDiscoverThreads *int, splitStreams bool) (map[string]interface{}, map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
 
 	configs := []JobConfig{
@@ -76,8 +76,8 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		{Name: "streams.json", Data: streamsConfig},
 		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
 	}
-	if schemaConfig != "" && schemaSplit && utils.SupportsSchemaFlag(version) {
-		configs = append(configs, JobConfig{Name: "schema.json", Data: schemaConfig})
+	if selectedStreamsConfig != "" && splitStreams && utils.SupportsSelectedStreamsFlag(version) {
+		configs = append(configs, JobConfig{Name: "selected_streams.json", Data: selectedStreamsConfig})
 	}
 
 	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
@@ -106,8 +106,8 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
 	}
 
-	if schemaSplit && utils.SupportsSchemaFlag(version) {
-		cmdArgs = append(cmdArgs, "--schema", "/mnt/config/schema.json")
+	if splitStreams && utils.SupportsSelectedStreamsFlag(version) {
+		cmdArgs = append(cmdArgs, "--selected_streams", "/mnt/config/selected_streams.json")
 	}
 
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
@@ -141,17 +141,17 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		return nil, nil, fmt.Errorf("failed to extract workflow response: %v", err)
 	}
 
-	if !schemaSplit || !utils.SupportsSchemaFlag(version) {
+	if !splitStreams || !utils.SupportsSelectedStreamsFlag(version) {
 		return streamsResult, nil, nil
 	}
 
-	schemaPath := filepath.Join(constants.DefaultConfigDir, workflowID, "schema.json")
-	schemaResult, err := utils.ReadJSONFile(schemaPath)
+	selectedStreamsPath := filepath.Join(constants.DefaultConfigDir, workflowID, "selected_streams.json")
+	selectedStreamsResult, err := utils.ReadJSONFile(selectedStreamsPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read schema.json from %s: %w", schemaPath, err)
+		return nil, nil, fmt.Errorf("failed to read selected_streams.json from %s: %w", selectedStreamsPath, err)
 	}
 
-	return streamsResult, schemaResult, nil
+	return streamsResult, selectedStreamsResult, nil
 }
 
 // FetchSpec runs a workflow to fetch driver specifications
@@ -305,11 +305,12 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		"--streams", "/mnt/config/old_streams.json",
 		"--difference", "/mnt/config/new_streams.json",
 	}
-	if job.SchemaConfig != nil {
-		schemaConfig := strings.TrimSpace(*job.SchemaConfig)
-		if schemaConfig != "" && utils.SupportsSchemaFlag(job.Source.Version) {
-			configs = append(configs, JobConfig{Name: "schema.json", Data: schemaConfig})
-			cmdArgs = append(cmdArgs, "--schema", "/mnt/config/schema.json")
+
+	if job.SelectedStreamsConfig != nil {
+		selectedStreamsConfig := strings.TrimSpace(*job.SelectedStreamsConfig)
+		if selectedStreamsConfig != "" && utils.SupportsSelectedStreamsFlag(job.Source.Version) {
+			configs = append(configs, JobConfig{Name: "selected_streams.json", Data: selectedStreamsConfig})
+			cmdArgs = append(cmdArgs, "--selected-streams", "/mnt/config/selected_streams.json")
 		}
 	}
 

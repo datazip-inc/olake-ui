@@ -154,7 +154,7 @@ func (r *JobReconciler) sync(ctx context.Context, res *ResourceData) (ctrl.Resul
 			return r.failJob(ctx, res, streamsRes, NonRetryableError(err), observed)
 		}
 		if isSplitStream {
-			schemaConfig = catalog.SchemaConfig
+			schemaConfig = catalog.SelectedStreamsConfig
 		}
 		if existingJob != nil && catalog.StreamsConfig != "" {
 			persistStreamsConfig = catalog.StreamsConfig
@@ -268,13 +268,13 @@ func (r *JobReconciler) streamsSettled(ctx context.Context, job *ResourceData) (
 
 func (r *JobReconciler) discoverCatalog(ctx context.Context, source *models.Source, jobCfg *JobConfig, existingJob *models.Job, streamsCatalogOverride string, schemaSplit bool) (dto.CatalogResponse, error) {
 	req := &dto.StreamsRequest{
-		Name:        source.Name,
-		Type:        source.Type,
-		Version:     source.Version,
-		Config:      dto.JSONConfig(source.Config),
-		JobID:       discoverJobID(existingJob),
-		JobName:     jobCfg.Name,
-		SchemaSplit: schemaSplit,
+		Name:         source.Name,
+		Type:         source.Type,
+		Version:      source.Version,
+		Config:       dto.JSONConfig(source.Config),
+		JobID:        discoverJobID(existingJob),
+		JobName:      jobCfg.Name,
+		SplitStreams: schemaSplit,
 	}
 	if jobCfg.AdvancedSettings != nil {
 		req.MaxDiscoverThreads = jobCfg.AdvancedSettings.MaxDiscoverThreads
@@ -405,22 +405,22 @@ func diffJob(existing *models.Job, cfg *JobConfig, sourceID, destID int) jobDrif
 
 func (cfg *JobConfig) createRequest(sourceID, destID int, streamsConfig, schemaConfig string) *dto.CreateJobRequest {
 	return &dto.CreateJobRequest{
-		JobMetadata:   cfg.JobMetadata,
-		StreamsConfig: streamsConfig,
-		SchemaConfig:  schemaConfig,
-		Source:        &dto.DriverConfig{ID: &sourceID},
-		Destination:   &dto.DriverConfig{ID: &destID},
+		JobMetadata:           cfg.JobMetadata,
+		StreamsConfig:         streamsConfig,
+		SelectedStreamsConfig: schemaConfig,
+		Source:                &dto.DriverConfig{ID: &sourceID},
+		Destination:           &dto.DriverConfig{ID: &destID},
 	}
 }
 
 func (cfg *JobConfig) updateRequest(sourceID, destID int, streamsConfig, schemaConfig, differenceStreams string) *dto.UpdateJobRequest {
 	return &dto.UpdateJobRequest{
-		JobMetadata:       cfg.JobMetadata,
-		StreamsConfig:     streamsConfig,
-		SchemaConfig:      schemaConfig,
-		DifferenceStreams: differenceStreams,
-		Source:            &dto.DriverConfig{ID: &sourceID},
-		Destination:       &dto.DriverConfig{ID: &destID},
+		JobMetadata:           cfg.JobMetadata,
+		StreamsConfig:         streamsConfig,
+		SelectedStreamsConfig: schemaConfig,
+		DifferenceStreams:     differenceStreams,
+		Source:                &dto.DriverConfig{ID: &sourceID},
+		Destination:           &dto.DriverConfig{ID: &destID},
 	}
 }
 
