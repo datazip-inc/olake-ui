@@ -107,7 +107,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	}
 
 	if splitStreams && utils.SupportsSelectedStreamsFlag(version) {
-		cmdArgs = append(cmdArgs, "--selected_streams", "/mnt/config/selected_streams.json")
+		cmdArgs = append(cmdArgs, "--selected-streams", "/mnt/config/selected_streams.json")
 	}
 
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
