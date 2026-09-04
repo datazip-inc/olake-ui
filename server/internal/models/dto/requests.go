@@ -53,10 +53,6 @@ type StreamsRequest struct {
 	MaxDiscoverThreads *int       `json:"max_discover_threads,omitempty" example:"50"`
 	JobID              int        `json:"job_id" binding:"required" example:"1"`
 	JobName            string     `json:"job_name" binding:"required" example:"my-sync-job"`
-	// SplitStreams requests the opt-in split file layout: streams_config is
-	// streams[] from streams.json, and selected_streams_config is selected_streams
-	// from selected_streams.json. Falls back to a combined streams_config when unsupported.
-	SplitStreams bool `json:"split_streams,omitempty" example:"false"`
 }
 
 // TODO: frontend needs to send only version no need for source version
