@@ -86,9 +86,9 @@ type StreamDifferenceResponse struct {
 	DifferenceStreams map[string]interface{} `json:"difference_streams" swaggertype:"object"`
 }
 
-// CatalogResponse is always returned by the discover (sources/streams) endpoint.
-// streams_config holds the catalog JSON from streams.json (combined, or streams[] only when split).
-// selected_streams_config holds selected_streams from selected_streams.json when split discover ran.
+// CatalogResponse is returned by GetSourceCatalog for GitOps split discover.
+// streams_config is the catalog JSON from streams.json.
+// selected_streams_config is set only when split discover ran.
 type CatalogResponse struct {
 	StreamsConfig         string `json:"streams_config"`
 	SelectedStreamsConfig string `json:"selected_streams_config,omitempty"`

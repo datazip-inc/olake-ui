@@ -1,6 +1,7 @@
 package etl
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -228,10 +229,9 @@ func (h *Handler) TestSourceConnection(c *gin.Context) {
 // @Summary Get source stream catalog
 // @Tags Sources
 // @Description Discover and list available data streams from a source.
-// @Description Always returns dto.CatalogResponse: streams_config (JSON string) and optional selected_streams_config when split discover ran.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.StreamsRequest true "streams request data"
-// @Success 200 {object} dto.JSONResponse{data=dto.CatalogResponse}
+// @Success 200 {object} dto.JSONResponse{data=object}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 413 {object} dto.Error413Response "payload too large"
@@ -248,12 +248,19 @@ func (h *Handler) GetSourceCatalog(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Get source catalog initiated source_type[%s] source_version[%s] job_id[%d]", req.Type, req.Version, req.JobID)
-	catalog, err := h.etl.GetSourceCatalog(c.Request.Context(), &req, "")
+	catalog, err := h.etl.GetSourceCatalog(c.Request.Context(), &req, false, "")
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source streams: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(c, fmt.Sprintf("source %s catalog fetched successfully", req.Type), catalog)
+
+	// UI expects only streams, not selected_streams_config
+	var streams map[string]interface{}
+	if err := json.Unmarshal([]byte(catalog.StreamsConfig), &streams); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to parse source catalog: %s", err), err)
+		return
+	}
+	utils.SuccessResponse(c, fmt.Sprintf("source %s catalog fetched successfully", req.Type), streams)
 }
 
 // @Summary Get available source versions

@@ -269,7 +269,7 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 	return result, logs.Logs, nil
 }
 
-func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, streamsCatalogOverride string) (dto.CatalogResponse, error) {
+func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, splitStreams bool, streamsCatalogOverride string) (dto.CatalogResponse, error) {
 	oldStreams := streamsCatalogOverride
 	oldSelectedStreams := ""
 
@@ -298,7 +298,7 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, 
 		oldSelectedStreams,
 		req.JobName,
 		req.MaxDiscoverThreads,
-		req.SplitStreams,
+		splitStreams,
 	)
 	if err != nil {
 		return dto.CatalogResponse{}, fmt.Errorf("failed to get catalog: %s", err)
