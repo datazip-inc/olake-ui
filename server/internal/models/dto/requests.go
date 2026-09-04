@@ -44,6 +44,7 @@ type SourceTestConnectionRequest struct {
 	Version string     `json:"version" binding:"required" example:"v0.2.7"`
 	Config  JSONConfig `json:"config" orm:"type(jsonb)" binding:"required" example:"{\"host\":\"localhost\",\"port\":5432,\"database\":\"mydb\",\"user\":\"postgres\",\"password\":\"secret\"}"`
 }
+
 type StreamsRequest struct {
 	Name               string     `json:"name" binding:"required" example:"my-postgres-source"`
 	Type               string     `json:"type" binding:"required" example:"postgres"`
@@ -52,9 +53,10 @@ type StreamsRequest struct {
 	MaxDiscoverThreads *int       `json:"max_discover_threads,omitempty" example:"50"`
 	JobID              int        `json:"job_id" binding:"required" example:"1"`
 	JobName            string     `json:"job_name" binding:"required" example:"my-sync-job"`
-	// SchemaSplit requests a split catalog response: streams_config (selected_streams only)
-	// and schema_config (streams[] only). Falls back to combined when unsupported
-	SchemaSplit bool `json:"schema_split,omitempty" example:"false"`
+	// SplitStreams requests the opt-in split file layout: streams_config is
+	// streams[] from streams.json, and selected_streams_config is selected_streams
+	// from selected_streams.json. Falls back to a combined streams_config when unsupported.
+	SplitStreams bool `json:"split_streams,omitempty" example:"false"`
 }
 
 // TODO: frontend needs to send only version no need for source version
@@ -98,7 +100,6 @@ type AdvancedSettings struct {
 	MaxDiscoverThreads *int `json:"max_discover_threads,omitempty" example:"50"`
 }
 
-// JobMetadata is shared job fields used by HTTP create/update and GitOps Job CM.
 type JobMetadata struct {
 	Name             string            `json:"name" binding:"required" example:"my-sync-job"`
 	Frequency        string            `json:"frequency" binding:"required" example:"0 */6 * * *"`
@@ -108,19 +109,22 @@ type JobMetadata struct {
 
 type CreateJobRequest struct {
 	JobMetadata
-	Source        *DriverConfig `json:"source" binding:"required"`
-	Destination   *DriverConfig `json:"destination" binding:"required"`
-	StreamsConfig string        `json:"streams_config" orm:"type(jsonb)" binding:"required"`
-	SchemaConfig  string        `json:"schema_config,omitempty" orm:"type(jsonb)"`
+	Source                *DriverConfig `json:"source" binding:"required"`
+	Destination           *DriverConfig `json:"destination" binding:"required"`
+	StreamsConfig         string        `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	SchemaConfig          string        `json:"schema_config,omitempty" orm:"type(jsonb)"`
+	SelectedStreamsConfig string        `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
 }
 
 type UpdateJobRequest struct {
 	JobMetadata
-	Source            *DriverConfig `json:"source" binding:"required"`
-	Destination       *DriverConfig `json:"destination" binding:"required"`
-	StreamsConfig     string        `json:"streams_config" orm:"type(jsonb)" binding:"required"`
-	SchemaConfig      string        `json:"schema_config,omitempty" orm:"type(jsonb)"`
-	DifferenceStreams string        `json:"difference_streams,omitempty" example:"[]"`
+	Source                *DriverConfig     `json:"source" binding:"required"`
+	Destination           *DriverConfig     `json:"destination" binding:"required"`
+	StreamsConfig         string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	SelectedStreamsConfig string            `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
+	DifferenceStreams     string            `json:"difference_streams,omitempty" example:"[]"`
+	Activate              bool              `json:"activate,omitempty" example:"true"`
+	AdvancedSettings      *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
 type StreamDifferenceRequest struct {

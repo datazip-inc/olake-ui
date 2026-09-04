@@ -34,7 +34,7 @@ var (
 	DefaultClearDestinationVersion   = "v0.3.0"
 	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
 	// TODO(BEFORE_MERGE): set to the actual release version before shipping.
-	MinSchemaSplitVersion = "v0.8.0"
+	MinSelectedStreamsSplitVersion = "v0.8.0"
 
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"

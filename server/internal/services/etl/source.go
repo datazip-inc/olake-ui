@@ -271,7 +271,8 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 
 func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, streamsCatalogOverride string) (dto.CatalogResponse, error) {
 	oldStreams := streamsCatalogOverride
-	oldSchema := ""
+	oldSelectedStreams := ""
+
 	if req.JobID >= 0 {
 		job, err := s.db.GetJobByID(req.JobID, true)
 		if err != nil {
@@ -280,7 +281,7 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, 
 		if oldStreams == "" {
 			oldStreams = job.StreamsConfig
 		}
-		oldSchema = utils.StringValue(job.SchemaConfig)
+		oldSelectedStreams = utils.StringValue(job.SelectedStreamsConfig)
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config.String())
@@ -288,16 +289,16 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, 
 		return dto.CatalogResponse{}, fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 
-	streamsMap, schemaMap, err := s.temporal.DiscoverStreams(
+	streamsMap, selectedStreamsMap, err := s.temporal.DiscoverStreams(
 		ctx,
 		req.Type,
 		req.Version,
 		encryptedConfig,
 		oldStreams,
-		oldSchema,
+		oldSelectedStreams,
 		req.JobName,
 		req.MaxDiscoverThreads,
-		req.SchemaSplit,
+		req.SplitStreams,
 	)
 	if err != nil {
 		return dto.CatalogResponse{}, fmt.Errorf("failed to get catalog: %s", err)
@@ -309,12 +310,12 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, 
 	}
 
 	resp := dto.CatalogResponse{StreamsConfig: string(streamsConfig)}
-	if schemaMap != nil {
-		schemaConfig, err := json.Marshal(schemaMap)
+	if selectedStreamsMap != nil {
+		selectedStreamsConfig, err := json.Marshal(selectedStreamsMap)
 		if err != nil {
-			return dto.CatalogResponse{}, fmt.Errorf("failed to marshal schema config: %s", err)
+			return dto.CatalogResponse{}, fmt.Errorf("failed to marshal selected streams config: %s", err)
 		}
-		resp.SchemaConfig = string(schemaConfig)
+		resp.SelectedStreamsConfig = string(selectedStreamsConfig)
 	}
 
 	return resp, nil
