@@ -36,6 +36,7 @@ import {
 	validateCronExpression,
 	formatSelectedStreamsPayload,
 	validateStreams,
+	withIndexRequired,
 } from "../utils"
 
 const JobEdit: React.FC = () => {
@@ -266,7 +267,7 @@ const JobEdit: React.FC = () => {
 		frequency: cronExpression,
 		activate: job?.activate,
 		...(diff && { difference_streams: JSON.stringify(diff) }),
-		advanced_settings: advancedSettings,
+		advanced_settings: withIndexRequired(advancedSettings, streamsConfig),
 	})
 
 	const handleStreamDifference = async () => {

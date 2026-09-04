@@ -22,7 +22,7 @@ import {
 	STREAM_DEFAULTS,
 } from "../constants"
 import { IngestionMode } from "../enums"
-import { CursorFieldValues } from "../types"
+import { AdvancedSettings, CursorFieldValues } from "../types"
 import {
 	castFilterConditionValue,
 	validateFilter,
@@ -226,6 +226,28 @@ export const formatSelectedStreamsPayload = (
 		]),
 	)
 }
+
+// Positional deletes need the destination row index; equality deletes don't.
+export const hasPositionalUpsertStream = (
+	streamsConfig?: StreamsDataStructure | null,
+): boolean =>
+	Object.values(getSelectedStreams(streamsConfig?.selected_streams ?? {})).some(
+		streams =>
+			streams.some(
+				stream =>
+					!stream.append_mode && stream.update_type === UpsertType.POSITIONAL,
+			),
+	)
+
+// index_required is derived from the streams config on every write; the rest of
+// advanced settings stays user-configured.
+export const withIndexRequired = (
+	advancedSettings: AdvancedSettings | null | undefined,
+	streamsConfig?: StreamsDataStructure | null,
+): AdvancedSettings => ({
+	...advancedSettings,
+	index_required: hasPositionalUpsertStream(streamsConfig),
+})
 
 // Returns null if all selected stream configurations are valid, or a descriptive error string otherwise.
 export const validateStreams = (
