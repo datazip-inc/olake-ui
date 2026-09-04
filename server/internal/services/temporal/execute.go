@@ -3,7 +3,9 @@ package temporal
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
@@ -13,7 +15,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 	"go.temporal.io/sdk/client"
-	"golang.org/x/mod/semver"
 )
 
 type ExecutionRequest struct {
@@ -67,7 +68,7 @@ const (
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
 
 // DiscoverStreams runs a workflow to discover catalog data
-func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int) (map[string]interface{}, error) {
+func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, selectedStreamsConfig, jobName string, maxDiscoverThreads *int, splitStreams bool) (map[string]interface{}, map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
 
 	configs := []JobConfig{
@@ -75,9 +76,12 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		{Name: "streams.json", Data: streamsConfig},
 		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
 	}
+	if selectedStreamsConfig != "" && splitStreams && utils.SupportsSelectedStreamsFlag(version) {
+		configs = append(configs, JobConfig{Name: "selected_streams.json", Data: selectedStreamsConfig})
+	}
 
 	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
-		return nil, fmt.Errorf("failed to setup config files: %s", err)
+		return nil, nil, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	cmdArgs := []string{
@@ -86,12 +90,11 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		"/mnt/config/config.json",
 	}
 
-	if jobName != "" && (utils.GetCustomDriverVersion() != "" || semver.Compare(version, "v0.2.0") >= 0) {
+	if jobName != "" && utils.SupportsDestinationDatabasePrefix(version) {
 		cmdArgs = append(cmdArgs, "--destination-database-prefix", jobName)
 	}
 
-	// Only add max-discover-threads flag for versions >= v0.3.18
-	if semver.Compare(version, constants.DefaultMaxDiscoverThreadsVersion) >= 0 {
+	if utils.SupportsMaxDiscoverThreads(version) {
 		threads := constants.DefaultMaxDiscoverThreads
 		if maxDiscoverThreads != nil && *maxDiscoverThreads > 0 {
 			threads = *maxDiscoverThreads
@@ -101,6 +104,10 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 
 	if streamsConfig != "" {
 		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
+	}
+
+	if splitStreams && utils.SupportsSelectedStreamsFlag(version) {
+		cmdArgs = append(cmdArgs, "--selected_streams", "/mnt/config/selected_streams.json")
 	}
 
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
@@ -126,25 +133,32 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 
 	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute discover workflow: %s", err)
+		return nil, nil, fmt.Errorf("failed to execute discover workflow: %s", err)
 	}
 
-	result, err := ExtractWorkflowResponse(ctx, run)
+	streamsResult, err := ExtractWorkflowResponse(ctx, run)
 	if err != nil {
-		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
+		return nil, nil, fmt.Errorf("failed to extract workflow response: %v", err)
 	}
 
-	return result, nil
+	if !splitStreams || !utils.SupportsSelectedStreamsFlag(version) {
+		return streamsResult, nil, nil
+	}
+
+	selectedStreamsPath := filepath.Join(constants.DefaultConfigDir, workflowID, "selected_streams.json")
+	selectedStreamsResult, err := utils.ReadJSONFile(selectedStreamsPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read selected_streams.json from %s: %w", selectedStreamsPath, err)
+	}
+
+	return streamsResult, selectedStreamsResult, nil
 }
 
 // FetchSpec runs a workflow to fetch driver specifications
 func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceType, version string) (dto.SpecOutput, error) {
 	workflowID := fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix())
 
-	// spec version >= DefaultSpecVersion is required
-	if semver.Compare(version, constants.DefaultSpecVersion) < 0 && utils.GetCustomDriverVersion() == "" {
-		version = constants.DefaultSpecVersion
-	}
+	version = utils.ResolveSpecVersion(version)
 
 	cmdArgs := []string{
 		"spec",
@@ -285,6 +299,13 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		{Name: "old_streams.json", Data: oldConfig},
 		{Name: "new_streams.json", Data: newConfig},
 	}
+	selectedStreamsConfig := ""
+	if job.SelectedStreamsConfig != nil {
+		selectedStreamsConfig = strings.TrimSpace(*job.SelectedStreamsConfig)
+	}
+	if selectedStreamsConfig != "" && utils.SupportsSelectedStreamsFlag(job.Source.Version) {
+		configs = append(configs, JobConfig{Name: "selected_streams.json", Data: selectedStreamsConfig})
+	}
 
 	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
 		return nil, fmt.Errorf("failed to setup config files: %s", err)
@@ -294,6 +315,9 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		"discover",
 		"--streams", "/mnt/config/old_streams.json",
 		"--difference", "/mnt/config/new_streams.json",
+	}
+	if selectedStreamsConfig != "" && utils.SupportsSelectedStreamsFlag(job.Source.Version) {
+		cmdArgs = append(cmdArgs, "--selected_streams", "/mnt/config/selected_streams.json")
 	}
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)

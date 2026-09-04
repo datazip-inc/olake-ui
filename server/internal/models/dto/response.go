@@ -86,6 +86,14 @@ type StreamDifferenceResponse struct {
 	DifferenceStreams map[string]interface{} `json:"difference_streams" swaggertype:"object"`
 }
 
+// CatalogResponse is returned by GetSourceCatalog for GitOps split discover.
+// streams_config is the catalog JSON from streams.json.
+// selected_streams_config is set only when split discover ran.
+type CatalogResponse struct {
+	StreamsConfig         string `json:"streams_config"`
+	SelectedStreamsConfig string `json:"selected_streams_config,omitempty"`
+}
+
 type ClearDestinationStatusResponse struct {
 	Running bool `json:"running" example:"false"`
 }
@@ -96,21 +104,22 @@ type VersionsResponse struct {
 
 // Job response
 type JobResponse struct {
-	ID               int               `json:"id" example:"1"`
-	Name             string            `json:"name" example:"my-sync-job"`
-	Source           DriverConfig      `json:"source"`
-	Destination      DriverConfig      `json:"destination"`
-	StreamsConfig    string            `json:"streams_config,omitempty"`
-	Frequency        string            `json:"frequency" example:"0 */6 * * *"`
-	LastRunTime      string            `json:"last_run_time,omitempty" example:"2024-01-09T12:00:00Z"`
-	LastRunState     string            `json:"last_run_state,omitempty" example:"completed"`
-	LastRunType      string            `json:"last_run_type,omitempty" example:"sync"` // "sync" | "clear-destination"
-	CreatedAt        string            `json:"created_at" example:"2024-01-01T00:00:00Z"`
-	UpdatedAt        string            `json:"updated_at" example:"2024-01-09T12:00:00Z"`
-	Activate         bool              `json:"activate" example:"true"`
-	CreatedBy        string            `json:"created_by,omitempty" example:"admin"`
-	UpdatedBy        string            `json:"updated_by,omitempty" example:"admin"`
-	AdvancedSettings *AdvancedSettings `json:"advanced_settings,omitempty"`
+	ID                    int               `json:"id" example:"1"`
+	Name                  string            `json:"name" example:"my-sync-job"`
+	Source                DriverConfig      `json:"source"`
+	Destination           DriverConfig      `json:"destination"`
+	StreamsConfig         string            `json:"streams_config,omitempty"`
+	SelectedStreamsConfig string            `json:"selected_streams_config,omitempty"`
+	Frequency             string            `json:"frequency" example:"0 */6 * * *"`
+	LastRunTime           string            `json:"last_run_time,omitempty" example:"2024-01-09T12:00:00Z"`
+	LastRunState          string            `json:"last_run_state,omitempty" example:"completed"`
+	LastRunType           string            `json:"last_run_type,omitempty" example:"sync"` // "sync" | "clear-destination"
+	CreatedAt             string            `json:"created_at" example:"2024-01-01T00:00:00Z"`
+	UpdatedAt             string            `json:"updated_at" example:"2024-01-09T12:00:00Z"`
+	Activate              bool              `json:"activate" example:"true"`
+	CreatedBy             string            `json:"created_by,omitempty" example:"admin"`
+	UpdatedBy             string            `json:"updated_by,omitempty" example:"admin"`
+	AdvancedSettings      *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
 type JobTask struct {
