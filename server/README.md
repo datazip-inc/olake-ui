@@ -4,7 +4,7 @@ Olake Server is a RESTful API service built with Gin that manages data sources, 
 
 ## Prerequisites
 
-- Go 1.23 or later
+- Go 1.26.8 or later
 - PostgreSQL 12 or later
 - Git
 
