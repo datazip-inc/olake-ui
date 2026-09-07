@@ -90,12 +90,6 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 		opt.GET("/catalog/:catalog", optHandler.GetCatalog)
 		opt.PUT("/catalog/:catalog", optHandler.UpdateCatalog)
 		opt.DELETE("/catalog/:catalog", optHandler.DeleteCatalog)
-
-		// terminal: cron, enable/disable optimization
-		opt.PUT("/:catalog/:database/tables/config", optHandler.SetProperties)
-
-		// tables: view
-		opt.GET("/:catalog/:database/tables", optHandler.GetTablesWithDetails)
 	}
 }
 
