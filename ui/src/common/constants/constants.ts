@@ -38,9 +38,14 @@ export const ERROR_MESSAGES = {
 
 export const OLAKE_LATEST_VERSION_URL = "https://olake.io/docs/release/overview"
 
+export const OLAKE_COMMUNITY_SLACK_URL = "https://olake.io/slack/"
+
 export const LOCALSTORAGE_TOKEN_KEY = "token"
 
 export const LOCALSTORAGE_USERNAME_KEY = "username"
 
 export const SOURCE_ONBOARDING_DISMISSED_SESSION_KEY =
 	"source_onboarding_modal_dismissed"
+
+export const COMMUNITY_BANNER_DISMISSED_SESSION_KEY =
+	"community_help_banner_dismissed"

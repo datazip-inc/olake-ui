@@ -15,6 +15,7 @@ const (
 	EventSyncStarted         = "sync_started"
 	EventSyncCompleted       = "sync_completed"
 	EventSyncFailed          = "sync_failed"
+	EventSyncCancelled       = "sync_cancelled"
 	EventSourceCreated       = "source_created"
 	EventDestinationCreated  = "destination_created"
 	EventSourcesUpdated      = "sources_updated"

@@ -9,6 +9,7 @@ import clsx from "clsx"
 import { useState, useRef, useEffect } from "react"
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom"
 
+import { CommunityHelpBanner } from "@/common/components"
 import {
 	getStatusClass,
 	getStatusLabel,
@@ -17,6 +18,7 @@ import {
 import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
 import { getConnectorImage } from "@/modules/ingestion/common/utils"
 
+import { JOB_STATUS } from "../constants"
 import { useJobDetails, useJobTasks } from "../hooks"
 import { JobType } from "../types"
 import { getJobTypeClass, getJobTypeLabel } from "../utils"
@@ -89,6 +91,11 @@ const JobHistory: React.FC = () => {
 		: null
 
 	const { data: job } = useJobDetails(jobId || "")
+
+	// Tasks are returned newest first - show the banner only when the most
+	// recent run failed.
+	const hasFailedLastRun =
+		(jobTasks[0]?.status ?? "").toLowerCase() === JOB_STATUS.FAILED
 
 	const handleViewLogs = (filePath: string) => {
 		if (jobId) {
@@ -221,6 +228,8 @@ const JobHistory: React.FC = () => {
 
 			<div className="flex flex-1 flex-col overflow-hidden border-t border-gray-200 p-6">
 				<h2 className="mb-4 text-xl font-bold">Job Logs & History</h2>
+
+				{hasFailedLastRun && <CommunityHelpBanner source="job_history" />}
 
 				<div className="mb-4 flex gap-2">
 					<Search

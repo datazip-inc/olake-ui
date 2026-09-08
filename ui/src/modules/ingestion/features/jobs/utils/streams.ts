@@ -12,6 +12,7 @@ import {
 	SelectedStream,
 	SyncMode,
 	StreamIdentifier,
+	UpsertType,
 } from "@/modules/ingestion/common/types"
 import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
 
@@ -27,6 +28,26 @@ import {
 	validateFilter,
 	validateFilterConfig,
 } from "./filterUtils"
+
+// The catalog carries the default upsert type on the stream as
+// default_stream_properties.update_type; the selected stream stores it as
+// update_type. Older olake versions omit it, in which case the backend applies
+// its own default and the UI leaves update_type unset.
+export const getDefaultUpsertType = (
+	stream?: StreamData,
+): UpsertType | undefined =>
+	stream?.stream.default_stream_properties?.update_type
+
+// Same lookup, from the streams list by stream identifier.
+export const getDefaultUpsertTypeFor = (
+	streams: StreamData[] | undefined,
+	{ streamName, namespace }: StreamIdentifier,
+): UpsertType | undefined =>
+	getDefaultUpsertType(
+		streams?.find(
+			s => s.stream.name === streamName && s.stream.namespace === namespace,
+		),
+	)
 
 /**
  * Processes the raw SourceStreamsResponse into the
@@ -75,9 +96,21 @@ export const getStreamsDataFromSourceStreamsResponse = (
 
 		if (matchingSelectedStream) {
 			// Stream is selected, use the selected stream configuration
+			const upsertMode =
+				!matchingSelectedStream.append_mode &&
+				isDestUpsertModeSupported &&
+				isSourceUpsertModeSupported
+			const { update_type: savedUpdateType, ...selectedStreamRest } =
+				matchingSelectedStream
+
 			mergedSelectedStreams[namespace].push({
-				...matchingSelectedStream,
+				...selectedStreamRest,
 				disabled: false,
+				// update_type only applies while the stream runs in upsert mode;
+				// older saved jobs carry no value, so fall back to the catalog default.
+				...(upsertMode && {
+					update_type: savedUpdateType ?? getDefaultUpsertType(stream),
+				}),
 			})
 		} else {
 			// Stream is not selected, use defaults from default_stream_properties
@@ -94,6 +127,11 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				stream_name: streamName,
 				disabled: true,
 				append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported, // Default to append if either source or destination does not support upsert
+				// update_type only applies while the stream runs in upsert mode.
+				...(isDestUpsertModeSupported &&
+					isSourceUpsertModeSupported && {
+						update_type: getDefaultUpsertType(stream),
+					}),
 				// Add selected_columns only when the source supports it.
 				...(supportsColumnSelection && {
 					selected_columns: {
@@ -521,11 +559,19 @@ export const buildBulkSelectedStreams = (
 		sourceType,
 	)
 
+	const appendMode = !isDestUpsertModeSupported || !isSourceUpsertModeSupported
+
+	// update_type is the catalog's key for the default upsert type; it is carried
+	// on the selected stream as update_type instead.
+	const { update_type: defaultUpsertType, ...defaultProperties } =
+		commonStream.stream.default_stream_properties ?? {}
+
 	return {
 		...STREAM_DEFAULTS,
-		...commonStream.stream.default_stream_properties,
+		...defaultProperties,
 		stream_name: commonStream.stream.name,
-		append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported,
+		append_mode: appendMode,
+		...(!appendMode && { update_type: defaultUpsertType }),
 	}
 }
 // Returns the stream data and default selected stream data
