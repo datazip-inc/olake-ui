@@ -54,3 +54,5 @@ ui/test-results/
 ui/playwright-report/
 ui/blob-report/
 ui/tests/.auth/
+.cocoindex_code/
+CLAUDE.local.md
