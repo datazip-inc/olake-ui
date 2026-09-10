@@ -70,7 +70,7 @@ If you want to make changes to environment variables or configuration values, yo
 You can also change the local PostgreSQL connection or any other settings based on your specific requirements.
 
 ### Prerequisites
-- **Go** ≥ 1.20  
+- **Go** ≥ 1.26.8  
 - **Node.js** and **pnpm**  
 - **Docker** and **Docker Compose**  
 
