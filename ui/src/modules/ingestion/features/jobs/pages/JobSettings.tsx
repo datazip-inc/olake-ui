@@ -269,6 +269,8 @@ const JobSettings: React.FC = () => {
 						: JSON.stringify(job.streams_config),
 				// In settings page, we are not modifying the streams, there will be no stream difference
 				difference_streams: "{}",
+				// Streams can't change here, so index_required round-trips
+				// unchanged from the job's stored advanced settings.
 				advanced_settings: advancedSettings,
 			}
 
