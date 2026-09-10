@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 )
 
 // CreateDirectory creates a directory with the specified permissions if it doesn't exist
@@ -19,7 +21,7 @@ func CreateDirectory(dirPath string, perm os.FileMode) error {
 // WriteFile writes data to a file, creating the directory if necessary
 func WriteFile(filePath string, data []byte, perm os.FileMode) error {
 	dirPath := filepath.Dir(filePath)
-	if err := CreateDirectory(dirPath, 0755); err != nil {
+	if err := CreateDirectory(dirPath, constants.DefaultDirMode); err != nil {
 		return err
 	}
 

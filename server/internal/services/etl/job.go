@@ -115,21 +115,22 @@ func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, proje
 	}
 
 	job := &models.Job{
-		Name:             req.Name,
-		SourceID:         source.ID,
-		DestID:           dest.ID,
-		Source:           source,
-		Destination:      dest,
-		Active:           true,
-		Frequency:        req.Frequency,
-		StreamsConfig:    req.StreamsConfig,
-		State:            "{}",
-		AdvancedSettings: advancedSettings,
-		ProjectID:        projectID,
-		CreatedByID:      user.ID,
-		UpdatedByID:      user.ID,
-		CreatedBy:        user,
-		UpdatedBy:        user,
+		Name:                  req.Name,
+		SourceID:              source.ID,
+		DestID:                dest.ID,
+		Source:                source,
+		Destination:           dest,
+		Active:                true,
+		Frequency:             req.Frequency,
+		StreamsConfig:         req.StreamsConfig,
+		SelectedStreamsConfig: utils.StringPtr(req.SelectedStreamsConfig),
+		State:                 "{}",
+		AdvancedSettings:      advancedSettings,
+		ProjectID:             projectID,
+		CreatedByID:           user.ID,
+		UpdatedByID:           user.ID,
+		CreatedBy:             user,
+		UpdatedBy:             user,
 	}
 	if err := s.db.CreateJob(job); err != nil {
 		return fmt.Errorf("failed to create job: %s", err)
@@ -207,6 +208,9 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 		"streams_config": req.StreamsConfig,
 		"project_id":     projectID,
 		"updated_by_id":  *userID,
+	}
+	if strings.TrimSpace(req.SelectedStreamsConfig) != "" {
+		updateParams["selected_streams_config"] = req.SelectedStreamsConfig
 	}
 	if req.AdvancedSettings != nil {
 		b, err := json.Marshal(req.AdvancedSettings)
@@ -336,7 +340,7 @@ func (s Service) ClearDestination(ctx context.Context, projectID string, jobID i
 	if job.Source == nil {
 		return fmt.Errorf("job source details not found")
 	}
-	if err := CheckClearDestinationCompatibility(job.Source.Version); err != nil {
+	if err := utils.CheckClearDestinationCompatibility(job.Source.Version); err != nil {
 		return err
 	}
 
@@ -388,7 +392,7 @@ func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, r
 	if job.Source == nil {
 		return nil, fmt.Errorf("job source details not found")
 	}
-	if err := CheckClearDestinationCompatibility(job.Source.Version); err != nil {
+	if err := utils.CheckClearDestinationCompatibility(job.Source.Version); err != nil {
 		return nil, err
 	}
 
@@ -517,7 +521,10 @@ func (s Service) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, incl
 		Activate:  job.Active,
 	}
 
-	jobResp.StreamsConfig = utils.Ternary(includeConfig, job.StreamsConfig, "").(string)
+	if includeConfig {
+		jobResp.StreamsConfig = job.StreamsConfig
+		jobResp.SelectedStreamsConfig = utils.StringValue(job.SelectedStreamsConfig)
+	}
 
 	if job.Source != nil {
 		jobResp.Source = dto.DriverConfig{

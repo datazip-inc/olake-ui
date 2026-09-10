@@ -47,7 +47,7 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 	relativePath := filepath.Join(streamsDir, "streams.json")
 	streamsPath := filepath.Join(constants.DefaultConfigDir, relativePath)
 
-	if err := utils.WriteFile(streamsPath, []byte(catalog), 0644); err != nil {
+	if err := utils.WriteFile(streamsPath, []byte(catalog), constants.DefaultFileMode); err != nil {
 		return nil, fmt.Errorf("failed to write streams config to file: %v", err)
 	}
 
@@ -73,7 +73,7 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 	}, nil
 }
 
-// extractWorkflowResponse extracts and parses the JSON response from a workflow execution result
+// ExtractWorkflowResponse extracts and parses the JSON response from a workflow execution result
 func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 	if err := run.Get(ctx, &result); err != nil {

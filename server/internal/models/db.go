@@ -82,18 +82,19 @@ func (d *Destination) TableName() string {
 // Job represents a synchronization job
 type Job struct {
 	BaseModel
-	ID               int     `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
-	Name             string  `json:"name" gorm:"column:name;size:100"`
-	SourceID         int     `json:"source_id" gorm:"column:source_id"`
-	DestID           int     `json:"dest_id" gorm:"column:dest_id"`
-	Active           bool    `json:"active" gorm:"column:active"`
-	Frequency        string  `json:"frequency" gorm:"column:frequency;size:255"`
-	StreamsConfig    string  `json:"streams_config" gorm:"column:streams_config;type:jsonb"`
-	State            string  `json:"state" gorm:"column:state;type:jsonb"`
-	AdvancedSettings *string `json:"advanced_settings" gorm:"column:advanced_settings;type:jsonb"`
-	CreatedByID      int     `json:"-" gorm:"column:created_by_id"`
-	UpdatedByID      int     `json:"-" gorm:"column:updated_by_id"`
-	ProjectID        string  `json:"project_id" gorm:"column:project_id;size:255"`
+	ID                    int     `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
+	Name                  string  `json:"name" gorm:"column:name;size:100"`
+	SourceID              int     `json:"source_id" gorm:"column:source_id"`
+	DestID                int     `json:"dest_id" gorm:"column:dest_id"`
+	Active                bool    `json:"active" gorm:"column:active"`
+	Frequency             string  `json:"frequency" gorm:"column:frequency;size:255"`
+	StreamsConfig         string  `json:"streams_config" gorm:"column:streams_config;type:jsonb"`
+	SelectedStreamsConfig *string `json:"selected_streams_config" gorm:"column:selected_streams_config;type:jsonb"`
+	State                 string  `json:"state" gorm:"column:state;type:jsonb"`
+	AdvancedSettings      *string `json:"advanced_settings" gorm:"column:advanced_settings;type:jsonb"`
+	CreatedByID           int     `json:"-" gorm:"column:created_by_id"`
+	UpdatedByID           int     `json:"-" gorm:"column:updated_by_id"`
+	ProjectID             string  `json:"project_id" gorm:"column:project_id;size:255"`
 
 	Source      *Source      `json:"source,omitempty" gorm:"foreignKey:SourceID;references:ID"`
 	Destination *Destination `json:"destination,omitempty" gorm:"foreignKey:DestID;references:ID"`
