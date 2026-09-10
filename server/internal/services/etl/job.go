@@ -8,8 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -483,7 +481,7 @@ func (s Service) GetJobTasks(ctx context.Context, projectID string, jobID int) (
 	return tasks, nil
 }
 
-func (s Service) GetTaskLogs(_ context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
+func (s Service) GetTaskLogs(ctx context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		if errors.Is(err, constants.ErrJobNotFound) {
@@ -492,13 +490,12 @@ func (s Service) GetTaskLogs(_ context.Context, jobID int, filePath string, curs
 		return nil, fmt.Errorf("failed to find job: %s", err)
 	}
 
-	// Get and validate base directory from file path
-	mainSyncDir, err := utils.GetAndValidateLogBaseDir(filePath)
+	mainSyncDir, err := utils.GetAndValidateLogBaseDir(ctx, filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	logs, err := utils.ReadLogs(mainSyncDir, cursor, limit, direction)
+	logs, err := utils.ReadLogs(ctx, mainSyncDir, cursor, limit, direction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read logs: %s", err)
 	}
@@ -711,14 +708,14 @@ func (s Service) RecoverFromClearDestination(ctx context.Context, projectID stri
 	return nil
 }
 
-// StreamLogArchive creates and streams a tar.gz archive of job logs to the provided writer
-func (s Service) StreamLogArchive(jobID int, taskLogFilePath string, writer io.Writer) error {
-	baseDir, err := utils.GetAndValidateLogBaseDir(taskLogFilePath)
+// StreamLogArchive creates and streams a tar.gz archive of job logs to the provided writer.
+func (s Service) StreamLogArchive(ctx context.Context, jobID int, taskLogFilePath string, writer io.Writer) error {
+	baseDir, err := utils.GetAndValidateLogBaseDir(ctx, taskLogFilePath)
 	if err != nil {
 		return err
 	}
 
-	logsDir, _, err := utils.GetAndValidateSyncDir(baseDir)
+	_, err = utils.GetAndValidateSyncFolder(ctx, baseDir)
 	if err != nil {
 		return err
 	}
@@ -732,29 +729,9 @@ func (s Service) StreamLogArchive(jobID int, taskLogFilePath string, writer io.W
 	tarWriter := tar.NewWriter(gzipWriter)
 	defer tarWriter.Close()
 
-	stateFile := filepath.Join(baseDir, "state.json")
-	if err := utils.AddFileToArchive(tarWriter, stateFile, "state.json"); err != nil {
-		logger.Warnf("failed to add state.json to archive: %s", err)
-		// Continue anyway - state.json might not exist
-	}
-
-	logger.Debugf("Adding files from %s to archive", logsDir)
-	err = filepath.Walk(logsDir, func(path string, info os.FileInfo, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-
-		// Only include files, skip directories
-		if info.IsDir() {
-			return nil
-		}
-
-		archivePath := filepath.Join("logs", filepath.Base(path))
-		return utils.AddFileToArchive(tarWriter, path, archivePath)
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to add files from logs directory %s: %s", logsDir, err)
+	logger.Debugf("Adding files from %s to archive", baseDir)
+	if err := utils.AddFilesToArchive(ctx, baseDir, tarWriter); err != nil {
+		return err
 	}
 
 	logger.Infof("Successfully created log archive for job_id[%d]", jobID)

@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
+	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
@@ -198,8 +200,7 @@ func enrichWithSyncStats(properties map[string]interface{}, workflowID string) e
 }
 
 func addStatsProperties(properties map[string]interface{}, mainSyncDir string) error {
-	statsPath := filepath.Join(mainSyncDir, "stats.json")
-	statsData, err := os.ReadFile(statsPath)
+	statsData, err := ReadSyncJobFile(context.Background(), mainSyncDir, "stats.json")
 	if err != nil {
 		return err
 	}
@@ -219,8 +220,7 @@ func addStatsProperties(properties map[string]interface{}, mainSyncDir string) e
 }
 
 func addStreamsProperties(properties map[string]interface{}, mainSyncDir string) error {
-	streamsPath := filepath.Join(mainSyncDir, "streams.json")
-	streamsData, err := os.ReadFile(streamsPath)
+	streamsData, err := ReadSyncJobFile(context.Background(), mainSyncDir, "streams.json")
 	if err != nil {
 		return fmt.Errorf("failed to read streams.json: %s", err)
 	}
@@ -251,4 +251,18 @@ func addStreamsProperties(properties map[string]interface{}, mainSyncDir string)
 	properties["normalized_streams_count"] = normalizedCount
 	properties["partitioned_streams_count"] = partitionedCount
 	return nil
+}
+
+// ReadSyncJobFile reads a file from the job work dir (NFS) or the matching S3 key.
+func ReadSyncJobFile(ctx context.Context, mainSyncDir, filename string) ([]byte, error) {
+	switch storagemode.Get() {
+	case constants.StorageModeS3:
+		body, _, err := storage.ReadFileFromS3(ctx, mainSyncDir, filename, false)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(body), nil
+	default:
+		return os.ReadFile(filepath.Join(mainSyncDir, filename))
+	}
 }

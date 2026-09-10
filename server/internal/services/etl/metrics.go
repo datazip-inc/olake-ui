@@ -2,6 +2,7 @@ package etl
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -11,8 +12,8 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
-	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	enumspb "go.temporal.io/api/enums/v1"
@@ -152,7 +153,7 @@ func (m *metricsCollector) refresh(ctx context.Context) error {
 	}
 
 	if time.Since(m.lastStatsRead) >= statsRefreshTTL {
-		m.refreshStats()
+		m.refreshStats(ctx)
 		m.lastStatsRead = time.Now()
 	}
 	return nil
@@ -196,7 +197,7 @@ func (m *metricsCollector) gather(ctx context.Context) ([]metricsRow, error) {
 				duration = run.CloseTime.Sub(run.StartTime).Seconds()
 			}
 
-			stats, err := readSyncStats(m.statsBaseDir, run.WorkflowID)
+			stats, err := readSyncStats(ctx, m.statsBaseDir, run.WorkflowID)
 			if err != nil {
 				// File not written yet or truncate-rewrite race: keep this job's previous
 				// stats series; it self-heals on the next read.
@@ -272,11 +273,11 @@ func (m *metricsCollector) setStats(labels prometheus.Labels, stats *syncStats) 
 	m.memory.With(labels).Set(stats.Memory)
 }
 
-// refreshStats re-reads stats.json for the last snapshot's jobs — filesystem only,
-// no DB or Temporal load. Caller holds m.mu.
-func (m *metricsCollector) refreshStats() {
+// refreshStats re-reads stats.json for the last snapshot's jobs (NFS or S3),
+// with no DB or Temporal load. Caller holds m.mu.
+func (m *metricsCollector) refreshStats(ctx context.Context) {
 	for _, target := range m.statsTargets {
-		stats, err := readSyncStats(m.statsBaseDir, target.workflowID)
+		stats, err := readSyncStats(ctx, m.statsBaseDir, target.workflowID)
 		if err != nil {
 			continue // unreadable → keep previous values; self-heals next read
 		}
@@ -298,11 +299,16 @@ type syncStats struct {
 // zero values without error (older images ship fewer keys); a missing file or
 // truncated JSON (the CLI truncate-rewrites every ~2s) errors so the caller keeps
 // the job's previous values.
-func readSyncStats(baseDir, workflowID string) (*syncStats, error) {
-	statsPath := filepath.Join(baseDir, temporal.GetWorkflowDirectory(temporal.Sync, workflowID), "stats.json")
-	raw, err := utils.ReadJSONFile(statsPath)
+func readSyncStats(ctx context.Context, baseDir, workflowID string) (*syncStats, error) {
+	workDir := filepath.Join(baseDir, temporal.GetWorkflowDirectory(temporal.Sync, workflowID))
+
+	body, err := telemetry.ReadSyncJobFile(ctx, workDir, "stats.json")
 	if err != nil {
-		return nil, fmt.Errorf("failed to read %s: %s", statsPath, err)
+		return nil, err
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("failed to parse stats.json: %s", err)
 	}
 
 	stats := &syncStats{}
