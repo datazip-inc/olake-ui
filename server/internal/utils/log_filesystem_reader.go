@@ -202,9 +202,9 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) 
 	return lines, currentOffset, hasMore, nil
 }
 
-// GetAndValidateNfsLogBaseDir returns the base directory path for log files
+// GetAndValidateFilesystemLogBaseDir returns the base directory path for log files
 // based on the SHA256 hash of the filePath (workflow ID) and validates it exists.
-func GetAndValidateNfsLogBaseDir(filePath string) (string, error) {
+func GetAndValidateFilesystemLogBaseDir(filePath string) (string, error) {
 	if filePath == "" {
 		return "", fmt.Errorf("file path cannot be empty")
 	}
@@ -221,8 +221,8 @@ func GetAndValidateNfsLogBaseDir(filePath string) (string, error) {
 	return baseDir, nil
 }
 
-// GetAndValidateNfsSyncDir returns the logs directory and sync_* folder name under it
-func GetAndValidateNfsSyncDir(baseDir string) (string, string, error) {
+// GetAndValidateFilesystemSyncDir returns the logs directory and sync_* folder name under it
+func GetAndValidateFilesystemSyncDir(baseDir string) (string, string, error) {
 	logsDir := filepath.Join(baseDir, "logs")
 
 	entries, err := os.ReadDir(logsDir)
@@ -243,17 +243,17 @@ func GetAndValidateNfsSyncDir(baseDir string) (string, string, error) {
 	return "", "", fmt.Errorf("no sync folder found in: %s", logsDir)
 }
 
-// readLogsFromNFS reads logs from the given mainLogDir and returns structured log entries.
+// readLogsFromFilesystem reads logs from the given mainLogDir and returns structured log entries.
 // Direction can be "older" or "newer". If cursor < 0, it tails from the end of the file.
 // Returns a TaskLogsResponse-like struct: oldest->newest logs plus cursors and hasMore flags.
-func readLogsFromNFS(mainLogDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
+func readLogsFromFilesystem(mainLogDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	// Check if mainLogDir exists
 	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
 		return nil, fmt.Errorf("logs directory not found: %s: %s", mainLogDir, err)
 	}
 
 	// Resolve and validate logs/sync_* directory
-	logsDir, syncFolderName, err := GetAndValidateNfsSyncDir(mainLogDir)
+	logsDir, syncFolderName, err := GetAndValidateFilesystemSyncDir(mainLogDir)
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +331,7 @@ func readLogsFromNFS(mainLogDir string, cursor int64, limit int, direction strin
 	return response, nil
 }
 
-func addNfsFilesToArchive(baseDir string, tarWriter *tar.Writer) error {
+func addFilesystemFilesToArchive(baseDir string, tarWriter *tar.Writer) error {
 	stateFile := filepath.Join(baseDir, "state.json")
 	if err := addFileToArchive(tarWriter, stateFile, "state.json"); err != nil {
 		logger.Warnf("failed to add state.json to archive: %s", err)

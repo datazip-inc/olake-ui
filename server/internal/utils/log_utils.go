@@ -30,7 +30,7 @@ func ReadLogs(ctx context.Context, logDir string, cursor int64, limit int, direc
 		}
 		return readLogsFromS3(ctx, logDir, cursor, limit, direction)
 	default:
-		return readLogsFromNFS(logDir, cursor, limit, direction)
+		return readLogsFromFilesystem(logDir, cursor, limit, direction)
 	}
 }
 
@@ -56,7 +56,7 @@ func GetAndValidateLogBaseDir(ctx context.Context, workflowID string) (string, e
 	case constants.StorageModeS3:
 		return GetAndValidateS3LogBaseDir(ctx, workflowID)
 	default:
-		return GetAndValidateNfsLogBaseDir(workflowID)
+		return GetAndValidateFilesystemLogBaseDir(workflowID)
 	}
 }
 
@@ -66,7 +66,7 @@ func GetAndValidateSyncFolder(ctx context.Context, baseDir string) (string, erro
 	case constants.StorageModeS3:
 		return GetAndValidateS3SyncDir(ctx, baseDir)
 	default:
-		_, syncFolderName, err := GetAndValidateNfsSyncDir(baseDir)
+		_, syncFolderName, err := GetAndValidateFilesystemSyncDir(baseDir)
 		return syncFolderName, err
 	}
 }
@@ -133,7 +133,7 @@ func AddFilesToArchive(ctx context.Context, baseDir string, tarWriter *tar.Write
 	case constants.StorageModeS3:
 		return addS3FilesToArchive(ctx, baseDir, tarWriter)
 	default:
-		return addNfsFilesToArchive(baseDir, tarWriter)
+		return addFilesystemFilesToArchive(baseDir, tarWriter)
 	}
 }
 

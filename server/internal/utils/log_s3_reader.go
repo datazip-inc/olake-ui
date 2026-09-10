@@ -39,7 +39,7 @@ func readLogsFromS3(ctx context.Context, workflowDir string, cursor int64, _ int
 }
 
 // GetAndValidateS3LogBaseDir validates the hashed job log prefix.
-// Used only for sync/clear job logs (same as staging NFS hashing).
+// Used only for sync/clear job logs (same as filesystem hashing).
 func GetAndValidateS3LogBaseDir(ctx context.Context, workflowID string) (string, error) {
 	workflowDir := WorkflowHash(workflowID)
 	exists, err := storage.PrefixExists(ctx, workflowDir)
