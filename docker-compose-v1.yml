@@ -56,6 +56,8 @@ services:
         condition: service_healthy # Wait for postgres to be healthy
       temporal:
         condition: service_healthy
+      temporal-create-namespace:
+        condition: service_completed_successfully
       fusion-init:
         condition: service_completed_successfully # Wait for initial Fusion setup to complete
         required: false
@@ -128,6 +130,8 @@ services:
     depends_on:
       temporal:
         condition: service_healthy
+      temporal-create-namespace:
+        condition: service_completed_successfully
       olake-ui:
         condition: service_healthy
     restart: unless-stopped
@@ -208,6 +212,7 @@ services:
       - ./scripts/temporal-create-namespace.sh:/scripts/create-namespace.sh:ro
     entrypoint: ["/bin/sh"]
     command: /scripts/create-namespace.sh
+    restart: on-failure:5
 
   temporal-ui:
     container_name: temporal-ui
