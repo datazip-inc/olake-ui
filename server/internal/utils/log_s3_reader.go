@@ -194,6 +194,11 @@ func addS3FilesToArchive(ctx context.Context, workflowDir string, tarWriter *tar
 		return err
 	}
 
+	var (
+		connector, worker       bytes.Buffer
+		connectorMod, workerMod time.Time
+	)
+
 	for _, objectPath := range objectPaths {
 		archiveName, ok := archiveNameUnderWorkflow(workflowDir, objectPath)
 		if !ok {
@@ -206,7 +211,27 @@ func addS3FilesToArchive(ctx context.Context, workflowDir string, tarWriter *tar
 			continue
 		}
 
-		if err := addBytesToArchive(tarWriter, archiveName, []byte(body), modTime); err != nil {
+		switch {
+		case strings.HasPrefix(path.Base(archiveName), constants.ConnectorLogPrefix):
+			connector.WriteString(body)
+			connectorMod = modTime
+		case strings.HasPrefix(path.Base(archiveName), constants.WorkerLogPrefix):
+			worker.WriteString(body)
+			workerMod = modTime
+		default:
+			if err := addBytesToArchive(tarWriter, archiveName, []byte(body), modTime); err != nil {
+				return err
+			}
+		}
+	}
+
+	if connector.Len() > 0 {
+		if err := addBytesToArchive(tarWriter, "logs/olake.log", connector.Bytes(), connectorMod); err != nil {
+			return err
+		}
+	}
+	if worker.Len() > 0 {
+		if err := addBytesToArchive(tarWriter, "logs/worker.log", worker.Bytes(), workerMod); err != nil {
 			return err
 		}
 	}

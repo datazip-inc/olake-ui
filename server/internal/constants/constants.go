@@ -102,6 +102,7 @@ var (
 	DefaultLogsDirection = "older"
 
 	ConnectorLogPrefix = "connector"
+	WorkerLogPrefix    = "worker"
 
 	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.
