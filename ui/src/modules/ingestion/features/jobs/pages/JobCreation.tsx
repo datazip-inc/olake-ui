@@ -50,6 +50,7 @@ import {
 	validateCronExpression,
 	formatSelectedStreamsPayload,
 	validateStreams,
+	withIndexRequired,
 } from "../utils"
 
 // Internal imports from components
@@ -234,7 +235,7 @@ const JobCreation: React.FC = () => {
 				selected_streams: formatSelectedStreamsPayload(streamsData),
 			}),
 			frequency: cronExpression,
-			advanced_settings: advancedSettings,
+			advanced_settings: withIndexRequired(advancedSettings, streamsData),
 		}
 
 		try {
