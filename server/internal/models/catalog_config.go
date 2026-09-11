@@ -3,6 +3,9 @@ package models
 // Note: not importing it from "github.com/datazip-inc/olake", as it will bring
 // unnecessary dependencies in go.mod
 
+// TODO: move the complete spec.json / spec logic to olake-fusion and deperecate / remove
+// the current spec.json & mapping logics in olake-ui.
+
 // CatalogType represents supported Iceberg catalog implementations
 type CatalogType string
 
@@ -24,6 +27,8 @@ type Config struct {
 	SecretKey          string `json:"aws_secret_key,omitempty"`
 	SessionToken       string `json:"aws_session_token,omitempty"`
 	ProfileName        string `json:"aws_profile,omitempty"`
+	// TODO: remove NoIdentifierFields flag in both spec / mapping logics as
+	// it is unrequired by the optimization service
 	NoIdentifierFields bool   `json:"no_identifier_fields"` // Needed to set true for Databricks Unity Catalog as it doesn't support identifier fields
 
 	// S3 endpoint for custom S3-compatible services (like MinIO)

@@ -10,6 +10,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 // maps optimization catalog details to ETL Destination Configuration
@@ -171,6 +172,8 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 		olakeConfig.RestAuthType = "org.apache.iceberg.gcp.auth.GoogleAuthManager"
 	}
 
+	olakeConfig.RestAuthType = olakeAuthTypeToIcebergAuthType(olakeConfig.RestAuthType)
+
 	// mapping polaris, lakekeeper, etc. -> rest in optimization service
 	if slices.Contains(constants.RESTCatalogs, string(olakeConfig.CatalogType)) {
 		olakeConfig.CatalogType = "rest"
@@ -227,5 +230,25 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 		} else {
 			utils.SetIfNotEmpty(properties, "rest.sigv4-enabled", "false")
 		}
+	}
+}
+
+func olakeAuthTypeToIcebergAuthType(authType string) string {
+	switch strings.ToLower(strings.TrimSpace(authType)) {
+	case "oauth2", "oauth2 u2m", "oauth2 m2m", "token", "token federation",
+		"personal access token (pat)", "pat":
+		return "oauth2"
+	case "none":
+		return "none"
+	case "sigv4":
+		return "sigv4"
+	case "google", "gcp":
+		return "google"
+	default:
+		if strings.Contains(authType, ".") && !strings.Contains(authType, " ") {
+			return authType
+		}
+		logger.Warnf("unmapped rest_auth_type %q. Iceberg rest.auth.type omitted", authType)
+		return ""
 	}
 }
