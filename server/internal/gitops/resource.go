@@ -2,15 +2,22 @@ package gitops
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"unicode"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
 const (
@@ -246,4 +253,95 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n]
+}
+
+type resourceSpec struct {
+	ID      int
+	Name    string
+	Type    string
+	Version string
+	Config  dto.JSONConfig
+}
+
+// resource is the source/destination wiring for the shared reconcile loop.
+type resource interface {
+	kind() string
+	notFoundErr() error
+	parse(config string) (*resourceSpec, error)
+	get(ctx context.Context, projectID, name string) (*resourceSpec, error)
+	test(ctx context.Context, spec *resourceSpec) error
+	create(ctx context.Context, spec *resourceSpec, projectID string, userID *int) error
+	update(ctx context.Context, id int, spec *resourceSpec, projectID string, userID *int) error
+}
+
+func resourceMatches(existing, spec *resourceSpec) bool {
+	return existing.Name == spec.Name &&
+		existing.Type == spec.Type &&
+		existing.Version == spec.Version &&
+		utils.EqualJSON(existing.Config.String(), spec.Config.String())
+}
+
+func reconcileResource(ctx context.Context, sink StatusSink, r resource, res *ResourceData) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	observedHash := ContentHash(res.Data)
+	if skipReconcile(res.Annotations, observedHash) {
+		return ctrl.Result{}, nil
+	}
+
+	spec, err := r.parse(res.Config())
+	if err != nil {
+		return failResource(ctx, sink, res, NonRetryableError(err), observedHash)
+	}
+	userID, err := requireSpec(res.ProjectID(), res.UserID())
+	if err != nil {
+		return failResource(ctx, sink, res, err, observedHash)
+	}
+
+	existing, err := r.get(ctx, res.ProjectID(), spec.Name)
+	if err != nil && !errors.Is(err, r.notFoundErr()) {
+		logger.Error(err, "lookup "+r.kind()+" failed")
+		return requeueTransient(ctx, sink, res, err, observedHash)
+	}
+
+	changed := existing != nil && !resourceMatches(existing, spec)
+	if existing == nil || changed {
+		if err := r.test(ctx, spec); err != nil {
+			logger.Error(err, r.kind()+" connection test failed")
+			return failResource(ctx, sink, res, NonRetryableError(err), observedHash)
+		}
+	}
+
+	switch {
+	case existing == nil:
+		if err := r.create(ctx, spec, res.ProjectID(), &userID); err != nil {
+			logger.Error(err, "create "+r.kind()+" failed")
+			return failResource(ctx, sink, res, NonRetryableError(err), observedHash)
+		}
+		existing, err = r.get(ctx, res.ProjectID(), spec.Name)
+		if err != nil {
+			logger.Error(err, "reload "+r.kind()+" after create failed")
+			return requeueTransient(ctx, sink, res, err, observedHash)
+		}
+	case changed:
+		if err := r.update(ctx, existing.ID, spec, res.ProjectID(), &userID); err != nil {
+			logger.Error(err, "update "+r.kind()+" failed")
+			return failResource(ctx, sink, res, NonRetryableError(err), observedHash)
+		}
+	}
+
+	if err := successResource(ctx, sink, res, existing.ID, observedHash); err != nil {
+		logger.Error(err, "update "+r.kind()+" status failed")
+		return requeueTransient(ctx, sink, res, err, observedHash)
+	}
+	return ctrl.Result{}, nil
+}
+
+func setupResourceController(mgr ctrl.Manager, name, kind string, rec reconcile.Reconciler) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		Named(name).
+		For(&corev1.ConfigMap{}).
+		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(identityEnqueue)).
+		WithEventFilter(kindPredicate(kind)).
+		Complete(rec)
 }

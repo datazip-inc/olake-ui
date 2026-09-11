@@ -36,11 +36,11 @@ func (r *JobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	res := resourceFromCM(&cm)
-	return r.sync(ctx, &res)
+	return r.reconcileJob(ctx, &res)
 }
 
 /*
-Job sync rules:
+Job reconcile rules:
 
 Validate / resolve:
   - Validate job spec; resolve source and destination from DB (Pending if missing).
@@ -63,7 +63,7 @@ Why discover here:
   - GitOps: you edit the CM first; discover takes that as input and merges with
     the source (sync_new_columns, new tables in schema, etc.).
 */
-func (r *JobReconciler) sync(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
+func (r *JobReconciler) reconcileJob(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	observed := r.reconcileHash(ctx, res)
 	if skipReconcile(res.Annotations, observed) {
@@ -350,6 +350,7 @@ func (r *JobReconciler) enqueueJobsForDestination(ctx context.Context, obj clien
 func (r *JobReconciler) enqueueJobsReferencing(ctx context.Context, namespace string, match func(*JobConfig) bool) []reconcile.Request {
 	var list corev1.ConfigMapList
 	if err := r.List(ctx, &list, client.InNamespace(namespace), client.MatchingLabels(managedLabels(KindJob))); err != nil {
+		log.FromContext(ctx).Error(err, "list jobs failed")
 		return nil
 	}
 	reqs := make([]reconcile.Request, 0, len(list.Items))

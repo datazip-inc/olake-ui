@@ -12,12 +12,12 @@ const IndicatorWorkflow = "IndicatorWorkflow"
 
 // IndicatorRequest is shared with the worker IndicatorWorkflow.
 type IndicatorRequest struct {
-	Action    string `json:"action"`    // spawn | delete
-	Name      string `json:"name"`      // final pod/container name (DNS-1123)
-	Namespace string `json:"namespace"` // ignored in Docker mode
-	Kind      string `json:"kind"`      // source | destination | job | streams
-	CRName    string `json:"cr_name"`   // originating ConfigMap name
-	Message   string `json:"message"`   // error text for spawn
+	Action       string `json:"action"`        // spawn | delete
+	Name         string `json:"name"`          // final pod/container name (DNS-1123)
+	Namespace    string `json:"namespace"`     // ignored in Docker mode
+	Kind         string `json:"kind"`          // source | destination | job | streams
+	ResourceName string `json:"resource_name"` // originating ConfigMap or Secret name
+	Message      string `json:"message"`       // error text for spawn
 }
 
 // StartIndicator submits IndicatorWorkflow fire-and-forget (no wait for result).
