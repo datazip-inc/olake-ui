@@ -267,7 +267,8 @@ func (s Service) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (
 		return dto.SpecResponse{}, fmt.Errorf("failed to get driver image tags: %s", err)
 	}
 
-	specOut, err := s.temporal.GetDriverSpecs(ctx, req.Type, driver, req.Version)
+	// The matrix describes engines, not destinations, so this endpoint always serves the destination UI spec.
+	specOut, err := s.temporal.GetDriverSpecs(ctx, req.Type, driver, req.Version, false)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)
 	}

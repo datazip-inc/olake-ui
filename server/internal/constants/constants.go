@@ -30,6 +30,8 @@ var (
 	DefaultSpecVersion               = "v0.2.0"
 	DefaultClearDestinationVersion   = "v0.3.0"
 	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
+	// DefaultQueryEnginesVersion is the first release with the query engine flags; older images reject them.
+	DefaultQueryEnginesVersion = "v0.10.2"
 
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"
@@ -41,6 +43,8 @@ var (
 
 	// command flags
 	MaxDiscoverThreadsFlag    = "--max-discover-threads"
+	AvailableQueryEnginesFlag = "--available-query-engines"
+	TargetQueryEnginesFlag    = "--target-query-engines"
 	DefaultMaxDiscoverThreads = 50
 
 	// conf keys
