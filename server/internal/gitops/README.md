@@ -4,7 +4,7 @@ Manage OLake sources, destinations, jobs, and stream selections as labelled **Co
 
 ## Prerequisites
 
-- Kubernetes: OLake UI deployed **inside** the cluster (in-cluster kubeconfig).
+- Kubernetes: OLake UI deployed **inside** the cluster (in-cluster kubeconfig), or Docker Compose with `GITOPS_FILE_DIR` for file-based manifests.
 - `GITOPS_ENABLED=true` on the `olake-ui` Deployment (Helm `gitops.enabled: true`).
 - GitOps RBAC: namespace `Role` on `configmaps` and `secrets` (get/list/watch/update/patch each), and `events` (create/patch). **No `pods` permission on olake-ui.**
 
@@ -22,6 +22,16 @@ gitops:
 ```
 
 See [olake-helm/docs/gitops.md](https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/docs/gitops.md).
+
+**Docker Compose:**
+
+```yaml
+environment:
+  GITOPS_ENABLED: "true"
+  GITOPS_FILE_DIR: /etc/olake/gitops
+volumes:
+  - ./olake-gitops:/etc/olake/gitops
+```
 
 ### 2. Apply sample manifests
 
@@ -110,6 +120,8 @@ Stored as `streams_config` in the DB; `selected_streams_config` is empty. No dis
 ### Credentials via Secrets (Source and Destination only)
 
 A Source or Destination can be defined directly as a **Secret** instead of a ConfigMap when the connector config holds credentials that shouldn't be plaintext in git. There is no separate reference field — the Secret itself carries the same `data` shape (`projectId`, `userId`, `config`) and the same `olake.io/managed`/`olake.io/kind` labels as the ConfigMap form. Pick exactly one object type per Source/Destination name; if both exist for the same name, the ConfigMap wins.
+
+**Docker Compose / `GITOPS_FILE_DIR`:** no Secret API in file mode — Source/Destination manifests there must be plain ConfigMaps with inline `data.config`.
 
 Example: `source-secret-smoke.yaml` in olake-helm.
 

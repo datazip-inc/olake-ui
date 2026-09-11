@@ -77,7 +77,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := gitops.InitGitOps(ctx, cfg.GitOpsEnabled, appSvc); err != nil {
+	if err := gitops.InitGitOps(ctx, cfg.GitOpsEnabled, cfg.GitOpsFileDir, appSvc); err != nil {
 		logger.Fatalf("gitops initialization failed: %s", err)
 	}
 
