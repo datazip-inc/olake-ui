@@ -1,3 +1,5 @@
+import { UpsertType } from "@/modules/ingestion/common/types"
+
 export const PARTITIONING_COLUMNS = [
 	{
 		title: "Column name",
@@ -30,6 +32,21 @@ export const SYNC_MODE_MAP = {
 	CDC: "cdc",
 	STRICT_CDC: "strict_cdc",
 }
+
+export const UPSERT_TYPE_OPTIONS = [
+	{
+		label: "Equality",
+		value: UpsertType.EQUALITY,
+		tooltip:
+			"Rows are matched and deleted by primary key values before the new rows are written",
+	},
+	{
+		label: "Positional",
+		value: UpsertType.POSITIONAL,
+		tooltip:
+			"Rows are deleted by their position in the existing data files before the new rows are written",
+	},
+]
 
 export const PartitioningRegexTooltip =
 	"Choose a column to partition your data for faster reads and better performance"

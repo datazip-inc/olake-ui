@@ -93,6 +93,9 @@ type UpdateDestinationRequest struct {
 
 type AdvancedSettings struct {
 	MaxDiscoverThreads *int `json:"max_discover_threads,omitempty" example:"50"`
+	// IndexRequired is derived by the UI: true when any selected stream upserts
+	// with positional deletes.
+	IndexRequired *bool `json:"index_required,omitempty" example:"true"`
 }
 
 type CreateJobRequest struct {
@@ -135,10 +138,11 @@ type UpsertProjectSettingsRequest struct {
 }
 
 type UpdateSyncTelemetryRequest struct {
-	JobID       int    `json:"job_id"`
-	WorkflowID  string `json:"workflow_id"`
-	Event       string `json:"event"`
-	Environment string `json:"environment"`
+	JobID       int            `json:"job_id"`
+	WorkflowID  string         `json:"workflow_id"`
+	Event       string         `json:"event"`
+	Environment string         `json:"environment"`
+	Properties  map[string]any `json:"properties"`
 }
 
 type UpdateStateFileRequest struct {

@@ -15,6 +15,11 @@ export enum SyncMode {
 	STRICT_CDC = "strict_cdc",
 }
 
+export enum UpsertType {
+	EQUALITY = "eq",
+	POSITIONAL = "pos",
+}
+
 export interface FilterConfigCondition {
 	column: string
 	operator: FilterOperator
@@ -60,6 +65,9 @@ export type StreamData = {
 export interface DefaultStreamProperties {
 	normalization: boolean
 	append_mode: boolean
+	// Catalog-provided default upsert type. Stored on the selected stream as
+	// update_type. Absent on older olake versions.
+	update_type?: UpsertType
 }
 
 export interface SelectedColumns {
@@ -74,6 +82,8 @@ export interface SelectedStream {
 	filter?: string
 	disabled?: boolean
 	append_mode?: boolean
+	// Only present when the stream runs in upsert mode (append_mode falsy).
+	update_type?: UpsertType
 	use_source_column_names?: boolean
 	selected_columns?: SelectedColumns
 	filter_config?: FilterConfig
