@@ -166,10 +166,6 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 		olakeConfig.RestSigningV4 = true
 		olakeConfig.RestSigningName = "s3tables"
 	}
-	// Unity Catalog doesn't support identifier fields (disable them)
-	if olakeConfig.CatalogType == "unity" {
-		olakeConfig.NoIdentifierFields = true
-	}
 	// BigLake requires GoogleAuthManager for authentication
 	if olakeConfig.CatalogType == "biglake" {
 		olakeConfig.RestAuthType = "org.apache.iceberg.gcp.auth.GoogleAuthManager"

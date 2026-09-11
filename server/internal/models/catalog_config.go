@@ -17,7 +17,6 @@ const (
 	RestCatalog CatalogType = "rest"
 )
 
-// TODO: Test BigLake with Optimization Service or Suppress it until further testing
 type Config struct {
 	// S3-compatible Storage Configuration
 	Region             string `json:"aws_region,omitempty"`
