@@ -107,7 +107,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	}
 
 	if splitStreams && utils.SupportsSelectedStreamsFlag(version) {
-		cmdArgs = append(cmdArgs, "--selected_streams", "/mnt/config/selected_streams.json")
+		cmdArgs = append(cmdArgs, "--selected-streams", "/mnt/config/selected_streams.json")
 	}
 
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
@@ -299,26 +299,25 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		{Name: "old_streams.json", Data: oldConfig},
 		{Name: "new_streams.json", Data: newConfig},
 	}
-	selectedStreamsConfig := ""
-	if job.SelectedStreamsConfig != nil {
-		selectedStreamsConfig = strings.TrimSpace(*job.SelectedStreamsConfig)
-	}
-	if selectedStreamsConfig != "" && utils.SupportsSelectedStreamsFlag(job.Source.Version) {
-		configs = append(configs, JobConfig{Name: "selected_streams.json", Data: selectedStreamsConfig})
-	}
-
-	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
-		return nil, fmt.Errorf("failed to setup config files: %s", err)
-	}
 
 	cmdArgs := []string{
 		"discover",
 		"--streams", "/mnt/config/old_streams.json",
 		"--difference", "/mnt/config/new_streams.json",
 	}
-	if selectedStreamsConfig != "" && utils.SupportsSelectedStreamsFlag(job.Source.Version) {
-		cmdArgs = append(cmdArgs, "--selected_streams", "/mnt/config/selected_streams.json")
+
+	if job.SelectedStreamsConfig != nil {
+		selectedStreamsConfig := strings.TrimSpace(*job.SelectedStreamsConfig)
+		if selectedStreamsConfig != "" && utils.SupportsSelectedStreamsFlag(job.Source.Version) {
+			configs = append(configs, JobConfig{Name: "selected_streams.json", Data: selectedStreamsConfig})
+			cmdArgs = append(cmdArgs, "--selected-streams", "/mnt/config/selected_streams.json")
+		}
 	}
+
+	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+		return nil, fmt.Errorf("failed to setup config files: %s", err)
+	}
+
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}

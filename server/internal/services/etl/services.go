@@ -27,3 +27,8 @@ func InitService(db *database.Database) (*Service, error) {
 		metrics:  newMetricsCollector(db, client, constants.DefaultConfigDir),
 	}, nil
 }
+
+// Temporal returns the shared Temporal client for GitOps indicator dispatch.
+func (s *Service) Temporal() *temporal.Temporal {
+	return s.temporal
+}
