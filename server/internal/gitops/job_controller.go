@@ -374,6 +374,7 @@ func (r *JobReconciler) enqueueJobForStreams(ctx context.Context, obj client.Obj
 	streams := resourceFromCM(cm)
 	var list corev1.ConfigMapList
 	if err := r.List(ctx, &list, client.InNamespace(streams.Namespace), client.MatchingLabels(managedLabels(KindJob))); err != nil {
+		log.FromContext(ctx).Error(err, "list jobs failed")
 		return nil
 	}
 	for i := range list.Items {
