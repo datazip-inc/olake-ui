@@ -22,14 +22,14 @@ const (
 
 type Config struct {
 	// S3-compatible Storage Configuration
-	Region             string `json:"aws_region,omitempty"`
-	AccessKey          string `json:"aws_access_key,omitempty"`
-	SecretKey          string `json:"aws_secret_key,omitempty"`
-	SessionToken       string `json:"aws_session_token,omitempty"`
-	ProfileName        string `json:"aws_profile,omitempty"`
+	Region       string `json:"aws_region,omitempty"`
+	AccessKey    string `json:"aws_access_key,omitempty"`
+	SecretKey    string `json:"aws_secret_key,omitempty"`
+	SessionToken string `json:"aws_session_token,omitempty"`
+	ProfileName  string `json:"aws_profile,omitempty"`
 	// TODO: remove NoIdentifierFields flag in both spec / mapping logics as
 	// it is unrequired by the optimization service
-	NoIdentifierFields bool   `json:"no_identifier_fields"` // Needed to set true for Databricks Unity Catalog as it doesn't support identifier fields
+	NoIdentifierFields bool `json:"no_identifier_fields"` // Needed to set true for Databricks Unity Catalog as it doesn't support identifier fields
 
 	// S3 endpoint for custom S3-compatible services (like MinIO)
 	S3Endpoint  string `json:"s3_endpoint,omitempty"`
