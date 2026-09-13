@@ -26,6 +26,11 @@ type logChunkFile struct {
 func readLogsFromS3(ctx context.Context, workflowDir string, cursor int64, _ int, direction string) (*dto.TaskLogsResponse, error) {
 	syncFolder, err := GetAndValidateS3SyncDir(ctx, workflowDir)
 	if err != nil {
+		// Connector chunks are not uploaded until the first log flush. Polling
+		// at job start would otherwise 500 before any sync_* prefix exists.
+		if strings.Contains(err.Error(), "no sync folder found") {
+			return &dto.TaskLogsResponse{Logs: []map[string]interface{}{}}, nil
+		}
 		return nil, err
 	}
 
