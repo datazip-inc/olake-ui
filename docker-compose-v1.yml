@@ -55,7 +55,9 @@ services:
       postgresql:
         condition: service_healthy # Wait for postgres to be healthy
       temporal:
-        condition: service_started # Or service_healthy if temporal has a healthcheck
+        condition: service_healthy
+      temporal-create-namespace:
+        condition: service_completed_successfully
       fusion-init:
         condition: service_completed_successfully # Wait for initial Fusion setup to complete
         required: false
@@ -127,7 +129,9 @@ services:
       OLAKE_INDEX_DB_MAX_OPEN_FILES: 1000  # max open files
     depends_on:
       temporal:
-        condition: service_started # Or service_healthy if temporal has a healthcheck
+        condition: service_healthy
+      temporal-create-namespace:
+        condition: service_completed_successfully
       olake-ui:
         condition: service_healthy
     restart: unless-stopped
@@ -149,23 +153,66 @@ services:
       timeout: 5s
       retries: 5
 
-  temporal:
-    container_name: temporal
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/auto-setup:1.22.3
+  temporal-schema-migrate:
+    container_name: temporal-schema-migrate
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/admin-tools:1.30.6
     depends_on:
       postgresql:
         condition: service_healthy
+    networks:
+      - olake-network
     environment:
       - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgresql
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CLI_ADDRESS=temporal:7233
+      - SQL_PASSWORD=temporal
+    volumes:
+      - ./scripts/temporal-migrate.sh:/scripts/setup-postgres.sh:ro
+    entrypoint: ["/bin/sh"]
+    command: /scripts/setup-postgres.sh
+    restart: on-failure:6
+
+  temporal:
+    container_name: temporal
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/server:1.30.6
+    depends_on:
+      temporal-schema-migrate:
+        condition: service_completed_successfully
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - BIND_ON_IP=0.0.0.0
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    volumes:
+      - ./server/dynamicconfig:/etc/temporal/config/dynamicconfig:ro
     networks:
       - olake-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 7233"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  temporal-create-namespace:
+    container_name: temporal-create-namespace
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/admin-tools:1.30.6
+    depends_on:
+      temporal:
+        condition: service_healthy
+    networks:
+      - olake-network
+    volumes:
+      - ./scripts/temporal-create-namespace.sh:/scripts/create-namespace.sh:ro
+    entrypoint: ["/bin/sh"]
+    command: /scripts/create-namespace.sh
+    restart: on-failure:5
 
   temporal-ui:
     container_name: temporal-ui
@@ -174,7 +221,7 @@ services:
       - debug
     depends_on:
       temporal:
-        condition: service_started
+        condition: service_healthy
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
     networks:
