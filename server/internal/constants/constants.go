@@ -123,6 +123,8 @@ var (
 	OptCacheEnabled     = "cache-enabled"
 	OptOLakeCreated     = "olake_created"
 	OptOLakeCatalogType = "olake-catalog-type"
+	// to store user selected value: "Token" instead of our converted "oauth2"
+	OptOLakeAuthType = "olake-rest-auth-type"
 	// OptimizeTableFormatList defines supported table formats for catalogs
 	OptimizeTableFormatList = []string{"ICEBERG"}
 	// hard-coding to S3 now, as the other options are "hadoop" & "OSS" for optimization

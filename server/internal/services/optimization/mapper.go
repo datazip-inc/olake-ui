@@ -71,7 +71,6 @@ func mapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
 			config.RestCatalogURL = catalog.Properties["uri"]
 			config.RestToken = catalog.Properties["token"]
 			config.RestOAuthURI = catalog.Properties["oauth2-server-uri"]
-			config.RestAuthType = catalog.Properties["rest.auth.type"]
 			config.RestCredential = catalog.Properties["credential"]
 			config.RestScope = catalog.Properties["scope"]
 			if catalog.Properties["rest.sigv4-enabled"] == "true" {
@@ -91,6 +90,16 @@ func mapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
 
 	if catalog.Properties[constants.OptOLakeCatalogType] != "" {
 		config.CatalogType = models.CatalogType(catalog.Properties[constants.OptOLakeCatalogType])
+	}
+
+	// ui has a drop down for rest auth type, the original value needs to be stored
+	// and fetched, for eg ("Token" instead of stored "oauth2")
+	// fallback for generic rest
+	if slices.Contains(constants.RESTCatalogs, string(config.CatalogType)) {
+		config.RestAuthType = catalog.Properties[constants.OptOLakeAuthType]
+		if config.RestAuthType == "" {
+			config.RestAuthType = catalog.Properties["rest.auth.type"]
+		}
 	}
 
 	return config, nil
@@ -167,6 +176,11 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 		olakeConfig.RestSigningV4 = true
 		olakeConfig.RestSigningName = "s3tables"
 	}
+
+	if slices.Contains(constants.RESTCatalogs, string(olakeConfig.CatalogType)) {
+		utils.SetIfNotEmpty(properties, constants.OptOLakeAuthType, olakeConfig.RestAuthType)
+	}
+
 	// BigLake requires GoogleAuthManager for authentication
 	if olakeConfig.CatalogType == "biglake" {
 		olakeConfig.RestAuthType = "org.apache.iceberg.gcp.auth.GoogleAuthManager"
