@@ -2,6 +2,7 @@ import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
 	DownloadSimpleIcon,
+	SpinnerIcon,
 } from "@phosphor-icons/react"
 import { message } from "antd"
 import { useState, useEffect } from "react"
@@ -129,7 +130,7 @@ const JobCreation: React.FC = () => {
 	const [showFailureModal, setShowFailureModal] = useState(false)
 	const [showEntitySavedModal, setShowEntitySavedModal] = useState(false)
 	const [showCancelModal, setShowCancelModal] = useState(false)
-	const { mutateAsync: addJob } = useCreateJob()
+	const { mutateAsync: addJob, isPending: isCreatingJob } = useCreateJob()
 	const testSourceMutation = useTestSourceConnection()
 	const testDestinationMutation = useTestDestinationConnection()
 	const [testConnectionError, setTestConnectionError] =
@@ -413,11 +414,16 @@ const JobCreation: React.FC = () => {
 					<button
 						type="button"
 						data-testid="create-job-wizard-submit"
-						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
+						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
 						onClick={handleNext}
+						disabled={isCreatingJob}
 					>
 						{currentStep === JOB_CREATION_STEPS.STREAMS ? "Create Job" : "Next"}
-						<ArrowRightIcon className="size-4 text-white" />
+						{isCreatingJob ? (
+							<SpinnerIcon className="size-4 animate-spin text-white" />
+						) : (
+							<ArrowRightIcon className="size-4 text-white" />
+						)}
 					</button>
 					<TestConnectionModal
 						open={showTestingModal}
