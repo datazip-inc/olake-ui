@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -17,6 +18,8 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
+	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
@@ -45,7 +48,7 @@ type Telemetry struct {
 	db             *database.Database
 }
 
-func InitTelemetry(db *database.Database) {
+func InitTelemetry(ctx context.Context, db *database.Database) {
 	go func() {
 		if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
 			return
@@ -57,22 +60,35 @@ func InitTelemetry(db *database.Database) {
 		tempUserID := func() string {
 			configDir := filepath.Join(os.TempDir(), "olake-config", "telemetry")
 			idPath := filepath.Join(configDir, TelemetryUserIDFile)
+			relativePath := path.Join("telemetry", TelemetryUserIDFile)
 
-			idBytes, err := os.ReadFile(idPath)
+			switch storagemode.Get() {
+			case constants.StorageModeS3:
+				idBytes, _, err := storage.ReadFileFromS3(ctx, "", relativePath, false)
+				if err == nil {
+					return string(idBytes)
+				}
+			default:
+				idBytes, err := os.ReadFile(idPath)
+				if err == nil {
+					return string(idBytes)
+				}
+			}
 
-			if err != nil {
-				newID := func() string {
-					hash := sha256.New()
-					hash.Write([]byte(time.Now().String()))
-					return hex.EncodeToString(hash.Sum(nil))[:32]
-				}()
+			hash := sha256.New()
+			hash.Write([]byte(time.Now().String()))
+			newID := hex.EncodeToString(hash.Sum(nil))[:32]
+
+			switch storagemode.Get() {
+			case constants.StorageModeS3:
+				_ = storage.WriteFilesToS3(ctx, constants.DefaultConfigDir, []storage.JobConfig{{RelativePath: relativePath, Data: newID}})
+			default:
 				if err := os.MkdirAll(configDir, 0755); err != nil {
 					return newID
 				}
 				_ = os.WriteFile(idPath, []byte(newID), 0600)
-				return newID
 			}
-			return string(idBytes)
+			return newID
 		}()
 
 		logger.Infof("telemetry initialized with user ID: %s, and App version: %s", tempUserID, constants.AppVersion)
