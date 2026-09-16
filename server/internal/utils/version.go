@@ -40,7 +40,7 @@ func SupportsMaxDiscoverThreads(version string) bool {
 	return CompareAtLeast(version, constants.DefaultMaxDiscoverThreadsVersion)
 }
 
-// SupportsSelectedStreamsFlag reports whether the driver accepts --selected_streams on discover/sync/clear.
+// SupportsSelectedStreamsFlag reports whether the driver accepts --selected-streams on discover/sync/clear.
 func SupportsSelectedStreamsFlag(version string) bool {
 	return GetCustomDriverVersion() != "" || CompareAtLeast(version, constants.MinSelectedStreamsSplitVersion)
 }
