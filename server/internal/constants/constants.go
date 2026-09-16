@@ -73,16 +73,8 @@ var (
 	EnvCustomDriverImage = "CUSTOM_DRIVER_VERSION"
 
 	// job config storage
-	EnvStorageMode       = "OLAKE_STORAGE_MODE"
-	EnvS3Bucket          = "OLAKE_S3_BUCKET"
-	EnvS3Region          = "OLAKE_S3_REGION"
-	EnvS3Prefix          = "OLAKE_S3_PREFIX"
-	EnvS3Endpoint        = "OLAKE_S3_ENDPOINT"
-	EnvS3AccessKeyID     = "OLAKE_S3_ACCESS_KEY_ID"
-	EnvS3SecretAccessKey = "OLAKE_S3_SECRET_ACCESS_KEY"
-	EnvS3SessionToken    = "OLAKE_S3_SESSION_TOKEN"
-	StorageModeS3        = "s3"
-	StorageModeNFS       = "nfs"
+	StorageModeS3  = "s3"
+	StorageModeNFS = "nfs"
 
 	// App environment supported values: production/development
 	AppEnvProduction  = "production"

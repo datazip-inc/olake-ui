@@ -16,9 +16,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
-	"github.com/spf13/viper"
 )
 
 // JobConfig is a blob written to S3. RelativePath is the object path under workDir
@@ -39,16 +39,15 @@ func InitStorage(ctx context.Context) error {
 		return nil
 	}
 
+	cfg := appconfig.Load()
 	configOpts := []func(*config.LoadOptions) error{}
-	if region := viper.GetString(constants.EnvS3Region); region != "" {
-		configOpts = append(configOpts, config.WithRegion(region))
+	if cfg.OlakeS3Region != "" {
+		configOpts = append(configOpts, config.WithRegion(cfg.OlakeS3Region))
 	}
 
-	accessKey := viper.GetString(constants.EnvS3AccessKeyID)
-	secretKey := viper.GetString(constants.EnvS3SecretAccessKey)
-	if accessKey != "" && secretKey != "" {
+	if cfg.OlakeS3AccessKeyID != "" && cfg.OlakeS3SecretAccessKey != "" {
 		configOpts = append(configOpts, config.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(accessKey, secretKey, viper.GetString(constants.EnvS3SessionToken)),
+			credentials.NewStaticCredentialsProvider(cfg.OlakeS3AccessKeyID, cfg.OlakeS3SecretAccessKey, cfg.OlakeS3SessionToken),
 		))
 	}
 
@@ -58,9 +57,10 @@ func InitStorage(ctx context.Context) error {
 	}
 
 	var s3Opts []func(*s3.Options)
-	if endpoint := viper.GetString(constants.EnvS3Endpoint); endpoint != "" {
+	if cfg.OlakeS3Endpoint != "" {
 		// Path-style is required for MinIO and other S3-compatible endpoints (virtual-hosted
 		// style would resolve bucket as a subdomain, e.g. olake.host.docker.internal).
+		endpoint := cfg.OlakeS3Endpoint
 		s3Opts = append(s3Opts, func(o *s3.Options) {
 			o.BaseEndpoint = aws.String(endpoint)
 			o.UsePathStyle = true
@@ -68,7 +68,7 @@ func InitStorage(ctx context.Context) error {
 	}
 
 	s3Client = s3.NewFromConfig(awsCfg, s3Opts...)
-	s3Bucket = viper.GetString(constants.EnvS3Bucket)
+	s3Bucket = cfg.OlakeS3Bucket
 	if s3Bucket == "" {
 		return fmt.Errorf("s3 bucket is required when storage mode is s3")
 	}
@@ -78,7 +78,7 @@ func InitStorage(ctx context.Context) error {
 // ensureS3Bucket verifies the configured bucket exists. For S3-compatible endpoints
 // (MinIO), it creates the bucket when missing and retries while the server starts.
 func ensureS3Bucket(ctx context.Context, client *s3.Client, bucket string) error {
-	customEndpoint := viper.GetString(constants.EnvS3Endpoint) != ""
+	customEndpoint := appconfig.Load().OlakeS3Endpoint != ""
 
 	if !customEndpoint {
 		_, err := client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucket)})
@@ -130,7 +130,7 @@ func configStorageKey(workDir, relativePath string, isDirectory bool) (string, e
 		return "", fmt.Errorf("failed to resolve storage path for %s: %s", workDir, err)
 	}
 
-	prefix := strings.Trim(viper.GetString(constants.EnvS3Prefix), "/")
+	prefix := s3Prefix()
 	key := path.Join(prefix, workRel, relativePath)
 	if isDirectory {
 		return strings.TrimSuffix(key, "/") + "/", nil
@@ -320,6 +320,10 @@ func ListAllObjectRelPaths(ctx context.Context, relPrefix string) ([]string, err
 	return paths, nil
 }
 
+func s3Prefix() string {
+	return strings.Trim(appconfig.Load().OlakeS3Prefix, "/")
+}
+
 // s3ObjectKey turns a path inside the workflow folder into the S3 object key
 // (OLAKE_S3_PREFIX + that path). Example prefix "olake":
 //
@@ -330,8 +334,7 @@ func ListAllObjectRelPaths(ctx context.Context, relPrefix string) ([]string, err
 //
 //	"…/sync_20260825T181000Z/"
 func s3ObjectKey(relPath string, isDirectory bool) string {
-	prefix := strings.Trim(viper.GetString(constants.EnvS3Prefix), "/")
-	key := path.Join(prefix, path.Clean(strings.Trim(relPath, "/")))
+	key := path.Join(s3Prefix(), path.Clean(strings.Trim(relPath, "/")))
 	if isDirectory {
 		return strings.TrimSuffix(key, "/") + "/"
 	}
@@ -344,7 +347,7 @@ func s3ObjectKey(relPath string, isDirectory bool) string {
 //	→ "<workflow-dir>/logs/sync_20260825T181000Z/connector-000001-….log"
 func keyToRelPath(key string) string {
 	key = strings.TrimPrefix(key, "/")
-	prefix := strings.Trim(viper.GetString(constants.EnvS3Prefix), "/")
+	prefix := s3Prefix()
 	if prefix != "" {
 		prefix += "/"
 		if strings.HasPrefix(key, prefix) {

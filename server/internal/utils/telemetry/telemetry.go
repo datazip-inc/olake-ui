@@ -61,34 +61,31 @@ func InitTelemetry(ctx context.Context, db *database.Database) {
 			configDir := filepath.Join(os.TempDir(), "olake-config", "telemetry")
 			idPath := filepath.Join(configDir, TelemetryUserIDFile)
 			relativePath := path.Join("telemetry", TelemetryUserIDFile)
-
-			switch storagemode.Get() {
-			case constants.StorageModeS3:
-				idBytes, _, err := storage.ReadFileFromS3(ctx, "", relativePath, false)
-				if err == nil {
-					return string(idBytes)
-				}
-			default:
-				idBytes, err := os.ReadFile(idPath)
-				if err == nil {
-					return string(idBytes)
-				}
+			newID := func() string {
+				hash := sha256.New()
+				hash.Write([]byte(time.Now().String()))
+				return hex.EncodeToString(hash.Sum(nil))[:32]
 			}
 
-			hash := sha256.New()
-			hash.Write([]byte(time.Now().String()))
-			newID := hex.EncodeToString(hash.Sum(nil))[:32]
-
 			switch storagemode.Get() {
 			case constants.StorageModeS3:
-				_ = storage.WriteFilesToS3(ctx, constants.DefaultConfigDir, []storage.JobConfig{{RelativePath: relativePath, Data: newID}})
+				if idBytes, _, err := storage.ReadFileFromS3(ctx, "", relativePath, false); err == nil {
+					return string(idBytes)
+				}
+				id := newID()
+				_ = storage.WriteFilesToS3(ctx, constants.DefaultConfigDir, []storage.JobConfig{{RelativePath: relativePath, Data: id}})
+				return id
 			default:
+				if idBytes, err := os.ReadFile(idPath); err == nil {
+					return string(idBytes)
+				}
+				id := newID()
 				if err := os.MkdirAll(configDir, 0755); err != nil {
-					return newID
+					return id
 				}
-				_ = os.WriteFile(idPath, []byte(newID), 0600)
+				_ = os.WriteFile(idPath, []byte(id), 0600)
+				return id
 			}
-			return newID
 		}()
 
 		logger.Infof("telemetry initialized with user ID: %s, and App version: %s", tempUserID, constants.AppVersion)
