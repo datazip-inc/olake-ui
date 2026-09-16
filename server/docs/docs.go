@@ -2963,6 +2963,11 @@ const docTemplate = `{
         "dto.AdvancedSettings": {
             "type": "object",
             "properties": {
+                "index_required": {
+                    "description": "IndexRequired is derived by the UI: true when any selected stream upserts\nwith positional deletes.",
+                    "type": "boolean",
+                    "example": true
+                },
                 "max_discover_threads": {
                     "type": "integer",
                     "example": 50
@@ -3916,6 +3921,10 @@ const docTemplate = `{
                 },
                 "job_id": {
                     "type": "integer"
+                },
+                "properties": {
+                    "type": "object",
+                    "additionalProperties": {}
                 },
                 "workflow_id": {
                     "type": "string"

@@ -122,6 +122,9 @@ export interface JobTableProps {
 }
 export interface AdvancedSettings {
 	max_discover_threads?: number | null
+	// Derived from the streams config, never user-set: true when any selected
+	// stream upserts with positional deletes.
+	index_required?: boolean
 }
 
 export interface JobConfigurationProps {

@@ -66,7 +66,15 @@ const UpsertTypeSectionView = ({
 					)}
 				>
 					Specify Iceberg delete mode (for faster reads and multi query engine
-					support use positional)
+					support use positional).{" "}
+					<a
+						href="https://olake.io/docs/understanding/terminologies/olake/#upsert"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-primary underline hover:opacity-80"
+					>
+						Learn more
+					</a>
 				</div>
 			</div>
 			<Radio.Group
@@ -84,6 +92,23 @@ const UpsertTypeSectionView = ({
 					</Tooltip>
 				))}
 			</Radio.Group>
+			{upsertType === UpsertType.POSITIONAL && (
+				<div className="mb-4 flex items-start gap-1.5 text-xs leading-5 text-amber-700">
+					<WarningIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
+					<span>
+						Positional deletes need a newer OLake version.{" "}
+						<a
+							href="https://olake.io/docs/understanding/terminologies/olake/#upsert"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-primary underline hover:opacity-80"
+						>
+							Check here
+						</a>{" "}
+						and upgrade (ignore if already done).
+					</span>
+				</div>
+			)}
 			{!isSelected && (
 				<div className="flex items-center gap-1 text-sm text-[#686868]">
 					<InfoIcon className="size-4" />
