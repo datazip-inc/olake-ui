@@ -24,7 +24,6 @@ x-envs:
     OLAKE_SECRET_KEY: *encryptionKey
     PERSISTENT_DIR: *hostPersistencePath
     ENABLE_OPTIMIZATION: ${ENABLE_OPTIMIZATION:-false}
-    TEMPORAL_NAMESPACE: ${TEMPORAL_NAMESPACE:-default}
 
 services:
   olake-ui:
@@ -212,8 +211,6 @@ services:
         condition: service_healthy
     networks:
       - olake-network
-    environment:
-      - DEFAULT_NAMESPACE=${TEMPORAL_NAMESPACE:-default}
     configs:
       - source: temporal_create_namespace_script
         target: /scripts/create-namespace.sh
@@ -225,8 +222,8 @@ services:
   temporal-ui:
     container_name: temporal-ui
     image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/ui:2.54.1
-    # profiles:
-    #   - debug
+    profiles:
+      - debug
     depends_on:
       temporal:
         condition: service_healthy
