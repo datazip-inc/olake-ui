@@ -386,14 +386,16 @@ const JobCreation: React.FC = () => {
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<div className="flex space-x-4">
 					<button
-						className="rounded-md border border-danger px-4 py-1 text-danger hover:bg-danger hover:text-white"
+						className="rounded-md border border-danger px-4 py-1 text-danger hover:bg-danger hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 						onClick={handleCancel}
+						disabled={isCreatingJob}
 					>
 						Cancel
 					</button>
 					<button
 						onClick={handleSaveJob}
-						className="flex items-center justify-center gap-2 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
+						className="flex items-center justify-center gap-2 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb] disabled:cursor-not-allowed disabled:opacity-50"
+						disabled={isCreatingJob}
 					>
 						<DownloadSimpleIcon className="size-4" />
 						Save Job
@@ -405,7 +407,8 @@ const JobCreation: React.FC = () => {
 							onClick={handleBack}
 							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb] disabled:cursor-not-allowed disabled:opacity-50"
 							disabled={
-								currentStep === JOB_CREATION_STEPS.STREAMS && isDiscovering
+								(currentStep === JOB_CREATION_STEPS.STREAMS && isDiscovering) ||
+								isCreatingJob
 							}
 						>
 							Back

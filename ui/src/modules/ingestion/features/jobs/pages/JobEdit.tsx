@@ -66,6 +66,11 @@ const JobEdit: React.FC = () => {
 		JOB_CREATION_STEPS.STREAMS,
 	)
 	const [isSubmitting, setIsSubmitting] = useState(false)
+	// Tracks the stream-difference request, which runs before the update and can
+	// take a while on a large catalog. Kept separate from isSubmitting because
+	// handleJobSubmit runs nested inside handleStreamDifference on the no-diff
+	// path, and a shared flag would be cleared by the inner call.
+	const [isCheckingDifference, setIsCheckingDifference] = useState(false)
 
 	const [sourceSnapshot, setSourceSnapshot] = useState<{
 		id?: number
@@ -287,31 +292,36 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		const streamDifferenceResponse = (
-			await jobService.getStreamDifference(
-				jobId,
-				JSON.stringify({
-					...streamsData,
-					selected_streams: formatSelectedStreamsPayload(streamsData),
-				}),
-			)
-		)?.difference_streams
+		setIsCheckingDifference(true)
+		try {
+			const streamDifferenceResponse = (
+				await jobService.getStreamDifference(
+					jobId,
+					JSON.stringify({
+						...streamsData,
+						selected_streams: formatSelectedStreamsPayload(streamsData),
+					}),
+				)
+			)?.difference_streams
 
-		const diff =
-			typeof streamDifferenceResponse === "string"
-				? JSON.parse(streamDifferenceResponse || "{}")
-				: streamDifferenceResponse || {}
-		const hasDiff = Object.keys(diff?.selected_streams ?? diff).length > 0
-		// if there is a stream difference, show the stream difference modal
-		if (hasDiff) {
-			setStreamDifference(streamDifferenceResponse)
-			setShowStreamDifferenceModal(true)
-			return
+			const diff =
+				typeof streamDifferenceResponse === "string"
+					? JSON.parse(streamDifferenceResponse || "{}")
+					: streamDifferenceResponse || {}
+			const hasDiff = Object.keys(diff?.selected_streams ?? diff).length > 0
+			// if there is a stream difference, show the stream difference modal
+			if (hasDiff) {
+				setStreamDifference(streamDifferenceResponse)
+				setShowStreamDifferenceModal(true)
+				return
+			}
+
+			// No difference - clear state and submit with null stream difference
+			setStreamDifference(null)
+			handleJobSubmit(null)
+		} finally {
+			setIsCheckingDifference(false)
 		}
-
-		// No difference - clear state and submit with null stream difference
-		setStreamDifference(null)
-		handleJobSubmit(null)
 	}
 
 	// Handle job submission
@@ -383,9 +393,13 @@ const JobEdit: React.FC = () => {
 		setCurrentStep(nextStep || JOB_CREATION_STEPS.CONFIG)
 	}
 
+	// Either the stream-difference check or the update itself is in flight.
+	const isBusy = isSubmitting || isCheckingDifference
+
 	const isBackDisabled =
 		currentStep === JOB_CREATION_STEPS.CONFIG ||
-		(currentStep === JOB_CREATION_STEPS.STREAMS && isDiscovering)
+		(currentStep === JOB_CREATION_STEPS.STREAMS && isDiscovering) ||
+		isBusy
 
 	return (
 		<div className="flex h-full flex-col">
@@ -470,21 +484,21 @@ const JobEdit: React.FC = () => {
 						<Button
 							type="default"
 							onClick={() => handleJobSubmit(null)}
-							disabled={isSubmitting || isDiscovering || isJobLoading}
+							loading={isBusy}
+							disabled={isBusy || isDiscovering || isJobLoading}
 						>
-							{isSubmitting ? "Saving..." : "Save"}
+							Save
 						</Button>
 					)}
 					<Button
 						type="primary"
 						onClick={handleNext}
-						disabled={isSubmitting || isDiscovering || isJobLoading}
+						// Only this button triggers work on the streams step; on the
+						// config step "Next" just advances, so it must not spin.
+						loading={currentStep === JOB_CREATION_STEPS.STREAMS && isBusy}
+						disabled={isBusy || isDiscovering || isJobLoading}
 					>
-						{currentStep === JOB_CREATION_STEPS.STREAMS
-							? isSubmitting
-								? "Saving..."
-								: "Finish"
-							: "Next"}
+						{currentStep === JOB_CREATION_STEPS.STREAMS ? "Finish" : "Next"}
 						{currentStep !== JOB_CREATION_STEPS.STREAMS && (
 							<ArrowRightIcon size={16} />
 						)}
