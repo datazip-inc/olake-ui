@@ -35,29 +35,20 @@ This Docker Compose setup provides a comprehensive environment(OLake UI, Tempora
 
 ### Quick Start
 
-1. **Download compose + Temporal scripts, then start:**
-
-   ```sh
-   BASE=https://raw.githubusercontent.com/datazip-inc/olake-ui/master
-   mkdir -p scripts
-   curl -fsSL "$BASE/docker-compose-v1.yml" -o docker-compose-v1.yml
-   curl -fsSL "$BASE/scripts/temporal-migrate.sh" -o scripts/temporal-migrate.sh
-   curl -fsSL "$BASE/scripts/temporal-create-namespace.sh" -o scripts/temporal-create-namespace.sh
-   chmod +x scripts/temporal-migrate.sh scripts/temporal-create-namespace.sh
-   ```
+1. **One-Command Setup:**
 
    Choose the setup that matches your use case:
 
    **Ingestion only**
 
    ```sh
-   docker compose -f docker-compose-v1.yml up -d
+   curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
    ```
 
    **Ingestion and Maintenance**
 
    ```sh
-   ENABLE_OPTIMIZATION="true" docker compose --profile fusion -f docker-compose-v1.yml up -d
+   curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | ENABLE_OPTIMIZATION="true" docker compose --profile fusion -f - up -d
    ```
 
 2. **Access the services:**
@@ -125,40 +116,33 @@ x-encryption:
 
 To update OLake UI to the latest version, use the command for your setup:
 
-```bash
-BASE=https://raw.githubusercontent.com/datazip-inc/olake-ui/master
-mkdir -p scripts
-curl -fsSL "$BASE/docker-compose-v1.yml" -o docker-compose-v1.yml
-curl -fsSL "$BASE/scripts/temporal-migrate.sh" -o scripts/temporal-migrate.sh
-curl -fsSL "$BASE/scripts/temporal-create-namespace.sh" -o scripts/temporal-create-namespace.sh
-chmod +x scripts/temporal-migrate.sh scripts/temporal-create-namespace.sh
-```
-
 **Ingestion only**
 
 ```bash
-docker compose -f docker-compose-v1.yml down && \
-docker compose -f docker-compose-v1.yml up -d
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - down && \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
 ```
 
 **Ingestion and Maintenance**
 
 ```bash
 docker ps -aq --filter name=fusion-cluster \
-| xargs -r docker rm -f
-docker compose --profile fusion -f docker-compose-v1.yml down && \
-ENABLE_OPTIMIZATION="true" docker compose --profile fusion -f docker-compose-v1.yml up -d
+| xargs -r docker rm -f; \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml \
+| docker compose --profile fusion -f - down && \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml \
+| ENABLE_OPTIMIZATION="true" docker compose --profile fusion -f - up -d
 ```
 
 **Note**: Your data and configurations will be preserved as they are stored in persistent volumes and the `olake-data` directory.
 
 ### Upgrading from legacy `docker-compose.yml`
 
-To upgrade from legacy `docker-compose.yml` that was used before **Jan 30th 2026**, download compose + scripts as in [Quick Start](#quick-start), then:
+To upgrade from legacy `docker-compose.yml` that was used before **Jan 30th 2026**:
 
 ```bash
-docker compose -f docker-compose-v1.yml down && \
-docker compose -f docker-compose-v1.yml up -d
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - down && \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
 ```
 
 ## Contributing
