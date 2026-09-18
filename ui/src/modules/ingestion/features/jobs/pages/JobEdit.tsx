@@ -24,8 +24,7 @@ import {
 	JOB_STEP_NUMBERS,
 	STREAM_DEFAULTS,
 } from "../constants"
-import { useJobDetailsFresh, useUpdateJob } from "../hooks"
-import { jobService } from "../services"
+import { useJobDetailsFresh, useStreamDifference, useUpdateJob } from "../hooks"
 import {
 	useJobStore,
 	useStreamSelectionStore,
@@ -55,7 +54,9 @@ const JobEdit: React.FC = () => {
 		isError: isJobError,
 	} = useJobDetailsFresh(jobId)
 
-	const { mutateAsync: updateJob } = useUpdateJob()
+	const { mutateAsync: updateJob, isPending: isUpdating } = useUpdateJob()
+	const { mutateAsync: getStreamDifference, isPending: isCheckingDifference } =
+		useStreamDifference()
 
 	// Set selected job from route param (source of truth is the URL)
 	useEffect(() => {
@@ -65,13 +66,6 @@ const JobEdit: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
 		JOB_CREATION_STEPS.STREAMS,
 	)
-	const [isSubmitting, setIsSubmitting] = useState(false)
-	// Tracks the stream-difference request, which runs before the update and can
-	// take a while on a large catalog. Kept separate from isSubmitting because
-	// handleJobSubmit runs nested inside handleStreamDifference on the no-diff
-	// path, and a shared flag would be cleared by the inner call.
-	const [isCheckingDifference, setIsCheckingDifference] = useState(false)
-
 	const [sourceSnapshot, setSourceSnapshot] = useState<{
 		id?: number
 		name: string
@@ -292,16 +286,15 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		setIsCheckingDifference(true)
 		try {
 			const streamDifferenceResponse = (
-				await jobService.getStreamDifference(
+				await getStreamDifference({
 					jobId,
-					JSON.stringify({
+					streamsConfig: JSON.stringify({
 						...streamsData,
 						selected_streams: formatSelectedStreamsPayload(streamsData),
 					}),
-				)
+				})
 			)?.difference_streams
 
 			const diff =
@@ -318,9 +311,12 @@ const JobEdit: React.FC = () => {
 
 			// No difference - clear state and submit with null stream difference
 			setStreamDifference(null)
-			handleJobSubmit(null)
-		} finally {
-			setIsCheckingDifference(false)
+			await handleJobSubmit(null)
+		} catch (error) {
+			// The axios interceptor already surfaced the error to the user; catching
+			// here keeps handleNext's un-awaited call from becoming an unhandled
+			// rejection.
+			console.error("Error checking stream difference:", error)
 		}
 	}
 
@@ -344,7 +340,6 @@ const JobEdit: React.FC = () => {
 			message.error(submitValidationError)
 			return
 		}
-		setIsSubmitting(true)
 		try {
 			// Create the job update payload
 			const jobUpdatePayload = getJobUpdatePayLoad(streamsConfig, diff)
@@ -353,8 +348,6 @@ const JobEdit: React.FC = () => {
 			navigate("/jobs")
 		} catch (error) {
 			console.error("Error saving job:", error)
-		} finally {
-			setIsSubmitting(false)
 		}
 	}
 
@@ -394,7 +387,7 @@ const JobEdit: React.FC = () => {
 	}
 
 	// Either the stream-difference check or the update itself is in flight.
-	const isBusy = isSubmitting || isCheckingDifference
+	const isBusy = isUpdating || isCheckingDifference
 
 	const isBackDisabled =
 		currentStep === JOB_CREATION_STEPS.CONFIG ||
