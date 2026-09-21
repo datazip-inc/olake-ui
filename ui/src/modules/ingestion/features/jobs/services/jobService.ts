@@ -39,6 +39,7 @@ export const jobService = {
 		try {
 			const response = await api.get<Job>(
 				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
+				{ timeout: 300000 },
 			)
 
 			const job = {
@@ -61,6 +62,7 @@ export const jobService = {
 			const response = await api.post<Job>(
 				API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID),
 				job,
+				{ timeout: 300000 },
 			)
 			return response.data
 		} catch (error) {
@@ -74,7 +76,7 @@ export const jobService = {
 			const response = await api.put<Job>(
 				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
 				job,
-				{ timeout: 30000, showNotification: true },
+				{ timeout: 300000, showNotification: true },
 			)
 			return response.data
 		} catch (error) {
@@ -217,7 +219,7 @@ export const jobService = {
 			}>(
 				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/stream-difference`,
 				{ updated_streams_config: streamsConfig },
-				{ timeout: 30000 },
+				{ timeout: 0 },
 			)
 			return response.data
 		} catch (error) {

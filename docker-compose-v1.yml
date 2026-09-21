@@ -55,7 +55,9 @@ services:
       postgresql:
         condition: service_healthy # Wait for postgres to be healthy
       temporal:
-        condition: service_started # Or service_healthy if temporal has a healthcheck
+        condition: service_healthy
+      temporal-create-namespace:
+        condition: service_completed_successfully
       fusion-init:
         condition: service_completed_successfully # Wait for initial Fusion setup to complete
         required: false
@@ -127,7 +129,9 @@ services:
       OLAKE_INDEX_DB_MAX_OPEN_FILES: 1000  # max open files
     depends_on:
       temporal:
-        condition: service_started # Or service_healthy if temporal has a healthcheck
+        condition: service_healthy
+      temporal-create-namespace:
+        condition: service_completed_successfully
       olake-ui:
         condition: service_healthy
     restart: unless-stopped
@@ -151,30 +155,78 @@ services:
 
   temporal:
     container_name: temporal
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/auto-setup:1.22.3
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/server:1.32.0
     depends_on:
-      postgresql:
-        condition: service_healthy
+      temporal-schema-migrate:
+        condition: service_completed_successfully
     environment:
       - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgresql
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CLI_ADDRESS=temporal:7233
+      - BIND_ON_IP=0.0.0.0
+    configs:
+      - source: temporal_dynamicconfig
+        target: /etc/temporal/config/dynamicconfig/docker.yaml
+        mode: 0444
     networks:
       - olake-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 7233"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  temporal-schema-migrate:
+    container_name: temporal-schema-migrate
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/admin-tools:1.32.0
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - olake-network
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - SQL_PASSWORD=temporal
+    configs:
+      - source: temporal_migrate_script
+        target: /scripts/setup-postgres.sh
+        mode: 0755
+    entrypoint: ["/bin/sh"]
+    command: /scripts/setup-postgres.sh
+    restart: on-failure:6
+
+  temporal-create-namespace:
+    container_name: temporal-create-namespace
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/admin-tools:1.32.0
+    depends_on:
+      temporal:
+        condition: service_healthy
+    networks:
+      - olake-network
+    configs:
+      - source: temporal_create_namespace_script
+        target: /scripts/create-namespace.sh
+        mode: 0755
+    entrypoint: ["/bin/sh"]
+    command: /scripts/create-namespace.sh
+    restart: on-failure:5
 
   temporal-ui:
     container_name: temporal-ui
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/ui:2.16.2
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/ui:2.54.1
     profiles:
       - debug
     depends_on:
       temporal:
-        condition: service_started
+        condition: service_healthy
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
     networks:
@@ -463,3 +515,84 @@ volumes:
   kind-kubeconfig:
   spark-home:
   fusion-config:
+
+configs:
+  temporal_dynamicconfig:
+    content: |
+      # empty dynamic config
+
+  temporal_migrate_script:
+    content: |
+      #!/bin/sh
+      set -eu
+
+      : "$${POSTGRES_SEEDS:?ERROR: POSTGRES_SEEDS environment variable is required}"
+      : "$${POSTGRES_USER:?ERROR: POSTGRES_USER environment variable is required}"
+
+      sqltool() {
+        temporal-sql-tool \
+          --plugin postgres12 \
+          --ep "$${POSTGRES_SEEDS}" \
+          -u "$${POSTGRES_USER}" \
+          -p "$${DB_PORT:-5432}" \
+          "$@"
+      }
+
+      echo 'Starting PostgreSQL schema setup...'
+      echo 'Waiting for PostgreSQL port to be available...'
+      nc -z -w 10 "$${POSTGRES_SEEDS}" "$${DB_PORT:-5432}"
+      echo 'PostgreSQL port is available'
+
+      # create and setup-schema error if the DB/schema already exists (existing OLake volumes).
+      # update-schema applies pending versions and must succeed.
+      echo 'Setting up temporal database...'
+      sqltool --db temporal create \
+        || echo '  (create skipped: database already exists)'
+      sqltool --db temporal setup-schema -v 0.0 \
+        || echo '  (setup-schema skipped: already initialized)'
+      sqltool --db temporal update-schema \
+        -d /etc/temporal/schema/postgresql/v12/temporal/versioned
+
+      echo 'Setting up temporal_visibility database...'
+      sqltool --db temporal_visibility create \
+        || echo '  (create skipped: database already exists)'
+      sqltool --db temporal_visibility setup-schema -v 0.0 \
+        || echo '  (setup-schema skipped: already initialized)'
+      sqltool --db temporal_visibility update-schema \
+        -d /etc/temporal/schema/postgresql/v12/visibility/versioned
+
+      echo 'PostgreSQL schema setup complete'
+
+  temporal_create_namespace_script:
+    content: |
+      #!/bin/sh
+      set -eu
+
+      NAMESPACE=$${DEFAULT_NAMESPACE:-default}
+      TEMPORAL_ADDRESS=$${TEMPORAL_ADDRESS:-temporal:7233}
+      MAX_ATTEMPTS=$${TEMPORAL_HEALTH_CHECK_MAX_ATTEMPTS:-30}
+      SLEEP_SECONDS=$${TEMPORAL_HEALTH_CHECK_SLEEP_SECONDS:-5}
+
+      echo "Creating namespace '$$NAMESPACE'..."
+
+      attempt=1
+      while :; do
+        if temporal operator namespace describe -n "$$NAMESPACE" --address "$$TEMPORAL_ADDRESS" >/dev/null 2>&1; then
+          echo "Namespace '$$NAMESPACE' already exists"
+          break
+        fi
+
+        if temporal operator namespace create -n "$$NAMESPACE" --address "$$TEMPORAL_ADDRESS" >/dev/null 2>&1; then
+          echo "Namespace '$$NAMESPACE' created"
+          break
+        fi
+
+        if [ "$$attempt" -ge "$$MAX_ATTEMPTS" ]; then
+          echo "Failed to create namespace '$$NAMESPACE' after $$MAX_ATTEMPTS attempts"
+          exit 1
+        fi
+
+        echo "Namespace operation not ready yet, waiting... (attempt $$attempt/$$MAX_ATTEMPTS)"
+        attempt=$$((attempt + 1))
+        sleep "$$SLEEP_SECONDS"
+      done
