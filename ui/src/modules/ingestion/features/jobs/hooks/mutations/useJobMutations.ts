@@ -60,6 +60,18 @@ export const useClearDestination = () => {
 	})
 }
 
+export const useStreamDifference = () => {
+	return useMutation({
+		mutationFn: ({
+			jobId,
+			streamsConfig,
+		}: {
+			jobId: string
+			streamsConfig: string
+		}) => jobService.getStreamDifference(jobId, streamsConfig),
+	})
+}
+
 export const useDownloadTaskLogs = () => {
 	return useMutation({
 		mutationFn: ({ jobId, filePath }: { jobId: string; filePath: string }) =>
