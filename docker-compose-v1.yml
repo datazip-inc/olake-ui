@@ -302,52 +302,6 @@ services:
         until curl -sf http://fusion:1630/ >/dev/null 2>&1; do sleep 2; done
         sleep 10
 
-        echo "Logging in..."
-        curl -sf -c /tmp/cookies.txt \
-          -X POST http://fusion:1630/api/ams/v1/login \
-          -H "Content-Type: application/json" \
-          -H "X-Request-Source: Web" \
-          -d '{"user":"admin","password":"password"}'
-        echo ""
-
-        # ---- Optimizer Group (Spark on Kubernetes) ----
-        echo "Checking optimizer group..."
-        GROUPS=$$(curl -s -b /tmp/cookies.txt \
-          -H "X-Request-Source: Web" \
-          http://fusion:1630/api/ams/v1/optimize/resourceGroups)
-
-        if echo "$$GROUPS" | grep -q '"name":"spark-container"'; then
-          echo "  Optimizer group 'spark-container' already exists — skipping."
-        else
-          echo "  Creating optimizer group 'spark-container' (Spark on K8s)..."
-          curl -s -b /tmp/cookies.txt \
-            -X POST http://fusion:1630/api/ams/v1/optimize/resourceGroups \
-            -H "Content-Type: application/json" \
-            -H "X-Request-Source: Web" \
-            -d '{"name":"spark-container","container":"sparkContainer","properties":{}}'
-          echo ""
-          sleep 5
-        fi
-
-        # ---- Optimizer (always ensure at least 1 is running) ----
-        echo "Checking optimizers..."
-        OPTIMIZERS=$$(curl -s -b /tmp/cookies.txt \
-          -H "X-Request-Source: Web" \
-          "http://fusion:1630/api/ams/v1/optimize/optimizerGroups/spark-container/optimizers?page=1&pageSize=10")
-
-        if echo "$$OPTIMIZERS" | grep -q '"jobStatus":"RUNNING"'; then
-          echo "  Spark optimizer already running — skipping."
-        else
-          echo "  Scaling out Spark optimizer (parallelism=1)..."
-          curl -s -b /tmp/cookies.txt \
-            -X POST http://fusion:1630/api/ams/v1/optimize/optimizerGroups/spark-container/optimizers \
-            -H "Content-Type: application/json" \
-            -H "X-Request-Source: Web" \
-            -d '{"parallelism":1}'
-          echo ""
-          sleep 5
-        fi
-
         echo ""
         echo "============================================"
         echo "  Fusion is ready!"
