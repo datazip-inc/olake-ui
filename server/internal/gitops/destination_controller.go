@@ -2,19 +2,13 @@ package gitops
 
 import (
 	"context"
-	"errors"
 
-	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
-	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
 type DestinationReconciler struct {
@@ -28,83 +22,51 @@ func (r *DestinationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	return r.sync(ctx, res)
-}
-
-func (r *DestinationReconciler) sync(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-
-	observedHash := ContentHash(res.Data)
-	if skipReconcile(res.Annotations, observedHash) {
-		return ctrl.Result{}, nil
-	}
-
-	createReq, err := ParseAndValidateDestination(res.Config())
-	if err != nil {
-		return failResource(ctx, r.Sink, res, NonRetryableError(err), observedHash)
-	}
-	userID, err := requireSpec(res.ProjectID(), res.UserID())
-	if err != nil {
-		return failResource(ctx, r.Sink, res, err, observedHash)
-	}
-
-	existing, err := r.ETL.GetDestinationByName(ctx, res.ProjectID(), createReq.Name)
-	if err != nil && !errors.Is(err, constants.ErrDestinationNotFound) {
-		logger.Error(err, "lookup destination failed")
-		return requeueTransient(ctx, r.Sink, res, err, observedHash)
-	}
-
-	changed := existing != nil && !destinationMatches(existing, createReq)
-	if existing == nil || changed {
-		if err := testDestinationConnection(ctx, r.ETL, createReq.Type, createReq.Version, createReq.Config, "", ""); err != nil {
-			logger.Error(err, "destination connection test failed")
-			return failResource(ctx, r.Sink, res, NonRetryableError(err), observedHash)
-		}
-	}
-
-	switch {
-	case existing == nil:
-		if err := r.ETL.CreateDestination(ctx, createReq, res.ProjectID(), &userID); err != nil {
-			logger.Error(err, "create destination failed")
-			return failResource(ctx, r.Sink, res, NonRetryableError(err), observedHash)
-		}
-		existing, err = r.ETL.GetDestinationByName(ctx, res.ProjectID(), createReq.Name)
-		if err != nil {
-			logger.Error(err, "reload destination after create failed")
-			return requeueTransient(ctx, r.Sink, res, err, observedHash)
-		}
-	case changed:
-		updateReq := &dto.UpdateDestinationRequest{
-			Name:    createReq.Name,
-			Type:    createReq.Type,
-			Version: createReq.Version,
-			Config:  createReq.Config,
-		}
-		if err := r.ETL.UpdateDestination(ctx, existing.ID, res.ProjectID(), updateReq, &userID); err != nil {
-			logger.Error(err, "update destination failed")
-			return failResource(ctx, r.Sink, res, NonRetryableError(err), observedHash)
-		}
-	}
-
-	if err := successResource(ctx, r.Sink, res, existing.ID, observedHash); err != nil {
-		logger.Error(err, "update destination status failed")
-		return requeueTransient(ctx, r.Sink, res, err, observedHash)
-	}
-	return ctrl.Result{}, nil
+	return reconcileResource(ctx, r.Sink, r, res)
 }
 
 func (r *DestinationReconciler) Setup(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		Named("gitops-destination").
-		For(&corev1.ConfigMap{}).
-		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(identityEnqueue)).
-		WithEventFilter(kindPredicate(KindDestination)).
-		Complete(r)
+	return setupResourceController(mgr, "gitops-destination", KindDestination, r)
 }
 
-func destinationMatches(existing *models.Destination, req *dto.CreateDestinationRequest) bool {
-	return existing.Name == req.Name &&
-		existing.DestType == req.Type &&
-		existing.Version == req.Version &&
-		utils.EqualJSON(existing.Config, req.Config.String())
+func (r *DestinationReconciler) kind() string { return KindDestination }
+
+func (r *DestinationReconciler) notFoundErr() error { return constants.ErrDestinationNotFound }
+
+func (r *DestinationReconciler) parse(config string) (*resourceSpec, error) {
+	req, err := ParseAndValidateDestination(config)
+	if err != nil {
+		return nil, err
+	}
+	return &resourceSpec{Name: req.Name, Type: req.Type, Version: req.Version, Config: req.Config}, nil
+}
+
+func (r *DestinationReconciler) get(ctx context.Context, projectID, name string) (*resourceSpec, error) {
+	dest, err := r.ETL.GetDestinationByName(ctx, projectID, name)
+	if err != nil {
+		return nil, err
+	}
+	return &resourceSpec{ID: dest.ID, Name: dest.Name, Type: dest.DestType, Version: dest.Version, Config: dto.JSONConfig(dest.Config)}, nil
+}
+
+func (r *DestinationReconciler) test(ctx context.Context, spec *resourceSpec) error {
+	return testDestinationConnection(ctx, r.ETL, spec.Type, spec.Version, spec.Config, "", "")
+}
+
+func (r *DestinationReconciler) create(ctx context.Context, spec *resourceSpec, projectID string, userID *int) error {
+	return r.ETL.CreateDestination(ctx, &dto.CreateDestinationRequest{
+		Name:    spec.Name,
+		Type:    spec.Type,
+		Version: spec.Version,
+		Config:  spec.Config,
+	}, projectID, userID)
+}
+
+func (r *DestinationReconciler) update(ctx context.Context, id int, spec *resourceSpec, projectID string, userID *int) error {
+	return r.ETL.UpdateDestination(ctx, id, projectID, &dto.UpdateDestinationRequest{
+		Name:    spec.Name,
+		Type:    spec.Type,
+		Version: spec.Version,
+		Config:  spec.Config,
+	}, userID)
 }
