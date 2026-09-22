@@ -35,6 +35,7 @@ import {
 	StepIndicator as StepProgress,
 	SchemaConfiguration,
 	ResetStreamsModal,
+	IndexBuildWarningModal,
 } from "../components"
 import { JOB_CREATION_STEPS, JOB_STEP_NUMBERS } from "../constants"
 import { useCreateJob } from "../hooks"
@@ -50,6 +51,7 @@ import {
 	validateCronExpression,
 	formatSelectedStreamsPayload,
 	validateStreams,
+	willBuildIndex,
 	withIndexRequired,
 } from "../utils"
 
@@ -64,6 +66,7 @@ const JobCreation: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
 		JOB_CREATION_STEPS.CONFIG as JobCreationSteps,
 	)
+	const [showIndexBuildWarning, setShowIndexBuildWarning] = useState(false)
 
 	// Config step states
 	const {
@@ -278,6 +281,11 @@ const JobCreation: React.FC = () => {
 					message.error(error)
 					return
 				}
+				// Positional deletes need a destination index built on the first sync.
+				if (willBuildIndex(advancedSettings, streamsData)) {
+					setShowIndexBuildWarning(true)
+					return
+				}
 				await handleJobCreation()
 				break
 			}
@@ -450,6 +458,15 @@ const JobCreation: React.FC = () => {
 				</div>
 			</div>
 			<ResetStreamsModal onConfirm={handleConfirmResetStreams} />
+
+			<IndexBuildWarningModal
+				open={showIndexBuildWarning}
+				onConfirm={async () => {
+					setShowIndexBuildWarning(false)
+					await handleJobCreation()
+				}}
+				onCancel={() => setShowIndexBuildWarning(false)}
+			/>
 		</div>
 	)
 }
