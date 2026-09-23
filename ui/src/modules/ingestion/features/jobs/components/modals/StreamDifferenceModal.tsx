@@ -108,9 +108,14 @@ const StreamDifferenceModal = ({
 						Are you sure you want to continue?
 					</h3>
 					<p className="mt-4 text-left text-sm text-black">
-						{allStreamsImpacted
-							? "Modifying stream configurations will clear destination data for all of the impacted streams."
-							: "Modifying stream configurations will clear destination data for the impacted streams. Following streams will be impacted:"}
+						{allStreamsImpacted ? (
+							<>
+								Modifying stream configurations will clear destination data for{" "}
+								<span className="font-bold">all of the selected streams.</span>
+							</>
+						) : (
+							"Modifying stream configurations will clear destination data for the impacted streams. Following streams will be impacted:"
+						)}
 					</p>
 					<div className="mt-3 flex w-full items-center justify-center gap-1 text-xs text-red-600">
 						<InfoIcon className="size-4" />

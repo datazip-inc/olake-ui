@@ -39,6 +39,22 @@ const QueryEngineWarningModal = ({
 					The target query engine selection has changed, which may change the
 					resolved delete format for your streams.
 				</p>
+				<div className="mt-4 flex gap-3 rounded-lg border border-danger/30 bg-danger-light p-4 text-danger-dark">
+					<WarningIcon className="mt-0.5 size-5 shrink-0" />
+					<p>
+						Some delete format changes require{" "}
+						<span className="font-semibold">Clear Destination</span> to run on
+						all of the selected streams.{" "}
+						<a
+							href="https://olake.io/docs/understanding/terminologies/olake/#upsert"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="font-semibold text-danger-dark underline underline-offset-2 hover:text-danger-dark hover:underline hover:opacity-80"
+						>
+							Learn more
+						</a>
+					</p>
+				</div>
 				<div className="mt-4 flex gap-3 rounded-lg border border-warning/40 bg-warning-light p-4 text-warning-dark">
 					<InfoIcon className="mt-0.5 size-5 shrink-0" />
 					<p>
