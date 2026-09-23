@@ -227,15 +227,22 @@ export const formatSelectedStreamsPayload = (
 	)
 }
 
-// Positional deletes need the destination row index; equality deletes don't.
-export const hasPositionalUpsertStream = (
+// Positional deletes and delete vectors need the destination row index; equality deletes don't.
+const INDEXED_UPSERT_TYPES: UpsertType[] = [
+	UpsertType.POSITIONAL,
+	UpsertType.DELETION_VECTOR,
+]
+
+export const hasIndexedUpsertStream = (
 	streamsConfig?: StreamsDataStructure | null,
 ): boolean =>
 	Object.values(getSelectedStreams(streamsConfig?.selected_streams ?? {})).some(
 		streams =>
 			streams.some(
 				stream =>
-					!stream.append_mode && stream.update_type === UpsertType.POSITIONAL,
+					!stream.append_mode &&
+					!!stream.update_type &&
+					INDEXED_UPSERT_TYPES.includes(stream.update_type),
 			),
 	)
 
@@ -275,12 +282,12 @@ export const queryEnginesChanged = (
 }
 
 // index_required on the saved settings means the index already exists; without it,
-// a positional upsert stream means the index gets built on the next sync.
+// a stream using an indexed delete format means the index gets built on the next sync.
 export const willBuildIndex = (
 	advancedSettings: AdvancedSettings | null | undefined,
 	streamsConfig?: StreamsDataStructure | null,
 ): boolean =>
-	!advancedSettings?.index_required && hasPositionalUpsertStream(streamsConfig)
+	!advancedSettings?.index_required && hasIndexedUpsertStream(streamsConfig)
 
 // index_required is derived from the streams config on every write; the rest of
 // advanced settings stays user-configured.
@@ -289,7 +296,7 @@ export const withIndexRequired = (
 	streamsConfig?: StreamsDataStructure | null,
 ): AdvancedSettings => ({
 	...advancedSettings,
-	index_required: hasPositionalUpsertStream(streamsConfig),
+	index_required: hasIndexedUpsertStream(streamsConfig),
 })
 
 // Returns null if all selected stream configurations are valid, or a descriptive error string otherwise.

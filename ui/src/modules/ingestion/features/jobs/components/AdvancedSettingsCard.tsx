@@ -1,4 +1,4 @@
-import { InfoIcon, SlidersIcon } from "@phosphor-icons/react"
+import { InfoIcon, SlidersIcon, WarningIcon } from "@phosphor-icons/react"
 import { InputNumber, Select, Spin, Tag, Tooltip } from "antd"
 import clsx from "clsx"
 import React from "react"
@@ -26,6 +26,8 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 		data: queryEngines = [],
 		isLoading: isLoadingQueryEngines,
 		isFetching: isFetchingQueryEngines,
+		isError: isQueryEnginesError,
+		refetch: refetchQueryEngines,
 	} = useAvailableQueryEngines(
 		(sourceType ?? selectedSource?.type ?? "").toLowerCase(),
 		sourceVersion ?? selectedSource?.version ?? "",
@@ -43,7 +45,11 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 					Advanced Settings
 				</span>
 			</div>
-			{(isLoadingQueryEngines || queryEngines.length > 0) && (
+			{/* An empty list means the connector doesn't support query engines, so the
+			    field is hidden; a failed request is shown instead so the two differ. */}
+			{(isLoadingQueryEngines ||
+				isQueryEnginesError ||
+				queryEngines.length > 0) && (
 				<div className="mb-6 border-b border-olake-border pb-6">
 					<div className="w-1/2">
 						<div className="mb-2 flex items-center gap-1">
@@ -67,6 +73,18 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 							<div className="flex items-center gap-x-2">
 								<Spin size="small" />
 								<span className="">Fetching available query engines</span>
+							</div>
+						) : isQueryEnginesError ? (
+							<div className="flex items-center gap-2 text-sm text-danger">
+								<WarningIcon className="size-4 shrink-0" />
+								Failed to fetch available query engines.
+								<button
+									type="button"
+									className="font-medium underline underline-offset-2 hover:opacity-80"
+									onClick={() => refetchQueryEngines()}
+								>
+									Retry
+								</button>
 							</div>
 						) : (
 							<Select
