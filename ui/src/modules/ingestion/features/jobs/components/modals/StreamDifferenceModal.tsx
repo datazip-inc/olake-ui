@@ -3,17 +3,29 @@ import { Button, Modal } from "antd"
 import { useState } from "react"
 
 import { SelectedStream } from "@/modules/ingestion/common/types"
-import { useJobStore } from "@/modules/ingestion/features/jobs/stores"
+import {
+	selectStreamsData,
+	useJobStore,
+	useStreamSelectionStore,
+} from "@/modules/ingestion/features/jobs/stores"
 import { StreamDifferenceModalProps } from "@/modules/ingestion/features/jobs/types"
+import { coversAllSelectedStreams } from "@/modules/ingestion/features/jobs/utils"
 
 const StreamDifferenceModal = ({
 	streamDifference,
+	showIndexWarning = false,
 	onConfirm,
 }: StreamDifferenceModalProps) => {
 	const [isLoading, setIsLoading] = useState(false)
 
 	const { showStreamDifferenceModal, setShowStreamDifferenceModal } =
 		useJobStore()
+	const streamsData = useStreamSelectionStore(selectStreamsData)
+	// Nothing is spared, so listing the streams adds no information.
+	const allStreamsImpacted = coversAllSelectedStreams(
+		streamsData,
+		streamDifference,
+	)
 
 	const handleCloseModal = () => {
 		setShowStreamDifferenceModal(false)
@@ -96,17 +108,35 @@ const StreamDifferenceModal = ({
 						Are you sure you want to continue?
 					</h3>
 					<p className="mt-4 text-left text-sm text-black">
-						Modifying stream configurations will clear destination data for the
-						impacted streams. Following streams will be impacted:
+						{allStreamsImpacted ? (
+							<>
+								Modifying stream configurations will clear destination data for{" "}
+								<span className="font-bold">all of the selected streams.</span>
+							</>
+						) : (
+							"Modifying stream configurations will clear destination data for the impacted streams. Following streams will be impacted:"
+						)}
 					</p>
 					<div className="mt-3 flex w-full items-center justify-center gap-1 text-xs text-red-600">
 						<InfoIcon className="size-4" />
 						Any ongoing sync will be auto cancelled.
 					</div>
 				</div>
-				<div className="mt-4 max-h-96 overflow-y-auto px-4">
-					{renderStreamsByNamespace()}
-				</div>
+				{!allStreamsImpacted && (
+					<div className="mt-4 max-h-96 overflow-y-auto px-4">
+						{renderStreamsByNamespace()}
+					</div>
+				)}
+
+				{showIndexWarning && (
+					<div className="mt-4 flex gap-3 rounded-lg border border-warning/40 bg-warning-light p-4 text-left text-sm text-warning-dark">
+						<InfoIcon className="mt-0.5 size-5 shrink-0" />
+						<span>
+							Indexes will be built for streams using position deletes or
+							deletion vectors. The next sync may take some time.
+						</span>
+					</div>
+				)}
 			</Modal>
 		</>
 	)

@@ -227,17 +227,67 @@ export const formatSelectedStreamsPayload = (
 	)
 }
 
-// Positional deletes need the destination row index; equality deletes don't.
-export const hasPositionalUpsertStream = (
+// Positional deletes and delete vectors need the destination row index; equality deletes don't.
+const INDEXED_UPSERT_TYPES: UpsertType[] = [
+	UpsertType.POSITIONAL,
+	UpsertType.DELETION_VECTOR,
+]
+
+export const hasIndexedUpsertStream = (
 	streamsConfig?: StreamsDataStructure | null,
 ): boolean =>
 	Object.values(getSelectedStreams(streamsConfig?.selected_streams ?? {})).some(
 		streams =>
 			streams.some(
 				stream =>
-					!stream.append_mode && stream.update_type === UpsertType.POSITIONAL,
+					!stream.append_mode &&
+					!!stream.update_type &&
+					INDEXED_UPSERT_TYPES.includes(stream.update_type),
 			),
 	)
+
+// True when the difference covers every enabled stream, meaning clear destination
+// runs across the whole job rather than a subset of its streams.
+export const coversAllSelectedStreams = (
+	streamsConfig: StreamsDataStructure | null | undefined,
+	streamDifference: StreamsDataStructure,
+): boolean => {
+	const streamIds = (selectedStreams: SelectedStreamsByNamespace) =>
+		new Set(
+			Object.entries(getSelectedStreams(selectedStreams)).flatMap(
+				([namespace, streams]) =>
+					streams.map(stream => `${namespace}.${stream.stream_name}`),
+			),
+		)
+
+	const selected = streamIds(streamsConfig?.selected_streams ?? {})
+	const impacted = streamIds(streamDifference.selected_streams ?? {})
+
+	return selected.size > 0 && [...selected].every(id => impacted.has(id))
+}
+
+// Engines only reach the catalog through a discover, so a selection that differs
+// from the saved one has to go through the streams step before it can be saved.
+export const queryEnginesChanged = (
+	advancedSettings: AdvancedSettings | null | undefined,
+	savedAdvancedSettings: AdvancedSettings | null | undefined,
+): boolean => {
+	const selected = advancedSettings?.target_query_engines ?? []
+	const saved = savedAdvancedSettings?.target_query_engines ?? []
+
+	return (
+		selected.length !== saved.length ||
+		selected.some(engine => !saved.includes(engine))
+	)
+}
+
+// index_required on the saved settings means the index already exists; without it,
+// a stream using an indexed delete format means the index gets built on the next sync.
+export const willBuildIndex = (
+	advancedSettings: AdvancedSettings | null | undefined,
+	streamsConfig?: StreamsDataStructure | null,
+): boolean =>
+	!advancedSettings?.index_required && hasIndexedUpsertStream(streamsConfig)
 
 // index_required is derived from the streams config on every write; the rest of
 // advanced settings stays user-configured.
@@ -246,7 +296,7 @@ export const withIndexRequired = (
 	streamsConfig?: StreamsDataStructure | null,
 ): AdvancedSettings => ({
 	...advancedSettings,
-	index_required: hasPositionalUpsertStream(streamsConfig),
+	index_required: hasIndexedUpsertStream(streamsConfig),
 })
 
 // Returns null if all selected stream configurations are valid, or a descriptive error string otherwise.

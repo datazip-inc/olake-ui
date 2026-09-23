@@ -37,15 +37,31 @@ export const UPSERT_TYPE_OPTIONS = [
 	{
 		label: "Equality",
 		value: UpsertType.EQUALITY,
+		icebergFormatVersion: "V2",
 		tooltip:
 			"Rows are matched and deleted by primary key values before the new rows are written",
 	},
 	{
 		label: "Positional",
 		value: UpsertType.POSITIONAL,
+		icebergFormatVersion: "V2",
 		tooltip:
 			"Rows are deleted by their position in the existing data files before the new rows are written",
 	},
+	{
+		label: "Deletion",
+		value: UpsertType.DELETION_VECTOR,
+		icebergFormatVersion: "V3",
+		tooltip:
+			"Deleted rows are marked in a per-file bitmap instead of a delete file, which Iceberg V3 readers resolve",
+	},
+]
+
+// Catalogs discovered before target query engines existed carry no
+// available_update_types; back then only these two formats were writable.
+export const DEFAULT_AVAILABLE_UPDATE_TYPES = [
+	UpsertType.EQUALITY,
+	UpsertType.POSITIONAL,
 ]
 
 export const PartitioningRegexTooltip =
@@ -81,7 +97,7 @@ export const TAB_STYLES = {
 	hover: "hover:text-primary",
 }
 
-export const CARD_STYLE = "rounded-xl border border-[#E3E3E3] p-3"
+export const CARD_STYLE = "rounded-xl border border-neutral-border p-3"
 
 export const COLORS = {
 	selected: {
