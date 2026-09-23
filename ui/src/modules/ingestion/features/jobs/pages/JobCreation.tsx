@@ -2,6 +2,7 @@ import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
 	DownloadSimpleIcon,
+	SpinnerIcon,
 } from "@phosphor-icons/react"
 import { message } from "antd"
 import { useState, useEffect } from "react"
@@ -135,7 +136,7 @@ const JobCreation: React.FC = () => {
 	const [showFailureModal, setShowFailureModal] = useState(false)
 	const [showEntitySavedModal, setShowEntitySavedModal] = useState(false)
 	const [showCancelModal, setShowCancelModal] = useState(false)
-	const { mutateAsync: addJob } = useCreateJob()
+	const { mutateAsync: addJob, isPending: isCreatingJob } = useCreateJob()
 	const testSourceMutation = useTestSourceConnection()
 	const testDestinationMutation = useTestDestinationConnection()
 	const [testConnectionError, setTestConnectionError] =
@@ -396,14 +397,16 @@ const JobCreation: React.FC = () => {
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<div className="flex space-x-4">
 					<button
-						className="rounded-md border border-danger px-4 py-1 text-danger hover:bg-danger hover:text-white"
+						className="rounded-md border border-danger px-4 py-1 text-danger hover:bg-danger hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 						onClick={handleCancel}
+						disabled={isCreatingJob}
 					>
 						Cancel
 					</button>
 					<button
 						onClick={handleSaveJob}
-						className="flex items-center justify-center gap-2 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
+						className="flex items-center justify-center gap-2 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb] disabled:cursor-not-allowed disabled:opacity-50"
+						disabled={isCreatingJob}
 					>
 						<DownloadSimpleIcon className="size-4" />
 						Save Job
@@ -415,7 +418,8 @@ const JobCreation: React.FC = () => {
 							onClick={handleBack}
 							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb] disabled:cursor-not-allowed disabled:opacity-50"
 							disabled={
-								currentStep === JOB_CREATION_STEPS.STREAMS && isDiscovering
+								(currentStep === JOB_CREATION_STEPS.STREAMS && isDiscovering) ||
+								isCreatingJob
 							}
 						>
 							Back
@@ -424,11 +428,16 @@ const JobCreation: React.FC = () => {
 					<button
 						type="button"
 						data-testid="create-job-wizard-submit"
-						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
+						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
 						onClick={handleNext}
+						disabled={isCreatingJob}
 					>
 						{currentStep === JOB_CREATION_STEPS.STREAMS ? "Create Job" : "Next"}
-						<ArrowRightIcon className="size-4 text-white" />
+						{isCreatingJob ? (
+							<SpinnerIcon className="size-4 animate-spin text-white" />
+						) : (
+							<ArrowRightIcon className="size-4 text-white" />
+						)}
 					</button>
 					<TestConnectionModal
 						open={showTestingModal}

@@ -123,17 +123,30 @@ var (
 	OptEnableOptimization = "self-optimizing.enabled"
 	OptSQLCommand         = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
 	// properties
-	OptCreatedAt    = "created-at"
-	OptCacheEnabled = "cache-enabled"
-	OptOLakeCreated = "olake_created"
+	OptCreatedAt        = "created-at"
+	OptCacheEnabled     = "cache-enabled"
+	OptOLakeCreated     = "olake_created"
+	OptOLakeCatalogType = "olake-catalog-type"
+	// to store user selected value: "Token" instead of our converted "oauth2"
+	OptOLakeAuthType = "olake-rest-auth-type"
 	// OptimizeTableFormatList defines supported table formats for catalogs
 	OptimizeTableFormatList = []string{"ICEBERG"}
 	// hard-coding to S3 now, as the other options are "hadoop" & "OSS" for optimization
 	// GCS & ADLS are supported, given the catalog manages the sdk (eg, Lakekeeper with GCS flavour)
 	DefaultOptimizationStorageType = "S3"
-	CatalogSpecVersion             = "v0.7.4"
+	CatalogSpecVersion             = "v0.9.1"
 	CatalogSpecType                = "iceberg"
 	IcebergCatalogSpecFile         = "server/internal/services/optimization/resources/spec.json"
+
+	RESTCatalogs = []string{
+		"rest",
+		"lakekeeper",
+		"nessie",
+		"s3tables",
+		"unity",
+		"polaris",
+		"biglake",
+	}
 
 	ContextUserIDKey = "user_id"
 	ProjectIDParam   = "projectid"
