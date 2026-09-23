@@ -45,8 +45,6 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 					Advanced Settings
 				</span>
 			</div>
-			{/* An empty list means the connector doesn't support query engines, so the
-			    field is hidden; a failed request is shown instead so the two differ. */}
 			{(isLoadingQueryEngines ||
 				isQueryEnginesError ||
 				queryEngines.length > 0) && (
