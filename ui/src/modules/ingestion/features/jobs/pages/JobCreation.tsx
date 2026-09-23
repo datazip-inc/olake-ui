@@ -88,6 +88,9 @@ const JobCreation: React.FC = () => {
 
 	// Initialize the store exactly once using initialData if navigating
 	useEffect(() => {
+		// JobSettings writes to this store without resetting it, so a new job
+		// would otherwise inherit the last viewed job's advanced settings.
+		resetJobConfig()
 		if (initialData.jobName) setJobName(initialData.jobName)
 		if (initialData.cronExpression)
 			setCronExpression(initialData.cronExpression)
