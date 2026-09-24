@@ -1,34 +1,39 @@
 package gitops
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
-type streamsShape struct {
-	Streams         []json.RawMessage          `json:"streams"`
-	SelectedStreams map[string]json.RawMessage `json:"selected_streams"`
+// streamsCM is a parsed Streams ConfigMap. Its shape picks the catalog format the job runs in:
+// a self-contained CM (streams[] + selected_streams, the streams.json shape) runs in the legacy
+// format; a selection-only CM (selected_streams alone) runs in the split format, with
+// available_streams filled by discover.
+type streamsCM struct {
+	// Split is true for a selection-only CM.
+	Split bool
+	// Catalog is the CM's catalog: streams.json for a legacy CM, selected_streams.json for a
+	// split one.
+	Catalog string
 }
 
-// classifyStreamsFormat reports whether the Streams ConfigMap uses the split format
-// (selected_streams only). Legacy format includes streams[] metadata in the CM.
-// true: split format, false: legacy format.
-func classifyStreamsFormat(config string) (split bool, err error) {
-	var shape streamsShape
-	if err := json.Unmarshal([]byte(config), &shape); err != nil {
-		return false, NonRetryableError(fmt.Errorf("invalid streams config JSON: %w", err))
+func parseStreamsCM(config string) (streamsCM, error) {
+	available, selected, err := utils.SplitCatalog(config)
+	if err != nil {
+		return streamsCM{}, NonRetryableError(fmt.Errorf("invalid streams config: %w", err))
 	}
-	if len(shape.Streams) > 0 {
-		return false, nil
+	if selected == "" {
+		return streamsCM{}, NonRetryableError(fmt.Errorf("streams config has no selected_streams"))
 	}
-	if len(shape.SelectedStreams) > 0 {
-		return true, nil
+	if available == "" {
+		return streamsCM{Split: true, Catalog: selected}, nil
 	}
-	return false, NonRetryableError(fmt.Errorf("streams config is empty or has no selected_streams"))
+	return streamsCM{Catalog: config}, nil
 }
 
+// discoverJobID is the JobID for a discover request: the existing job's ID, or -1 on create.
 func discoverJobID(job *models.Job) int {
 	if job == nil {
 		return -1

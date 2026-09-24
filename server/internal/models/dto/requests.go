@@ -108,21 +108,23 @@ type JobMetadata struct {
 
 type CreateJobRequest struct {
 	JobMetadata
-	Source                *DriverConfig `json:"source" binding:"required"`
-	Destination           *DriverConfig `json:"destination" binding:"required"`
-	StreamsConfig         string        `json:"streams_config" orm:"type(jsonb)" binding:"required"`
-	SelectedStreamsConfig string        `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
+	Source                 *DriverConfig `json:"source" binding:"required"`
+	Destination            *DriverConfig `json:"destination" binding:"required"`
+	StreamsConfig          string        `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	AvailableStreamsConfig string        `json:"available_streams_config,omitempty" orm:"type(jsonb)"`
+	SelectedStreamsConfig  string        `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
 }
 
 type UpdateJobRequest struct {
 	JobMetadata
-	Source                *DriverConfig     `json:"source" binding:"required"`
-	Destination           *DriverConfig     `json:"destination" binding:"required"`
-	StreamsConfig         string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
-	SelectedStreamsConfig string            `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
-	DifferenceStreams     string            `json:"difference_streams,omitempty" example:"[]"`
-	Activate              bool              `json:"activate,omitempty" example:"true"`
-	AdvancedSettings      *AdvancedSettings `json:"advanced_settings,omitempty"`
+	Source                 *DriverConfig     `json:"source" binding:"required"`
+	Destination            *DriverConfig     `json:"destination" binding:"required"`
+	StreamsConfig          string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	AvailableStreamsConfig string            `json:"available_streams_config,omitempty" orm:"type(jsonb)"`
+	SelectedStreamsConfig  string            `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
+	DifferenceStreams      string            `json:"difference_streams,omitempty" example:"[]"`
+	Activate               bool              `json:"activate,omitempty" example:"true"`
+	AdvancedSettings       *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
 type StreamDifferenceRequest struct {

@@ -33,8 +33,11 @@ var (
 	DefaultSpecVersion               = "v0.2.0"
 	DefaultClearDestinationVersion   = "v0.3.0"
 	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
-	// TODO(BEFORE_MERGE): set to the actual release version before shipping.
-	MinSelectedStreamsSplitVersion = "v0.8.0"
+	// TODO(BEFORE_MERGE): set to the release that ships streams v2
+	MinSplitStreamsVersion = "v0.11.0"
+
+	AvailableStreamsFile = "available_streams.json"
+	SelectedStreamsFile  = "selected_streams.json"
 
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"

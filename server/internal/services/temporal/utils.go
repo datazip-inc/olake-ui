@@ -12,15 +12,31 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
+// usesSplitCatalog reports whether a job runs with the split catalog files
+func usesSplitCatalog(job *models.Job) bool {
+	return job.AvailableStreamsConfig != nil && job.SelectedStreamsConfig != nil && utils.SupportsSplitStreams(job.Source.Version)
+}
+
+// catalogFlags returns the catalog flags for the split or the legacy format
+func catalogFlags(split bool) []string {
+	if split {
+		return []string{
+			"--available-streams", "/mnt/config/" + constants.AvailableStreamsFile,
+			"--selected-streams", "/mnt/config/" + constants.SelectedStreamsFile,
+		}
+	}
+	return []string{"--streams", "/mnt/config/streams.json"}
+}
+
 // buildExecutionReqForSync builds the ExecutionRequest for a sync job
 func buildExecutionReqForSync(job *models.Job, workflowID string) *ExecutionRequest {
 	args := []string{
 		"sync",
 		"--config", "/mnt/config/source.json",
 		"--destination", "/mnt/config/destination.json",
-		"--catalog", "/mnt/config/streams.json",
 		"--state", "/mnt/config/state.json",
 	}
+	args = append(args, catalogFlags(usesSplitCatalog(job))...)
 
 	return &ExecutionRequest{
 		Command:       Sync,
@@ -38,25 +54,52 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) *ExecutionRequ
 
 // buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job
 func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsConfig string) (*ExecutionRequest, error) {
-	catalog := streamsConfig
-	if catalog == "" {
-		catalog = job.StreamsConfig
-	}
-
 	streamsDir := fmt.Sprintf("%s-%d", workflowID, time.Now().Unix())
-	relativePath := filepath.Join(streamsDir, "streams.json")
-	streamsPath := filepath.Join(constants.DefaultConfigDir, relativePath)
 
-	if err := utils.WriteFile(streamsPath, []byte(catalog), constants.DefaultFileMode); err != nil {
-		return nil, fmt.Errorf("failed to write streams config to file: %v", err)
+	var files map[string]string
+	var tempFile string
+	splitCatalog := usesSplitCatalog(job)
+	if splitCatalog {
+		available, selected := utils.StringValue(job.AvailableStreamsConfig), utils.StringValue(job.SelectedStreamsConfig)
+		if streamsConfig != "" {
+			var err error
+			if available, selected, err = utils.SplitCatalog(streamsConfig); err != nil {
+				return nil, fmt.Errorf("failed to split clear-destination catalog: %s", err)
+			}
+		}
+		// The CLI rejects empty split files, and a difference with no changed streams is empty:
+		// stage that one in the legacy format, as legacy jobs do.
+		splitCatalog = available != "" && selected != ""
+		if splitCatalog {
+			files = map[string]string{
+				constants.AvailableStreamsFile: available,
+				constants.SelectedStreamsFile:  selected,
+			}
+			tempFile = constants.SelectedStreamsFile
+		}
+	}
+	if !splitCatalog {
+		catalog := streamsConfig
+		if catalog == "" {
+			catalog = job.StreamsConfig
+		}
+		files = map[string]string{"streams.json": catalog}
+		tempFile = "streams.json"
+	}
+	for name, data := range files {
+		path := filepath.Join(constants.DefaultConfigDir, streamsDir, name)
+		if err := utils.WriteFile(path, []byte(data), constants.DefaultFileMode); err != nil {
+			return nil, fmt.Errorf("failed to write %s to file: %v", name, err)
+		}
 	}
 
 	args := []string{
 		"clear-destination",
-		"--streams", "/mnt/config/streams.json",
 		"--state", "/mnt/config/state.json",
 		"--destination", "/mnt/config/destination.json",
 	}
+	args = append(args, catalogFlags(splitCatalog)...)
+	relativePath := filepath.Join(streamsDir, tempFile)
 
 	return &ExecutionRequest{
 		Command:       ClearDestination,
