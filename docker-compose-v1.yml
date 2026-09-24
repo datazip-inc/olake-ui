@@ -20,14 +20,14 @@ x-encryption:
 
 x-envs:
   shared: &sharedEnvs
-    CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
+    CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-docker.io}
     OLAKE_SECRET_KEY: *encryptionKey
     PERSISTENT_DIR: *hostPersistencePath
     ENABLE_OPTIMIZATION: ${ENABLE_OPTIMIZATION:-false}
 
 services:
   olake-ui:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/olakego/ui:latest
     pull_policy: always
     container_name: olake-ui
     environment:
@@ -70,7 +70,7 @@ services:
       start_period: 30s # Give it time to start up before first health check
 
   signup-init:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/curlimages/curl:latest
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/curlimages/curl:latest
     container_name: olake-signup-init
     networks:
       - olake-network
@@ -112,7 +112,7 @@ services:
     restart: "no"
 
   temporal-worker:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui-worker:latest
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/olakego/ui-worker:latest
     pull_policy: always
     container_name: olake-temporal-worker
     networks:
@@ -138,7 +138,7 @@ services:
 
   postgresql:
     container_name: temporal-postgresql
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/postgres:13
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/library/postgres:13
     environment:
       POSTGRES_USER: temporal
       POSTGRES_PASSWORD: temporal
@@ -155,7 +155,7 @@ services:
 
   temporal:
     container_name: temporal
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/server:1.32.0
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/temporalio/server:1.32.0
     depends_on:
       temporal-schema-migrate:
         condition: service_completed_successfully
@@ -182,7 +182,7 @@ services:
 
   temporal-schema-migrate:
     container_name: temporal-schema-migrate
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/admin-tools:1.32.0
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/temporalio/admin-tools:1.32.0
     depends_on:
       postgresql:
         condition: service_healthy
@@ -205,7 +205,7 @@ services:
 
   temporal-create-namespace:
     container_name: temporal-create-namespace
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/admin-tools:1.32.0
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/temporalio/admin-tools:1.32.0
     depends_on:
       temporal:
         condition: service_healthy
@@ -221,7 +221,7 @@ services:
 
   temporal-ui:
     container_name: temporal-ui
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/ui:2.54.1
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/temporalio/ui:2.54.1
     profiles:
       - debug
     depends_on:
@@ -236,7 +236,7 @@ services:
     restart: unless-stopped
 
   fusion-db-init:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/postgres:13
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/library/postgres:13
     container_name: fusion-db-init
     profiles:
       - fusion
