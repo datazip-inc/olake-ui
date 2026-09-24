@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -208,57 +207,41 @@ func (s Service) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceRes
 	return &dto.DeleteSourceResponse{Name: src.Name}, nil
 }
 
-func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+// TestSourceConnection starts a connection check and returns its operation ID. The check
+// runs a connector container, so the caller polls the operation rather than holding the
+// request open for it.
+func (s Service) TestSourceConnection(ctx context.Context, projectID string, req *dto.SourceTestConnectionRequest) (string, error) {
 	if s.temporal == nil {
-		return nil, nil, fmt.Errorf("temporal client not available")
+		return "", fmt.Errorf("temporal client not available")
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
-	}
-	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
-	result, err := s.temporal.VerifyDriverCredentials(ctx, workflowID, "config", req.Type, req.Version, encryptedConfig)
-	// TODO: handle from frontend
-	if result == nil {
-		result = map[string]interface{}{
-			"message": err.Error(),
-			"status":  "failed",
-		}
+		return "", fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}
 
-	if err != nil {
-		return result, nil, fmt.Errorf("connection test failed: %s", err)
-	}
-	homeDir := constants.DefaultConfigDir
-	mainLogDir := filepath.Join(homeDir, workflowID)
-	// Fetch the latest batch of logs by tailing from the end with default limit in the "older" direction.
-	logs, err := utils.ReadLogs(mainLogDir, -1, -1, "older")
-	if err != nil {
-		return result, nil, fmt.Errorf("failed to read logs source_type[%s] source_version[%s]: %s",
-			req.Type, req.Version, err)
-	}
-
-	return result, logs.Logs, nil
+	return s.temporal.StartVerifyDriverCredentials(ctx, projectID, "config", req.Type, req.Version, encryptedConfig)
 }
 
-func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) (map[string]interface{}, error) {
+// GetSourceCatalog starts catalog discovery and returns its operation ID.
+func (s Service) GetSourceCatalog(ctx context.Context, projectID string, req *dto.StreamsRequest) (string, error) {
 	oldStreams := ""
 	if req.JobID >= 0 {
 		job, err := s.db.GetJobByID(req.JobID, true)
 		if err != nil {
-			return nil, fmt.Errorf("failed to find job for catalog: %s", err)
+			return "", fmt.Errorf("failed to find job for catalog: %s", err)
 		}
 		oldStreams = job.StreamsConfig
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt config for catalog: %s", err)
+		return "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 
-	newStreams, err := s.temporal.DiscoverStreams(
+	return s.temporal.StartDiscoverStreams(
 		ctx,
+		projectID,
 		req.Type,
 		req.Version,
 		encryptedConfig,
@@ -266,11 +249,6 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) 
 		req.JobName,
 		req.MaxDiscoverThreads,
 	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get catalog: %s", err)
-	}
-
-	return newStreams, nil
 }
 
 func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {
@@ -284,15 +262,7 @@ func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.
 }
 
 // TODO: cache spec in db for each version
-func (s Service) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
-	specOut, err := s.temporal.GetDriverSpecs(ctx, "", req.Type, req.Version)
-	if err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)
-	}
-
-	return dto.SpecResponse{
-		Version: req.Version,
-		Type:    req.Type,
-		Spec:    specOut.Spec,
-	}, nil
+// GetSourceSpec starts a spec fetch and returns its operation ID.
+func (s Service) GetSourceSpec(ctx context.Context, projectID string, req *dto.SpecRequest) (string, error) {
+	return s.temporal.StartDriverSpecs(ctx, projectID, "", req.Type, req.Version, req.Type, req.Version)
 }

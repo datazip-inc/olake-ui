@@ -34,6 +34,7 @@ export const useSourceSpec = (type: string, version: string) => {
 		queryKey: sourceKeys.spec(type, version),
 		queryFn: ({ signal }) => sourceService.getSourceSpec(type, version, signal),
 		enabled: !!type && !!version,
+		retry: false,
 		staleTime: Infinity,
 		gcTime: 24 * 60 * 60 * 1000, // 24 hours
 	})
