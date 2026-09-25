@@ -31,7 +31,7 @@ var (
 	DefaultClearDestinationVersion   = "v0.3.0"
 	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
 	// DefaultQueryEnginesVersion is the first release with the query engine flags; older images reject them.
-	DefaultQueryEnginesVersion = "v0.10.2"
+	DefaultQueryEnginesVersion = "v0.11.0"
 
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"
