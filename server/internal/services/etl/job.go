@@ -379,31 +379,27 @@ func (s Service) ClearDestination(ctx context.Context, projectID string, jobID i
 	return nil
 }
 
-func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
+// GetStreamDifference starts a stream-difference comparison and returns its operation ID.
+func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (string, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
-		return nil, fmt.Errorf("job not found: %s", err)
+		return "", fmt.Errorf("job not found: %s", err)
 	}
 
 	if job.Source == nil {
-		return nil, fmt.Errorf("job source details not found")
+		return "", fmt.Errorf("job source details not found")
 	}
 	if err := CheckClearDestinationCompatibility(job.Source.Version); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	diffCatalog, err := s.temporal.GetStreamDifference(ctx, job, job.StreamsConfig, req.UpdatedStreamsConfig)
+	operationID, err := s.temporal.StartStreamDifference(ctx, job, job.StreamsConfig, req.UpdatedStreamsConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get stream difference: %s", err)
+		return "", fmt.Errorf("failed to get stream difference: %s", err)
 	}
 
-	diffCatalogJSON, err := json.Marshal(diffCatalog)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal stream difference: %s", err)
-	}
-
-	logger.Infof("stream difference retrieved successfully for job %d\n%s", job.ID, string(diffCatalogJSON))
-	return diffCatalog, nil
+	logger.Infof("stream difference started for job %d operation_id[%s]", job.ID, operationID)
+	return operationID, nil
 }
 
 func (s Service) GetClearDestinationStatus(ctx context.Context, projectID string, jobID int) (bool, error) {

@@ -1,5 +1,7 @@
-import { AxiosError } from "axios"
-
+import {
+	OperationAccepted,
+	runOperation,
+} from "@/common/services/operationsService"
 import { SpecResponse, TestConnectionResponse } from "@/common/types"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
@@ -10,6 +12,10 @@ import {
 	EntityTestRequest,
 	StreamsDataStructure,
 } from "@/modules/ingestion/common/types"
+import { describeConnectionFailure } from "@/modules/ingestion/common/utils"
+
+/** Every request here is short now: submissions just start work, and versions is bounded server-side. */
+const SUBMIT_TIMEOUT_MS = 30000
 
 export const sourceService = {
 	getSources: async (): Promise<Entity[]> => {
@@ -99,29 +105,30 @@ export const sourceService = {
 		existing: boolean = false,
 	) => {
 		try {
-			const response = await api.post<TestConnectionResponse>(
-				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
-				{
-					type: source.type.toLowerCase(),
-					version: source.version,
-					config: source.config,
-				},
-				{ timeout: 0, disableErrorNotification: true }, // Disable timeout for this request since it can take longer
-			)
+			// The check runs a connector container. The POST only starts it; the result
+			// arrives by polling, so no request is held open for the container run.
+			const data = await runOperation<TestConnectionResponse>(async () => {
+				const response = await api.post<OperationAccepted>(
+					`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
+					{
+						type: source.type.toLowerCase(),
+						version: source.version,
+						config: source.config,
+					},
+					{ timeout: SUBMIT_TIMEOUT_MS, disableErrorNotification: true },
+				)
+				return response.data
+			})
 
-			trackTestConnection(true, source, response.data, existing)
+			trackTestConnection(true, source, data, existing)
 			return {
 				success: true,
 				message: "success",
-				data: response.data,
+				data,
 			}
 		} catch (error) {
 			console.error("Error testing source connection:", error)
-			const errorMessage =
-				error instanceof AxiosError
-					? (error.response?.data?.message ??
-						"Network error - please check your connection")
-					: "Unknown error occurred"
+			const errorMessage = describeConnectionFailure(error)
 			return {
 				success: false,
 				message: errorMessage,
@@ -148,7 +155,9 @@ export const sourceService = {
 				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/versions`,
 				{
 					params: { type },
-					timeout: 0, // Disable timeout for this request since it can take longer
+					// Untimed: does a container-registry lookup server-side, which has no
+					// deadline of its own and falls back to locally cached images.
+					timeout: 0,
 				},
 			)
 			return response.data
@@ -164,15 +173,25 @@ export const sourceService = {
 		signal?: AbortSignal,
 	) => {
 		try {
-			const response = await api.post<SpecResponse>(
-				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/spec`,
-				{
-					type: type.toLowerCase(),
-					version,
+			// The POST only starts the spec fetch; the result arrives by polling.
+			return await runOperation<SpecResponse>(
+				async () => {
+					const response = await api.post<OperationAccepted>(
+						`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/spec`,
+						{
+							type: type.toLowerCase(),
+							version,
+						},
+						{
+							timeout: SUBMIT_TIMEOUT_MS,
+							signal,
+							disableErrorNotification: true,
+						},
+					)
+					return response.data
 				},
-				{ timeout: 300000, signal, disableErrorNotification: true }, //timeout is 300000 as spec takes more time as it needs to fetch the spec from olake
+				{ signal },
 			)
-			return response.data
 		} catch (error: any) {
 			console.error("Error getting source spec:", error)
 			const serverMessage = error?.response?.data?.message
@@ -194,20 +213,31 @@ export const sourceService = {
 		signal?: AbortSignal,
 	) => {
 		try {
-			const response = await api.post<StreamsDataStructure>(
-				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
-				{
-					name,
-					type,
-					job_name,
-					job_id: job_id ? job_id : -1,
-					version,
-					config,
-					max_discover_threads,
+			// Discovery is the longest of these and the one a user is most likely to
+			// navigate away from, so it rejoins rather than restarting.
+			return await runOperation<StreamsDataStructure>(
+				async () => {
+					const response = await api.post<OperationAccepted>(
+						`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
+						{
+							name,
+							type,
+							job_name,
+							job_id: job_id ? job_id : -1,
+							version,
+							config,
+							max_discover_threads,
+						},
+						{
+							timeout: SUBMIT_TIMEOUT_MS,
+							signal,
+							disableErrorNotification: true,
+						},
+					)
+					return response.data
 				},
-				{ timeout: 0, signal, disableErrorNotification: true },
+				{ signal },
 			)
-			return response.data
 		} catch (error: any) {
 			console.error("Error getting source streams:", error)
 			const serverMessage = error?.response?.data?.message

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -206,45 +205,24 @@ func (s Service) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDest
 	return &dto.DeleteDestinationResponse{Name: dest.Name}, nil
 }
 
-func (s Service) TestDestinationConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+// TestDestinationConnection starts a connection check and returns its operation ID.
+func (s Service) TestDestinationConnection(ctx context.Context, projectID string, req *dto.DestinationTestConnectionRequest) (string, error) {
 	version := req.Version
 	driver := req.SourceType
 	if driver == "" {
 		var err error
 		_, driver, err = utils.GetDriverImageTags(ctx, "", true)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get driver image tags: %s", err)
+			return "", fmt.Errorf("failed to get driver image tags: %s", err)
 		}
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
-	}
-	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
-	result, err := s.temporal.VerifyDriverCredentials(ctx, workflowID, "destination", driver, version, encryptedConfig)
-	// TODO: handle from frontend
-	if result == nil {
-		result = map[string]interface{}{
-			"message": err.Error(),
-			"status":  "failed",
-		}
+		return "", fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}
 
-	if err != nil {
-		return result, nil, fmt.Errorf("connection test failed: %s", err)
-	}
-
-	homeDir := constants.DefaultConfigDir
-	mainLogDir := filepath.Join(homeDir, workflowID)
-	// Fetch the latest batch of logs by tailing from the end with default limit in the "older" direction.
-	logs, err := utils.ReadLogs(mainLogDir, -1, -1, "older")
-	if err != nil {
-		return result, nil, fmt.Errorf("failed to read logs destination_type[%s] destination_version[%s] error[%s]",
-			req.Type, req.Version, err)
-	}
-
-	return result, logs.Logs, nil
+	return s.temporal.StartVerifyDriverCredentials(ctx, projectID, "destination", driver, version, encryptedConfig)
 }
 
 func (s Service) GetDestinationVersions(ctx context.Context, destType string) (dto.VersionsResponse, error) {
@@ -261,20 +239,14 @@ func (s Service) GetDestinationVersions(ctx context.Context, destType string) (d
 }
 
 // TODO: cache spec in db for each version
-func (s Service) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
+// GetDestinationSpec starts a spec fetch and returns its operation ID. The spec runs
+// inside a source connector image, so the destination type and version the caller asked
+// for are recorded separately for the response.
+func (s Service) GetDestinationSpec(ctx context.Context, projectID string, req *dto.SpecRequest) (string, error) {
 	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("failed to get driver image tags: %s", err)
+		return "", fmt.Errorf("failed to get driver image tags: %s", err)
 	}
 
-	specOut, err := s.temporal.GetDriverSpecs(ctx, req.Type, driver, req.Version)
-	if err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)
-	}
-
-	return dto.SpecResponse{
-		Version: req.Version,
-		Type:    req.Type,
-		Spec:    specOut.Spec,
-	}, nil
+	return s.temporal.StartDriverSpecs(ctx, projectID, req.Type, driver, req.Version, req.Type, req.Version)
 }

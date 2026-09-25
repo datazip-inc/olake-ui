@@ -90,6 +90,27 @@ type ClearDestinationStatusResponse struct {
 	Running bool `json:"running" example:"false"`
 }
 
+// OperationAcceptedResponse is the 202 body returned when long-running work is
+// submitted. The operation ID is the durable handle the client polls; the work itself
+// runs in a Temporal workflow and outlives the request that started it.
+type OperationAcceptedResponse struct {
+	OperationID string `json:"operation_id" example:"discover-catalog-123-8f14e45fceea167a5a36dedd4bea2543"`
+	Kind        string `json:"kind" example:"discover-catalog"`
+	Status      string `json:"status" example:"running"`
+}
+
+// OperationStatusResponse is the body of a status poll. It is deliberately small so that
+// polling stays cheap: the payload is fetched once, separately, from the result endpoint,
+// because a discovered catalog can run to tens of megabytes.
+type OperationStatusResponse struct {
+	OperationID string `json:"operation_id"`
+	Kind        string `json:"kind" example:"discover-catalog"`
+	Status      string `json:"status" example:"running"`
+	StartedAt   string `json:"started_at,omitempty"`
+	FinishedAt  string `json:"finished_at,omitempty"`
+	Error       string `json:"error,omitempty"`
+}
+
 type VersionsResponse struct {
 	Version []string `json:"version" example:"v0.3.15,v0.3.14,v0.3.13,v0.3.12"`
 }

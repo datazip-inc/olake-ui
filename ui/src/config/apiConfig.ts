@@ -15,6 +15,10 @@ export const API_CONFIG = {
 			SOURCES: (projectId: string) => `/api/v1/project/${projectId}/sources`,
 			JOBS: (projectId: string) => `/api/v1/project/${projectId}/jobs`,
 			SETTINGS: (projectId: string) => `/api/v1/project/${projectId}/settings`,
+			// Long-running work is submitted to the endpoints above, which return an
+			// operation id, and polled here.
+			OPERATIONS: (projectId: string) =>
+				`/api/v1/project/${projectId}/operations`,
 		},
 		OPT: {
 			CATALOGS: (catalogName?: string) =>

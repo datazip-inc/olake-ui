@@ -10,6 +10,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -407,7 +408,7 @@ func (h *Handler) GetStreamDifference(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Get stream difference initiated project_id[%s] job_id[%d]", projectID, id)
-	diffStreams, err := h.etl.GetStreamDifference(c.Request.Context(), projectID, id, req)
+	operationID, err := h.etl.GetStreamDifference(c.Request.Context(), projectID, id, req)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrJobNotFound) {
@@ -416,8 +417,10 @@ func (h *Handler) GetStreamDifference(c *gin.Context) {
 		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get stream difference: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(c, fmt.Sprintf("stream difference retrieved successfully for job_id[%d]", id), dto.StreamDifferenceResponse{
-		DifferenceStreams: diffStreams,
+	utils.AcceptedResponse(c, fmt.Sprintf("stream difference started for job_id[%d]", id), dto.OperationAcceptedResponse{
+		OperationID: operationID,
+		Kind:        string(temporal.OperationStreamDifference),
+		Status:      string(temporal.OperationRunning),
 	})
 }
 
