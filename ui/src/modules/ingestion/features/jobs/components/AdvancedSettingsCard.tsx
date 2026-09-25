@@ -19,8 +19,13 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 	sourceVersion,
 	queryEnginesDisabled = false,
 }) => {
-	const { advancedSettings, setAdvancedSettings, selectedSource } =
-		useJobConfigurationStore()
+	const {
+		advancedSettings,
+		setAdvancedSettings,
+		selectedSource,
+		savedAdvancedSettings,
+		isEditMode,
+	} = useJobConfigurationStore()
 
 	const {
 		data: queryEngines = [],
@@ -37,12 +42,17 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 	const setQueryEngines = (target_query_engines: string[]) =>
 		setAdvancedSettings({ ...advancedSettings, target_query_engines })
 
-	const hasSnowflakeEngine = targetQueryEngines.some(engine =>
-		queryEngines
-			.find(({ engine: value }) => value === engine)
-			?.label.toLowerCase()
-			.includes("snowflake"),
-	)
+	const savedQueryEngines = savedAdvancedSettings?.target_query_engines ?? []
+	// Hidden in create mode, when query engines are disabled (job settings), or
+	// when Snowflake was already in the saved selection.
+	const showSnowflakeWarning =
+		isEditMode &&
+		!queryEnginesDisabled &&
+		targetQueryEngines.some(
+			engine =>
+				!savedQueryEngines.includes(engine) &&
+				engine.toLowerCase().includes("snowflake"),
+		)
 
 	return (
 		<div className="mt-5 rounded-xl border border-olake-border p-6">
@@ -125,7 +135,7 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 								)}
 							/>
 						)}
-						{hasSnowflakeEngine && (
+						{showSnowflakeWarning && (
 							<div className="mt-4 flex gap-3 rounded-lg border border-warning/40 bg-warning-light p-4 text-xs text-warning-dark">
 								<InfoIcon className="mt-0.5 size-5 shrink-0" />
 								<p>

@@ -42,8 +42,8 @@ const IndexBuildWarningModal = ({
 					Please Confirm
 				</div>
 				<p className="mt-2 text-sm leading-6 text-neutral-text">
-					Indexes will be built for streams using position deletes or deletion
-					vectors. The next sync may take some time.
+					Indexes might get built for streams using position deletes or deletion
+					vectors. If so, the next sync may take some time.
 				</p>
 			</div>
 		</div>

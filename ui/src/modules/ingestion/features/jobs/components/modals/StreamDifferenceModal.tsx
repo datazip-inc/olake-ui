@@ -132,8 +132,8 @@ const StreamDifferenceModal = ({
 					<div className="mt-4 flex gap-3 rounded-lg border border-warning/40 bg-warning-light p-4 text-left text-sm text-warning-dark">
 						<InfoIcon className="mt-0.5 size-5 shrink-0" />
 						<span>
-							Indexes will be built for streams using position deletes or
-							deletion vectors. The next sync may take some time.
+							Indexes might get built for streams using position deletes or
+							deletion vectors. If so, the next sync may take some time.
 						</span>
 					</div>
 				)}

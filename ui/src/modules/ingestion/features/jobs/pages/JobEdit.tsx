@@ -101,6 +101,8 @@ const JobEdit: React.FC = () => {
 		setSelectedDestination,
 		setAdvancedSettings,
 		setIsEditMode,
+		savedAdvancedSettings,
+		setSavedAdvancedSettings,
 		reset: resetJobConfig,
 	} = useJobConfigurationStore()
 
@@ -181,6 +183,7 @@ const JobEdit: React.FC = () => {
 		}
 
 		setAdvancedSettings(job.advanced_settings ?? null)
+		setSavedAdvancedSettings(job.advanced_settings ?? null)
 	}
 
 	// Initialize from fetched job data
@@ -406,7 +409,7 @@ const JobEdit: React.FC = () => {
 
 	const hasUndiscoveredQueryEngines = queryEnginesChanged(
 		advancedSettings,
-		job?.advanced_settings,
+		savedAdvancedSettings,
 	)
 
 	// Either the stream-difference check or the update itself is in flight.
