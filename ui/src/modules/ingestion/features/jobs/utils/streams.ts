@@ -233,18 +233,27 @@ const INDEXED_UPSERT_TYPES: UpsertType[] = [
 	UpsertType.DELETION_VECTOR,
 ]
 
+const usesIndexedUpsert = (stream: SelectedStream): boolean =>
+	!stream.append_mode &&
+	!!stream.update_type &&
+	INDEXED_UPSERT_TYPES.includes(stream.update_type)
+
+const indexedStreamIds = (
+	streamsConfig?: StreamsDataStructure | null,
+): Set<string> =>
+	new Set(
+		Object.entries(
+			getSelectedStreams(streamsConfig?.selected_streams ?? {}),
+		).flatMap(([namespace, streams]) =>
+			streams
+				.filter(usesIndexedUpsert)
+				.map(stream => `${namespace}.${stream.stream_name}`),
+		),
+	)
+
 export const hasIndexedUpsertStream = (
 	streamsConfig?: StreamsDataStructure | null,
-): boolean =>
-	Object.values(getSelectedStreams(streamsConfig?.selected_streams ?? {})).some(
-		streams =>
-			streams.some(
-				stream =>
-					!stream.append_mode &&
-					!!stream.update_type &&
-					INDEXED_UPSERT_TYPES.includes(stream.update_type),
-			),
-	)
+): boolean => indexedStreamIds(streamsConfig).size > 0
 
 // True when the difference covers every enabled stream, meaning clear destination
 // runs across the whole job rather than a subset of its streams.
@@ -281,13 +290,23 @@ export const queryEnginesChanged = (
 	)
 }
 
-// index_required on the saved settings means the index already exists; without it,
-// a stream using an indexed delete format means the index gets built on the next sync.
+// The next sync builds the destination index for any pos/dv stream that wasn't
+// already pos/dv in the saved config. Returns true when a stream is:
+//   - newly selected with pos/dv (not in the saved config, or disabled there)
+//   - switched from eq to pos/dv
+//   - switched from append mode to pos/dv
+// Returns false when every pos/dv stream was already pos/dv in the saved config,
+// so no new index is needed. With no saved config (job creation), every pos/dv
+// stream counts as new.
 export const willBuildIndex = (
-	advancedSettings: AdvancedSettings | null | undefined,
-	streamsConfig?: StreamsDataStructure | null,
-): boolean =>
-	!advancedSettings?.index_required && hasIndexedUpsertStream(streamsConfig)
+	streamsConfig: StreamsDataStructure | null | undefined,
+	savedStreamsConfig?: StreamsDataStructure | null,
+): boolean => {
+	const alreadyIndexed = indexedStreamIds(savedStreamsConfig)
+	const nowIndexed = indexedStreamIds(streamsConfig)
+
+	return [...nowIndexed].some(id => !alreadyIndexed.has(id))
+}
 
 // index_required is derived from the streams config on every write; the rest of
 // advanced settings stays user-configured.

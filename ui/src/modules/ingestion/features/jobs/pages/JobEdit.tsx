@@ -319,7 +319,7 @@ const JobEdit: React.FC = () => {
 
 			// No difference - the index warning, if any, stands on its own.
 			setStreamDifference(null)
-			if (willBuildIndex(advancedSettings, streamsData)) {
+			if (willBuildIndex(streamsData, initialStreamsData.current)) {
 				setShowIndexBuildWarning(true)
 				return
 			}
@@ -530,7 +530,10 @@ const JobEdit: React.FC = () => {
 			{streamDifference && (
 				<StreamDifferenceModal
 					streamDifference={streamDifference}
-					showIndexWarning={willBuildIndex(advancedSettings, streamsData)}
+					showIndexWarning={willBuildIndex(
+						streamsData,
+						initialStreamsData.current,
+					)}
 					onConfirm={() => handleJobSubmit(streamDifference)}
 				/>
 			)}

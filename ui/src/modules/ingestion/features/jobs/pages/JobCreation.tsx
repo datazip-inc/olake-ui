@@ -286,7 +286,7 @@ const JobCreation: React.FC = () => {
 					return
 				}
 				// Positional deletes need a destination index built on the first sync.
-				if (willBuildIndex(advancedSettings, streamsData)) {
+				if (willBuildIndex(streamsData)) {
 					setShowIndexBuildWarning(true)
 					return
 				}

@@ -37,6 +37,13 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 	const setQueryEngines = (target_query_engines: string[]) =>
 		setAdvancedSettings({ ...advancedSettings, target_query_engines })
 
+	const hasSnowflakeEngine = targetQueryEngines.some(engine =>
+		queryEngines
+			.find(({ engine: value }) => value === engine)
+			?.label.toLowerCase()
+			.includes("snowflake"),
+	)
+
 	return (
 		<div className="mt-5 rounded-xl border border-olake-border p-6">
 			<div className="mb-6 flex items-center gap-2">
@@ -117,6 +124,21 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 									</Tag>
 								)}
 							/>
+						)}
+						{hasSnowflakeEngine && (
+							<div className="mt-4 flex gap-3 rounded-lg border border-warning/40 bg-warning-light p-4 text-xs text-warning-dark">
+								<InfoIcon className="mt-0.5 size-5 shrink-0" />
+								<p>
+									We highly recommend running{" "}
+									<span className="font-semibold">Clear Destination</span>{" "}
+									before proceeding. This is due to a{" "}
+									<span className="font-semibold">
+										Snowflake-side limitation
+									</span>{" "}
+									that can cause stale data to be read from old Iceberg
+									snapshots if the destination is not cleared.
+								</p>
+							</div>
 						)}
 					</div>
 				</div>

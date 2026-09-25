@@ -35,21 +35,21 @@ export const SYNC_MODE_MAP = {
 
 export const UPSERT_TYPE_OPTIONS = [
 	{
-		label: "Equality",
+		label: "Equality Deletes",
 		value: UpsertType.EQUALITY,
 		icebergFormatVersion: "V2",
 		tooltip:
 			"Rows are matched and deleted by primary key values before the new rows are written",
 	},
 	{
-		label: "Positional",
+		label: "Positional Deletes",
 		value: UpsertType.POSITIONAL,
 		icebergFormatVersion: "V2",
 		tooltip:
 			"Rows are deleted by their position in the existing data files before the new rows are written",
 	},
 	{
-		label: "Deletion",
+		label: "Deletion Vector",
 		value: UpsertType.DELETION_VECTOR,
 		icebergFormatVersion: "V3",
 		tooltip:
