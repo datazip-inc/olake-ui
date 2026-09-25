@@ -2,7 +2,6 @@ package etl
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -243,53 +242,55 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 	return result, logs.Logs, nil
 }
 
-func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, splitStreams bool) (dto.CatalogResponse, error) {
-	oldStreams := ""
-	oldSelectedStreams := ""
-	if req.JobID >= 0 {
+// GetSourceCatalog runs discover with the legacy streams.json and returns the discovered catalog.
+func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, streamsConfig string) (string, error) {
+	if streamsConfig == "" && req.JobID >= 0 {
 		job, err := s.db.GetJobByID(req.JobID, true)
 		if err != nil {
-			return dto.CatalogResponse{}, fmt.Errorf("failed to find job for catalog: %s", err)
+			return "", fmt.Errorf("failed to find job for catalog: %s", err)
 		}
-		oldStreams = job.StreamsConfig
-		oldSelectedStreams = utils.StringValue(job.SelectedStreamsConfig)
+		streamsConfig = job.StreamsConfig
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return dto.CatalogResponse{}, fmt.Errorf("failed to encrypt config for catalog: %s", err)
+		return "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 
-	streamsMap, selectedStreamsMap, err := s.temporal.DiscoverStreams(
-		ctx,
-		req.Type,
-		req.Version,
-		encryptedConfig,
-		oldStreams,
-		oldSelectedStreams,
-		req.JobName,
-		req.MaxDiscoverThreads,
-		splitStreams,
-	)
+	streamsMap, err := s.temporal.DiscoverStreams(ctx, req.Type, req.Version, encryptedConfig, streamsConfig, req.JobName, req.MaxDiscoverThreads)
 	if err != nil {
-		return dto.CatalogResponse{}, fmt.Errorf("failed to get catalog: %s", err)
+		return "", fmt.Errorf("failed to get catalog: %s", err)
 	}
-
-	streamsConfig, err := json.Marshal(streamsMap)
+	streamsJSON, err := utils.MarshalToString(streamsMap)
 	if err != nil {
-		return dto.CatalogResponse{}, fmt.Errorf("failed to marshal streams config: %s", err)
+		return "", fmt.Errorf("failed to marshal catalog: %s", err)
+	}
+	return streamsJSON, nil
+}
+
+// DiscoverSplitCatalog runs discover in the split format (streams v2), merging against available
+// and selected, and returns the new available_streams.json, selected_streams.json and
+// streams.json. The CLI reads a prior catalog only when both are set; otherwise discover runs fresh.
+func (s Service) DiscoverSplitCatalog(ctx context.Context, req *dto.StreamsRequest, available, selected string) (newAvailable, newSelected, streamsConfig string, err error) {
+	encryptedConfig, err := utils.Encrypt(req.Config)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 
-	resp := dto.CatalogResponse{StreamsConfig: string(streamsConfig)}
-	if selectedStreamsMap != nil {
-		selectedStreamsConfig, err := json.Marshal(selectedStreamsMap)
-		if err != nil {
-			return dto.CatalogResponse{}, fmt.Errorf("failed to marshal selected streams config: %s", err)
-		}
-		resp.SelectedStreamsConfig = string(selectedStreamsConfig)
+	availableMap, selectedMap, streamsMap, err := s.temporal.DiscoverSplitStreams(ctx, req.Type, req.Version, encryptedConfig, available, selected, req.JobName, req.MaxDiscoverThreads)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to get catalog: %s", err)
 	}
-
-	return resp, nil
+	if newAvailable, err = utils.MarshalToString(availableMap); err != nil {
+		return "", "", "", fmt.Errorf("failed to marshal available streams: %s", err)
+	}
+	if newSelected, err = utils.MarshalToString(selectedMap); err != nil {
+		return "", "", "", fmt.Errorf("failed to marshal selected streams: %s", err)
+	}
+	if streamsConfig, err = utils.MarshalToString(streamsMap); err != nil {
+		return "", "", "", fmt.Errorf("failed to marshal streams: %s", err)
+	}
+	return newAvailable, newSelected, streamsConfig, nil
 }
 
 func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {

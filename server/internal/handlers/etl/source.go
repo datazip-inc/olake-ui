@@ -248,15 +248,14 @@ func (h *Handler) GetSourceCatalog(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Get source catalog initiated source_type[%s] source_version[%s] job_id[%d]", req.Type, req.Version, req.JobID)
-	catalog, err := h.etl.GetSourceCatalog(c.Request.Context(), &req, false)
+	catalog, err := h.etl.GetSourceCatalog(c.Request.Context(), &req, "")
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source streams: %s", err), err)
 		return
 	}
 
-	// UI expects only streams, not selected_streams_config
 	var streams map[string]interface{}
-	if err := json.Unmarshal([]byte(catalog.StreamsConfig), &streams); err != nil {
+	if err := json.Unmarshal([]byte(catalog), &streams); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to parse source catalog: %s", err), err)
 		return
 	}
