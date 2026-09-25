@@ -53,10 +53,11 @@ Create / update:
     stream difference runs on streams drift (clear destination).
 
 Streams persistence:
-  - Legacy create: store CM as streams_config.
-  - Legacy update (connector/streams drift): discover → persist catalog as streams_config;
-  - Split create: store CM as streams_config; run discover to fill selected_streams_config.
-  - Split update (connector/streams drift): discover → persist catalog as streams_config + selected_streams_config.
+  - Legacy create: store the CM as streams_config.
+  - Legacy update (connector/streams drift): discover (--catalog) and store the result as
+    streams_config. The split columns stay NULL.
+  - Split create: discover (--available-streams / --selected-streams) for available_streams;
+  - Split update (connector/streams drift): discover, store the result as available_streams_config and selected_streams_config.
 
 Why discover here:
   - UI: discover/merge runs first, then you edit streams.
@@ -118,11 +119,14 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res *ResourceData) (ct
 		return requeueTransient(ctx, r.Sink, res, err, observed)
 	}
 
-	streamsConfig := streamsRes.Config()
-	// Streams format (legacy vs split) is chosen at job creation; do not switch afterwards.
-	isSplitStream, err := classifyStreamsFormat(streamsConfig)
+	streamsCM, err := parseStreamsCM(streamsRes.Config())
 	if err != nil {
 		return r.failJob(ctx, res, streamsRes, err, observed)
+	}
+	if streamsCM.Split && !utils.SupportsSplitStreams(source.Version) {
+		err := fmt.Errorf("selection-only streams config needs source version %s or later (source %q is on %s); add streams[] to the config or upgrade the source",
+			constants.MinSplitStreamsVersion, source.Name, source.Version)
+		return r.failJob(ctx, res, streamsRes, NonRetryableError(err), observed)
 	}
 
 	var drift jobDrift
@@ -131,34 +135,10 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res *ResourceData) (ct
 		drift.streams = !streamsCMApplied(streamsRes.Annotations, streamsRes.Data)
 	}
 
-	selectedStreamsConfig := ""
-	// On update, default to the DB catalog so job-only edits (frequency, name, etc.)
-	// never overwrite merged selected_columns. Discover replaces this when it runs.
-	persistStreamsConfig := streamsConfig
-	if existingJob != nil && existingJob.StreamsConfig != "" {
-		persistStreamsConfig = existingJob.StreamsConfig
-	}
-	// Discover runs on:
-	//   split create to populate selected_streams_config from source
-	//   any update with connector or streams drift to merge new schema/columns
-	needsDiscover := (existingJob == nil && isSplitStream) ||
-		(existingJob != nil && (drift.connectors || drift.streams))
-	if needsDiscover {
-		streamsOverride := ""
-		if drift.streams {
-			streamsOverride = streamsConfig
-		}
-		catalog, err := r.discoverCatalog(ctx, source, jobCfg, existingJob, streamsOverride, isSplitStream)
-		if err != nil {
-			logger.Error(err, "discover schema failed")
-			return r.failJob(ctx, res, streamsRes, NonRetryableError(err), observed)
-		}
-		if isSplitStream {
-			selectedStreamsConfig = catalog.SelectedStreamsConfig
-		}
-		if existingJob != nil && catalog.StreamsConfig != "" {
-			persistStreamsConfig = catalog.StreamsConfig
-		}
+	catalog, err := resolveCatalog(ctx, r.ETL, source, jobCfg, existingJob, streamsCM, drift)
+	if err != nil {
+		logger.Error(err, "discover schema failed")
+		return r.failJob(ctx, res, streamsRes, NonRetryableError(err), observed)
 	}
 
 	if existingJob == nil || drift.connectors {
@@ -170,7 +150,7 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res *ResourceData) (ct
 
 	switch {
 	case existingJob == nil:
-		if err := r.ETL.CreateJob(ctx, jobCfg.createRequest(source.ID, dest.ID, persistStreamsConfig, selectedStreamsConfig), projectID, &userID); err != nil {
+		if err := r.ETL.CreateJob(ctx, jobCfg.createRequest(source.ID, dest.ID, catalog.streamsConfig, catalog.available, catalog.selected), projectID, &userID); err != nil {
 			logger.Error(err, "create job failed")
 			return r.failJob(ctx, res, streamsRes, NonRetryableError(err), observed)
 		}
@@ -182,13 +162,13 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res *ResourceData) (ct
 	case drift.any():
 		diffStreams := ""
 		if drift.streams {
-			diffStreams, err = r.streamDifferenceJSON(ctx, projectID, existingJob.ID, streamsConfig)
+			diffStreams, err = streamDifferenceJSON(ctx, r.ETL, existingJob, streamsCM, catalog)
 			if err != nil {
 				logger.Error(err, "stream difference failed")
 				return r.failJob(ctx, res, streamsRes, NonRetryableError(err), observed)
 			}
 		}
-		if err := r.ETL.UpdateJob(ctx, jobCfg.updateRequest(source.ID, dest.ID, persistStreamsConfig, selectedStreamsConfig, diffStreams), projectID, existingJob.ID, &userID); err != nil {
+		if err := r.ETL.UpdateJob(ctx, jobCfg.updateRequest(source.ID, dest.ID, catalog.streamsConfig, catalog.available, catalog.selected, diffStreams), projectID, existingJob.ID, &userID); err != nil {
 			logger.Error(err, "update job failed")
 			return r.failJob(ctx, res, streamsRes, NonRetryableError(err), observed)
 		}
@@ -266,7 +246,23 @@ func (r *JobReconciler) streamsSettled(ctx context.Context, job *ResourceData) (
 	return streamsCMApplied(streamsRes.Annotations, streamsRes.Data), nil
 }
 
-func (r *JobReconciler) discoverCatalog(ctx context.Context, source *models.Source, jobCfg *JobConfig, existingJob *models.Job, streamsCatalogOverride string, splitStreams bool) (dto.CatalogResponse, error) {
+// jobCatalog is the catalog to persist for a job. available and selected are set only for the split format.
+type jobCatalog struct {
+	streamsConfig string
+	available     string
+	selected      string
+}
+
+// catalogService is the part of the ETL service that discovers and diffs job catalogs.
+type catalogService interface {
+	GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, streamsConfig string) (string, error)
+	DiscoverSplitCatalog(ctx context.Context, req *dto.StreamsRequest, available, selected string) (newAvailable, newSelected, streamsConfig string, err error)
+	GetStreamDifference(ctx context.Context, projectID string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error)
+	GetSplitCatalogDifference(ctx context.Context, jobID int, oldAvailable, oldSelected, newAvailable, newSelected string) (map[string]interface{}, error)
+}
+
+// resolveCatalog returns the catalog to persist
+func resolveCatalog(ctx context.Context, svc catalogService, source *models.Source, jobCfg *JobConfig, existingJob *models.Job, cm streamsCM, drift jobDrift) (jobCatalog, error) {
 	req := &dto.StreamsRequest{
 		Name:    source.Name,
 		Type:    source.Type,
@@ -278,16 +274,62 @@ func (r *JobReconciler) discoverCatalog(ctx context.Context, source *models.Sour
 	if jobCfg.AdvancedSettings != nil {
 		req.MaxDiscoverThreads = jobCfg.AdvancedSettings.MaxDiscoverThreads
 	}
-	return r.ETL.GetSourceCatalog(ctx, req, splitStreams, streamsCatalogOverride)
+	updateDrift := existingJob != nil && (drift.connectors || drift.streams)
+
+	if !cm.Split {
+		streamsConfig := cm.Catalog
+		if existingJob != nil && !drift.streams {
+			streamsConfig = existingJob.StreamsConfig
+		}
+		if updateDrift {
+			var err error
+			if streamsConfig, err = svc.GetSourceCatalog(ctx, req, streamsConfig); err != nil {
+				return jobCatalog{}, err
+			}
+		}
+		return jobCatalog{streamsConfig: streamsConfig}, nil
+	}
+
+	available, selected, streamsConfig := "", cm.Catalog, ""
+	if existingJob != nil {
+		available = utils.StringValue(existingJob.AvailableStreamsConfig)
+		if !drift.streams && available != "" {
+			selected = utils.StringValue(existingJob.SelectedStreamsConfig)
+			streamsConfig = existingJob.StreamsConfig
+		}
+	}
+	if available == "" || updateDrift {
+		newAvailable, newSelected, newStreamsConfig, err := svc.DiscoverSplitCatalog(ctx, req, available, selected)
+		if err != nil {
+			return jobCatalog{}, err
+		}
+		if available == "" {
+			if newAvailable, newSelected, newStreamsConfig, err = svc.DiscoverSplitCatalog(ctx, req, newAvailable, selected); err != nil {
+				return jobCatalog{}, err
+			}
+		}
+		available, selected, streamsConfig = newAvailable, newSelected, newStreamsConfig
+	}
+	return jobCatalog{streamsConfig: streamsConfig, available: available, selected: selected}, nil
 }
 
-func (r *JobReconciler) streamDifferenceJSON(ctx context.Context, projectID string, jobID int, streamsConfig string) (string, error) {
-	diffCatalog, err := r.ETL.GetStreamDifference(ctx, projectID, jobID, dto.StreamDifferenceRequest{
-		UpdatedStreamsConfig: streamsConfig,
-	})
+// streamDifferenceJSON diffs the job's stored catalog against the new one
+func streamDifferenceJSON(ctx context.Context, svc catalogService, job *models.Job, cm streamsCM, catalog jobCatalog) (string, error) {
+	var diffCatalog map[string]interface{}
+	var err error
+	oldAvailable, oldSelected := utils.StringValue(job.AvailableStreamsConfig), utils.StringValue(job.SelectedStreamsConfig)
+	switch {
+	case cm.Split && oldAvailable != "":
+		diffCatalog, err = svc.GetSplitCatalogDifference(ctx, job.ID, oldAvailable, oldSelected, catalog.available, catalog.selected)
+	case job.StreamsConfig != "":
+		diffCatalog, err = svc.GetStreamDifference(ctx, job.ProjectID, job.ID, dto.StreamDifferenceRequest{UpdatedStreamsConfig: catalog.streamsConfig})
+	default:
+		return "", nil
+	}
 	if err != nil {
 		return "", err
 	}
+
 	diffBytes, err := json.Marshal(diffCatalog)
 	if err != nil {
 		return "", err
@@ -404,24 +446,26 @@ func diffJob(existing *models.Job, cfg *JobConfig, sourceID, destID int) jobDrif
 	}
 }
 
-func (cfg *JobConfig) createRequest(sourceID, destID int, streamsConfig, selectedStreamsConfig string) *dto.CreateJobRequest {
+func (cfg *JobConfig) createRequest(sourceID, destID int, streamsConfig, availableStreamsConfig, selectedStreamsConfig string) *dto.CreateJobRequest {
 	return &dto.CreateJobRequest{
-		JobMetadata:           cfg.JobMetadata,
-		StreamsConfig:         streamsConfig,
-		SelectedStreamsConfig: selectedStreamsConfig,
-		Source:                &dto.DriverConfig{ID: &sourceID},
-		Destination:           &dto.DriverConfig{ID: &destID},
+		JobMetadata:            cfg.JobMetadata,
+		StreamsConfig:          streamsConfig,
+		AvailableStreamsConfig: availableStreamsConfig,
+		SelectedStreamsConfig:  selectedStreamsConfig,
+		Source:                 &dto.DriverConfig{ID: &sourceID},
+		Destination:            &dto.DriverConfig{ID: &destID},
 	}
 }
 
-func (cfg *JobConfig) updateRequest(sourceID, destID int, streamsConfig, selectedStreamsConfig, differenceStreams string) *dto.UpdateJobRequest {
+func (cfg *JobConfig) updateRequest(sourceID, destID int, streamsConfig, availableStreamsConfig, selectedStreamsConfig, differenceStreams string) *dto.UpdateJobRequest {
 	return &dto.UpdateJobRequest{
-		JobMetadata:           cfg.JobMetadata,
-		StreamsConfig:         streamsConfig,
-		SelectedStreamsConfig: selectedStreamsConfig,
-		DifferenceStreams:     differenceStreams,
-		Source:                &dto.DriverConfig{ID: &sourceID},
-		Destination:           &dto.DriverConfig{ID: &destID},
+		JobMetadata:            cfg.JobMetadata,
+		StreamsConfig:          streamsConfig,
+		AvailableStreamsConfig: availableStreamsConfig,
+		SelectedStreamsConfig:  selectedStreamsConfig,
+		DifferenceStreams:      differenceStreams,
+		Source:                 &dto.DriverConfig{ID: &sourceID},
+		Destination:            &dto.DriverConfig{ID: &destID},
 	}
 }
 

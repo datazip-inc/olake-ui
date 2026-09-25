@@ -82,20 +82,20 @@ metadata:
 
 ### Streams catalog formats
 
-Two formats are accepted in the Streams ConfigMap `data.config` JSON. **Pick one format at job creation and keep it** — switching between legacy and split after the job exists is unsupported and may leave `selected_streams_config` inconsistent (the operator does not enforce this; it is your responsibility).
+Two shapes are accepted in the Streams ConfigMap `data.config` JSON, and the shape picks the catalog format the job runs in. A CM can switch shape after the job exists; the next reconcile treats it as a streams change.
 
-**Legacy (default)** — full catalog in git:
+**Self-contained (legacy)** — full catalog in git, in the `streams.json` shape:
 
 ```json
 {
   "streams": [ ... stream metadata ... ],
-  "selected_streams": { "public": [ { "stream_name": "users", "sync_mode": "cdc", ... } ] }
+  "selected_streams": { "public": [ { "stream_name": "users", "normalization": true, ... } ] }
 }
 ```
 
-Stored as `streams_config` in the DB; `selected_streams_config` is empty. No discover step at reconcile time.
+The job runs in the legacy format, as a job saved from the UI does: the CM is stored as `streams_config` and every discover, sync, clear-destination and stream-difference passes it with `--catalog` / `--streams`. No discover step on create. `selected_streams` keeps its legacy meaning, and any driver version works.
 
-**Split (GitOps-optimized)** — user choices only in git:
+**Selection-only (split)** — user choices only in git:
 
 ```json
 {
@@ -112,10 +112,14 @@ Stored as `streams_config` in the DB; `selected_streams_config` is empty. No dis
 }
 ```
 
-- `streams[]` must **not** be present in the CM.
+The job runs in the split format: the catalog is stored as `available_streams_config` + `selected_streams_config` (with `streams_config` holding the CLI's legacy `streams.json` rendering of the same catalog) and passed with `--available-streams` / `--selected-streams`. It needs a source driver at `MinSplitStreamsVersion` or later; on older drivers the CM is rejected, since there `selected_streams` keeps its legacy meaning (split-format fields such as `sync_mode` are ignored, unset flags default to `false`). Use the self-contained shape or upgrade the source.
+
+- On create the operator runs discover against the source for `available_streams_config`, then discover again against it and the CM's `selected_streams`, so the stored selection and `streams_config` come from the CLI's merge (same as on update).
+- On update with a changed CM (or a changed source/destination), discover merges against the stored `available_streams_config` and the CM's `selected_streams`; the CLI's merge drops selections whose stream no longer exists, updates `selected_columns` when `sync_new_columns` is true, and refreshes `streams[]` when the source schema changes.
+
+For both shapes:
 - `selected_streams` must be non-empty (deselect-all fails reconcile).
-- On reconcile the operator runs discover against the source and stores discovered `streams[]` metadata as `streams_config` in the DB (and `selected_streams` as `selected_streams_config` when split). The CM `selected_streams` are the merge input; after discover, `mergeCatalogs` (CLI) may update `selected_columns` when `sync_new_columns` is true and refreshes `streams[]` when the source schema changes. On create the CM is stored as-is; on update the merged discover output is persisted for both configs.
-- Sync/clear mount both files at runtime (requires source connector version that supports `--selected-streams`; version gating is handled by temporal/worker, not the gitops reconciler).
+- A changed CM triggers a stream difference between the stored catalog and the newly merged one, and clear-destination for the streams that differ. When the job switches shape, the difference runs on `streams_config`.
 
 ### Credentials via Secrets (Source and Destination only)
 
