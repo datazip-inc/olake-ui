@@ -59,6 +59,33 @@ func (s Service) GetSource(ctx context.Context, projectID string, sourceID int) 
 	return item, nil
 }
 
+// GetSourceByName returns a source model by name within a project.
+func (s Service) GetSourceByName(_ context.Context, projectID, name string) (*models.Source, error) {
+	source, err := s.db.GetSourceByName(projectID, name)
+	if err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
+		return nil, err
+	}
+	return source, nil
+}
+
+// GetSourceByID returns a source model by ID within a project.
+func (s Service) GetSourceByID(_ context.Context, projectID string, id int) (*models.Source, error) {
+	source, err := s.db.GetSourceByID(id)
+	if err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
+		return nil, err
+	}
+	if source.ProjectID != projectID {
+		return nil, fmt.Errorf("%w: source not found id[%d] project_id[%s]", constants.ErrSourceNotFound, id, projectID)
+	}
+	return source, nil
+}
+
 // GetAllSources returns all sources for a project with lightweight job summaries.
 func (s Service) ListSources(ctx context.Context, projectID string) ([]dto.SourceDataItem, error) {
 	sources, err := s.db.ListSourcesByProjectID(projectID)
@@ -127,7 +154,7 @@ func (s Service) CreateSource(ctx context.Context, req *dto.CreateSourceRequest,
 		Name:      req.Name,
 		Type:      req.Type,
 		Version:   req.Version,
-		Config:    req.Config,
+		Config:    req.Config.String(),
 		ProjectID: projectID,
 	}
 
@@ -155,7 +182,7 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 	}
 
 	existing.Name = req.Name
-	existing.Config = req.Config
+	existing.Config = req.Config.String()
 	existing.Type = req.Type
 	existing.Version = req.Version
 
@@ -213,7 +240,7 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 		return nil, nil, fmt.Errorf("temporal client not available")
 	}
 
-	encryptedConfig, err := utils.Encrypt(req.Config)
+	encryptedConfig, err := utils.Encrypt(req.Config.String())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}
@@ -232,7 +259,6 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 	}
 	homeDir := constants.DefaultConfigDir
 	mainLogDir := filepath.Join(homeDir, workflowID)
-	// Fetch the latest batch of logs by tailing from the end with default limit in the "older" direction.
 	logs, err := utils.ReadLogs(mainLogDir, -1, -1, "older")
 	if err != nil {
 		return result, nil, fmt.Errorf("failed to read logs source_type[%s] source_version[%s]: %s",
@@ -252,7 +278,7 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, 
 		streamsConfig = job.StreamsConfig
 	}
 
-	encryptedConfig, err := utils.Encrypt(req.Config)
+	encryptedConfig, err := utils.Encrypt(req.Config.String())
 	if err != nil {
 		return "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
@@ -281,7 +307,7 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, 
 // and selected, and returns the new available_streams.json, selected_streams.json and
 // streams.json. The CLI reads a prior catalog only when both are set; otherwise discover runs fresh.
 func (s Service) DiscoverSplitCatalog(ctx context.Context, req *dto.StreamsRequest, available, selected string) (newAvailable, newSelected, streamsConfig string, err error) {
-	encryptedConfig, err := utils.Encrypt(req.Config)
+	encryptedConfig, err := utils.Encrypt(req.Config.String())
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}

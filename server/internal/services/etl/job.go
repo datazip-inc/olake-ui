@@ -83,6 +83,18 @@ func (s Service) GetJob(ctx context.Context, projectID string, jobID int) (*dto.
 	return &jobResponse, nil
 }
 
+// GetJobByName returns a job model by name within a project.
+func (s Service) GetJobByName(_ context.Context, projectID, name string) (*models.Job, error) {
+	job, err := s.db.GetJobByName(projectID, name)
+	if err != nil {
+		if errors.Is(err, constants.ErrJobNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrJobNotFound, err)
+		}
+		return nil, err
+	}
+	return job, nil
+}
+
 func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
 	if err := validateSplitCatalog(req.AvailableStreamsConfig, req.SelectedStreamsConfig); err != nil {
 		return err
@@ -575,7 +587,7 @@ func (s Service) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, incl
 			Type:    job.Source.Type,
 			Version: job.Source.Version,
 		}
-		jobResp.Source.Config = utils.Ternary(includeConfig, job.Source.Config, "").(string)
+		jobResp.Source.Config = dto.JSONConfig(utils.Ternary(includeConfig, job.Source.Config, "").(string))
 	}
 
 	if job.Destination != nil {
@@ -585,7 +597,7 @@ func (s Service) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, incl
 			Type:    job.Destination.DestType,
 			Version: job.Destination.Version,
 		}
-		jobResp.Destination.Config = utils.Ternary(includeConfig, job.Destination.Config, "").(string)
+		jobResp.Destination.Config = dto.JSONConfig(utils.Ternary(includeConfig, job.Destination.Config, "").(string))
 	}
 
 	if job.CreatedBy != nil {
@@ -637,7 +649,7 @@ func (s Service) upsertSource(ctx context.Context, config *dto.DriverConfig, pro
 	newSource := &models.Source{
 		Name:        config.Name,
 		Type:        config.Type,
-		Config:      config.Config,
+		Config:      config.Config.String(),
 		Version:     config.Version,
 		ProjectID:   projectID,
 		CreatedByID: user.ID,
@@ -677,7 +689,7 @@ func (s Service) upsertDestination(ctx context.Context, config *dto.DriverConfig
 	newDest := &models.Destination{
 		Name:        config.Name,
 		DestType:    config.Type,
-		Config:      config.Config,
+		Config:      config.Config.String(),
 		Version:     config.Version,
 		ProjectID:   projectID,
 		CreatedByID: user.ID,

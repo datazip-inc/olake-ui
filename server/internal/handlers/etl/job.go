@@ -100,7 +100,7 @@ func (h *Handler) CreateJob(c *gin.Context) {
 		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	if err := validateJobDriverConfig(req.Source, req.Destination); err != nil {
+	if err := dto.ValidateJobDriverConfig(req.Source, req.Destination); err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -146,7 +146,7 @@ func (h *Handler) UpdateJob(c *gin.Context) {
 		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	if err := validateJobDriverConfig(req.Source, req.Destination); err != nil {
+	if err := dto.ValidateJobDriverConfig(req.Source, req.Destination); err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -686,24 +686,4 @@ func (h *Handler) UpdateStateFile(c *gin.Context) {
 		return
 	}
 	utils.SuccessResponse(c, fmt.Sprintf("state file updated successfully for job_id[%d]", jobID), nil)
-}
-
-func validateJobDriverConfig(source, destination *dto.DriverConfig) error {
-	if source != nil && source.ID == nil {
-		if err := dto.ValidateSourceType(source.Type); err != nil {
-			return err
-		}
-		if source.Name == "" || source.Version == "" || source.Config == "" {
-			return fmt.Errorf("source name, version, and config are required when source id is not provided")
-		}
-	}
-	if destination != nil && destination.ID == nil {
-		if err := dto.ValidateDestinationType(destination.Type); err != nil {
-			return err
-		}
-		if destination.Name == "" || destination.Version == "" || destination.Config == "" {
-			return fmt.Errorf("destination name, version, and config are required when destination id is not provided")
-		}
-	}
-	return nil
 }
