@@ -48,13 +48,13 @@ type SourceTestConnectionRequest struct {
 }
 
 type StreamsRequest struct {
-	Name               string `json:"name" binding:"required" example:"my-postgres-source"`
-	Type               string `json:"type" binding:"required" example:"postgres"`
-	Version            string `json:"version" binding:"required" example:"v0.2.7"`
-	Config             string `json:"config" orm:"type(jsonb)" binding:"required" example:"{\"host\":\"localhost\",\"port\":5432}"`
-	MaxDiscoverThreads *int   `json:"max_discover_threads,omitempty" example:"50"`
-	JobID              int    `json:"job_id" binding:"required" example:"1"`
-	JobName            string `json:"job_name" binding:"required" example:"my-sync-job"`
+	Name               string     `json:"name" binding:"required" example:"my-postgres-source"`
+	Type               string     `json:"type" binding:"required" example:"postgres"`
+	Version            string     `json:"version" binding:"required" example:"v0.2.7"`
+	Config             JSONConfig `json:"config" orm:"type(jsonb)" binding:"required" example:"{\"host\":\"localhost\",\"port\":5432}"`
+	MaxDiscoverThreads *int       `json:"max_discover_threads,omitempty" example:"50"`
+	JobID              int        `json:"job_id" binding:"required" example:"1"`
+	JobName            string     `json:"job_name" binding:"required" example:"my-sync-job"`
 	// TargetQueryEngines become each stream's available_update_types; OLake stores none, so resend every discover.
 	TargetQueryEngines []string `json:"target_query_engines,omitempty" example:"spark,duckdb"`
 }
