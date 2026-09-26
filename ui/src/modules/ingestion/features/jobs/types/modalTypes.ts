@@ -17,6 +17,7 @@ export interface ResetStreamsModalProps {
 
 export interface StreamDifferenceModalProps {
 	streamDifference: StreamsDataStructure
+	showIndexWarning?: boolean
 	onConfirm: () => void
 }
 

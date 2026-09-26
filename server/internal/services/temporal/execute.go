@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
@@ -67,7 +68,7 @@ const (
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
 
 // DiscoverStreams runs a workflow to discover catalog data
-func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int) (map[string]interface{}, error) {
+func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
 
 	configs := []JobConfig{
@@ -101,6 +102,11 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 
 	if streamsConfig != "" {
 		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
+	}
+
+	// OLake stores no engines, so an omitted flag means unconstrained rather than "reuse the last choice".
+	if len(targetQueryEngines) > 0 && supportsQueryEngines(version) {
+		cmdArgs = append(cmdArgs, constants.TargetQueryEnginesFlag, strings.Join(targetQueryEngines, ","))
 	}
 
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
@@ -138,7 +144,12 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 }
 
 // FetchSpec runs a workflow to fetch driver specifications
-func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceType, version string) (dto.SpecOutput, error) {
+func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceType, version string, availableQueryEngines bool) (dto.SpecOutput, error) {
+	// An older image rejects the flag and fails the workflow, so report the feature as absent instead.
+	if availableQueryEngines && !supportsQueryEngines(version) {
+		return dto.SpecOutput{}, nil
+	}
+
 	workflowID := fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix())
 
 	// spec version >= DefaultSpecVersion is required
@@ -149,7 +160,10 @@ func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceTy
 	cmdArgs := []string{
 		"spec",
 	}
-	if destinationType != "" {
+	// Exclusive: --available-query-engines exits before any spec file resolves, ignoring --destination-type.
+	if availableQueryEngines {
+		cmdArgs = append(cmdArgs, constants.AvailableQueryEnginesFlag)
+	} else if destinationType != "" {
 		cmdArgs = append(cmdArgs, "--destination-type", destinationType)
 	}
 
@@ -183,6 +197,11 @@ func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceTy
 	return dto.SpecOutput{
 		Spec: result,
 	}, nil
+}
+
+// supportsQueryEngines reports whether the version takes the engine flags; custom builds are assumed current.
+func supportsQueryEngines(version string) bool {
+	return utils.GetCustomDriverVersion() != "" || semver.Compare(version, constants.DefaultQueryEnginesVersion) >= 0
 }
 
 // TestConnection runs a workflow to test connection

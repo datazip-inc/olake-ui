@@ -121,6 +121,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				job_name: jobName,
 				job_id: fromJobEditFlow ? jobId : -1,
 				max_discover_threads: advancedSettings?.max_discover_threads,
+				target_query_engines: advancedSettings?.target_query_engines,
 			},
 			{
 				onSuccess: response => {
@@ -147,10 +148,23 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		)
 	}
 
+	// Engines are a discover-time input, so a changed selection needs a fresh
+	// discover. Joined because the array identity changes on every render.
+	const targetQueryEnginesKey = (
+		advancedSettings?.target_query_engines ?? []
+	).join(",")
+
 	// Discovery / initialization effect
 	useEffect(() => {
 		triggerStreamsDiscovery()
-	}, [sourceName, sourceConnector, sourceVersion, sourceConfig, jobName])
+	}, [
+		sourceName,
+		sourceConnector,
+		sourceVersion,
+		sourceConfig,
+		jobName,
+		targetQueryEnginesKey,
+	])
 
 	// Reset selectedFilters to "All tables" when all filters are deselected
 	useEffect(() => {
