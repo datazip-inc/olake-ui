@@ -30,6 +30,8 @@ type SpecRequest struct {
 	// enum: postgres,mongodb,mysql,mssql,db2,s3,kafka,iceberg
 	Type    string `json:"type" binding:"required" example:"postgres"`
 	Version string `json:"version" binding:"required" example:"v0.2.7"`
+	// AvailableQueryEngines swaps the UI spec for the engine matrix; the spec is null on older connectors.
+	AvailableQueryEngines bool `json:"available_query_engines,omitempty" example:"false"`
 }
 
 // check unique job name request
@@ -46,13 +48,15 @@ type SourceTestConnectionRequest struct {
 }
 
 type StreamsRequest struct {
-	Name               string     `json:"name" binding:"required" example:"my-postgres-source"`
-	Type               string     `json:"type" binding:"required" example:"postgres"`
-	Version            string     `json:"version" binding:"required" example:"v0.2.7"`
-	Config             JSONConfig `json:"config" orm:"type(jsonb)" binding:"required" example:"{\"host\":\"localhost\",\"port\":5432}"`
-	MaxDiscoverThreads *int       `json:"max_discover_threads,omitempty" example:"50"`
-	JobID              int        `json:"job_id" binding:"required" example:"1"`
-	JobName            string     `json:"job_name" binding:"required" example:"my-sync-job"`
+	Name               string `json:"name" binding:"required" example:"my-postgres-source"`
+	Type               string `json:"type" binding:"required" example:"postgres"`
+	Version            string `json:"version" binding:"required" example:"v0.2.7"`
+	Config             string `json:"config" orm:"type(jsonb)" binding:"required" example:"{\"host\":\"localhost\",\"port\":5432}"`
+	MaxDiscoverThreads *int   `json:"max_discover_threads,omitempty" example:"50"`
+	JobID              int    `json:"job_id" binding:"required" example:"1"`
+	JobName            string `json:"job_name" binding:"required" example:"my-sync-job"`
+	// TargetQueryEngines become each stream's available_update_types; OLake stores none, so resend every discover.
+	TargetQueryEngines []string `json:"target_query_engines,omitempty" example:"spark,duckdb"`
 }
 
 // TODO: frontend needs to send only version no need for source version
@@ -97,6 +101,8 @@ type AdvancedSettings struct {
 	// IndexRequired is derived by the UI: true when any selected stream upserts
 	// with positional deletes.
 	IndexRequired *bool `json:"index_required,omitempty" example:"true"`
+	// TargetQueryEngines are stored here because OLake keeps none; changing them needs the catalog regenerated.
+	TargetQueryEngines []string `json:"target_query_engines,omitempty" example:"spark,duckdb"`
 }
 
 type JobMetadata struct {
