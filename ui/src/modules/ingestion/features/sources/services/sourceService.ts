@@ -162,6 +162,7 @@ export const sourceService = {
 		type: string,
 		version: string,
 		signal?: AbortSignal,
+		available_query_engines = false,
 	) => {
 		try {
 			const response = await api.post<SpecResponse>(
@@ -169,6 +170,7 @@ export const sourceService = {
 				{
 					type: type.toLowerCase(),
 					version,
+					available_query_engines,
 				},
 				{ timeout: 300000, signal, disableErrorNotification: true }, //timeout is 300000 as spec takes more time as it needs to fetch the spec from olake
 			)
@@ -191,6 +193,7 @@ export const sourceService = {
 		job_name: string,
 		job_id?: number,
 		max_discover_threads?: number | null,
+		target_query_engines?: string[],
 		signal?: AbortSignal,
 	) => {
 		try {
@@ -204,6 +207,7 @@ export const sourceService = {
 					version,
 					config,
 					max_discover_threads,
+					target_query_engines,
 				},
 				{ timeout: 0, signal, disableErrorNotification: true },
 			)

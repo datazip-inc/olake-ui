@@ -257,7 +257,16 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, 
 		return "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 
-	streamsMap, err := s.temporal.DiscoverStreams(ctx, req.Type, req.Version, encryptedConfig, streamsConfig, req.JobName, req.MaxDiscoverThreads)
+	streamsMap, err := s.temporal.DiscoverStreams(
+		ctx,
+		req.Type,
+		req.Version,
+		encryptedConfig,
+		streamsConfig,
+		req.JobName,
+		req.MaxDiscoverThreads,
+		req.TargetQueryEngines,
+	)
 	if err != nil {
 		return "", fmt.Errorf("failed to get catalog: %s", err)
 	}
@@ -277,7 +286,7 @@ func (s Service) DiscoverSplitCatalog(ctx context.Context, req *dto.StreamsReque
 		return "", "", "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 
-	availableMap, selectedMap, streamsMap, err := s.temporal.DiscoverSplitStreams(ctx, req.Type, req.Version, encryptedConfig, available, selected, req.JobName, req.MaxDiscoverThreads)
+	availableMap, selectedMap, streamsMap, err := s.temporal.DiscoverSplitStreams(ctx, req.Type, req.Version, encryptedConfig, available, selected, req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines)
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to get catalog: %s", err)
 	}
@@ -305,7 +314,7 @@ func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.
 
 // TODO: cache spec in db for each version
 func (s Service) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
-	specOut, err := s.temporal.GetDriverSpecs(ctx, "", req.Type, req.Version)
+	specOut, err := s.temporal.GetDriverSpecs(ctx, "", req.Type, req.Version, req.AvailableQueryEngines)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)
 	}

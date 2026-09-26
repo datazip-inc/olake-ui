@@ -38,6 +38,8 @@ var (
 
 	AvailableStreamsFile = "available_streams.json"
 	SelectedStreamsFile  = "selected_streams.json"
+	// DefaultQueryEnginesVersion is the first release with the query engine flags; older images reject them.
+	DefaultQueryEnginesVersion = "v0.11.0"
 
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"
@@ -49,6 +51,8 @@ var (
 
 	// command flags
 	MaxDiscoverThreadsFlag    = "--max-discover-threads"
+	AvailableQueryEnginesFlag = "--available-query-engines"
+	TargetQueryEnginesFlag    = "--target-query-engines"
 	DefaultMaxDiscoverThreads = 50
 
 	// conf keys
