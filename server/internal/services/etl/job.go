@@ -84,6 +84,10 @@ func (s Service) GetJob(ctx context.Context, projectID string, jobID int) (*dto.
 }
 
 func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
+	if err := validateSplitCatalog(req.AvailableStreamsConfig, req.SelectedStreamsConfig); err != nil {
+		return err
+	}
+
 	unique, err := s.db.IsJobNameUniqueInProject(ctx, projectID, req.Name)
 	if err != nil {
 		return fmt.Errorf("failed to check job name uniqueness: %s", err)
@@ -115,21 +119,23 @@ func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, proje
 	}
 
 	job := &models.Job{
-		Name:             req.Name,
-		SourceID:         source.ID,
-		DestID:           dest.ID,
-		Source:           source,
-		Destination:      dest,
-		Active:           true,
-		Frequency:        req.Frequency,
-		StreamsConfig:    req.StreamsConfig,
-		State:            "{}",
-		AdvancedSettings: advancedSettings,
-		ProjectID:        projectID,
-		CreatedByID:      user.ID,
-		UpdatedByID:      user.ID,
-		CreatedBy:        user,
-		UpdatedBy:        user,
+		Name:                   req.Name,
+		SourceID:               source.ID,
+		DestID:                 dest.ID,
+		Source:                 source,
+		Destination:            dest,
+		Active:                 true,
+		Frequency:              req.Frequency,
+		StreamsConfig:          req.StreamsConfig,
+		AvailableStreamsConfig: utils.StringPtr(req.AvailableStreamsConfig),
+		SelectedStreamsConfig:  utils.StringPtr(req.SelectedStreamsConfig),
+		State:                  "{}",
+		AdvancedSettings:       advancedSettings,
+		ProjectID:              projectID,
+		CreatedByID:            user.ID,
+		UpdatedByID:            user.ID,
+		CreatedBy:              user,
+		UpdatedBy:              user,
 	}
 	if err := s.db.CreateJob(job); err != nil {
 		return fmt.Errorf("failed to create job: %s", err)
@@ -152,6 +158,10 @@ func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, proje
 }
 
 func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error {
+	if err := validateSplitCatalog(req.AvailableStreamsConfig, req.SelectedStreamsConfig); err != nil {
+		return err
+	}
+
 	// TODO: remove fetching existing job from database to verify it's existence, fetch only if the details aren't already available in the params/request. If job not exists it will fail during query execution.
 	existingJob, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
@@ -199,14 +209,16 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 	}
 
 	updateParams := map[string]any{
-		"name":           req.Name,
-		"source_id":      source.ID,
-		"dest_id":        dest.ID,
-		"active":         req.Activate,
-		"frequency":      req.Frequency,
-		"streams_config": req.StreamsConfig,
-		"project_id":     projectID,
-		"updated_by_id":  *userID,
+		"name":                     req.Name,
+		"source_id":                source.ID,
+		"dest_id":                  dest.ID,
+		"active":                   req.Activate,
+		"frequency":                req.Frequency,
+		"streams_config":           req.StreamsConfig,
+		"project_id":               projectID,
+		"updated_by_id":            *userID,
+		"available_streams_config": utils.StringPtr(req.AvailableStreamsConfig),
+		"selected_streams_config":  utils.StringPtr(req.SelectedStreamsConfig),
 	}
 	if req.AdvancedSettings != nil {
 		b, err := json.Marshal(req.AdvancedSettings)
@@ -336,7 +348,7 @@ func (s Service) ClearDestination(ctx context.Context, projectID string, jobID i
 	if job.Source == nil {
 		return fmt.Errorf("job source details not found")
 	}
-	if err := CheckClearDestinationCompatibility(job.Source.Version); err != nil {
+	if err := utils.CheckClearDestinationCompatibility(job.Source.Version); err != nil {
 		return err
 	}
 
@@ -380,15 +392,8 @@ func (s Service) ClearDestination(ctx context.Context, projectID string, jobID i
 }
 
 func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
-	job, err := s.db.GetJobByID(jobID, true)
+	job, err := s.differenceJob(jobID)
 	if err != nil {
-		return nil, fmt.Errorf("job not found: %s", err)
-	}
-
-	if job.Source == nil {
-		return nil, fmt.Errorf("job source details not found")
-	}
-	if err := CheckClearDestinationCompatibility(job.Source.Version); err != nil {
 		return nil, err
 	}
 
@@ -404,6 +409,46 @@ func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, r
 
 	logger.Infof("stream difference retrieved successfully for job %d\n%s", job.ID, string(diffCatalogJSON))
 	return diffCatalog, nil
+}
+
+// GetSplitCatalogDifference diffs two catalogs in the split format (available + selected streams)
+func (s Service) GetSplitCatalogDifference(ctx context.Context, jobID int, oldAvailable, oldSelected, newAvailable, newSelected string) (map[string]interface{}, error) {
+	job, err := s.differenceJob(jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	diffCatalog, err := s.temporal.GetSplitStreamDifference(ctx, job, oldAvailable, oldSelected, newAvailable, newSelected)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stream difference: %s", err)
+	}
+
+	logger.Infof("stream difference retrieved successfully for job %d", job.ID)
+	return diffCatalog, nil
+}
+
+// validateSplitCatalog rejects a request that sets only one half of the split catalog: available
+// and selected streams are one catalog and are stored together or not at all.
+func validateSplitCatalog(available, selected string) error {
+	if (utils.StringPtr(available) == nil) != (utils.StringPtr(selected) == nil) {
+		return fmt.Errorf("available_streams_config and selected_streams_config must be set together")
+	}
+	return nil
+}
+
+// differenceJob loads a job for stream difference and checks its driver supports it.
+func (s Service) differenceJob(jobID int) (*models.Job, error) {
+	job, err := s.db.GetJobByID(jobID, true)
+	if err != nil {
+		return nil, fmt.Errorf("job not found: %s", err)
+	}
+	if job.Source == nil {
+		return nil, fmt.Errorf("job source details not found")
+	}
+	if err := utils.CheckClearDestinationCompatibility(job.Source.Version); err != nil {
+		return nil, err
+	}
+	return job, nil
 }
 
 func (s Service) GetClearDestinationStatus(ctx context.Context, projectID string, jobID int) (bool, error) {
@@ -517,7 +562,11 @@ func (s Service) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, incl
 		Activate:  job.Active,
 	}
 
-	jobResp.StreamsConfig = utils.Ternary(includeConfig, job.StreamsConfig, "").(string)
+	if includeConfig {
+		jobResp.StreamsConfig = job.StreamsConfig
+		jobResp.AvailableStreamsConfig = utils.StringValue(job.AvailableStreamsConfig)
+		jobResp.SelectedStreamsConfig = utils.StringValue(job.SelectedStreamsConfig)
+	}
 
 	if job.Source != nil {
 		jobResp.Source = dto.DriverConfig{
