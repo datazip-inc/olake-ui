@@ -13,8 +13,10 @@ export { default as BulkConfigureStreamsModal } from "./modals/BulkConfigureStre
 export { default as ClearDestinationModal } from "./modals/ClearDestinationModal"
 export { default as DeleteJobModal } from "./modals/DeleteJobModal"
 export { default as DestinationDatabaseModal } from "./modals/DestinationDatabaseModal"
+export { default as IndexBuildWarningModal } from "./modals/IndexBuildWarningModal"
 export { default as IngestionModeChangeModal } from "./modals/IngestionModeChangeModal"
 export { default as ResetStreamsModal } from "./modals/ResetStreamsModal"
+export { default as QueryEngineWarningModal } from "./modals/QueryEngineWarningModal"
 export { default as StreamDifferenceModal } from "./modals/StreamDifferenceModal"
 export { default as StreamEditDisabledModal } from "./modals/StreamEditDisabledModal"
 
