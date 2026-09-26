@@ -77,14 +77,14 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
 	}
 
-	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
 		return nil, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	cmdArgs := []string{
 		"discover",
 		"--config",
-		"/mnt/config/config.json",
+		workerConfigPath(Discover, workflowID, "config.json"),
 	}
 
 	if jobName != "" && (utils.GetCustomDriverVersion() != "" || semver.Compare(version, "v0.2.0") >= 0) {
@@ -101,7 +101,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	}
 
 	if streamsConfig != "" {
-		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
+		cmdArgs = append(cmdArgs, "--catalog", workerConfigPath(Discover, workflowID, "streams.json"))
 	}
 
 	// OLake stores no engines, so an omitted flag means unconstrained rather than "reuse the last choice".
@@ -210,14 +210,14 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		{Name: "config.json", Data: config},
 	}
 
-	if err := SetupConfigFiles(Check, workflowID, configs); err != nil {
+	if err := SetupConfigFiles(ctx, Check, workflowID, configs); err != nil {
 		return nil, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	cmdArgs := []string{
 		"check",
 		fmt.Sprintf("--%s", flag),
-		"/mnt/config/config.json",
+		workerConfigPath(Check, workflowID, "config.json"),
 	}
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
@@ -275,7 +275,7 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	}
 
 	// update schedule to use clear-destination request
-	clearReq, err := buildExecutionReqForClearDestination(job, workflowID, streamsConfig)
+	clearReq, err := buildExecutionReqForClearDestination(ctx, job, workflowID, streamsConfig)
 	if err != nil {
 		return fmt.Errorf("failed to build execution request for clear-destination: %s", err)
 	}
@@ -305,14 +305,14 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		{Name: "new_streams.json", Data: newConfig},
 	}
 
-	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
 		return nil, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	cmdArgs := []string{
 		"discover",
-		"--streams", "/mnt/config/old_streams.json",
-		"--difference", "/mnt/config/new_streams.json",
+		"--streams", workerConfigPath(Discover, workflowID, "old_streams.json"),
+		"--difference", workerConfigPath(Discover, workflowID, "new_streams.json"),
 	}
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)

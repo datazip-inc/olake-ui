@@ -1,6 +1,7 @@
 package temporal
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"os"
@@ -8,6 +9,8 @@ import (
 	"slices"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
+	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
@@ -44,19 +47,31 @@ func writeConfigFiles(workDir string, configs []JobConfig) error {
 	return nil
 }
 
-// SetupConfigFiles creates the work directory and writes the config files to it
-// It writes to the mounted path and can be accessed by the worker.
-func SetupConfigFiles(cmd Command, workflowID string, configs []JobConfig) error {
-	subDir := GetWorkflowDirectory(cmd, workflowID)
-	workDir := filepath.Join(constants.DefaultConfigDir, subDir)
+// SetupConfigFiles creates the work directory and writes the config files to it.
+// For direct-execution flows (discover, check, etc.) the BFF writes configs before
+// the worker runs. NFS writes to the shared mount; S3 uploads to the same object
+// keys used in worker command paths.
+func SetupConfigFiles(ctx context.Context, cmd Command, workflowID string, configs []JobConfig) error {
+	switch storagemode.Get() {
+	case constants.StorageModeS3:
+		workDir := filepath.Join(constants.DefaultConfigDir, GetWorkflowDirectory(cmd, workflowID))
+		files := make([]storage.JobConfig, 0, len(configs))
+		for _, jobConfig := range configs {
+			files = append(files, storage.JobConfig{RelativePath: jobConfig.Name, Data: jobConfig.Data})
+		}
+		return storage.WriteFilesToS3(ctx, workDir, files)
+	default:
+		subDir := GetWorkflowDirectory(cmd, workflowID)
+		workDir := filepath.Join(constants.DefaultConfigDir, subDir)
 
-	if err := createDirectory(workDir, 0755); err != nil {
-		return fmt.Errorf("failed to create work directory %s: %s", workDir, err)
+		if err := createDirectory(workDir, 0755); err != nil {
+			return fmt.Errorf("failed to create work directory %s: %s", workDir, err)
+		}
+
+		if err := writeConfigFiles(workDir, configs); err != nil {
+			return fmt.Errorf("failed to write config files: %s", err)
+		}
+
+		return nil
 	}
-
-	if err := writeConfigFiles(workDir, configs); err != nil {
-		return fmt.Errorf("failed to write config files: %s", err)
-	}
-
-	return nil
 }
