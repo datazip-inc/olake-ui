@@ -139,7 +139,7 @@ containers:
       # Number of retries by spark = spark-conf.spark.task.maxFailures - 1
       spark-conf.spark.executor.maxNumFailures: "100"
       spark-conf.spark.executor.failuresValidityInterval: "60s"
-      spark-conf.spark.task.maxFailures: "4"
+      spark-conf.spark.task.maxFailures: "2"
       # Mount shared log volume so driver/executor pods write logs to the same path
       # that LogController reads from (via the Kind node hostPath extraMount).
       spark-conf.spark.kubernetes.driver.volumes.hostPath.amoro-logs.mount.path: "/mnt/amoro-logs"
