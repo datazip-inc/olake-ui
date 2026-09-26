@@ -33,26 +33,45 @@ type Controller struct {
 	app *services.AppService
 }
 
-// InitGitOps starts the in-cluster GitOps controller when enabled.
-func InitGitOps(ctx context.Context, enabled bool, app *services.AppService) error {
+// InitGitOps starts GitOps when enabled. In-cluster uses the ConfigMap
+// controller-runtime manager. Outside the cluster, GITOPS_FILE_DIR must be set.
+func InitGitOps(ctx context.Context, enabled bool, fileDir string, app *services.AppService) error {
 	if !enabled {
 		return nil
 	}
 
 	restConfig, err := rest.InClusterConfig()
-	if err != nil {
-		return fmt.Errorf("gitops enabled but not running in-cluster: %w", err)
+	if err == nil {
+		ctrlr, setupErr := Setup(app, restConfig)
+		if setupErr != nil {
+			return setupErr
+		}
+		go func() {
+			if runErr := ctrlr.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
+				logger.Errorf("GitOps controller manager stopped: %s", runErr)
+			}
+		}()
+		return nil
 	}
 
-	ctrlr, setupErr := Setup(app, restConfig)
-	if setupErr != nil {
-		return setupErr
+	if fileDir == "" {
+		return fmt.Errorf("gitops enabled but not in-cluster and GITOPS_FILE_DIR is empty: %w", err)
+	}
+	return startFileMode(ctx, fileDir, app)
+}
+
+func startFileMode(ctx context.Context, fileDir string, app *services.AppService) error {
+	ctrl.SetLogger(logger.Logr())
+	fw := newFileWatcher(fileDir, app.ETL(), app.ETL().Temporal())
+	if err := fw.setup(); err != nil {
+		return err
 	}
 	go func() {
-		if runErr := ctrlr.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
-			logger.Errorf("GitOps controller manager stopped: %s", runErr)
+		if err := fw.run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			logger.Errorf("GitOps file watcher stopped: %s", err)
 		}
 	}()
+	logger.Infof("GitOps file watcher watching %s", fileDir)
 	return nil
 }
 
