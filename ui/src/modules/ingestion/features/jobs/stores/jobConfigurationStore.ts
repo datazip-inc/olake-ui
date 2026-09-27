@@ -10,6 +10,7 @@ interface JobConfigurationState {
 	selectedSource: Entity | null
 	selectedDestination: Entity | null
 	advancedSettings: AdvancedSettings | null
+	savedAdvancedSettings: AdvancedSettings | null
 	isEditMode: boolean
 }
 
@@ -19,6 +20,7 @@ interface JobConfigurationActions {
 	setSelectedSource: (source: Entity | null) => void
 	setSelectedDestination: (destination: Entity | null) => void
 	setAdvancedSettings: (settings: AdvancedSettings | null) => void
+	setSavedAdvancedSettings: (settings: AdvancedSettings | null) => void
 	setIsEditMode: (isEdit: boolean) => void
 	reset: () => void
 }
@@ -31,6 +33,7 @@ const initialState: JobConfigurationState = {
 	selectedSource: null,
 	selectedDestination: null,
 	advancedSettings: null,
+	savedAdvancedSettings: null,
 	isEditMode: false,
 }
 
@@ -41,6 +44,8 @@ export const useJobConfigurationStore = create<JobConfigurationStore>(set => ({
 	setSelectedSource: selectedSource => set({ selectedSource }),
 	setSelectedDestination: selectedDestination => set({ selectedDestination }),
 	setAdvancedSettings: advancedSettings => set({ advancedSettings }),
+	setSavedAdvancedSettings: savedAdvancedSettings =>
+		set({ savedAdvancedSettings }),
 	setIsEditMode: isEditMode => set({ isEditMode }),
 	reset: () => set(initialState),
 }))

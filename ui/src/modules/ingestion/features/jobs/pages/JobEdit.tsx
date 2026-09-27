@@ -18,6 +18,8 @@ import {
 	ResetStreamsModal,
 	StreamDifferenceModal,
 	StreamEditDisabledModal,
+	QueryEngineWarningModal,
+	IndexBuildWarningModal,
 } from "../components"
 import {
 	JOB_CREATION_STEPS,
@@ -35,6 +37,8 @@ import {
 	validateCronExpression,
 	formatSelectedStreamsPayload,
 	validateStreams,
+	queryEnginesChanged,
+	willBuildIndex,
 	withIndexRequired,
 } from "../utils"
 
@@ -84,6 +88,8 @@ const JobEdit: React.FC = () => {
 	const [nextStep, setNextStep] = useState<JobCreationSteps | null>(null)
 	const [streamDifference, setStreamDifference] =
 		useState<StreamsDataStructure | null>(null)
+	const [showQueryEngineWarning, setShowQueryEngineWarning] = useState(false)
+	const [showIndexBuildWarning, setShowIndexBuildWarning] = useState(false)
 
 	const {
 		jobName,
@@ -95,6 +101,8 @@ const JobEdit: React.FC = () => {
 		setSelectedDestination,
 		setAdvancedSettings,
 		setIsEditMode,
+		savedAdvancedSettings,
+		setSavedAdvancedSettings,
 		reset: resetJobConfig,
 	} = useJobConfigurationStore()
 
@@ -175,6 +183,7 @@ const JobEdit: React.FC = () => {
 		}
 
 		setAdvancedSettings(job.advanced_settings ?? null)
+		setSavedAdvancedSettings(job.advanced_settings ?? null)
 	}
 
 	// Initialize from fetched job data
@@ -302,15 +311,21 @@ const JobEdit: React.FC = () => {
 					? JSON.parse(streamDifferenceResponse || "{}")
 					: streamDifferenceResponse || {}
 			const hasDiff = Object.keys(diff?.selected_streams ?? diff).length > 0
-			// if there is a stream difference, show the stream difference modal
+			// if there is a stream difference, show the stream difference modal — it
+			// carries the index warning too, so the user never sees two modals.
+
 			if (hasDiff) {
 				setStreamDifference(streamDifferenceResponse)
 				setShowStreamDifferenceModal(true)
 				return
 			}
 
-			// No difference - clear state and submit with null stream difference
+			// No difference - the index warning, if any, stands on its own.
 			setStreamDifference(null)
+			if (willBuildIndex(streamsData, initialStreamsData.current)) {
+				setShowIndexBuildWarning(true)
+				return
+			}
 			await handleJobSubmit(null)
 		} catch (error) {
 			// The axios interceptor already surfaced the error to the user; catching
@@ -358,6 +373,12 @@ const JobEdit: React.FC = () => {
 				return
 			}
 			if (!validateCronExpression(cronExpression)) return
+			// Discovery runs on the next step and re-resolves every stream's delete
+			// format, so warn before a changed selection is applied.
+			if (hasUndiscoveredQueryEngines) {
+				setShowQueryEngineWarning(true)
+				return
+			}
 			setCurrentStep(JOB_CREATION_STEPS.STREAMS)
 		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
 			handleStreamDifference()
@@ -385,6 +406,11 @@ const JobEdit: React.FC = () => {
 		setNextStep(null)
 		setCurrentStep(nextStep || JOB_CREATION_STEPS.CONFIG)
 	}
+
+	const hasUndiscoveredQueryEngines = queryEnginesChanged(
+		advancedSettings,
+		savedAdvancedSettings,
+	)
 
 	// Either the stream-difference check or the update itself is in flight.
 	const isBusy = isUpdating || isCheckingDifference
@@ -478,7 +504,12 @@ const JobEdit: React.FC = () => {
 							type="default"
 							onClick={() => handleJobSubmit(null)}
 							loading={isBusy}
-							disabled={isBusy || isDiscovering || isJobLoading}
+							disabled={
+								isBusy ||
+								isDiscovering ||
+								isJobLoading ||
+								hasUndiscoveredQueryEngines
+							}
 						>
 							Save
 						</Button>
@@ -502,10 +533,30 @@ const JobEdit: React.FC = () => {
 			{streamDifference && (
 				<StreamDifferenceModal
 					streamDifference={streamDifference}
+					showIndexWarning={willBuildIndex(
+						streamsData,
+						initialStreamsData.current,
+					)}
 					onConfirm={() => handleJobSubmit(streamDifference)}
 				/>
 			)}
 			<StreamEditDisabledModal from="jobEdit" />
+			<IndexBuildWarningModal
+				open={showIndexBuildWarning}
+				onConfirm={() => {
+					setShowIndexBuildWarning(false)
+					handleJobSubmit(null)
+				}}
+				onCancel={() => setShowIndexBuildWarning(false)}
+			/>
+			<QueryEngineWarningModal
+				open={showQueryEngineWarning}
+				onConfirm={() => {
+					setShowQueryEngineWarning(false)
+					setCurrentStep(JOB_CREATION_STEPS.STREAMS)
+				}}
+				onCancel={() => setShowQueryEngineWarning(false)}
+			/>
 		</div>
 	)
 }

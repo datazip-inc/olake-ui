@@ -287,7 +287,7 @@ func (h *Handler) GetSourceVersions(c *gin.Context) {
 
 // @Summary Get source UI spec
 // @Tags Sources
-// @Description Retrieve the UI spec for a specific source type/version.
+// @Description Retrieve the UI spec for a specific source type/version, or the supported query engines when available_query_engines is set.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.SpecRequest true "spec request data"
 // @Success 200 {object} dto.JSONResponse{data=dto.SpecResponse}

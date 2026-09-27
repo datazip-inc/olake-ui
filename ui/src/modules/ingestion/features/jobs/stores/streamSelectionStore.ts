@@ -689,6 +689,12 @@ export const selectStreamsData = (state: StreamSelectionState) =>
 	state.streamsData
 export const selectIsDiscovering = (state: StreamSelectionState) =>
 	state.isDiscovering
+// Delete formats the catalog's target query engines can read. Discover computes
+// this once and writes the identical list to every stream, so reading it off any
+// one stream is enough — no need to scan or intersect the rest.
+// Undefined on catalogs discovered before target query engines existed.
+export const selectAvailableUpdateTypes = (state: StreamSelectionState) =>
+	state.streamsData?.streams?.[0]?.stream.available_update_types
 export const selectInitialStreamsSnapshot = (state: StreamSelectionState) =>
 	state.initialStreamsSnapshot
 export const selectActiveStreamKey = (state: StreamSelectionState) =>
