@@ -121,7 +121,7 @@ type UpdateJobRequest struct {
 	Source                 *DriverConfig     `json:"source" binding:"required"`
 	Destination            *DriverConfig     `json:"destination" binding:"required"`
 	Frequency              string            `json:"frequency" binding:"required" example:"0 */12 * * *"`
-	StreamsConfig          string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	StreamsConfig          string            `json:"streams_config,omitempty" orm:"type(jsonb)"`
 	AvailableStreamsConfig string            `json:"available_streams_config,omitempty" orm:"type(jsonb)"`
 	SelectedStreamsConfig  string            `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
 	DifferenceStreams      string            `json:"difference_streams,omitempty" example:"[]"`
@@ -129,8 +129,13 @@ type UpdateJobRequest struct {
 	AdvancedSettings       *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
+// StreamDifferenceRequest carries the edited catalog in the job's format: updated_streams_config
+// for a legacy job, or updated_available_streams_config + updated_selected_streams_config for a
+// split-format job.
 type StreamDifferenceRequest struct {
-	UpdatedStreamsConfig string `json:"updated_streams_config" binding:"required"`
+	UpdatedStreamsConfig          string `json:"updated_streams_config,omitempty"`
+	UpdatedAvailableStreamsConfig string `json:"updated_available_streams_config,omitempty"`
+	UpdatedSelectedStreamsConfig  string `json:"updated_selected_streams_config,omitempty"`
 }
 
 type JobTaskRequest struct {

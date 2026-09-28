@@ -6,9 +6,9 @@ import (
 	"fmt"
 )
 
-// SplitCatalog splits a combined {"streams": [...], "selected_streams": {...}} catalog into the
+// CatalogToStreamsV2 splits a combined {"streams": [...], "selected_streams": {...}} catalog into the
 // contents of available_streams.json and selected_streams.json
-func SplitCatalog(combinedCatalog string) (available, selected string, err error) {
+func CatalogToStreamsV2(combinedCatalog string) (available, selected string, err error) {
 	var catalog struct {
 		Streams         json.RawMessage `json:"streams"`
 		SelectedStreams json.RawMessage `json:"selected_streams"`

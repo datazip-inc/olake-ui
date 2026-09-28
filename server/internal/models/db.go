@@ -88,7 +88,7 @@ type Job struct {
 	DestID                 int     `json:"dest_id" gorm:"column:dest_id"`
 	Active                 bool    `json:"active" gorm:"column:active"`
 	Frequency              string  `json:"frequency" gorm:"column:frequency;size:255"`
-	StreamsConfig          string  `json:"streams_config" gorm:"column:streams_config;type:jsonb"`
+	StreamsConfig          *string `json:"streams_config,omitempty" gorm:"column:streams_config;type:jsonb"`
 	AvailableStreamsConfig *string `json:"available_streams_config" gorm:"column:available_streams_config;type:jsonb"`
 	SelectedStreamsConfig  *string `json:"selected_streams_config" gorm:"column:selected_streams_config;type:jsonb"`
 	State                  string  `json:"state" gorm:"column:state;type:jsonb"`
@@ -105,6 +105,13 @@ type Job struct {
 
 func (j *Job) TableName() string {
 	return constants.TableNameMap[constants.JobTable]
+}
+
+// IsStreamsV2 reports whether the job stores its catalog in the split format (streams v2).
+// A job keeps one format: available and selected streams are both set, or both empty (legacy).
+func (j *Job) IsStreamsV2() bool {
+	return j.AvailableStreamsConfig != nil && *j.AvailableStreamsConfig != "" &&
+		j.SelectedStreamsConfig != nil && *j.SelectedStreamsConfig != ""
 }
 
 type Catalog struct {
