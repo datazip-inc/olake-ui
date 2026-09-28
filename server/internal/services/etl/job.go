@@ -449,22 +449,6 @@ func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, r
 	return diffCatalog, nil
 }
 
-// GetSplitCatalogDifference diffs two explicit split catalogs. Used by GitOps when the stored
-// catalog and the resolved catalog may differ in format (e.g. a legacy job whose CM switched to
-// split format before the job was converted).
-func (s Service) GetSplitCatalogDifference(ctx context.Context, jobID int, oldAvailable, oldSelected, newAvailable, newSelected string) (map[string]interface{}, error) {
-	job, err := s.differenceJob(jobID)
-	if err != nil {
-		return nil, err
-	}
-	diffCatalog, err := s.temporal.GetStreamsV2Difference(ctx, job, oldAvailable, oldSelected, newAvailable, newSelected)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get stream difference: %s", err)
-	}
-	logger.Infof("stream difference retrieved successfully for job %d", job.ID)
-	return diffCatalog, nil
-}
-
 // validateStreamsFormat rejects a catalog that: sets only one of available/selected; uses the split
 // format on a source that does not support it; or downgrades a split-catalog job to legacy.
 // Exactly one catalog format must be supplied: either streamsConfig (legacy) or both split fields.
