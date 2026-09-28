@@ -187,6 +187,42 @@ func (db *Database) UpdateJob(jobID int, params map[string]any) error {
 		Updates(params).Error
 }
 
+// ListLegacyCatalogJobs returns the jobs whose catalog is still only in the legacy
+// streams_config, with their sources.
+func (db *Database) ListLegacyCatalogJobs() ([]*models.Job, error) {
+	var jobs []*models.Job
+	err := db.conn.
+		Where("available_streams_config IS NULL AND selected_streams_config IS NULL").
+		Preload("Source").
+		Find(&jobs).Error
+	return jobs, err
+}
+
+// ListLegacyCatalogJobsBySource is ListLegacyCatalogJobs scoped to a single source, used after a
+// source upgrade to convert only that source's jobs.
+func (db *Database) ListLegacyCatalogJobsBySource(sourceID int) ([]*models.Job, error) {
+	var jobs []*models.Job
+	err := db.conn.
+		Where("source_id = ? AND available_streams_config IS NULL AND selected_streams_config IS NULL", sourceID).
+		Preload("Source").
+		Find(&jobs).Error
+	return jobs, err
+}
+
+// SetStreamsV2Catalog stores a job's split catalog only while the job is still legacy and its
+// streams_config is the one the split catalog was converted from, so a concurrent edit (even one
+// that keeps the job legacy) is never overwritten. It reports whether the job was updated.
+func (db *Database) SetStreamsV2Catalog(jobID int, streamsConfig, available, selected string) (bool, error) {
+	result := db.conn.Model(&models.Job{}).
+		Where("id = ? AND available_streams_config IS NULL AND selected_streams_config IS NULL AND streams_config = ?::jsonb", jobID, streamsConfig).
+		Updates(map[string]any{
+			"available_streams_config": available,
+			"selected_streams_config":  selected,
+			"streams_config":           nil,
+		})
+	return result.RowsAffected == 1, result.Error
+}
+
 // BulkDeactivate deactivates multiple jobs by their IDs in a single query
 func (db *Database) DeactivateJobs(ids []int) error {
 	if len(ids) == 0 {

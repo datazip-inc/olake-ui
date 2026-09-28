@@ -554,6 +554,9 @@ http://localhost:8080
 - **Method**: POST
 - **Description**: Create a new job
 - **Headers**: `Authorization: Bearer <token>`
+- **Streams format**: send exactly one catalog format. A **legacy** job sends only `streams_config`.
+  A **v2** job (source version ≥ `MinSplitStreamsVersion`) sends `available_streams_config` and
+  `selected_streams_config` (always both). Sending the wrong format for the source version returns `400`.
 - **Request Body**:
 
   ```json
@@ -572,7 +575,9 @@ http://localhost:8080
       "version": "string"
     },
     "frequency": "string",
-    "streams_config": "json"
+    "streams_config": "json",               // legacy jobs
+    "available_streams_config": "json",     // v2 jobs only
+    "selected_streams_config": "json"       // v2 jobs only
   }
   ```
 
@@ -654,7 +659,9 @@ http://localhost:8080
         "config": "json",
         "version": "string"
       },
-      "streams_config": "json",
+      "streams_config": "json",               // legacy jobs only
+      "available_streams_config": "json",     // v2 jobs only
+      "selected_streams_config": "json",      // v2 jobs only
       "frequency": "string",
       "last_run_time": "timestamp",
       "last_run_state": "string",
@@ -674,6 +681,9 @@ http://localhost:8080
 - **Method**: PUT
 - **Description**: Update an existing job
 - **Headers**: `Authorization: Bearer <token>`
+- **Streams format**: send exactly one catalog format. A **legacy** job sends only `streams_config`.
+  A **v2** job sends `available_streams_config` and `selected_streams_config` (always both).
+  Sending the wrong format for the job's stored catalog returns `400`.
 - **Request Body**:
 
   ```json
@@ -692,7 +702,9 @@ http://localhost:8080
       "version": "string"
     },
     "frequency": "string",
-    "streams_config": "json",
+    "streams_config": "json",               // legacy jobs
+    "available_streams_config": "json",     // v2 jobs only
+    "selected_streams_config": "json",      // v2 jobs only
     "difference_streams": "string",
     "activate": "boolean" // send this to activate or deactivate job
   }
@@ -748,9 +760,13 @@ http://localhost:8080
 
 ### Source Associated Streams (Discover Catalog)
 
-- **Endpoint**: `/api/v1/project/:projectid/source/streams`
-- **Method**: GET
-- **Description**: Give the streams details
+- **Endpoint**: `/api/v1/project/:projectid/sources/streams`
+- **Method**: POST
+- **Description**: Discover the source's streams.
+  - existing job (`job_id` >= 0): returns v2 format when the job stores a split catalog; otherwise
+    legacy on the job's `streams_config`. A v2 job on a source below `MinSplitStreamsVersion` returns `400`.
+  - new job (`job_id` = -1): returns v2 format when the source version supports it, otherwise legacy.
+  - The caller detects the format by the presence of `available_streams` in the response.
 - **Headers**: `Authorization: Bearer <token>`
 - **Request Body**:
 
@@ -766,13 +782,20 @@ http://localhost:8080
   ```
 
 - **Response**:
+  - **legacy**: `{ streams, selected_streams }` — `selected_streams` entries are fully written out.
+  - **v2**: `{ selected_streams, available_streams }` — `streams` live inside `available_streams.streams`;
+    `selected_streams` entries are sparse (`normalization`/`append_mode`/`update_type` fall back to
+    `default_stream_properties`, absent `selected_columns` means all columns, `sync_mode`/`cursor_field`/
+    `destination_*` override the stream's values). Detect v2 by `available_streams` presence.
 
   ```json
   {
     "success": "boolean",
     "message": "string",
     "data": {
-      "streams_config": "json"
+      "streams": "json",                   // legacy only
+      "selected_streams": "json",
+      "available_streams": "json"          // v2 only; presence signals v2 format
     }
   }
   ```
@@ -1016,15 +1039,21 @@ http://localhost:8080
   ```
   
   ### Difference Streams
-- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/difference-streams`
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/stream-difference`
 - **Method**: POST
-- **Description**: returns the stream difference bewtween the saved and the updated streams
+- **Description**: returns the stream difference between the saved and the updated streams. The
+  updated catalog is sent as `updated_streams_config` (any job; diffed against its
+  `streams_config`) or as `updated_available_streams_config` + `updated_selected_streams_config`
+  (v2 jobs only). Setting both forms, only one split field, or split fields for a legacy job
+  returns `400`.
 - **Headers**: `Authorization: Bearer <token>`
-- - **Request Body**:
+- **Request Body**:
 
   ```json
   {
-    "updated_streams_config": "json"
+    "updated_streams_config": "json", // legacy job
+    "updated_available_streams_config": "json", // v2 job
+    "updated_selected_streams_config": "json" // v2 job
   }
   ```
 

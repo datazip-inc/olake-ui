@@ -34,10 +34,12 @@ var (
 	DefaultClearDestinationVersion   = "v0.3.0"
 	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
 	// TODO(BEFORE_MERGE): set to the release that ships streams v2
-	MinSplitStreamsVersion = "v0.11.0"
+	MinStreamsV2Version = "v0.11.0"
 
+	StreamsFile          = "streams.json"
 	AvailableStreamsFile = "available_streams.json"
 	SelectedStreamsFile  = "selected_streams.json"
+
 	// DefaultQueryEnginesVersion is the first release with the query engine flags; older images reject them.
 	DefaultQueryEnginesVersion = "v0.11.0"
 

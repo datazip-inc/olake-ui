@@ -86,38 +86,11 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 
-	req := &ExecutionRequest{
-		Command:       Discover,
-		ConnectorType: sourceType,
-		Version:       version,
-		Args:          cmdArgs,
-		Configs:       nil,
-		WorkflowID:    workflowID,
-		JobID:         0,
-		Timeout:       GetWorkflowTimeout(Discover),
-		OutputFile:    "streams.json",
-	}
-
-	workflowOptions := client.StartWorkflowOptions{
-		ID:        workflowID,
-		TaskQueue: t.taskQueue,
-	}
-
-	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute discover workflow: %s", err)
-	}
-
-	streamsResult, err := ExtractWorkflowResponse(ctx, run)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
-	}
-
-	return streamsResult, nil
+	return t.discoverWorkflow(ctx, sourceType, version, workflowID, cmdArgs, constants.StreamsFile)
 }
 
-// DiscoverSplitStreams runs discover with the catalog in the split format
-func (t *Temporal) DiscoverSplitStreams(ctx context.Context, sourceType, version, config, available, selected, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (availableResult, selectedResult, streamsResult map[string]interface{}, err error) {
+// DiscoverStreamsV2 runs discover with the catalog in the split format
+func (t *Temporal) DiscoverStreamsV2(ctx context.Context, sourceType, version, config, available, selected, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (availableResult, selectedResult, streamsResult map[string]interface{}, err error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
 
 	configs := discoverConfigs(config)
@@ -141,42 +114,64 @@ func (t *Temporal) DiscoverSplitStreams(ctx context.Context, sourceType, version
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 
+	if availableResult, selectedResult, err = t.discoverStreamsV2(ctx, sourceType, version, workflowID, cmdArgs); err != nil {
+		return nil, nil, nil, err
+	}
+	if streamsResult, err = utils.ReadJSONFile(filepath.Join(constants.DefaultConfigDir, workflowID, constants.StreamsFile)); err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to read %s: %w", constants.StreamsFile, err)
+	}
+	return availableResult, selectedResult, streamsResult, nil
+}
+
+// ConvertStreams converts a legacy streams.json into the split format with the CLI's offline
+// conversion (discover --convert-streams), which reads the catalog the way every command reads a
+// --streams input and never connects to the source. It returns available_streams.json and
+// selected_streams.json.
+func (t *Temporal) ConvertStreams(ctx context.Context, sourceType, version, streamsConfig string) (availableResult, selectedResult map[string]interface{}, err error) {
+	workflowID := fmt.Sprintf("convert-streams-%s-%d", sourceType, time.Now().UnixNano())
+
+	configs := []JobConfig{{Name: constants.StreamsFile, Data: streamsConfig}}
+	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+		return nil, nil, fmt.Errorf("failed to setup config files: %s", err)
+	}
+
+	args := []string{"discover", "--streams", "/mnt/config/" + constants.StreamsFile, "--convert-streams"}
+	return t.discoverStreamsV2(ctx, sourceType, version, workflowID, args)
+}
+
+// discoverStreamsV2 runs a discover that writes the split catalog and returns
+// available_streams.json and selected_streams.json.
+func (t *Temporal) discoverStreamsV2(ctx context.Context, sourceType, version, workflowID string, args []string) (availableResult, selectedResult map[string]interface{}, err error) {
+	if selectedResult, err = t.discoverWorkflow(ctx, sourceType, version, workflowID, args, constants.SelectedStreamsFile); err != nil {
+		return nil, nil, err
+	}
+	if availableResult, err = utils.ReadJSONFile(filepath.Join(constants.DefaultConfigDir, workflowID, constants.AvailableStreamsFile)); err != nil {
+		return nil, nil, fmt.Errorf("failed to read %s: %w", constants.AvailableStreamsFile, err)
+	}
+	return availableResult, selectedResult, nil
+}
+
+// discoverWorkflow runs a discover workflow and returns the contents of outputFile.
+// Both the legacy discover and the streams v2 discover use it; the caller picks the file.
+func (t *Temporal) discoverWorkflow(ctx context.Context, sourceType, version, workflowID string, args []string, outputFile string) (map[string]interface{}, error) {
 	req := &ExecutionRequest{
 		Command:       Discover,
 		ConnectorType: sourceType,
 		Version:       version,
-		Args:          cmdArgs,
-		Configs:       nil,
+		Args:          args,
 		WorkflowID:    workflowID,
-		JobID:         0,
 		Timeout:       GetWorkflowTimeout(Discover),
-		OutputFile:    constants.SelectedStreamsFile,
+		OutputFile:    outputFile,
 	}
-
-	workflowOptions := client.StartWorkflowOptions{
-		ID:        workflowID,
-		TaskQueue: t.taskQueue,
-	}
-
-	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
+	run, err := t.Client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{ID: workflowID, TaskQueue: t.taskQueue}, ExecuteWorkflow, req)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to execute discover workflow: %s", err)
+		return nil, fmt.Errorf("failed to execute discover workflow: %s", err)
 	}
-
-	selectedResult, err = ExtractWorkflowResponse(ctx, run)
+	result, err := ExtractWorkflowResponse(ctx, run)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to extract workflow response: %v", err)
+		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
 	}
-
-	workflowDir := filepath.Join(constants.DefaultConfigDir, workflowID)
-	if availableResult, err = utils.ReadJSONFile(filepath.Join(workflowDir, constants.AvailableStreamsFile)); err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to read %s: %w", constants.AvailableStreamsFile, err)
-	}
-	if streamsResult, err = utils.ReadJSONFile(filepath.Join(workflowDir, "streams.json")); err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to read streams.json: %w", err)
-	}
-
-	return availableResult, selectedResult, streamsResult, nil
+	return result, nil
 }
 
 func discoverConfigs(config string) []JobConfig {
@@ -415,9 +410,9 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 	return result, nil
 }
 
-// GetSplitStreamDifference compares two catalogs in the split format and returns the
+// GetStreamsV2Difference compares two catalogs in the split format and returns the
 // difference. All four inputs are required.
-func (t *Temporal) GetSplitStreamDifference(ctx context.Context, job *models.Job, oldAvailable, oldSelected, newAvailable, newSelected string) (map[string]interface{}, error) {
+func (t *Temporal) GetStreamsV2Difference(ctx context.Context, job *models.Job, oldAvailable, oldSelected, newAvailable, newSelected string) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("difference-%s-%d-%d", job.ProjectID, job.ID, time.Now().Unix())
 
 	configs := []JobConfig{

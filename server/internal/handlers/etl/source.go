@@ -1,7 +1,6 @@
 package etl
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -248,18 +247,16 @@ func (h *Handler) GetSourceCatalog(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Get source catalog initiated source_type[%s] source_version[%s] job_id[%d]", req.Type, req.Version, req.JobID)
-	catalog, err := h.etl.GetSourceCatalog(c.Request.Context(), &req, "")
+	catalog, err := h.etl.DiscoverCatalog(c.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source streams: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrStreamsFormat) {
+			status = http.StatusBadRequest
+		}
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get source streams: %s", err), err)
 		return
 	}
-
-	var streams map[string]interface{}
-	if err := json.Unmarshal([]byte(catalog), &streams); err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to parse source catalog: %s", err), err)
-		return
-	}
-	utils.SuccessResponse(c, fmt.Sprintf("source %s catalog fetched successfully", req.Type), streams)
+	utils.SuccessResponse(c, fmt.Sprintf("source %s catalog fetched successfully", req.Type), catalog)
 }
 
 // @Summary Get available source versions
