@@ -23,7 +23,7 @@ type logChunkFile struct {
 }
 
 // readLogsFromS3 reads the logs from S3 for a workflow.
-func readLogsFromS3(ctx context.Context, workflowDir string, cursor int64, _ int, direction string) (*dto.TaskLogsResponse, error) {
+func readLogsFromS3(ctx context.Context, workflowDir string, cursor int64, direction string) (*dto.TaskLogsResponse, error) {
 	syncFolder, err := GetAndValidateS3SyncDir(ctx, workflowDir)
 	if err != nil {
 		// Connector chunks are not uploaded until the first log flush. Polling
@@ -96,6 +96,9 @@ func listS3LogChunks(ctx context.Context, syncLogDir string) ([]logChunkFile, er
 // parseNumberedLogChunkName parses names like connector-000001-<timestamp>.log.
 func parseNumberedLogChunkName(name, prefix string) (int, bool) {
 	body := strings.TrimSuffix(name, ".log")
+	if len(body) <= len(prefix)+1 {
+		return 0, false
+	}
 	remainder := body[len(prefix)+1:]
 	dash := strings.Index(remainder, "-")
 	if dash < 1 {
@@ -110,23 +113,22 @@ func parseNumberedLogChunkName(name, prefix string) (int, bool) {
 	return index, true
 }
 
-// readS3ChunkLines reads the lines from a S3 log chunk.
-func readS3ChunkLines(ctx context.Context, syncLogDir string, chunk logChunkFile) ([]string, error) {
+// readS3ChunkLines reads and parses the valid, non-debug lines from a S3 log chunk.
+func readS3ChunkLines(ctx context.Context, syncLogDir string, chunk logChunkFile) ([]LogEntry, error) {
 	chunkPath := path.Join(syncLogDir, chunk.name)
 	content, _, err := storage.ReadFileFromS3(ctx, "", chunkPath, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read log chunk %s: %s", chunkPath, err)
 	}
 
-	lines := make([]string, 0)
+	entries := make([]LogEntry, 0)
 	for _, line := range strings.Split(content, "\n") {
-		line = strings.TrimSpace(line)
-		if isValidLogLine(line) {
-			lines = append(lines, line)
+		if entry, ok := parseValidLogLine(line); ok {
+			entries = append(entries, entry)
 		}
 	}
 
-	return lines, nil
+	return entries, nil
 }
 
 // processS3Logs processes the S3 logs for a workflow.
@@ -185,6 +187,8 @@ func processS3Logs(ctx context.Context, syncLogDir string, chunks []logChunkFile
 	}, nil
 }
 
+// COMMENT: check if we can avoid copying logs into memory while building the download;
+// stream each S3 object straight into the tar writer instead.
 func addS3FilesToArchive(ctx context.Context, workflowDir string, tarWriter *tar.Writer) error {
 	stateFile := path.Join(workflowDir, "state.json")
 	body, modTime, err := storage.ReadFileFromS3(ctx, "", stateFile, false)
@@ -212,8 +216,7 @@ func addS3FilesToArchive(ctx context.Context, workflowDir string, tarWriter *tar
 
 		body, modTime, err := storage.ReadFileFromS3(ctx, "", objectPath, false)
 		if err != nil {
-			logger.Warnf("failed to add %s to archive: %s", objectPath, err)
-			continue
+			return fmt.Errorf("failed to add %s to archive: %s", objectPath, err)
 		}
 
 		switch {

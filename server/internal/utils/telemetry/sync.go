@@ -128,6 +128,9 @@ func prepareCommonProperties(info SyncEventInfo, eventType string, details *jobD
 // TrackSyncEvent sends a sync event (EventSyncStarted/Completed/Failed/Cancelled)
 func TrackSyncEvent(info SyncEventInfo, eventType string) {
 	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
 		defer func() {
 			if r := recover(); r != nil {
 				logger.Debugf("recovered panic tracking %s: %v", eventType, r)
@@ -146,12 +149,12 @@ func TrackSyncEvent(info SyncEventInfo, eventType string) {
 		// Best-effort: a missing or unparsable stats.json/streams.json must
 		// not drop the event. There's nothing to enrich yet at "started".
 		if eventType != EventSyncStarted {
-			if err := enrichWithSyncStats(properties, info.WorkflowID); err != nil {
+			if err := enrichWithSyncStats(ctx, properties, info.WorkflowID); err != nil {
 				logger.Debugf("failed to enrich %s event: %s", eventType, err)
 			}
 		}
 
-		if err := TrackEvent(context.Background(), eventType, properties); err != nil {
+		if err := TrackEvent(ctx, eventType, properties); err != nil {
 			logger.Debugf("failed to track %s event: %s", eventType, err)
 		}
 	}()
@@ -188,19 +191,19 @@ func buildProperties(info SyncEventInfo, eventType string) (map[string]interface
 	return prepareCommonProperties(info, eventType, details), nil
 }
 
-func enrichWithSyncStats(properties map[string]interface{}, workflowID string) error {
+func enrichWithSyncStats(ctx context.Context, properties map[string]interface{}, workflowID string) error {
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
 	mainSyncDir := filepath.Join(constants.DefaultConfigDir, syncFolderName)
 
-	if err := addStatsProperties(properties, mainSyncDir); err != nil {
+	if err := addStatsProperties(ctx, properties, mainSyncDir); err != nil {
 		return err
 	}
 
-	return addStreamsProperties(properties, mainSyncDir)
+	return addStreamsProperties(ctx, properties, mainSyncDir)
 }
 
-func addStatsProperties(properties map[string]interface{}, mainSyncDir string) error {
-	statsData, err := ReadSyncJobFile(context.Background(), mainSyncDir, "stats.json")
+func addStatsProperties(ctx context.Context, properties map[string]interface{}, mainSyncDir string) error {
+	statsData, err := ReadSyncJobFile(ctx, mainSyncDir, "stats.json")
 	if err != nil {
 		return err
 	}
@@ -219,8 +222,8 @@ func addStatsProperties(properties map[string]interface{}, mainSyncDir string) e
 	return nil
 }
 
-func addStreamsProperties(properties map[string]interface{}, mainSyncDir string) error {
-	streamsData, err := ReadSyncJobFile(context.Background(), mainSyncDir, "streams.json")
+func addStreamsProperties(ctx context.Context, properties map[string]interface{}, mainSyncDir string) error {
+	streamsData, err := ReadSyncJobFile(ctx, mainSyncDir, "streams.json")
 	if err != nil {
 		return fmt.Errorf("failed to read streams.json: %s", err)
 	}

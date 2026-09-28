@@ -490,6 +490,7 @@ func (s Service) GetTaskLogs(ctx context.Context, jobID int, filePath string, cu
 		return nil, fmt.Errorf("failed to find job: %s", err)
 	}
 
+	// Get and validate base directory from file path
 	mainSyncDir, err := utils.GetAndValidateLogBaseDir(ctx, filePath)
 	if err != nil {
 		return nil, err
@@ -642,7 +643,7 @@ func (s Service) upsertDestination(ctx context.Context, config *dto.DriverConfig
 }
 
 // worker service
-func (s Service) UpdateSyncTelemetry(_ context.Context, req dto.UpdateSyncTelemetryRequest) error {
+func (s Service) UpdateSyncTelemetry(ctx context.Context, req dto.UpdateSyncTelemetryRequest) error {
 	info := telemetry.SyncEventInfo{
 		JobID:                req.JobID,
 		WorkflowID:           req.WorkflowID,

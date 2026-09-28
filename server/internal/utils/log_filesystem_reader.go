@@ -17,7 +17,7 @@ import (
 )
 
 type LineWithPos struct {
-	content  string
+	content  LogEntry
 	startPos int64 // byte position where this line starts
 }
 
@@ -25,7 +25,7 @@ type LineWithPos struct {
 // Filters out empty lines, invalid JSON, and debug-level logs DURING reading.
 // startOffset is treated as exclusive - we read lines that END BEFORE startOffset.
 // Returns: valid lines (oldest->newest), newOffset (byte position before first returned line), hasMore, error.
-func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64) ([]string, int64, bool, error) {
+func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64) ([]LogEntry, int64, bool, error) {
 	if limit <= 0 {
 		return nil, 0, false, fmt.Errorf("limit must be greater than 0")
 	}
@@ -35,7 +35,7 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64)
 
 	// startOffset at beginning or negative, return empty result
 	if startOffset <= 0 {
-		return []string{}, 0, false, nil
+		return []LogEntry{}, 0, false, nil
 	}
 
 	offset := startOffset
@@ -88,9 +88,9 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64)
 			// readPos (start of chunk) + lastNL (relative index) + 1 (char after \n)
 			linePos := readPos + int64(lastNL) + 1
 
-			if isValidLogLine(lineContent) {
+			if entry, ok := parseValidLogLine(lineContent); ok {
 				foundLines = append(foundLines, LineWithPos{
-					content:  lineContent,
+					content:  entry,
 					startPos: linePos,
 				})
 			}
@@ -104,9 +104,9 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64)
 			// Process the first line of the file if it's in the tail
 			if len(tail) > 0 && len(foundLines) < limit {
 				lineContent := string(tail)
-				if isValidLogLine(lineContent) {
+				if entry, ok := parseValidLogLine(lineContent); ok {
 					foundLines = append(foundLines, LineWithPos{
-						content:  lineContent,
+						content:  entry,
 						startPos: 0, // First line starts at position 0
 					})
 				}
@@ -117,11 +117,11 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64)
 
 	// no valid lines found
 	if len(foundLines) == 0 {
-		return []string{}, 0, false, nil
+		return []LogEntry{}, 0, false, nil
 	}
 
 	// Extract just the line content for return
-	lines := make([]string, len(foundLines))
+	lines := make([]LogEntry, len(foundLines))
 	for i, line := range foundLines {
 		lines[len(foundLines)-1-i] = line.content // Reverse order
 	}
@@ -144,7 +144,7 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64)
 // Filters out empty lines, invalid JSON, and debug-level logs DURING reading.
 // startOffset is treated as inclusive - we start reading from exactly that position.
 // Returns: valid lines (oldest->newest), newOffset (byte position after last returned line), hasMore, error.
-func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) ([]string, int64, bool, error) {
+func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) ([]LogEntry, int64, bool, error) {
 	if limit <= 0 {
 		return nil, 0, false, fmt.Errorf("limit must be greater than 0")
 	}
@@ -154,7 +154,7 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) 
 
 	// If already at or past EOF, nothing to read
 	if startOffset >= fileSize {
-		return []string{}, fileSize, false, nil
+		return []LogEntry{}, fileSize, false, nil
 	}
 
 	// Seek to the startOffset position in the file before beginning to read lines
@@ -164,7 +164,7 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) 
 
 	reader := bufio.NewReader(f)
 
-	lines := make([]string, 0, limit)
+	lines := make([]LogEntry, 0, limit)
 	currentOffset := startOffset
 
 	for len(lines) < limit {
@@ -176,8 +176,8 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) 
 
 			// Remove trailing newline and check if valid
 			line := strings.TrimRight(string(lineBytes), "\r\n")
-			if isValidLogLine(line) {
-				lines = append(lines, line)
+			if entry, ok := parseValidLogLine(line); ok {
+				lines = append(lines, entry)
 			}
 		}
 

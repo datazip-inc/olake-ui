@@ -28,7 +28,7 @@ func ReadLogs(ctx context.Context, logDir string, cursor int64, limit int, direc
 		if workRel, err := filepath.Rel(constants.DefaultConfigDir, logDir); err == nil {
 			logDir = workRel
 		}
-		return readLogsFromS3(ctx, logDir, cursor, limit, direction)
+		return readLogsFromS3(ctx, logDir, cursor, direction)
 	default:
 		return readLogsFromFilesystem(logDir, cursor, limit, direction)
 	}
@@ -71,34 +71,29 @@ func GetAndValidateSyncFolder(ctx context.Context, baseDir string) (string, erro
 	}
 }
 
-// isValidLogLine checks if a line is a valid, non-debug log entry
-func isValidLogLine(line string) bool {
+// parseValidLogLine parses a line and reports whether it is a valid, non-debug log entry.
+// Returns the parsed entry so callers can reuse it instead of unmarshalling the line again.
+func parseValidLogLine(line string) (LogEntry, bool) {
 	line = strings.TrimSpace(line)
 	if line == "" {
-		return false
+		return LogEntry{}, false
 	}
 
 	var logEntry LogEntry
 	if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
-		return false
+		return LogEntry{}, false
 	}
 
 	if logEntry.Level == "debug" {
-		return false
+		return LogEntry{}, false
 	}
 
-	return true
+	return logEntry, true
 }
 
-func parseLines(lines []string) []map[string]interface{} {
-	batch := make([]map[string]interface{}, 0, len(lines))
-	for _, line := range lines {
-		var logEntry LogEntry
-
-		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
-			continue
-		}
-
+func parseLines(entries []LogEntry) []map[string]interface{} {
+	batch := make([]map[string]interface{}, 0, len(entries))
+	for _, logEntry := range entries {
 		var messageStr string
 		var tmp interface{}
 		if err := json.Unmarshal(logEntry.Message, &tmp); err == nil {

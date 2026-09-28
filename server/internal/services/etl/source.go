@@ -230,7 +230,6 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 	if err != nil {
 		return result, nil, fmt.Errorf("connection test failed: %s", err)
 	}
-
 	homeDir := constants.DefaultConfigDir
 	mainLogDir := filepath.Join(homeDir, workflowID)
 	// Fetch the latest batch of logs by tailing from the end with default limit in the "older" direction.

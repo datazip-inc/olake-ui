@@ -64,6 +64,10 @@ func InitStorage(ctx context.Context) error {
 		s3Opts = append(s3Opts, func(o *s3.Options) {
 			o.BaseEndpoint = aws.String(endpoint)
 			o.UsePathStyle = true
+			// SDK-default CRC32 integrity checksums (service/s3 >= v1.73) are not
+			// implemented by several S3-compatible services (R2, older MinIO, GCS interop)
+			o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
+			o.ResponseChecksumValidation = aws.ResponseChecksumValidationWhenRequired
 		})
 	}
 
@@ -80,8 +84,13 @@ func InitStorage(ctx context.Context) error {
 func ensureS3Bucket(ctx context.Context, client *s3.Client, bucket string) error {
 	customEndpoint := appconfig.Load().OlakeS3Endpoint != ""
 
+	prefix := s3Prefix()
 	if !customEndpoint {
-		_, err := client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucket)})
+		_, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket:  aws.String(bucket),
+			Prefix:  aws.String(prefix),
+			MaxKeys: aws.Int32(1),
+		})
 		if err != nil {
 			return fmt.Errorf("s3 bucket %q is not accessible: %s", bucket, err)
 		}
@@ -90,7 +99,11 @@ func ensureS3Bucket(ctx context.Context, client *s3.Client, bucket string) error
 
 	const maxAttempts = 60
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		if _, err := client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucket)}); err == nil {
+		if _, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket:  aws.String(bucket),
+			Prefix:  aws.String(prefix),
+			MaxKeys: aws.Int32(1),
+		}); err == nil {
 			return nil
 		}
 
@@ -108,7 +121,12 @@ func ensureS3Bucket(ctx context.Context, client *s3.Client, bucket string) error
 		if attempt == maxAttempts {
 			return fmt.Errorf("failed to ensure s3 bucket %q after %d attempts: %s", bucket, maxAttempts, err)
 		}
-		time.Sleep(5 * time.Second)
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(5 * time.Second):
+		}
 	}
 
 	return nil
