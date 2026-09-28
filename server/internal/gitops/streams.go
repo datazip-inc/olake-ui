@@ -20,7 +20,7 @@ type streamsCM struct {
 }
 
 func parseStreamsCM(config string) (streamsCM, error) {
-	available, selected, err := utils.SplitCatalog(config)
+	available, selected, err := utils.CatalogToStreamsV2(config)
 	if err != nil {
 		return streamsCM{}, NonRetryableError(fmt.Errorf("invalid streams config: %w", err))
 	}

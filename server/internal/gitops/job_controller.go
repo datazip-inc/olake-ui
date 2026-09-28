@@ -123,9 +123,9 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res *ResourceData) (ct
 	if err != nil {
 		return r.failJob(ctx, res, streamsRes, err, observed)
 	}
-	if streamsCM.Split && !utils.SupportsSplitStreams(source.Version) {
+	if streamsCM.Split && !utils.SupportsStreamsV2(source.Version) {
 		err := fmt.Errorf("selection-only streams config needs source version %s or later (source %q is on %s); add streams[] to the config or upgrade the source",
-			constants.MinSplitStreamsVersion, source.Name, source.Version)
+			constants.MinStreamsV2Version, source.Name, source.Version)
 		return r.failJob(ctx, res, streamsRes, NonRetryableError(err), observed)
 	}
 
@@ -162,7 +162,7 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res *ResourceData) (ct
 	case drift.any():
 		diffStreams := ""
 		if drift.streams {
-			diffStreams, err = streamDifferenceJSON(ctx, r.ETL, existingJob, streamsCM, catalog)
+			diffStreams, err = streamDifferenceJSON(ctx, r.ETL, existingJob, catalog)
 			if err != nil {
 				logger.Error(err, "stream difference failed")
 				return r.failJob(ctx, res, streamsRes, NonRetryableError(err), observed)
@@ -256,8 +256,9 @@ type jobCatalog struct {
 // catalogService is the part of the ETL service that discovers and diffs job catalogs.
 type catalogService interface {
 	GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, streamsConfig string) (string, error)
-	DiscoverSplitCatalog(ctx context.Context, req *dto.StreamsRequest, available, selected string) (newAvailable, newSelected, streamsConfig string, err error)
+	DiscoverStreamsV2Catalog(ctx context.Context, req *dto.StreamsRequest, available, selected string) (newAvailable, newSelected, streamsConfig string, err error)
 	GetStreamDifference(ctx context.Context, projectID string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error)
+	ConvertCatalog(ctx context.Context, sourceType, version, streamsConfig string) (available, selected string, err error)
 	GetSplitCatalogDifference(ctx context.Context, jobID int, oldAvailable, oldSelected, newAvailable, newSelected string) (map[string]interface{}, error)
 }
 
@@ -279,7 +280,7 @@ func resolveCatalog(ctx context.Context, svc catalogService, source *models.Sour
 	if !cm.Split {
 		streamsConfig := cm.Catalog
 		if existingJob != nil && !drift.streams {
-			streamsConfig = existingJob.StreamsConfig
+			streamsConfig = utils.StringValue(existingJob.StreamsConfig)
 		}
 		if updateDrift {
 			var err error
@@ -287,49 +288,72 @@ func resolveCatalog(ctx context.Context, svc catalogService, source *models.Sour
 				return jobCatalog{}, err
 			}
 		}
-		return jobCatalog{streamsConfig: streamsConfig}, nil
+		if !utils.SupportsStreamsV2(source.Version) {
+			return jobCatalog{streamsConfig: streamsConfig}, nil
+		}
+		// A driver that reads the split format gets the CM converted; store only split columns.
+		available, selected, err := svc.ConvertCatalog(ctx, source.Type, source.Version, streamsConfig)
+		if err != nil {
+			return jobCatalog{}, err
+		}
+		return jobCatalog{available: available, selected: selected}, nil
 	}
 
-	available, selected, streamsConfig := "", cm.Catalog, ""
+	available, selected := "", cm.Catalog
 	if existingJob != nil {
 		available = utils.StringValue(existingJob.AvailableStreamsConfig)
 		if !drift.streams && available != "" {
 			selected = utils.StringValue(existingJob.SelectedStreamsConfig)
-			streamsConfig = existingJob.StreamsConfig
 		}
 	}
 	if available == "" || updateDrift {
-		newAvailable, newSelected, newStreamsConfig, err := svc.DiscoverSplitCatalog(ctx, req, available, selected)
+		newAvailable, newSelected, _, err := svc.DiscoverStreamsV2Catalog(ctx, req, available, selected)
 		if err != nil {
 			return jobCatalog{}, err
 		}
 		if available == "" {
-			if newAvailable, newSelected, newStreamsConfig, err = svc.DiscoverSplitCatalog(ctx, req, newAvailable, selected); err != nil {
+			if newAvailable, newSelected, _, err = svc.DiscoverStreamsV2Catalog(ctx, req, newAvailable, selected); err != nil {
 				return jobCatalog{}, err
 			}
 		}
-		available, selected, streamsConfig = newAvailable, newSelected, newStreamsConfig
+		available, selected = newAvailable, newSelected
 	}
-	return jobCatalog{streamsConfig: streamsConfig, available: available, selected: selected}, nil
+	return jobCatalog{available: available, selected: selected}, nil
 }
 
-// streamDifferenceJSON diffs the job's stored catalog against the new one
-func streamDifferenceJSON(ctx context.Context, svc catalogService, job *models.Job, cm streamsCM, catalog jobCatalog) (string, error) {
+// streamDifferenceJSON diffs the job's stored catalog against the new one.
+func streamDifferenceJSON(ctx context.Context, svc catalogService, job *models.Job, catalog jobCatalog) (string, error) {
 	var diffCatalog map[string]interface{}
 	var err error
-	oldAvailable, oldSelected := utils.StringValue(job.AvailableStreamsConfig), utils.StringValue(job.SelectedStreamsConfig)
 	switch {
-	case cm.Split && oldAvailable != "":
+	case job.IsStreamsV2() && catalog.available != "":
+		// V2 job + split catalog: diff via standard path (reads job's stored split columns).
+		diffCatalog, err = svc.GetStreamDifference(ctx, job.ProjectID, job.ID,
+			dto.StreamDifferenceRequest{UpdatedAvailableStreamsConfig: catalog.available, UpdatedSelectedStreamsConfig: catalog.selected})
+	case !job.IsStreamsV2() && catalog.available != "":
+		// Legacy job + split catalog (ISSUE-8): convert stored streams_config to split, diff explicitly.
+		if job.Source == nil {
+			return "", fmt.Errorf("job %d has no source, cannot convert legacy catalog", job.ID)
+		}
+		storedStreams := utils.StringValue(job.StreamsConfig)
+		if storedStreams == "" {
+			return "", fmt.Errorf("job %d has empty streams_config, cannot compute diff", job.ID)
+		}
+		oldAvailable, oldSelected, convertErr := svc.ConvertCatalog(ctx, job.Source.Type, job.Source.Version, storedStreams)
+		if convertErr != nil {
+			return "", fmt.Errorf("converting legacy catalog for job %d: %w", job.ID, convertErr)
+		}
 		diffCatalog, err = svc.GetSplitCatalogDifference(ctx, job.ID, oldAvailable, oldSelected, catalog.available, catalog.selected)
-	case job.StreamsConfig != "":
-		diffCatalog, err = svc.GetStreamDifference(ctx, job.ProjectID, job.ID, dto.StreamDifferenceRequest{UpdatedStreamsConfig: catalog.streamsConfig})
+	case utils.StringValue(job.StreamsConfig) != "":
+		// Legacy job + legacy catalog: diff streams_config.
+		diffCatalog, err = svc.GetStreamDifference(ctx, job.ProjectID, job.ID,
+			dto.StreamDifferenceRequest{UpdatedStreamsConfig: catalog.streamsConfig})
 	default:
 		return "", nil
 	}
 	if err != nil {
 		return "", err
 	}
-
 	diffBytes, err := json.Marshal(diffCatalog)
 	if err != nil {
 		return "", err
