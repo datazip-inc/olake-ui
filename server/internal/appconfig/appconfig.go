@@ -53,7 +53,6 @@ type Config struct {
 	OlakeS3Prefix                  string
 	OlakeS3AccessKeyID             string
 	OlakeS3SecretAccessKey         string
-	OlakeS3SessionToken            string
 	OlakeS3Endpoint                string
 }
 
@@ -136,7 +135,6 @@ func loadConfig() Config {
 		OlakeS3Prefix:          strings.TrimSpace(v.GetString("OLAKE_S3_PREFIX")),
 		OlakeS3AccessKeyID:     strings.TrimSpace(v.GetString("OLAKE_S3_ACCESS_KEY_ID")),
 		OlakeS3SecretAccessKey: strings.TrimSpace(v.GetString("OLAKE_S3_SECRET_ACCESS_KEY")),
-		OlakeS3SessionToken:    strings.TrimSpace(v.GetString("OLAKE_S3_SESSION_TOKEN")),
 		OlakeS3Endpoint:        strings.TrimSpace(v.GetString("OLAKE_S3_ENDPOINT")),
 	}
 }

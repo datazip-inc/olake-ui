@@ -47,7 +47,7 @@ func InitStorage(ctx context.Context) error {
 
 	if cfg.OlakeS3AccessKeyID != "" && cfg.OlakeS3SecretAccessKey != "" {
 		configOpts = append(configOpts, config.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(cfg.OlakeS3AccessKeyID, cfg.OlakeS3SecretAccessKey, cfg.OlakeS3SessionToken),
+			credentials.StaticCredentialsProvider{Value: aws.Credentials{AccessKeyID: cfg.OlakeS3AccessKeyID, SecretAccessKey: cfg.OlakeS3SecretAccessKey}},
 		))
 	}
 
