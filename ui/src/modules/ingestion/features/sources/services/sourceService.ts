@@ -128,7 +128,7 @@ export const sourceService = {
 				data: {
 					connection_result: {
 						message: errorMessage,
-						status: "FAILED",
+						status: "FAILED" as const,
 					},
 					logs: [
 						{

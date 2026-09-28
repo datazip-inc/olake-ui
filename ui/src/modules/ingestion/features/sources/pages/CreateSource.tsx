@@ -17,15 +17,12 @@ import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import { widgets } from "@/common/components/form/widgets"
 import {
 	ErrorLogsModal,
+	SourceTestConnectionModal,
 	TestConnectionFailureModal,
 	TestConnectionModal,
 	TestConnectionSuccessModal,
 } from "@/common/components/modals"
-import {
-	transformErrors,
-	TEST_CONNECTION_STATUS,
-	OLAKE_LATEST_VERSION_URL,
-} from "@/common/constants"
+import { transformErrors, OLAKE_LATEST_VERSION_URL } from "@/common/constants"
 import { TestConnectionError } from "@/common/types"
 import { trimFormDataStrings, handleSpecResponse } from "@/common/utils"
 import {
@@ -51,7 +48,7 @@ import {
 	useSourceVersions,
 	useSourceSpec,
 	useCreateSource,
-	useTestSourceConnection,
+	useSourceConnectionTest,
 } from "../hooks"
 import { Source } from "../types"
 import { getConnectorLabel } from "../utils"
@@ -71,8 +68,6 @@ const CreateSource: React.FC = () => {
 	const [existingSource, setExistingSource] = useState<string | null>(null)
 	const [specError, setSpecError] = useState<string | null>(null)
 	const [docsMinimized, setDocsMinimized] = useState(false)
-	const [showTestingModal, setShowTestingModal] = useState(false)
-	const [showSuccessModal, setShowSuccessModal] = useState(false)
 	const [showFailureModal, setShowFailureModal] = useState(false)
 	const [showEntitySavedModal, setShowEntitySavedModal] = useState(false)
 	const [showSourceCancelModal, setShowSourceCancelModal] = useState(false)
@@ -89,7 +84,7 @@ const CreateSource: React.FC = () => {
 		useSourceVersions(normalizedConnector)
 	const versions = versionsData?.version ?? []
 	const createSourceMutation = useCreateSource()
-	const testSourceMutation = useTestSourceConnection()
+	const sourceConnectionTest = useSourceConnectionTest()
 
 	useEffect(() => {
 		if (setupType === SETUP_TYPES.EXISTING) {
@@ -196,28 +191,14 @@ const CreateSource: React.FC = () => {
 			config: JSON.stringify(formData),
 		}
 
-		setShowTestingModal(true)
-		const testResult = await testSourceMutation.mutateAsync({
-			source: newSourceData,
-		})
-		setShowTestingModal(false)
-		if (
-			testResult.data?.connection_result.status ===
-			TEST_CONNECTION_STATUS.SUCCEEDED
-		) {
-			setShowSuccessModal(true)
-			setTimeout(() => {
-				setShowSuccessModal(false)
-				createSourceMutation.mutate(newSourceData, {
-					onSuccess: () => setShowEntitySavedModal(true),
-					onError: error => console.error("Error adding source:", error),
-				})
-			}, 1000)
-		} else {
-			setTestConnectionError({
-				message: testResult.data?.connection_result.message || "",
-				logs: testResult.data?.logs || [],
+		const result = await sourceConnectionTest.run(newSourceData)
+		if (result.outcome === "passed") {
+			createSourceMutation.mutate(newSourceData, {
+				onSuccess: () => setShowEntitySavedModal(true),
+				onError: error => console.error("Error adding source:", error),
 			})
+		} else if (result.outcome === "connection_failed") {
+			setTestConnectionError(result.error)
 			setShowFailureModal(true)
 		}
 	}
@@ -513,11 +494,12 @@ const CreateSource: React.FC = () => {
 			</div>
 
 			<TestConnectionModal
-				open={showTestingModal}
+				open={sourceConnectionTest.testing}
 				connectionType="source"
 			/>
+			<SourceTestConnectionModal {...sourceConnectionTest.modalProps} />
 			<TestConnectionSuccessModal
-				open={showSuccessModal}
+				open={sourceConnectionTest.showSuccess}
 				connectionType="source"
 			/>
 			<TestConnectionFailureModal
