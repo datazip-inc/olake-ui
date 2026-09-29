@@ -83,7 +83,7 @@ const UpsertTypeSectionView = ({
 						!isSelected ? "text-gray-500" : "text-neutral-700",
 					)}
 				>
-					Specify Iceberg delete mode.
+					Specify Iceberg delete mode.{" "}
 					<a
 						href="https://olake.io/docs/understanding/terminologies/olake/#upsert"
 						target="_blank"
@@ -120,7 +120,7 @@ const UpsertTypeSectionView = ({
 						{upsertType === UpsertType.POSITIONAL
 							? "Positional deletes"
 							: "Deletion vectors"}{" "}
-						needs a newer OLake version.{" "}
+						need a newer OLake version.{" "}
 						<a
 							href="https://olake.io/docs/understanding/terminologies/olake/#upsert"
 							target="_blank"
