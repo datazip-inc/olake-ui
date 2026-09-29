@@ -116,7 +116,7 @@ type CreateJobRequest struct {
 	JobMetadata
 	Source                 *DriverConfig `json:"source" binding:"required"`
 	Destination            *DriverConfig `json:"destination" binding:"required"`
-	StreamsConfig          string        `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	StreamsConfig          string        `json:"streams_config,omitempty" orm:"type(jsonb)"`
 	AvailableStreamsConfig string        `json:"available_streams_config,omitempty" orm:"type(jsonb)"`
 	SelectedStreamsConfig  string        `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
 }

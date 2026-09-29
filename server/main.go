@@ -77,9 +77,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := appSvc.ETL().ConvertLegacyJobs(ctx); err != nil {
-		logger.Errorf("failed to convert legacy jobs: %s. upgrade source to version[%s] to support streams v2", err, constants.MinStreamsV2Version)
-	}
+	go func() {
+		if err := appSvc.ETL().ConvertLegacyJobs(ctx); err != nil {
+			logger.Errorf("failed to convert legacy jobs: %s. upgrade source to version[%s] to support streams v2", err, constants.MinStreamsV2Version)
+		}
+	}()
 
 	if err := gitops.InitGitOps(ctx, cfg.GitOpsEnabled, appSvc); err != nil {
 		logger.Fatalf("gitops initialization failed: %s", err)
