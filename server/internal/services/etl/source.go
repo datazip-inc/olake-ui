@@ -170,19 +170,6 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 		return fmt.Errorf("failed to fetch jobs for source update: %s", err)
 	}
 
-	// TODO[BEFORE_MERGE]: Check if we need this logic for source version downgrade
-	// // Downgrading below the split format is unsupported but allowed: split-format jobs keep
-	// // syncing from their streams_config mirror (the worker falls back to it), and can't be edited
-	// // until the source is upgraded again.
-	// if !utils.SupportsStreamsV2(req.Version) {
-	// 	for _, job := range jobs {
-	// 		if job.IsStreamsV2() {
-	// 			logger.Warnf("source_id[%d] set to version %s, below %s: job_id[%d] uses the split streams format and runs from its streams_config until the source is upgraded; downgrading is not supported",
-	// 				existing.ID, req.Version, constants.MinStreamsV2Version, job.ID)
-	// 		}
-	// 	}
-	// }
-
 	if err := cancelAllJobWorkflows(ctx, s.temporal, jobs, projectID); err != nil {
 		return fmt.Errorf("failed to cancel workflows for source update: %s", err)
 	}
@@ -275,10 +262,6 @@ func (s Service) DiscoverCatalog(ctx context.Context, req *dto.StreamsRequest) (
 		job, err := s.db.GetJobByID(req.JobID, true)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find job for catalog: %s", err)
-		}
-		if job.IsStreamsV2() && !split {
-			return nil, fmt.Errorf("%w: job uses the split streams format, which source version %s does not support (minimum %s)",
-				constants.ErrStreamsFormat, req.Version, constants.MinStreamsV2Version)
 		}
 		split = job.IsStreamsV2()
 		if split {
