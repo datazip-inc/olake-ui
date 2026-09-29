@@ -18,6 +18,7 @@ export enum SyncMode {
 export enum UpsertType {
 	EQUALITY = "eq",
 	POSITIONAL = "pos",
+	DELETION_VECTOR = "dv",
 }
 
 export interface FilterConfigCondition {
@@ -58,6 +59,7 @@ export type StreamData = {
 		destination_table?: string
 		source_defined_primary_key?: string[]
 		default_stream_properties: DefaultStreamProperties
+		available_update_types?: UpsertType[]
 		[key: string]: unknown
 	}
 }

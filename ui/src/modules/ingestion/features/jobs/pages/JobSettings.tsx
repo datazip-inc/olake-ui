@@ -340,7 +340,7 @@ const JobSettings: React.FC = () => {
 							<h2 className="mb-4 text-xl font-medium">Job settings</h2>
 
 							<div className="mb-6">
-								<div className="flex w-full flex-row justify-between gap-8 rounded-xl border border-[#D9D9D9] bg-white px-6 pb-2 pt-6">
+								<div className="flex w-full flex-row justify-between gap-8 rounded-xl border border-olake-border bg-white px-6 pb-2 pt-6">
 									<div className="mb-6 w-1/3">
 										<label className="mb-2 block text-sm text-gray-700">
 											Job name:
@@ -450,7 +450,11 @@ const JobSettings: React.FC = () => {
 										)}
 									</div>
 								</div>
-								<AdvancedSettingsCard />
+								<AdvancedSettingsCard
+									sourceType={job?.source.type}
+									sourceVersion={job?.source.version}
+									queryEnginesDisabled
+								/>
 							</div>
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white px-6 pb-2">
 								<div className="border-gray-200 pt-4">

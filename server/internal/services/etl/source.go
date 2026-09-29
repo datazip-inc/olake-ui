@@ -265,6 +265,7 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) 
 		oldStreams,
 		req.JobName,
 		req.MaxDiscoverThreads,
+		req.TargetQueryEngines,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get catalog: %s", err)
@@ -285,7 +286,7 @@ func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.
 
 // TODO: cache spec in db for each version
 func (s Service) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
-	specOut, err := s.temporal.GetDriverSpecs(ctx, "", req.Type, req.Version)
+	specOut, err := s.temporal.GetDriverSpecs(ctx, "", req.Type, req.Version, req.AvailableQueryEngines)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)
 	}
