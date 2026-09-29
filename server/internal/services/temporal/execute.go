@@ -84,7 +84,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	cmdArgs := []string{
 		"discover",
 		"--config",
-		workerConfigPath(Discover, workflowID, "config.json"),
+		"/mnt/config/config.json",
 	}
 
 	if jobName != "" && (utils.GetCustomDriverVersion() != "" || semver.Compare(version, "v0.2.0") >= 0) {
@@ -101,7 +101,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	}
 
 	if streamsConfig != "" {
-		cmdArgs = append(cmdArgs, "--catalog", workerConfigPath(Discover, workflowID, "streams.json"))
+		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
 	}
 
 	// OLake stores no engines, so an omitted flag means unconstrained rather than "reuse the last choice".
@@ -217,7 +217,7 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 	cmdArgs := []string{
 		"check",
 		fmt.Sprintf("--%s", flag),
-		workerConfigPath(Check, workflowID, "config.json"),
+		"/mnt/config/config.json",
 	}
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
@@ -311,8 +311,8 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 
 	cmdArgs := []string{
 		"discover",
-		"--streams", workerConfigPath(Discover, workflowID, "old_streams.json"),
-		"--difference", workerConfigPath(Discover, workflowID, "new_streams.json"),
+		"--streams", "/mnt/config/old_streams.json",
+		"--difference", "/mnt/config/new_streams.json",
 	}
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
