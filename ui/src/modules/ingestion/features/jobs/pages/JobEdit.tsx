@@ -2,7 +2,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
 import { Button, message } from "antd"
 import clsx from "clsx"
 import { useState, useEffect, useRef } from "react"
-import { useNavigate, Link, useParams } from "react-router-dom"
+import { useNavigate, Link, useParams, useLocation } from "react-router-dom"
 
 import {
 	StreamData,
@@ -32,7 +32,7 @@ import {
 	useStreamSelectionStore,
 	useJobConfigurationStore,
 } from "../stores"
-import { Job, JobBase, JobCreationSteps } from "../types"
+import { Job, JobBase, JobCreationSteps, UnsavedJobSettings } from "../types"
 import {
 	validateCronExpression,
 	formatSelectedStreamsPayload,
@@ -45,6 +45,15 @@ import {
 const JobEdit: React.FC = () => {
 	const navigate = useNavigate()
 	const { jobId } = useParams<{ jobId: string }>()
+	const location = useLocation()
+	// Unsaved edits from job settings. Read once, then removed from the history
+	// entry so navigating back or forward into this page never re-applies them.
+	const unsavedSettings = useRef(location.state as UnsavedJobSettings | null)
+	useEffect(() => {
+		if (location.state) {
+			navigate(location.pathname, { replace: true, state: null })
+		}
+	}, [])
 	const {
 		setSelectedJobId,
 		setShowResetStreamsModal,
@@ -156,8 +165,9 @@ const JobEdit: React.FC = () => {
 		})
 
 		// Set other job settings
-		if (job.frequency) {
-			setCronExpression(job.frequency)
+		const frequency = unsavedSettings.current?.cronExpression ?? job.frequency
+		if (frequency) {
+			setCronExpression(frequency)
 		}
 
 		setIsEditMode(true)
@@ -182,7 +192,11 @@ const JobEdit: React.FC = () => {
 			}
 		}
 
-		setAdvancedSettings(job.advanced_settings ?? null)
+		setAdvancedSettings(
+			unsavedSettings.current?.advancedSettings ??
+				job.advanced_settings ??
+				null,
+		)
 		setSavedAdvancedSettings(job.advanced_settings ?? null)
 	}
 

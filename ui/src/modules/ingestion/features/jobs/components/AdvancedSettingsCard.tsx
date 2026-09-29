@@ -1,6 +1,5 @@
 import { InfoIcon, SlidersIcon, WarningIcon } from "@phosphor-icons/react"
 import { InputNumber, Select, Spin, Tag, Tooltip } from "antd"
-import clsx from "clsx"
 import React from "react"
 
 import { restrictNumericInput } from "@/common/utils"
@@ -11,13 +10,11 @@ import { useJobConfigurationStore } from "../stores"
 interface AdvancedSettingsCardProps {
 	sourceType?: string
 	sourceVersion?: string
-	queryEnginesDisabled?: boolean
 }
 
 const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 	sourceType,
 	sourceVersion,
-	queryEnginesDisabled = false,
 }) => {
 	const {
 		advancedSettings,
@@ -43,11 +40,9 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 		setAdvancedSettings({ ...advancedSettings, target_query_engines })
 
 	const savedQueryEngines = savedAdvancedSettings?.target_query_engines ?? []
-	// Hidden in create mode, when query engines are disabled (job settings), or
-	// when Snowflake was already in the saved selection.
+	// Hidden in create mode, or when Snowflake was already in the saved selection.
 	const showSnowflakeWarning =
 		isEditMode &&
-		!queryEnginesDisabled &&
 		targetQueryEngines.some(
 			engine =>
 				!savedQueryEngines.includes(engine) &&
@@ -71,13 +66,7 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 							<label className="text-sm text-gray-600">
 								Target Query Engines
 							</label>
-							<Tooltip
-								title={
-									queryEnginesDisabled
-										? "To change these, open Edit Streams, go back to Job Config, then select Next to re-discover streams."
-										: "Query engines that will query the tables written by this job."
-								}
-							>
+							<Tooltip title="Query engines that will query the tables written by this job.">
 								<InfoIcon
 									size={16}
 									className="cursor-help text-slate-900"
@@ -108,7 +97,6 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 								className="w-full"
 								placeholder="Select Query Engines"
 								loading={isFetchingQueryEngines}
-								disabled={queryEnginesDisabled}
 								maxTagCount="responsive"
 								maxTagPlaceholder={omitted => `+${omitted.length} more`}
 								value={targetQueryEngines}
@@ -123,12 +111,7 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 										// Keeps the dropdown from toggling when the tag is closed.
 										onMouseDown={event => event.preventDefault()}
 										onClose={onClose}
-										className={clsx(
-											"mr-1 rounded font-medium",
-											queryEnginesDisabled
-												? "border-neutral-disabled bg-neutral-light text-gray-500"
-												: "border-primary-100 bg-primary-50 text-brand-blue",
-										)}
+										className="mr-1 rounded border-primary-100 bg-primary-50 font-medium text-brand-blue"
 									>
 										{label}
 									</Tag>
