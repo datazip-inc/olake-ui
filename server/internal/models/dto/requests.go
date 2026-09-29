@@ -109,7 +109,7 @@ type CreateJobRequest struct {
 	Source                 *DriverConfig     `json:"source" binding:"required"`
 	Destination            *DriverConfig     `json:"destination" binding:"required"`
 	Frequency              string            `json:"frequency" binding:"required" example:"0 */6 * * *"`
-	StreamsConfig          string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
+	StreamsConfig          string            `json:"streams_config,omitempty" orm:"type(jsonb)"`
 	AvailableStreamsConfig string            `json:"available_streams_config,omitempty" orm:"type(jsonb)"`
 	SelectedStreamsConfig  string            `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
 	Activate               bool              `json:"activate,omitempty" example:"true"`
