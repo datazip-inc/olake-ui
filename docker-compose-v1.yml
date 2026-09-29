@@ -18,6 +18,9 @@ x-signup-defaults:
 x-encryption:
   key: &encryptionKey ""
 
+x-images:
+  curl: &curlImage ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/curlimages/curl:8.21.0
+
 x-envs:
   shared: &sharedEnvs
     CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
@@ -70,7 +73,7 @@ services:
       start_period: 30s # Give it time to start up before first health check
 
   signup-init:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/curlimages/curl:latest
+    image: *curlImage
     container_name: olake-signup-init
     networks:
       - olake-network
@@ -335,7 +338,7 @@ services:
     stdin_open: true
 
   fusion-init:
-    image: curlimages/curl
+    image: *curlImage
     container_name: fusion-init
     profiles:
       - fusion
