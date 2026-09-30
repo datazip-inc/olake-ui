@@ -120,10 +120,8 @@ func (s *Service) createOptConfig(configJSON string, update bool) (*dto.CatalogR
 		og = "spark-container"
 	}
 
-	catalogType := normalizeCatalogType(string(config.CatalogType))
 	optimizationReq := &dto.CatalogRequest{
 		Name:                    config.CatalogName,
-		Type:                    catalogType,
 		OptimizerGroup:          og,
 		OptimizeTableFormatList: constants.OptimizeTableFormatList,
 		StorageConfig:           make(map[string]string),
@@ -135,10 +133,12 @@ func (s *Service) createOptConfig(configJSON string, update bool) (*dto.CatalogR
 	optimizationReq.StorageConfig["storage.type"] = constants.DefaultOptimizationStorageType
 
 	mapAuthConfig(&config, optimizationReq.AuthConfig, optimizationReq.StorageConfig)
-	mapCatalogProperties(&config, optimizationReq.Properties, string(config.CatalogType))
+	mapCatalogProperties(&config, optimizationReq.Properties)
 	if !update {
 		setDefaultCatalogProperties(optimizationReq)
 	}
+
+	optimizationReq.Type = normalizeCatalogType(string(config.CatalogType))
 
 	return optimizationReq, nil
 }

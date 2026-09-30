@@ -22,7 +22,7 @@ import {
 	STREAM_DEFAULTS,
 } from "../constants"
 import { IngestionMode } from "../enums"
-import { CursorFieldValues } from "../types"
+import { AdvancedSettings, CursorFieldValues } from "../types"
 import {
 	castFilterConditionValue,
 	validateFilter,
@@ -226,6 +226,97 @@ export const formatSelectedStreamsPayload = (
 		]),
 	)
 }
+
+// Positional deletes and delete vectors need the destination row index; equality deletes don't.
+const INDEXED_UPSERT_TYPES: UpsertType[] = [
+	UpsertType.POSITIONAL,
+	UpsertType.DELETION_VECTOR,
+]
+
+const usesIndexedUpsert = (stream: SelectedStream): boolean =>
+	!stream.append_mode &&
+	!!stream.update_type &&
+	INDEXED_UPSERT_TYPES.includes(stream.update_type)
+
+const indexedStreamIds = (
+	streamsConfig?: StreamsDataStructure | null,
+): Set<string> =>
+	new Set(
+		Object.entries(
+			getSelectedStreams(streamsConfig?.selected_streams ?? {}),
+		).flatMap(([namespace, streams]) =>
+			streams
+				.filter(usesIndexedUpsert)
+				.map(stream => `${namespace}.${stream.stream_name}`),
+		),
+	)
+
+export const hasIndexedUpsertStream = (
+	streamsConfig?: StreamsDataStructure | null,
+): boolean => indexedStreamIds(streamsConfig).size > 0
+
+// True when the difference covers every enabled stream, meaning clear destination
+// runs across the whole job rather than a subset of its streams.
+export const coversAllSelectedStreams = (
+	streamsConfig: StreamsDataStructure | null | undefined,
+	streamDifference: StreamsDataStructure,
+): boolean => {
+	const streamIds = (selectedStreams: SelectedStreamsByNamespace) =>
+		new Set(
+			Object.entries(getSelectedStreams(selectedStreams)).flatMap(
+				([namespace, streams]) =>
+					streams.map(stream => `${namespace}.${stream.stream_name}`),
+			),
+		)
+
+	const selected = streamIds(streamsConfig?.selected_streams ?? {})
+	const impacted = streamIds(streamDifference.selected_streams ?? {})
+
+	return selected.size > 0 && [...selected].every(id => impacted.has(id))
+}
+
+// Engines only reach the catalog through a discover, so a selection that differs
+// from the saved one has to go through the streams step before it can be saved.
+export const queryEnginesChanged = (
+	advancedSettings: AdvancedSettings | null | undefined,
+	savedAdvancedSettings: AdvancedSettings | null | undefined,
+): boolean => {
+	const selected = advancedSettings?.target_query_engines ?? []
+	const saved = savedAdvancedSettings?.target_query_engines ?? []
+
+	return (
+		selected.length !== saved.length ||
+		selected.some(engine => !saved.includes(engine))
+	)
+}
+
+// The next sync builds the destination index for any pos/dv stream that wasn't
+// already pos/dv in the saved config. Returns true when a stream is:
+//   - newly selected with pos/dv (not in the saved config, or disabled there)
+//   - switched from eq to pos/dv
+//   - switched from append mode to pos/dv
+// Returns false when every pos/dv stream was already pos/dv in the saved config,
+// so no new index is needed. With no saved config (job creation), every pos/dv
+// stream counts as new.
+export const willBuildIndex = (
+	streamsConfig: StreamsDataStructure | null | undefined,
+	savedStreamsConfig?: StreamsDataStructure | null,
+): boolean => {
+	const alreadyIndexed = indexedStreamIds(savedStreamsConfig)
+	const nowIndexed = indexedStreamIds(streamsConfig)
+
+	return [...nowIndexed].some(id => !alreadyIndexed.has(id))
+}
+
+// index_required is derived from the streams config on every write; the rest of
+// advanced settings stays user-configured.
+export const withIndexRequired = (
+	advancedSettings: AdvancedSettings | null | undefined,
+	streamsConfig?: StreamsDataStructure | null,
+): AdvancedSettings => ({
+	...advancedSettings,
+	index_required: hasIndexedUpsertStream(streamsConfig),
+})
 
 // Returns null if all selected stream configurations are valid, or a descriptive error string otherwise.
 export const validateStreams = (

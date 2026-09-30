@@ -30,6 +30,8 @@ var (
 	DefaultSpecVersion               = "v0.2.0"
 	DefaultClearDestinationVersion   = "v0.3.0"
 	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
+	// DefaultQueryEnginesVersion is the first release with the query engine flags; older images reject them.
+	DefaultQueryEnginesVersion = "v0.11.0"
 
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"
@@ -41,6 +43,8 @@ var (
 
 	// command flags
 	MaxDiscoverThreadsFlag    = "--max-discover-threads"
+	AvailableQueryEnginesFlag = "--available-query-engines"
+	TargetQueryEnginesFlag    = "--target-query-engines"
 	DefaultMaxDiscoverThreads = 50
 
 	// conf keys
@@ -107,17 +111,30 @@ var (
 	// others
 	OptMaxTimeout = 10 * time.Minute
 	// properties
-	OptCreatedAt    = "created-at"
-	OptCacheEnabled = "cache-enabled"
-	OptOLakeCreated = "olake_created"
+	OptCreatedAt        = "created-at"
+	OptCacheEnabled     = "cache-enabled"
+	OptOLakeCreated     = "olake_created"
+	OptOLakeCatalogType = "olake-catalog-type"
+	// to store user selected value: "Token" instead of our converted "oauth2"
+	OptOLakeAuthType = "olake-rest-auth-type"
 	// OptimizeTableFormatList defines supported table formats for catalogs
 	OptimizeTableFormatList = []string{"ICEBERG"}
 	// hard-coding to S3 now, as the other options are "hadoop" & "OSS" for optimization
 	// GCS & ADLS are supported, given the catalog manages the sdk (eg, Lakekeeper with GCS flavour)
 	DefaultOptimizationStorageType = "S3"
-	CatalogSpecVersion             = "v0.7.4"
+	CatalogSpecVersion             = "v0.9.1"
 	CatalogSpecType                = "iceberg"
 	IcebergCatalogSpecFile         = "server/internal/services/optimization/resources/spec.json"
+
+	RESTCatalogs = []string{
+		"rest",
+		"lakekeeper",
+		"nessie",
+		"s3tables",
+		"unity",
+		"polaris",
+		"biglake",
+	}
 
 	ContextUserIDKey = "user_id"
 	ProjectIDParam   = "projectid"

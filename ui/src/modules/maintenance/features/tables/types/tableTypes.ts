@@ -86,6 +86,7 @@ export interface TableConfigApiResponse {
 export interface TableMetricsApiResponse {
 	result: {
 		list: Array<{
+			commitTime?: number
 			filesSummaryForChart?: {
 				"data-files"?: string
 				"delete-files"?: string
@@ -167,6 +168,7 @@ export interface TableDetailsApiModel {
 export interface TableMetricsFileSummary {
 	"data-files": number
 	"delete-files": number
+	commitTime?: number
 }
 
 export interface TableMetricsModalData {
