@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,6 +26,7 @@ type LogEntry struct {
 type LineWithPos struct {
 	content  string
 	startPos int64 // byte position where this line starts
+	endPos   int64 // byte position right after this line; set by the forward reader only
 }
 
 // isValidLogLine checks if a line is a valid, non-debug log entry
@@ -51,8 +53,40 @@ func isValidLogLine(line string) bool {
 // startOffset is treated as exclusive - we read lines that END BEFORE startOffset.
 // Returns: valid lines (oldest->newest), newOffset (byte position before first returned line), hasMore, error.
 func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64) ([]string, int64, bool, error) {
+	foundLines, err := readLinesBackwardWithPos(f, startOffset, limit, fileSize)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	// no valid lines found
+	if len(foundLines) == 0 {
+		return []string{}, 0, false, nil
+	}
+
+	lines := make([]string, len(foundLines))
+	for i, line := range foundLines {
+		lines[i] = line.content
+	}
+
+	// The oldest line we returned is the first element
+	newOffset := foundLines[0].startPos
+
+	// hasMore is true only if we hit the limit with more file content remaining
+	hasMore := newOffset > 0 && len(foundLines) == limit
+
+	// If no more logs exist, return cursor at beginning (0)
+	if !hasMore {
+		newOffset = 0
+	}
+
+	return lines, newOffset, hasMore, nil
+}
+
+// readLinesBackwardWithPos is ReadLinesBackward keeping each line's byte position.
+// Returns valid lines oldest->newest.
+func readLinesBackwardWithPos(f *os.File, startOffset int64, limit int, fileSize int64) ([]LineWithPos, error) {
 	if limit <= 0 {
-		return nil, 0, false, fmt.Errorf("limit must be greater than 0")
+		return nil, fmt.Errorf("limit must be greater than 0")
 	}
 
 	// startOffset beyond file size, clamp it to file size
@@ -60,7 +94,7 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64)
 
 	// startOffset at beginning or negative, return empty result
 	if startOffset <= 0 {
-		return []string{}, 0, false, nil
+		return []LineWithPos{}, nil
 	}
 
 	offset := startOffset
@@ -82,7 +116,7 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64)
 
 		// io.EOF is expected when reading near file boundaries
 		if rerr != nil && rerr != io.EOF {
-			return nil, 0, false, rerr
+			return nil, rerr
 		}
 
 		if int64(n) != toRead {
@@ -140,29 +174,9 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64)
 		}
 	}
 
-	// no valid lines found
-	if len(foundLines) == 0 {
-		return []string{}, 0, false, nil
-	}
-
-	// Extract just the line content for return
-	lines := make([]string, len(foundLines))
-	for i, line := range foundLines {
-		lines[len(foundLines)-1-i] = line.content // Reverse order
-	}
-
-	// The oldest line we returned is the last element in newestFirst
-	newOffset := foundLines[len(foundLines)-1].startPos
-
-	// hasMore is true only if we hit the limit with more file content remaining
-	hasMore := newOffset > 0 && len(foundLines) == limit
-
-	// If no more logs exist, return cursor at beginning (0)
-	if !hasMore {
-		newOffset = 0
-	}
-
-	return lines, newOffset, hasMore, nil
+	// found newest first; return oldest first
+	slices.Reverse(foundLines)
+	return foundLines, nil
 }
 
 // ReadLinesForward reads up to `limit` complete VALID log lines from file forwards starting at startOffset.
@@ -170,50 +184,14 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64)
 // startOffset is treated as inclusive - we start reading from exactly that position.
 // Returns: valid lines (oldest->newest), newOffset (byte position after last returned line), hasMore, error.
 func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) ([]string, int64, bool, error) {
-	if limit <= 0 {
-		return nil, 0, false, fmt.Errorf("limit must be greater than 0")
-	}
-
-	// Ensure startOffset is at least 0
-	startOffset = max(startOffset, 0)
-
-	// If already at or past EOF, nothing to read
-	if startOffset >= fileSize {
-		return []string{}, fileSize, false, nil
-	}
-
-	// Seek to the startOffset position in the file before beginning to read lines
-	if _, err := f.Seek(startOffset, io.SeekStart); err != nil {
+	foundLines, currentOffset, err := readLinesForwardWithPos(f, startOffset, limit, fileSize)
+	if err != nil {
 		return nil, 0, false, err
 	}
 
-	reader := bufio.NewReader(f)
-
-	lines := make([]string, 0, limit)
-	currentOffset := startOffset
-
-	for len(lines) < limit {
-		lineBytes, rerr := reader.ReadBytes('\n')
-
-		if len(lineBytes) > 0 {
-			// Update offset by bytes read
-			currentOffset += int64(len(lineBytes))
-
-			// Remove trailing newline and check if valid
-			line := strings.TrimRight(string(lineBytes), "\r\n")
-			if isValidLogLine(line) {
-				lines = append(lines, line)
-			}
-		}
-
-		if rerr != nil {
-			// ReadBytes may return data and io.EOF together
-			// so treat EOF as normal end-of-file and stop reading, return other errors
-			if rerr == io.EOF {
-				break
-			}
-			return nil, 0, false, rerr
-		}
+	lines := make([]string, len(foundLines))
+	for i, line := range foundLines {
+		lines[i] = line.content
 	}
 
 	// hasMore is true only if we hit the limit with more file content remaining
@@ -225,6 +203,59 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) 
 	}
 
 	return lines, currentOffset, hasMore, nil
+}
+
+// readLinesForwardWithPos is ReadLinesForward keeping each line's byte position.
+// Returns valid lines oldest->newest and the byte offset where reading stopped.
+func readLinesForwardWithPos(f *os.File, startOffset int64, limit int, fileSize int64) ([]LineWithPos, int64, error) {
+	if limit <= 0 {
+		return nil, 0, fmt.Errorf("limit must be greater than 0")
+	}
+
+	// Ensure startOffset is at least 0
+	startOffset = max(startOffset, 0)
+
+	// If already at or past EOF, nothing to read
+	if startOffset >= fileSize {
+		return []LineWithPos{}, fileSize, nil
+	}
+
+	// Seek to the startOffset position in the file before beginning to read lines
+	if _, err := f.Seek(startOffset, io.SeekStart); err != nil {
+		return nil, 0, err
+	}
+
+	reader := bufio.NewReader(f)
+
+	lines := make([]LineWithPos, 0, limit)
+	currentOffset := startOffset
+
+	for len(lines) < limit {
+		lineBytes, rerr := reader.ReadBytes('\n')
+
+		if len(lineBytes) > 0 {
+			lineStart := currentOffset
+			// Update offset by bytes read
+			currentOffset += int64(len(lineBytes))
+
+			// Remove trailing newline and check if valid
+			line := strings.TrimRight(string(lineBytes), "\r\n")
+			if isValidLogLine(line) {
+				lines = append(lines, LineWithPos{content: line, startPos: lineStart, endPos: currentOffset})
+			}
+		}
+
+		if rerr != nil {
+			// ReadBytes may return data and io.EOF together
+			// so treat EOF as normal end-of-file and stop reading, return other errors
+			if rerr == io.EOF {
+				break
+			}
+			return nil, 0, rerr
+		}
+	}
+
+	return lines, currentOffset, nil
 }
 
 // ReadLogs reads logs from the given mainLogDir and returns structured log entries.
@@ -289,23 +320,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 				continue
 			}
 
-			var messageStr string
-			var tmp interface{}
-			if err := json.Unmarshal(logEntry.Message, &tmp); err == nil {
-				switch v := tmp.(type) {
-				case string:
-					messageStr = v
-				default:
-					msgBytes, err := json.Marshal(v)
-					if err != nil {
-						messageStr = string(logEntry.Message)
-					} else {
-						messageStr = string(msgBytes)
-					}
-				}
-			} else {
-				messageStr = string(logEntry.Message)
-			}
+			messageStr := logMessageString(logEntry.Message)
 
 			batch = append(batch, map[string]interface{}{
 				"level":   logEntry.Level,

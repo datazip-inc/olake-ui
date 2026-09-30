@@ -1573,8 +1573,14 @@ const docTemplate = `{
                         }
                     },
                     {
-                        "type": "integer",
-                        "description": "log cursor",
+                        "type": "string",
+                        "description": "log source: all (default), sync or worker",
+                        "name": "source",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "opaque log cursor from a previous response; empty tails from the end",
                         "name": "cursor",
                         "in": "query"
                     },
@@ -1603,7 +1609,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.TaskLogsResponse"
+                                            "$ref": "#/definitions/dto.JobTaskLogsResponse"
                                         }
                                     }
                                 }
@@ -3487,6 +3493,33 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.JobTaskLogsResponse": {
+            "type": "object",
+            "properties": {
+                "has_more_newer": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "has_more_older": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "logs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "newer_cursor": {
+                    "type": "string",
+                    "example": "eyJzeW5jIjoyMDQ4LCJ3b3JrZXIiOjEwMjR9"
+                },
+                "older_cursor": {
+                    "type": "string",
+                    "example": "eyJzeW5jIjoxMDI0LCJ3b3JrZXIiOjUxMn0"
+                }
+            }
+        },
         "dto.JobTaskRequest": {
             "type": "object",
             "required": [
@@ -3775,33 +3808,6 @@ const docTemplate = `{
                 "version": {
                     "type": "string",
                     "example": "v0.2.7"
-                }
-            }
-        },
-        "dto.TaskLogsResponse": {
-            "type": "object",
-            "properties": {
-                "has_more_newer": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "has_more_older": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "logs": {
-                    "type": "array",
-                    "items": {
-                        "type": "object"
-                    }
-                },
-                "newer_cursor": {
-                    "type": "integer",
-                    "example": 1704805200000
-                },
-                "older_cursor": {
-                    "type": "integer",
-                    "example": 1704801600000
                 }
             }
         },

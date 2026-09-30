@@ -87,9 +87,6 @@ var (
 	// DefaultLogsLimit is the number of log entries returned if no limit is provided.
 	DefaultLogsLimit = 1000
 
-	// DefaultLogsCursor indicates tailing from the end of the file (cursor < 0).
-	DefaultLogsCursor int64 = -1
-
 	// DefaultLogsDirection is the fallback pagination direction ("older" or "newer").
 	DefaultLogsDirection = "older"
 
