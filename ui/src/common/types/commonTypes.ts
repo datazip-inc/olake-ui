@@ -10,10 +10,21 @@ export interface NavItem {
 
 export type TestConnectionStatus = "FAILED" | "SUCCEEDED"
 
+// One CDC setup check reported by the source driver during test connection
+export interface PrerequisiteCheck {
+	name: string
+	required: boolean
+	passed: boolean
+	current_value: string
+	recommended_value: string
+	description: string
+}
+
 export interface TestConnectionResponse {
 	connection_result: {
 		message: string
 		status: TestConnectionStatus
+		prerequisites?: PrerequisiteCheck[]
 	}
 	logs: LogEntry[]
 }
