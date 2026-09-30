@@ -61,8 +61,8 @@ services:
         condition: service_healthy
       temporal-create-namespace:
         condition: service_completed_successfully
-      fusion-init:
-        condition: service_completed_successfully # Wait for initial Fusion setup to complete
+      fusion:
+        condition: service_healthy
         required: false
     restart: unless-stopped
     healthcheck: # Updated healthcheck for olake-ui
@@ -298,6 +298,7 @@ services:
 
   fusion:
     image: olakego/fusion:latest
+    pull_policy: always
     container_name: olake-fusion
     profiles:
       - fusion
@@ -307,6 +308,8 @@ services:
       kind-setup:
         condition: service_completed_successfully
       spark-copy:
+        condition: service_completed_successfully
+      kind-load-image:
         condition: service_completed_successfully
     networks:
       olake-network:
@@ -336,80 +339,12 @@ services:
         exec /entrypoint.sh ams
     tty: true
     stdin_open: true
-
-  fusion-init:
-    image: *curlImage
-    container_name: fusion-init
-    profiles:
-      - fusion
-    depends_on:
-      fusion:
-        condition: service_started
-      kind-load-image:
-        condition: service_completed_successfully
-    networks:
-      - olake-network
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        echo "Waiting for Fusion to be ready..."
-        until curl -sf http://fusion:1630/ >/dev/null 2>&1; do sleep 2; done
-        sleep 10
-
-        echo "Logging in..."
-        curl -sf -c /tmp/cookies.txt \
-          -X POST http://fusion:1630/api/ams/v1/login \
-          -H "Content-Type: application/json" \
-          -H "X-Request-Source: Web" \
-          -d '{"user":"admin","password":"password"}'
-        echo ""
-
-        # ---- Optimizer Group (Spark on Kubernetes) ----
-        echo "Checking optimizer group..."
-        GROUPS=$$(curl -s -b /tmp/cookies.txt \
-          -H "X-Request-Source: Web" \
-          http://fusion:1630/api/ams/v1/optimize/resourceGroups)
-
-        if echo "$$GROUPS" | grep -q '"name":"spark-container"'; then
-          echo "  Optimizer group 'spark-container' already exists — skipping."
-        else
-          echo "  Creating optimizer group 'spark-container' (Spark on K8s)..."
-          curl -s -b /tmp/cookies.txt \
-            -X POST http://fusion:1630/api/ams/v1/optimize/resourceGroups \
-            -H "Content-Type: application/json" \
-            -H "X-Request-Source: Web" \
-            -d '{"name":"spark-container","container":"sparkContainer","properties":{}}'
-          echo ""
-          sleep 5
-        fi
-
-        # ---- Optimizer (always ensure at least 1 is running) ----
-        echo "Checking optimizers..."
-        OPTIMIZERS=$$(curl -s -b /tmp/cookies.txt \
-          -H "X-Request-Source: Web" \
-          "http://fusion:1630/api/ams/v1/optimize/optimizerGroups/spark-container/optimizers?page=1&pageSize=10")
-
-        if echo "$$OPTIMIZERS" | grep -q '"jobStatus":"RUNNING"'; then
-          echo "  Spark optimizer already running — skipping."
-        else
-          echo "  Scaling out Spark optimizer (parallelism=1)..."
-          curl -s -b /tmp/cookies.txt \
-            -X POST http://fusion:1630/api/ams/v1/optimize/optimizerGroups/spark-container/optimizers \
-            -H "Content-Type: application/json" \
-            -H "X-Request-Source: Web" \
-            -d '{"parallelism":1}'
-          echo ""
-          sleep 5
-        fi
-
-        echo ""
-        echo "============================================"
-        echo "  Fusion is ready!"
-        echo "  Web UI : http://localhost:1630"
-        echo "  Login  : admin / password"
-        echo "============================================"
-
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:1630/api/ams/v1/health/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
 
   kind-setup:
     image: docker:27-cli
