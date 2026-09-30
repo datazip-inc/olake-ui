@@ -59,6 +59,33 @@ func (s Service) GetDestination(ctx context.Context, projectID string, destinati
 	return item, nil
 }
 
+// GetDestinationByName returns a destination model by name within a project.
+func (s Service) GetDestinationByName(_ context.Context, projectID, name string) (*models.Destination, error) {
+	dest, err := s.db.GetDestinationByName(projectID, name)
+	if err != nil {
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrDestinationNotFound, err)
+		}
+		return nil, err
+	}
+	return dest, nil
+}
+
+// GetDestinationByID returns a destination model by ID within a project.
+func (s Service) GetDestinationByID(_ context.Context, projectID string, id int) (*models.Destination, error) {
+	dest, err := s.db.GetDestinationByID(id)
+	if err != nil {
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrDestinationNotFound, err)
+		}
+		return nil, err
+	}
+	if dest.ProjectID != projectID {
+		return nil, fmt.Errorf("%w: destination not found id[%d] project_id[%s]", constants.ErrDestinationNotFound, id, projectID)
+	}
+	return dest, nil
+}
+
 // ListDestinations returns all destinations for a project with lightweight job summaries.
 func (s Service) ListDestinations(ctx context.Context, projectID string) ([]dto.DestinationDataItem, error) {
 	destinations, err := s.db.ListDestinationsByProjectID(projectID)
@@ -126,7 +153,7 @@ func (s Service) CreateDestination(ctx context.Context, req *dto.CreateDestinati
 		Name:      req.Name,
 		DestType:  req.Type,
 		Version:   req.Version,
-		Config:    req.Config,
+		Config:    req.Config.String(),
 		ProjectID: projectID,
 	}
 	user := &models.User{ID: *userID}
@@ -155,7 +182,7 @@ func (s Service) UpdateDestination(ctx context.Context, id int, projectID string
 	existingDest.Name = req.Name
 	existingDest.DestType = req.Type
 	existingDest.Version = req.Version
-	existingDest.Config = req.Config
+	existingDest.Config = req.Config.String()
 
 	user := &models.User{ID: *userID}
 	existingDest.UpdatedByID = user.ID
@@ -217,7 +244,7 @@ func (s Service) TestDestinationConnection(ctx context.Context, req *dto.Destina
 		}
 	}
 
-	encryptedConfig, err := utils.Encrypt(req.Config)
+	encryptedConfig, err := utils.Encrypt(req.Config.String())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}

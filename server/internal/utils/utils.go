@@ -2,6 +2,7 @@ package utils
 
 import (
 	"archive/tar"
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/json"
@@ -272,6 +273,27 @@ func ConvertMBToBytes(sizeMB int64) string {
 	const bytesPerMB = 1024 * 1024
 	sizeBytes := sizeMB * bytesPerMB
 	return strconv.FormatInt(sizeBytes, 10)
+}
+
+// EqualJSON reports whether a and b represent the same JSON value.
+// Invalid JSON on either side yields false.
+func EqualJSON(a, b string) bool {
+	if a == b {
+		return true
+	}
+	var va, vb any
+	if json.Unmarshal([]byte(a), &va) != nil || json.Unmarshal([]byte(b), &vb) != nil {
+		return false
+	}
+	aBytes, err := json.Marshal(va)
+	if err != nil {
+		return false
+	}
+	bBytes, err := json.Marshal(vb)
+	if err != nil {
+		return false
+	}
+	return bytes.Equal(aBytes, bBytes)
 }
 
 // ReadJSONFile reads a file and unmarshals its JSON content into a map.
