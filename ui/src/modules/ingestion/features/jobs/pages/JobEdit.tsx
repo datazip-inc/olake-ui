@@ -2,7 +2,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
 import { Button, message } from "antd"
 import clsx from "clsx"
 import { useState, useEffect, useRef } from "react"
-import { useNavigate, Link, useParams, useLocation } from "react-router-dom"
+import { useNavigate, useParams, useLocation } from "react-router-dom"
 
 import {
 	StreamData,
@@ -95,6 +95,7 @@ const JobEdit: React.FC = () => {
 	} | null>(null)
 
 	const [nextStep, setNextStep] = useState<JobCreationSteps | null>(null)
+	const [leavingToJobs, setLeavingToJobs] = useState(false)
 	const [streamDifference, setStreamDifference] =
 		useState<StreamsDataStructure | null>(null)
 	const [showQueryEngineWarning, setShowQueryEngineWarning] = useState(false)
@@ -415,8 +416,17 @@ const JobEdit: React.FC = () => {
 		setCurrentStep(step as JobCreationSteps)
 	}
 
+	const handleLeave = () => {
+		setLeavingToJobs(true)
+		setShowResetStreamsModal(true)
+	}
+
 	const handleConfirmResetStreams = () => {
 		useStreamSelectionStore.getState().reset()
+		if (leavingToJobs) {
+			navigate("/jobs")
+			return
+		}
 		setNextStep(null)
 		setCurrentStep(nextStep || JOB_CREATION_STEPS.CONFIG)
 	}
@@ -440,12 +450,13 @@ const JobEdit: React.FC = () => {
 			<div className="bg-white px-6 pb-3 pt-6">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
-						<Link
-							to="/jobs"
+						<button
+							type="button"
+							onClick={handleLeave}
 							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
 							<ArrowLeftIcon className="mr-1 size-5" />
-						</Link>
+						</button>
 						<div className="text-2xl font-bold">
 							{jobName ? (jobName === "-" ? " " : jobName) : "Edit Job"}
 						</div>
@@ -543,7 +554,10 @@ const JobEdit: React.FC = () => {
 					</Button>
 				</div>
 			</div>
-			<ResetStreamsModal onConfirm={handleConfirmResetStreams} />
+			<ResetStreamsModal
+				onConfirm={handleConfirmResetStreams}
+				onCancel={() => setLeavingToJobs(false)}
+			/>
 			{streamDifference && (
 				<StreamDifferenceModal
 					streamDifference={streamDifference}
