@@ -1,7 +1,7 @@
 import { TableIcon } from "@phosphor-icons/react"
 
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
-import { useTableDetails, useUpdateTableCronConfig } from "../../hooks"
+import { useTableConfig, useUpdateTableCronConfig } from "../../hooks"
 
 type ConfigureOptimizationModalSingleProps = {
 	open: boolean
@@ -9,18 +9,17 @@ type ConfigureOptimizationModalSingleProps = {
 	catalog: string
 	database: string
 	tableName: string
-	tableSize: string
 }
 
 const ConfigureOptimizationModalSingle: React.FC<
 	ConfigureOptimizationModalSingleProps
-> = ({ open, onClose, catalog, database, tableName, tableSize }) => {
+> = ({ open, onClose, catalog, database, tableName }) => {
 	const {
 		data: initialConfig,
 		isLoading: isConfigLoading,
 		isError: isConfigError,
 		refetch,
-	} = useTableDetails(catalog, database, tableName, open)
+	} = useTableConfig(catalog, database, tableName, open)
 
 	const { mutate, isPending: isSaving } = useUpdateTableCronConfig(
 		catalog,
@@ -44,7 +43,7 @@ const ConfigureOptimizationModalSingle: React.FC<
 						</span>
 					</div>
 					<span className="text-sm leading-[22px] text-olake-text">
-						{tableSize}
+						{initialConfig?.tableSize}
 					</span>
 				</div>
 			}

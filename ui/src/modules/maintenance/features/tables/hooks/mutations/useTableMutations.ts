@@ -1,26 +1,26 @@
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 import {
 	DEFAULT_TARGET_FILE_SIZE,
-	FULL_CRON_PROPERTY_KEY,
 	FULL_DEFAULT_TRIGGER_INTERVAL,
 	LITE_DEFAULT_TRIGGER_INTERVAL,
-	MAJOR_CRON_PROPERTY_KEY,
 	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
-	MINOR_CRON_PROPERTY_KEY,
 	tableKeys,
 } from "../../constants"
 import { tableService } from "../../services"
 import type {
 	CancelRunRequest,
+	GetTablesApiResponse,
 	ToggleTableOptimizingRequest,
 	UpdateTableCronApiRequest,
 	UpdateTablesConfigApiRequest,
 } from "../../types"
 
+// Refreshes only the toggled table's row, from what fusion stored, rather than the whole list.
 export const useToggleTableOptimizing = () => {
+	const queryClient = useQueryClient()
+
 	return useMutation({
-		mutationKey: tableKeys.all(),
 		mutationFn: async ({
 			catalog,
 			database,
@@ -32,18 +32,17 @@ export const useToggleTableOptimizing = () => {
 			}
 
 			if (enabled) {
-				const details = await tableService.getTableDetails(
+				const { result } = await tableService.getTableOptimizing(
 					catalog,
 					database,
 					tableName,
 				)
-				const properties = details.result?.properties ?? {}
 
 				const isConfigured = [
-					MINOR_CRON_PROPERTY_KEY,
-					MAJOR_CRON_PROPERTY_KEY,
-					FULL_CRON_PROPERTY_KEY,
-				].some(key => key in properties)
+					result.minorTriggerCron,
+					result.majorTriggerCron,
+					result.fullTriggerCron,
+				].some(cron => cron != null)
 
 				if (!isConfigured) {
 					config = {
@@ -56,12 +55,40 @@ export const useToggleTableOptimizing = () => {
 				}
 			}
 
-			return tableService.updateTableConfig(
+			const response = await tableService.updateTableConfig(
 				catalog,
 				database,
 				tableName,
 				config,
 			)
+			if (!response.success) return response
+
+			const listKey = tableKeys.list(catalog, database)
+			try {
+				const { result } = await tableService.getTableOptimizing(
+					catalog,
+					database,
+					tableName,
+				)
+				queryClient.setQueryData<GetTablesApiResponse>(
+					listKey,
+					data =>
+						data && {
+							result: {
+								...data.result,
+								tables: data.result.tables.map(table =>
+									table.name === tableName
+										? { ...table, enabled: result.enabled }
+										: table,
+								),
+							},
+						},
+				)
+			} catch {
+				// saved already, fall back to refreshing the whole list
+				await queryClient.invalidateQueries({ queryKey: listKey })
+			}
+			return response
 		},
 	})
 }

@@ -24,7 +24,6 @@ export interface FusionCompactionRun {
 
 export interface FusionTable {
 	name: string
-	totalSize: string
 	healthScore: number
 	olake_created: boolean
 	major: FusionCompactionRun | null
@@ -34,9 +33,11 @@ export interface FusionTable {
 }
 
 export interface GetTablesApiResponse {
-	catalog: string
-	database: string
-	tables: FusionTable[]
+	result: {
+		catalog: string
+		database: string
+		tables: FusionTable[]
+	}
 }
 
 export interface TableMetrics {
@@ -59,7 +60,26 @@ export interface TableDetailsApiResponse {
 			lastCommitTime?: number
 			totalSize?: string
 		}
-		properties?: Record<string, string>
+	}
+}
+
+// A null cron is not set for the table, an empty cron never runs.
+export interface TableOptimizingApiResponse {
+	result: {
+		enabled: boolean
+		minorTriggerCron: string | null
+		majorTriggerCron: string | null
+		fullTriggerCron: string | null
+	}
+}
+
+export interface TableConfigApiResponse {
+	result: {
+		minorTriggerCron: string | null
+		majorTriggerCron: string | null
+		fullTriggerCron: string | null
+		targetSize: number // bytes
+		tableSize: string
 	}
 }
 
@@ -119,7 +139,6 @@ export type RunTypeLabel = ValueOf<typeof RUN_TYPE_LABEL>
 export interface Table {
 	id: string
 	name: string
-	totalSize: string
 	healthScore: number
 	olakeCreated: boolean
 	minor: CompactionRun
@@ -138,22 +157,12 @@ export interface TableRun {
 	metrics: RunMetricRow[]
 }
 
-export interface TableCronApiModel {
-	minorTriggerInterval?: string
-	majorTriggerInterval?: string
-	fullTriggerInterval?: string
-	enabledForOptimization: boolean
-	targetFileSize?: number
-}
-
-export interface TableDetailsApiModel extends TableCronApiModel {
+export interface TableDetailsApiModel {
 	averageFileSize: string
 	fileCount: number
 	lastCommitTime: number
 	totalSize: string
 }
-
-export type TableDetailsViewModel = TableDetailsApiModel & TableCronFormModel
 
 export interface TableMetricsFileSummary {
 	"data-files": number
@@ -173,6 +182,8 @@ export interface CronConfigOption {
 	frequency: string
 	customCron: string
 }
+
+export type TableConfigViewModel = TableCronFormModel & { tableSize: string }
 
 export interface TableCronFormModel {
 	minorCron: CronConfigOption
@@ -196,7 +207,6 @@ export interface CancelRunRequest {
 }
 
 export interface UpdateTableConfigApiResponse {
-	sessionId?: string
 	success: boolean
 	message?: string
 	logs?: string[]

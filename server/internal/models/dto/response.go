@@ -219,39 +219,3 @@ type OptimizationResponse struct {
 	Message string          `json:"message"`
 	Result  json.RawMessage `json:"result"`
 }
-
-// TablesResponse represents tables with full details for a specific catalog/database
-type TablesResponse struct {
-	Catalog  string      `json:"catalog"`
-	Database string      `json:"database"`
-	Tables   []TableInfo `json:"tables"`
-}
-
-type TableInfo struct {
-	Name         string            `json:"name"`
-	TotalSize    string            `json:"totalSize"`
-	OLakeCreated bool              `json:"olake_created"`
-	Major        *OptimizationInfo `json:"major"`
-	Minor        *OptimizationInfo `json:"minor"`
-	Full         *OptimizationInfo `json:"full"`
-	Enabled      bool              `json:"enabled"`
-	HealthScore  int               `json:"healthScore,omitempty"`
-}
-
-type OptimizationInfo struct {
-	FinishTime int64  `json:"finish_time,omitempty"`
-	Status     string `json:"status,omitempty"`
-	RunID      string `json:"runID,omitempty"`
-}
-
-// TableProperties represents the response from setting table properties
-type TableProperties struct {
-	SessionID string   `json:"sessionId"`
-	Success   bool     `json:"success"`
-	Logs      []string `json:"logs,omitempty"`
-}
-
-// TerminalSessionResponse represents the response from terminal execute
-type TerminalSessionResponse struct {
-	SessionID string `json:"sessionId"`
-}

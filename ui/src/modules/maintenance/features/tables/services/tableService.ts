@@ -6,6 +6,8 @@ import { api } from "@/core/api"
 import type {
 	GetProcessLogsApiResponse,
 	GetTableRunsApiResponse,
+	TableConfigApiResponse,
+	TableOptimizingApiResponse,
 	TableDetailsApiResponse,
 	GetTablesApiResponse,
 	TableMetricsApiResponse,
@@ -30,6 +32,28 @@ export const tableService = {
 	) => {
 		const response = await api.get<TableDetailsApiResponse>(
 			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/details`,
+		)
+		return response.data
+	},
+
+	getTableConfig: async (
+		catalog: string,
+		database: string,
+		tableName: string,
+	) => {
+		const response = await api.get<TableConfigApiResponse>(
+			`${API_CONFIG.ENDPOINTS.OPT.FUSION_TABLE(catalog, database, tableName)}/config`,
+		)
+		return response.data
+	},
+
+	getTableOptimizing: async (
+		catalog: string,
+		database: string,
+		tableName: string,
+	) => {
+		const response = await api.get<TableOptimizingApiResponse>(
+			`${API_CONFIG.ENDPOINTS.OPT.FUSION_TABLE(catalog, database, tableName)}/optimizing`,
 		)
 		return response.data
 	},
@@ -87,12 +111,12 @@ export const tableService = {
 		payload: UpdateTablesConfigApiRequest,
 	): Promise<UpdateTableConfigApiResponse> => {
 		try {
-			const response = await api.put<UpdateTableConfigApiResponse>(
+			await api.put(
 				`${API_CONFIG.ENDPOINTS.OPT.TABLES(catalog, database)}/config`,
 				payload,
 				{ disableErrorNotification: true },
 			)
-			return response.data
+			return { success: true }
 		} catch (error) {
 			console.error("Error bulk updating table config:", error)
 			const errorMessage =
@@ -116,12 +140,12 @@ export const tableService = {
 				sql_input: payload,
 			}
 
-			const response = await api.put<UpdateTableConfigApiResponse>(
+			await api.put(
 				`${API_CONFIG.ENDPOINTS.OPT.TABLES(catalog, database)}/config`,
 				request,
 				{ disableErrorNotification: true },
 			)
-			return response.data
+			return { success: true }
 		} catch (error) {
 			console.error("Error updating table config:", error)
 			const errorMessage =

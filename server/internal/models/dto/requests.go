@@ -156,26 +156,3 @@ type CatalogRequest struct {
 	Properties              map[string]string `json:"properties"`
 	TableProperties         map[string]string `json:"tableProperties"`
 }
-
-// LogInfo represents the log information from terminal execution
-type LogInfo struct {
-	LogStatus string   `json:"logStatus"` // "Finished", "Failed", etc.
-	Logs      []string `json:"logs"`
-}
-
-// TerminalExecuteRequest represents the request body for terminal SQL execution
-type TerminalExecuteRequest struct {
-	SQL string `json:"sql"`
-}
-
-// OptimizationTableConfig configures optimization properties for multiple tables in one terminal session.
-type OptimizationTableConfig struct {
-	Tables   []string `json:"tables" binding:"required"`
-	SQLInput struct {
-		MinorCron              *string `json:"minor_cron"`
-		MajorCron              *string `json:"major_cron"`
-		FullCron               *string `json:"full_cron"`
-		TargetFileSize         *int64  `json:"target_file_size"`
-		EnabledForOptimization *string `json:"enabled_for_optimization"`
-	} `json:"sql_input"`
-}

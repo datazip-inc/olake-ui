@@ -5,7 +5,8 @@ import { tableService } from "../../services"
 import {
 	mapGetTablesResponseToTables,
 	mapGetTableRunsResponseToTableRuns,
-	mapTableDetailsResponseToTableDetailsViewModel,
+	mapTableConfigResponseToTableConfigViewModel,
+	mapTableDetailsResponseToTableDetailsApiModel,
 	mapTableMetricsResponseToFileSummary,
 	mapProcessLogsResponse,
 } from "../../utils"
@@ -18,7 +19,7 @@ export const useTables = (
 	return useQuery({
 		queryKey: tableKeys.list(catalog, database),
 		queryFn: () => tableService.getTables(catalog, database),
-		select: data => mapGetTablesResponseToTables(data.tables),
+		select: data => mapGetTablesResponseToTables(data.result.tables),
 		enabled: enabled && !!catalog && !!database,
 		refetchOnWindowFocus: false,
 	})
@@ -33,7 +34,22 @@ export const useTableDetails = (
 	return useQuery({
 		queryKey: tableKeys.details(catalog, database, tableName),
 		queryFn: () => tableService.getTableDetails(catalog, database, tableName),
-		select: mapTableDetailsResponseToTableDetailsViewModel,
+		select: mapTableDetailsResponseToTableDetailsApiModel,
+		enabled: enabled && !!catalog && !!database && !!tableName,
+		refetchOnWindowFocus: false,
+	})
+}
+
+export const useTableConfig = (
+	catalog: string,
+	database: string,
+	tableName: string,
+	enabled = true,
+) => {
+	return useQuery({
+		queryKey: tableKeys.cron(catalog, database, tableName),
+		queryFn: () => tableService.getTableConfig(catalog, database, tableName),
+		select: mapTableConfigResponseToTableConfigViewModel,
 		enabled: enabled && !!catalog && !!database && !!tableName,
 		refetchOnWindowFocus: false,
 	})

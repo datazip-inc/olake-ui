@@ -253,12 +253,6 @@ func NormalizeString(s string) string {
 	return strings.Join(words, "_")
 }
 
-func ConvertMBToBytes(sizeMB int64) string {
-	const bytesPerMB = 1024 * 1024
-	sizeBytes := sizeMB * bytesPerMB
-	return strconv.FormatInt(sizeBytes, 10)
-}
-
 // ReadJSONFile reads a file and unmarshals its JSON content into a map.
 func ReadJSONFile(filePath string) (map[string]interface{}, error) {
 	fileOutput, err := os.ReadFile(filePath)

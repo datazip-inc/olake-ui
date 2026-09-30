@@ -382,7 +382,6 @@ const Tables: React.FC = () => {
 				catalog={selectedCatalog ?? ""}
 				database={selectedDatabase ?? ""}
 				tableName={configureTable?.name ?? ""}
-				tableSize={configureTable?.totalSize ?? ""}
 			/>
 			<ConfigureOptimizationModalBulk
 				open={bulkModalOpen}

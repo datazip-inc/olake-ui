@@ -13,12 +13,9 @@ import {
 } from "@/common/utils"
 
 import {
-	FULL_CRON_PROPERTY_KEY,
 	KNOWN_CRON_TRIGGER_INTERVALS,
 	LITE_DEFAULT_TRIGGER_INTERVAL,
-	MAJOR_CRON_PROPERTY_KEY,
 	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
-	MINOR_CRON_PROPERTY_KEY,
 	FULL_DEFAULT_TRIGGER_INTERVAL,
 	RUN_STATUS,
 	RUN_TYPE,
@@ -33,11 +30,10 @@ import type {
 	RunType,
 	RunMetricRow,
 	Table,
+	TableConfigApiResponse,
+	TableConfigViewModel,
 	TableDetailsApiResponse,
-	TableCronApiModel,
 	TableDetailsApiModel,
-	TableCronFormModel,
-	TableDetailsViewModel,
 	GetTableRunsApiResponse,
 	TableMetricsApiResponse,
 	TableMetricsFileSummary,
@@ -169,7 +165,6 @@ export const mapFusionTableToTable = (
 ): Table => ({
 	id: `${table.name}-${idx}`,
 	name: table.name,
-	totalSize: table.totalSize,
 	healthScore: table.healthScore,
 	olakeCreated: table.olake_created,
 	minor: mapCompactionRun(table.minor),
@@ -310,54 +305,34 @@ export const mapTriggerIntervalToCronConfigOption = (
 	}
 }
 
-// Expands a TableCronApiModel into TableCronFormModel by resolving each trigger interval through mapTriggerIntervalToCronConfigOption.
-export const mapTableCronApiModelToTableCronFormModel = (
-	config: TableCronApiModel,
-): TableCronFormModel => ({
+// Maps the table's optimization config into the cron form model, a cron not set yet falls back to its default.
+export const mapTableConfigResponseToTableConfigViewModel = (
+	data: TableConfigApiResponse,
+): TableConfigViewModel => ({
 	minorCron: mapTriggerIntervalToCronConfigOption(
-		config.minorTriggerInterval?.trim() ?? LITE_DEFAULT_TRIGGER_INTERVAL,
+		data.result.minorTriggerCron?.trim() ?? LITE_DEFAULT_TRIGGER_INTERVAL,
 	),
 	majorCron: mapTriggerIntervalToCronConfigOption(
-		config.majorTriggerInterval?.trim() ?? MEDIUM_DEFAULT_TRIGGER_INTERVAL,
+		data.result.majorTriggerCron?.trim() ?? MEDIUM_DEFAULT_TRIGGER_INTERVAL,
 	),
 	fullCron: mapTriggerIntervalToCronConfigOption(
-		config.fullTriggerInterval?.trim() ?? FULL_DEFAULT_TRIGGER_INTERVAL,
+		data.result.fullTriggerCron?.trim() ?? FULL_DEFAULT_TRIGGER_INTERVAL,
 	),
-	targetFileSize: config.targetFileSize,
+	targetFileSize: bytesToMb(data.result.targetSize),
+	tableSize: data.result.tableSize,
 })
 
-// Extracts cron/config fields from /details payload into existing TableCronApiModel shape.
+// Extracts the metrics from the /details payload.
 export const mapTableDetailsResponseToTableDetailsApiModel = (
 	data: TableDetailsApiResponse,
 ): TableDetailsApiModel => {
 	const baseMetrics = data.result?.baseMetrics ?? {}
-	const properties = data.result?.properties ?? {}
-	const targetFileSizeRaw = properties["self-optimizing.target-size"]
-	const targFileSizeInMB = bytesToMb(
-		Number.parseInt(targetFileSizeRaw ?? "", 10),
-	)
 
 	return {
-		enabledForOptimization:
-			(properties["self-optimizing.enabled"] ?? "").toLowerCase() === "true",
-		minorTriggerInterval: properties[MINOR_CRON_PROPERTY_KEY],
-		majorTriggerInterval: properties[MAJOR_CRON_PROPERTY_KEY],
-		fullTriggerInterval: properties[FULL_CRON_PROPERTY_KEY],
-		targetFileSize: targFileSizeInMB,
 		averageFileSize: baseMetrics.averageFileSize ?? "--",
 		fileCount: baseMetrics.fileCount ?? 0,
 		lastCommitTime: baseMetrics.lastCommitTime ?? 0,
 		totalSize: baseMetrics.totalSize ?? "--",
-	}
-}
-
-export const mapTableDetailsResponseToTableDetailsViewModel = (
-	data: TableDetailsApiResponse,
-): TableDetailsViewModel => {
-	const tableDetails = mapTableDetailsResponseToTableDetailsApiModel(data)
-	return {
-		...tableDetails,
-		...mapTableCronApiModelToTableCronFormModel(tableDetails),
 	}
 }
 

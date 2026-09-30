@@ -102,22 +102,10 @@ var (
 	ConfOptimizationPassword = "PASSWORD"
 	ConfOptimizationGroup    = "OPTIMIZATION_GROUP"
 	// api paths
-	OptPathCatalogs                 = "/api/ams/v1/catalogs"
-	OptPathCatalogDetail            = "/api/ams/v1/catalogs/%s"
-	OptPathCatalogTables            = "/api/ams/v1/catalogs/%s/databases/%s/tables"
-	OptPathTableDetails             = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/details"
-	OptPathTableOptimizingProcesses = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes"
-	OptPathTerminalExecute          = "/api/ams/v1/terminal/catalogs/%s/execute"
-	OptPathTerminalLogs             = "/api/ams/v1/terminal/%s/logs"
+	OptPathCatalogs      = "/api/ams/v1/catalogs"
+	OptPathCatalogDetail = "/api/ams/v1/catalogs/%s"
 	// others
-	OptMaxTimeout         = 10 * time.Minute
-	OptSessionTimeout     = 5 * time.Minute // used for fusion poll (terminal query execution)
-	OptMinorCron          = "self-optimizing.minor.trigger.cron"
-	OptMajorCron          = "self-optimizing.major.trigger.cron"
-	OptFullCron           = "self-optimizing.full.trigger.cron"
-	OptTargetFileSize     = "self-optimizing.target-size"
-	OptEnableOptimization = "self-optimizing.enabled"
-	OptSQLCommand         = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
+	OptMaxTimeout = 10 * time.Minute
 	// properties
 	OptCreatedAt    = "created-at"
 	OptCacheEnabled = "cache-enabled"
