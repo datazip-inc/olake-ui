@@ -12,14 +12,23 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
-// buildExecutionReqForSync builds the ExecutionRequest for a sync job
+// buildExecutionReqForSync builds the ExecutionRequest for a sync job.
+// Split jobs use --available-streams/--selected-streams; legacy jobs use --streams.
+// Configs for sync are written by the worker, so only the flag style is set here.
 func buildExecutionReqForSync(job *models.Job, workflowID string) *ExecutionRequest {
 	args := []string{
 		"sync",
 		"--config", "/mnt/config/source.json",
 		"--destination", "/mnt/config/destination.json",
-		"--catalog", "/mnt/config/streams.json",
 		"--state", "/mnt/config/state.json",
+	}
+	if job.IsStreamsV2() {
+		args = append(args,
+			"--available-streams", "/mnt/config/"+constants.AvailableStreamsFile,
+			"--selected-streams", "/mnt/config/"+constants.SelectedStreamsFile,
+		)
+	} else {
+		args = append(args, "--streams", "/mnt/config/"+constants.StreamsFile)
 	}
 
 	return &ExecutionRequest{
@@ -36,27 +45,50 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) *ExecutionRequ
 	}
 }
 
-// buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job
+// buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job.
+// streamsConfig is the stream difference to clear, in the combined {streams, selected_streams}
+// format that every CLI reads with --streams; empty clears the job's whole stored catalog, which
+// a v2 job keeps only in the split files.
 func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsConfig string) (*ExecutionRequest, error) {
-	catalog := streamsConfig
-	if catalog == "" {
-		catalog = job.StreamsConfig
+	streamsDir := fmt.Sprintf("%s-%d", workflowID, time.Now().Unix())
+
+	var catalogArgs []string
+	var tempPath string
+	var files map[string]string
+
+	if streamsConfig == "" && job.IsStreamsV2() {
+		files = map[string]string{
+			constants.AvailableStreamsFile: utils.StringValue(job.AvailableStreamsConfig),
+			constants.SelectedStreamsFile:  utils.StringValue(job.SelectedStreamsConfig),
+		}
+		catalogArgs = []string{
+			"--available-streams", "/mnt/config/" + constants.AvailableStreamsFile,
+			"--selected-streams", "/mnt/config/" + constants.SelectedStreamsFile,
+		}
+		tempPath = filepath.Join(streamsDir, constants.SelectedStreamsFile)
+	} else {
+		catalog := streamsConfig
+		if catalog == "" {
+			catalog = utils.StringValue(job.StreamsConfig)
+		}
+		files = map[string]string{constants.StreamsFile: catalog}
+		catalogArgs = []string{"--streams", "/mnt/config/" + constants.StreamsFile}
+		tempPath = filepath.Join(streamsDir, constants.StreamsFile)
 	}
 
-	streamsDir := fmt.Sprintf("%s-%d", workflowID, time.Now().Unix())
-	relativePath := filepath.Join(streamsDir, "streams.json")
-	streamsPath := filepath.Join(constants.DefaultConfigDir, relativePath)
-
-	if err := utils.WriteFile(streamsPath, []byte(catalog), 0644); err != nil {
-		return nil, fmt.Errorf("failed to write streams config to file: %v", err)
+	for name, data := range files {
+		path := filepath.Join(constants.DefaultConfigDir, streamsDir, name)
+		if err := utils.WriteFile(path, []byte(data), constants.DefaultFileMode); err != nil {
+			return nil, fmt.Errorf("failed to write %s to file: %v", name, err)
+		}
 	}
 
 	args := []string{
 		"clear-destination",
-		"--streams", "/mnt/config/streams.json",
 		"--state", "/mnt/config/state.json",
 		"--destination", "/mnt/config/destination.json",
 	}
+	args = append(args, catalogArgs...)
 
 	return &ExecutionRequest{
 		Command:       ClearDestination,
@@ -69,11 +101,11 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 		JobID:         job.ID,
 		Timeout:       GetWorkflowTimeout(ClearDestination),
 		OutputFile:    "state.json",
-		TempPath:      relativePath,
+		TempPath:      tempPath,
 	}, nil
 }
 
-// extractWorkflowResponse extracts and parses the JSON response from a workflow execution result
+// ExtractWorkflowResponse extracts and parses the JSON response from a workflow execution result
 func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 	if err := run.Get(ctx, &result); err != nil {

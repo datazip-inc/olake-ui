@@ -37,7 +37,7 @@ func createDirectory(dirPath string, perm os.FileMode) error {
 func writeConfigFiles(workDir string, configs []JobConfig) error {
 	for _, config := range configs {
 		filePath := filepath.Join(workDir, config.Name)
-		if err := utils.WriteFile(filePath, []byte(config.Data), 0644); err != nil {
+		if err := utils.WriteFile(filePath, []byte(config.Data), constants.DefaultFileMode); err != nil {
 			return fmt.Errorf("failed to write %s: %s", config.Name, err)
 		}
 	}
@@ -50,7 +50,7 @@ func SetupConfigFiles(cmd Command, workflowID string, configs []JobConfig) error
 	subDir := GetWorkflowDirectory(cmd, workflowID)
 	workDir := filepath.Join(constants.DefaultConfigDir, subDir)
 
-	if err := createDirectory(workDir, 0755); err != nil {
+	if err := createDirectory(workDir, constants.DefaultDirMode); err != nil {
 		return fmt.Errorf("failed to create work directory %s: %s", workDir, err)
 	}
 

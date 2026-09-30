@@ -76,6 +76,12 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	go func() {
+		if err := appSvc.ETL().ConvertLegacyJobs(ctx); err != nil {
+			logger.Errorf("failed to convert legacy jobs: %s. upgrade source to version[%s] to support streams v2", err, constants.MinStreamsV2Version)
+		}
+	}()
+
 	api := handlers.NewHandler(appSvc, &cfg, db)
 	server := httpserver.New(&cfg, api)
 

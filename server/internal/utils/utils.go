@@ -42,6 +42,21 @@ func ULID() string {
 	return newUlid.String()
 }
 
+func StringPtr(s string) *string {
+	trimmed := strings.TrimSpace(s)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func StringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return strings.TrimSpace(*s)
+}
+
 func Ternary(cond bool, a, b any) any {
 	if cond {
 		return a
