@@ -69,13 +69,13 @@ type taskLogCursor map[string]int64
 
 func decodeTaskLogCursor(raw string) (taskLogCursor, error) {
 	if raw == "" {
-		return nil, nil
+		return taskLogCursor{}, nil
 	}
 	// clients from before the merged view send a plain olake.log byte offset,
 	// with -1 meaning tail; base64 JSON never parses as a number
 	if offset, err := strconv.ParseInt(raw, 10, 64); err == nil {
 		if offset < 0 {
-			return nil, nil
+			return taskLogCursor{}, nil
 		}
 		return taskLogCursor{LogSourceSync: offset}, nil
 	}
@@ -175,10 +175,11 @@ func ReadTaskLogs(baseDir, source, rawCursor string, limit int, direction string
 	}
 	// lines read from a file but cut by the limit
 	unreturned := map[string]int{}
-	for _, line := range candidates {
-		unreturned[line.source]++
+	for i := range candidates {
+		unreturned[candidates[i].source]++
 	}
-	for _, line := range selected {
+	for i := range selected {
+		line := &selected[i]
 		unreturned[line.source]--
 		if older {
 			next[line.source] = min(next[line.source], line.pos.startPos)
@@ -199,8 +200,8 @@ func ReadTaskLogs(baseDir, source, rawCursor string, limit int, direction string
 	}
 
 	response := &dto.JobTaskLogsResponse{Logs: make([]map[string]interface{}, 0, len(selected))}
-	for _, line := range selected {
-		response.Logs = append(response.Logs, line.toMap())
+	for i := range selected {
+		response.Logs = append(response.Logs, selected[i].toMap())
 	}
 
 	moreBeyond := false
@@ -268,7 +269,7 @@ func closeLogFiles(files []logFile) {
 	}
 }
 
-func (l taskLogLine) toMap() map[string]interface{} {
+func (l *taskLogLine) toMap() map[string]interface{} {
 	out := map[string]interface{}{
 		"level":   l.entry.Level,
 		"time":    l.entry.Time.UTC().Format(time.RFC3339),
