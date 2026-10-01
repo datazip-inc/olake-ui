@@ -32,9 +32,11 @@ TEMPORAL_EXTERNAL: false
 TEMPORAL_TASK_QUEUE: ""
 CONTAINER_REGISTRY_BASE: docker.io
 
-# Optional credentials/TLS for a generic private Docker Registry v2 registry
-# (Harbor, Nexus, Quay, GitLab, plain registry:2). Leave empty for Docker Hub or
-# for ECR/GCR (which authenticate via cloud IAM). Prefer setting these via environment.
+# Optional registry credentials, used by the worker's own image pulls (driver/connector
+# images such as olakego/source-mysql). These bypass the Docker CLI's credential store,
+# so they're required for Docker Hub too on networks with Registry Access Management
+# (RAM) enabled, which blocks unauthenticated pulls even to docker.io. Not needed for
+# ECR/GCR, which authenticate via cloud IAM. Prefer setting these via environment.
 # CONTAINER_REGISTRY_USERNAME: ""
 # CONTAINER_REGISTRY_PASSWORD: ""
 # CONTAINER_REGISTRY_INSECURE: false        # allow plain-HTTP registries (e.g. host:5000)
