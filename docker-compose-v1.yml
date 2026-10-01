@@ -27,7 +27,7 @@ x-envs:
     OLAKE_SECRET_KEY: *encryptionKey
     PERSISTENT_DIR: *hostPersistencePath
     ENABLE_OPTIMIZATION: ${ENABLE_OPTIMIZATION:-false}
-    # S3 log file storage — uncomment and fill values below to enable, set OLAKE_STORAGE_MODE to "s3"
+    # S3 log file storage — uncomment and fill values below to enable
     # OLAKE_STORAGE_MODE: s3
     # OLAKE_S3_BUCKET: ""
     # OLAKE_S3_REGION: ""
