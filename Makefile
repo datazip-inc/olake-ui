@@ -58,7 +58,7 @@ BACKEND_ENV_VARS = \
       LOGS_DIR=$(PWD)/logger/logs \
       SESSION_ON=true \
       TEMPORAL_ADDRESS=localhost:7233 \
-      CONTAINER_REGISTRY_BASE=registry-1.docker.io \
+      CONTAINER_REGISTRY_BASE=docker.io \
 	  PERSISTENT_DIR=$(PWD)/olake-config
 
 # Frontend environment variables
