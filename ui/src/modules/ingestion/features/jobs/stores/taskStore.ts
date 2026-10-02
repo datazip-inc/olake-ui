@@ -5,6 +5,7 @@ import { jobService } from "../services"
 import {
 	TaskLogsDirection,
 	type TaskLogEntry,
+	type TaskLogSource,
 	type TaskLogsPaginationParams,
 } from "../types"
 import { mapLogEntriesToTaskLogEntries } from "../utils"
@@ -15,15 +16,19 @@ export interface TaskState {
 	isLoadingOlderLogs: boolean
 	isLoadingNewerLogs: boolean
 	taskLogs: TaskLogEntry[]
-	taskLogsOlderCursor: number
-	taskLogsNewerCursor: number
+	// which logs are shown: all (merged), sync or worker
+	taskLogsSource: TaskLogSource
+	taskLogsOlderCursor: string
+	taskLogsNewerCursor: string
 	taskLogsHasMoreOlder: boolean
 	taskLogsHasMoreNewer: boolean
 	// Task log actions
+	// source defaults to the currently selected one
 	fetchInitialTaskLogs: (
 		jobId: string,
 		taskId: string,
 		filePath: string,
+		source?: TaskLogSource,
 	) => Promise<void>
 	fetchOlderTaskLogs: (
 		jobId: string,
@@ -39,6 +44,7 @@ export interface TaskState {
 
 export const useTaskStore = create<TaskState>()((set, get) => ({
 	taskLogs: [],
+	taskLogsSource: "all",
 	taskLogsOlderCursor: LOGS_CONFIG.DEFAULT_CURSOR,
 	taskLogsNewerCursor: LOGS_CONFIG.DEFAULT_CURSOR,
 	taskLogsHasMoreOlder: true,
@@ -49,8 +55,14 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 	taskLogsError: null,
 
 	// Fetch initial batch of logs (first load)
-	fetchInitialTaskLogs: async (jobId, taskId, filePath) => {
+	fetchInitialTaskLogs: async (
+		jobId,
+		taskId,
+		filePath,
+		source = get().taskLogsSource,
+	) => {
 		set({
+			taskLogsSource: source,
 			isLoadingTaskLogs: true,
 			taskLogsError: null,
 			taskLogs: [],
@@ -63,6 +75,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 		})
 		try {
 			const paginationParams: TaskLogsPaginationParams = {
+				source,
 				cursor: LOGS_CONFIG.DEFAULT_CURSOR,
 				limit: LOGS_CONFIG.INITIAL_BATCH_SIZE,
 				direction: TaskLogsDirection.Older,
@@ -74,6 +87,10 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 				filePath,
 				paginationParams,
 			)
+			// a newer tab switch owns the list now
+			if (get().taskLogsSource !== source) {
+				return
+			}
 			set({
 				taskLogs: mapLogEntriesToTaskLogEntries(response.logs),
 				taskLogsOlderCursor: response.older_cursor,
@@ -83,6 +100,10 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 				isLoadingTaskLogs: false,
 			})
 		} catch (error) {
+			// a failed request for a tab the user already left must not replace its list
+			if (get().taskLogsSource !== source) {
+				return
+			}
 			set({
 				isLoadingTaskLogs: false,
 				taskLogsError:
@@ -95,6 +116,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 	fetchOlderTaskLogs: async (jobId, taskId, filePath) => {
 		const state = get()
 		const {
+			taskLogsSource,
 			taskLogsOlderCursor,
 			taskLogsHasMoreOlder,
 			isLoadingOlderLogs,
@@ -108,6 +130,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 		set({ isLoadingOlderLogs: true, taskLogsError: null })
 		try {
 			const paginationParams: TaskLogsPaginationParams = {
+				source: taskLogsSource,
 				cursor: taskLogsOlderCursor,
 				limit: LOGS_CONFIG.SUBSEQUENT_BATCH_SIZE,
 				direction: TaskLogsDirection.Older,
@@ -119,6 +142,11 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 				filePath,
 				paginationParams,
 			)
+
+			// the tab changed while loading; the new list was already fetched
+			if (get().taskLogsSource !== taskLogsSource) {
+				return
+			}
 
 			if (state.taskLogs.length >= LOGS_CONFIG.MAX_LOGS_IN_MEMORY) {
 				set({
@@ -143,6 +171,9 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 				isLoadingOlderLogs: false,
 			})
 		} catch (error) {
+			if (get().taskLogsSource !== taskLogsSource) {
+				return
+			}
 			set({
 				isLoadingOlderLogs: false,
 				taskLogsError:
@@ -158,6 +189,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 	fetchNewerTaskLogs: async (jobId, taskId, filePath) => {
 		const state = get()
 		const {
+			taskLogsSource,
 			taskLogsNewerCursor,
 			taskLogsHasMoreNewer,
 			isLoadingNewerLogs,
@@ -171,6 +203,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 		set({ isLoadingNewerLogs: true, taskLogsError: null })
 		try {
 			const paginationParams: TaskLogsPaginationParams = {
+				source: taskLogsSource,
 				cursor: taskLogsNewerCursor,
 				limit: LOGS_CONFIG.SUBSEQUENT_BATCH_SIZE,
 				direction: TaskLogsDirection.Newer,
@@ -182,6 +215,11 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 				filePath,
 				paginationParams,
 			)
+
+			// the tab changed while loading; the new list was already fetched
+			if (get().taskLogsSource !== taskLogsSource) {
+				return
+			}
 
 			if (state.taskLogs.length >= LOGS_CONFIG.MAX_LOGS_IN_MEMORY) {
 				set({
@@ -206,6 +244,9 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 				isLoadingNewerLogs: false,
 			})
 		} catch (error) {
+			if (get().taskLogsSource !== taskLogsSource) {
+				return
+			}
 			set({
 				isLoadingNewerLogs: false,
 				taskLogsError:

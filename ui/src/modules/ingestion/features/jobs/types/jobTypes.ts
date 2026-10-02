@@ -59,10 +59,19 @@ export interface JobTask {
 	job_type: JobType
 }
 
+// Sync logs come from the connector run, worker logs from the worker that ran it.
+export type TaskLogSource = "all" | "sync" | "worker"
+
+export interface TaskLogApiEntry extends LogEntry {
+	source?: Exclude<TaskLogSource, "all">
+	category?: string
+	tip?: boolean
+}
+
 export interface TaskLogsResponse {
-	logs: LogEntry[]
-	older_cursor: number
-	newer_cursor: number
+	logs: TaskLogApiEntry[]
+	older_cursor: string
+	newer_cursor: string
 	has_more_older: boolean
 	has_more_newer: boolean
 }
@@ -73,7 +82,8 @@ export enum TaskLogsDirection {
 }
 
 export interface TaskLogsPaginationParams {
-	cursor: number
+	source: TaskLogSource
+	cursor: string
 	limit: number
 	direction: TaskLogsDirection
 }
@@ -83,6 +93,8 @@ export interface TaskLogEntry {
 	date: string
 	time: string
 	message: string
+	source: Exclude<TaskLogSource, "all">
+	tip?: boolean
 }
 
 export type JobCreationSteps = "config" | "streams"

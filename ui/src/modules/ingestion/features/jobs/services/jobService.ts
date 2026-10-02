@@ -142,15 +142,17 @@ export const jobService = {
 		taskId: string,
 		filePath: string,
 		params: TaskLogsPaginationParams = {
-			cursor: -1,
+			source: "all",
+			cursor: "",
 			limit: 1000,
 			direction: TaskLogsDirection.Older,
 		},
 	): Promise<TaskLogsResponse> => {
 		try {
-			const { cursor, limit, direction } = params
+			const { source, cursor, limit, direction } = params
 			const query = new URLSearchParams({
-				cursor: String(cursor),
+				source,
+				cursor,
 				limit: String(limit),
 				direction,
 			})

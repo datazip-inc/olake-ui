@@ -167,6 +167,16 @@ type TaskLogsResponse struct {
 	HasMoreNewer bool                     `json:"has_more_newer" example:"false"`
 }
 
+// JobTaskLogsResponse is a page of a sync run's logs. Cursors are opaque and
+// hold one position per log source; an empty cursor means "tail from the end".
+type JobTaskLogsResponse struct {
+	Logs         []map[string]interface{} `json:"logs" swaggertype:"array,object"`
+	OlderCursor  string                   `json:"older_cursor" example:"eyJzeW5jIjoxMDI0LCJ3b3JrZXIiOjUxMn0"`
+	NewerCursor  string                   `json:"newer_cursor" example:"eyJzeW5jIjoyMDQ4LCJ3b3JrZXIiOjEwMjR9"`
+	HasMoreOlder bool                     `json:"has_more_older" example:"true"`
+	HasMoreNewer bool                     `json:"has_more_newer" example:"false"`
+}
+
 type ProjectSettingsResponse struct {
 	ID              int    `json:"id" example:"1"`
 	ProjectID       string `json:"project_id" example:"project-123"`

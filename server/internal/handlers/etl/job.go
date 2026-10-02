@@ -498,10 +498,11 @@ func (h *Handler) GetJobTasks(c *gin.Context) {
 // @Param   id            path    int     true    "job id"
 // @Param   taskid        path    string  true    "task id (defaults to 1)"
 // @Param   body          body    dto.JobTaskRequest true "task log data"
-// @Param   cursor        query   int     false   "log cursor"
+// @Param   source        query   string  false   "log source: all (default), sync or worker"
+// @Param   cursor        query   string  false   "opaque log cursor from a previous response; empty tails from the end"
 // @Param   limit         query   int     false   "log limit"
 // @Param   direction     query   string  false   "log direction"
-// @Success 200 {object} dto.JSONResponse{data=dto.TaskLogsResponse}
+// @Success 200 {object} dto.JSONResponse{data=dto.JobTaskLogsResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 404 {object} dto.Error404Response "job not found"
@@ -521,12 +522,8 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 	}
 	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s]", id, req.FilePath)
 
-	cursor := constants.DefaultLogsCursor
-	if raw := c.Query("cursor"); raw != "" {
-		if parsed, err := strconv.ParseInt(raw, 10, 64); err == nil {
-			cursor = parsed
-		}
-	}
+	source := utils.NormalizeLogSource(c.Query("source"))
+	cursor := c.Query("cursor")
 	limit := constants.DefaultLogsLimit
 	if raw := c.Query("limit"); raw != "" {
 		if parsed, err := strconv.Atoi(raw); err == nil {
@@ -535,11 +532,14 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 	}
 	direction := c.DefaultQuery("direction", constants.DefaultLogsDirection)
 
-	logs, err := h.etl.GetTaskLogs(c.Request.Context(), id, req.FilePath, cursor, limit, direction)
+	logs, err := h.etl.GetTaskLogs(c.Request.Context(), id, req.FilePath, source, cursor, limit, direction)
 	if err != nil {
 		status := http.StatusInternalServerError
-		if errors.Is(err, constants.ErrJobNotFound) {
+		switch {
+		case errors.Is(err, constants.ErrJobNotFound):
 			status = http.StatusNotFound
+		case errors.Is(err, constants.ErrInvalidLogCursor):
+			status = http.StatusBadRequest
 		}
 		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get task logs: %s", err), err)
 		return

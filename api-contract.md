@@ -892,10 +892,11 @@ http://localhost:8080
 
 - **Endpoint**: `/api/v1/project/:projectid/jobs/:jobid/tasks/:taskid/logs`
 - **Method**: POST
-- **Description**: Fetch logs for a specific job task with cursor-based pagination supporting both older and newer directions.
+- **Description**: Fetch logs for a specific job task with cursor-based pagination supporting both older and newer directions. Sync logs come from the connector (`olake.log`); worker logs come from the worker that ran the job (`worker.log`). With `source=all` both are merged by time.
 - **Headers**: `Authorization: Bearer <token>`
 - **Query Params**:
-  - `cursor` _(optional, number)_: byte offset cursor. Use `-1` or omit for tailing from the end of the file.
+  - `source` _(optional, string)_: `"all"` (default), `"sync"` or `"worker"`.
+  - `cursor` _(optional, string)_: opaque cursor from a previous response (`older_cursor` / `newer_cursor`). Omit or send empty for tailing from the end. A plain number is still accepted as the old `olake.log` byte offset (`-1` = tail).
   - `limit` _(optional, number)_: number of log entries to return. Defaults to `1000`.
   - `direction` _(optional, string)_: `"older"` (default) to read towards the start of the file, or `"newer"` to read towards the end.
 - **Request Body**:
@@ -912,9 +913,18 @@ http://localhost:8080
     "success": "boolean",
     "message": "string",
     "data": {
-      "logs": "json",
-      "older_cursor": "number", // byte offset before the first returned line
-      "newer_cursor": "number", // byte offset after the last returned line
+      "logs": [
+        {
+          "level": "string",
+          "time": "string", // RFC3339, UTC
+          "message": "string",
+          "source": "string", // "sync" or "worker"
+          "category": "string", // optional failure category, e.g. "oom", "evicted"
+          "tip": "boolean" // optional, true for recommendation lines
+        }
+      ],
+      "older_cursor": "string", // opaque, position before the first returned line
+      "newer_cursor": "string", // opaque, position after the last returned line
       "has_more_older": "boolean",
       "has_more_newer": "boolean"
     }

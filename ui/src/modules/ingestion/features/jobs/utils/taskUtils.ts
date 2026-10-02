@@ -1,9 +1,7 @@
-import { LogEntry } from "@/common/types"
-
-import { TaskLogEntry } from "../types"
+import { TaskLogApiEntry, TaskLogEntry } from "../types"
 
 export const mapLogEntriesToTaskLogEntries = (
-	logs: LogEntry[],
+	logs: TaskLogApiEntry[],
 ): TaskLogEntry[] => {
 	return logs.map(log => {
 		const level = log.level ?? ""
@@ -27,6 +25,8 @@ export const mapLogEntriesToTaskLogEntries = (
 			message,
 			time,
 			date,
+			source: log.source ?? "sync",
+			tip: log.tip,
 		}
 	})
 }
