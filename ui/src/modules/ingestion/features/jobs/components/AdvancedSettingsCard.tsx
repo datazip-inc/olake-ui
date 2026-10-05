@@ -1,8 +1,10 @@
 import { InfoIcon, SlidersIcon, WarningIcon } from "@phosphor-icons/react"
 import { InputNumber, Select, Spin, Tag, Tooltip } from "antd"
 import React from "react"
+import semver from "semver"
 
 import { restrictNumericInput } from "@/common/utils"
+import { MIN_QUERY_ENGINES_VERSION } from "@/modules/ingestion/common/constants"
 import { useAvailableQueryEngines } from "@/modules/ingestion/features/sources/hooks"
 
 import { useJobConfigurationStore } from "../stores"
@@ -24,6 +26,11 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 		isEditMode,
 	} = useJobConfigurationStore()
 
+	const version = sourceVersion ?? selectedSource?.version ?? ""
+	// An unknown or unparsable version is treated as supported.
+	const isVersionSupported =
+		!semver.valid(version) || semver.gte(version, MIN_QUERY_ENGINES_VERSION)
+
 	const {
 		data: queryEngines = [],
 		isLoading: isLoadingQueryEngines,
@@ -32,7 +39,7 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 		refetch: refetchQueryEngines,
 	} = useAvailableQueryEngines(
 		(sourceType ?? selectedSource?.type ?? "").toLowerCase(),
-		sourceVersion ?? selectedSource?.version ?? "",
+		isVersionSupported ? version : "",
 	)
 
 	const targetQueryEngines = advancedSettings?.target_query_engines ?? []
@@ -57,7 +64,8 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 					Advanced Settings
 				</span>
 			</div>
-			{(isLoadingQueryEngines ||
+			{(!isVersionSupported ||
+				isLoadingQueryEngines ||
 				isQueryEnginesError ||
 				queryEngines.length > 0) && (
 				<div className="mb-6 border-b border-olake-border pb-6">
@@ -73,7 +81,13 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 								/>
 							</Tooltip>
 						</div>
-						{isLoadingQueryEngines ? (
+						{!isVersionSupported ? (
+							<div className="flex items-center gap-2 text-sm text-gray-500">
+								<InfoIcon className="size-4 shrink-0" />
+								Upgrade your source version to {MIN_QUERY_ENGINES_VERSION} or
+								later to use this option.
+							</div>
+						) : isLoadingQueryEngines ? (
 							<div className="flex items-center gap-x-2">
 								<Spin size="small" />
 								<span className="">Fetching available query engines</span>
