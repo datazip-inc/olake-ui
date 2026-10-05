@@ -492,8 +492,10 @@ const BulkConfigureStreamsModal = ({
 													{dirtyFields[BulkDirtyFieldKey.AppendMode] && (
 														<IngestionModeSectionBulk
 															sourceType={sourceType}
+															sourceVersion={sourceVersion}
 															destinationType={destinationType}
 															bulkAppendMode={bulkConfig.appendMode}
+															dedupKeyCount={getDedupKeyOptions(bulkStream).length}
 														/>
 													)}
 													{isKafka &&
@@ -739,8 +741,10 @@ const BulkConfigureStreamsModal = ({
 																		dirtyFields[BulkDirtyFieldKey.AppendMode]
 																	}
 																	sourceType={sourceType}
+																	sourceVersion={sourceVersion}
 																	destinationType={destinationType}
 																	bulkAppendMode={bulkConfig.appendMode}
+																	dedupKeyCount={getDedupKeyOptions(bulkStream).length}
 																	onBulkIngestionModeChange={value => {
 																		setBulkConfigField("appendMode", value)
 																		markDirty(BulkDirtyFieldKey.AppendMode)

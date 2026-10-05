@@ -3,6 +3,7 @@ import semver from "semver"
 import {
 	MIN_COLUMN_SELECTION_SOURCE_VERSION,
 	MIN_JSON_FILTER_VERSION,
+	MIN_KAFKA_UPSERT_SOURCE_VERSION,
 	MIN_SOURCE_NAMING_CONVENTION_VERSION,
 	SOURCE_INTERNAL_TYPES,
 } from "@/modules/ingestion/common/constants"
@@ -236,7 +237,20 @@ export const getDedupKeyOptions = (stream: StreamData): string[] => {
 		.filter(([name, p]) => !p?.olake_column && !KAFKA_META_COLUMNS.has(name))
 		.map(([name]) => name)
 
-	return ["_kafka_key", ...fields]
+	return "_kafka_key" in props ? ["_kafka_key", ...fields] : fields
+}
+
+export const getKafkaUpsertVersionMessage = (
+	sourceType?: string,
+	sourceVersion?: string,
+): string | undefined => {
+	const isKafka = !!sourceType && normalizeConnectorType(sourceType).toLowerCase() === SOURCE_INTERNAL_TYPES.KAFKA;
+	if (!isKafka) return undefined;
+
+	if (!!sourceVersion && !!semver.valid(sourceVersion) && semver.gte(sourceVersion, MIN_KAFKA_UPSERT_SOURCE_VERSION)) {
+		return undefined
+	}
+	return `Upsert is available in version ${MIN_KAFKA_UPSERT_SOURCE_VERSION} and above`
 }
 
 export const getIngestionMode = (
@@ -293,7 +307,7 @@ export const isDestinationIngestionModeSupported = (
 	const normDestType = normalizeConnectorType(destinationType).toLowerCase()
 	const destModes =
 		DESTINATION_SUPPORTED_INGESTION_MODES[
-			normDestType as keyof typeof DESTINATION_SUPPORTED_INGESTION_MODES
+		normDestType as keyof typeof DESTINATION_SUPPORTED_INGESTION_MODES
 		]
 
 	return destModes?.some(m => m === mode) ?? false

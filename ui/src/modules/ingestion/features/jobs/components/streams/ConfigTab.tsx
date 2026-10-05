@@ -10,16 +10,18 @@ import DedupKeysSectionSingle from "./dedupKeys/dedupKeysSectionSingle"
 
 interface ConfigTabProps {
 	sourceType?: string
+	sourceVersion?: string
 	destinationType?: string
 }
 
-const ConfigTab = ({ sourceType, destinationType }: ConfigTabProps) => {
+const ConfigTab = ({ sourceType, sourceVersion, destinationType }: ConfigTabProps) => {
 	return (
 		<div className="flex flex-col gap-4">
 			<div className={CARD_STYLE}>
 				<SyncModeSectionSingle />
 				<IngestionModeSectionSingle
 					sourceType={sourceType}
+					sourceVersion={sourceVersion}
 					destinationType={destinationType}
 				/>
 				{!!sourceType &&

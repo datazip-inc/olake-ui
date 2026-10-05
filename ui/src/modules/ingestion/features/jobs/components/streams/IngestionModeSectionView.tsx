@@ -4,25 +4,30 @@ import clsx from "clsx"
 
 import { IngestionMode } from "../../enums"
 import {
+	getKafkaUpsertVersionMessage,
 	isSourceIngestionModeSupported,
 	isDestinationIngestionModeSupported,
 } from "../../utils/streams"
 
 interface IngestionModeSectionViewProps {
 	sourceType?: string
+	sourceVersion?: string
 	destinationType?: string
 	isSelected: boolean
 	isDirty?: boolean
 	appendMode: boolean
+	dedupKeyCount?: number
 	onChange: (ingestionMode: IngestionMode) => void
 }
 
 const IngestionModeSectionView = ({
 	sourceType,
+	sourceVersion,
 	destinationType,
 	isSelected,
 	isDirty,
 	appendMode,
+	dedupKeyCount,
 	onChange,
 }: IngestionModeSectionViewProps) => {
 	const isSourceUpsertSupported = isSourceIngestionModeSupported(
@@ -40,13 +45,26 @@ const IngestionModeSectionView = ({
 		destinationType,
 	)
 
+	const versionMessage = getKafkaUpsertVersionMessage(sourceType, sourceVersion);
+	const noCommonDedupMessage =
+		dedupKeyCount !== undefined && dedupKeyCount === 0
+			? "No common dedup keys found."
+			: undefined;
+
+	const upsertDisabledMessage = versionMessage || noCommonDedupMessage
+	const isUpsertDisabled = !isSourceUpsertSupported || !!upsertDisabledMessage
+
 	// Don't render if destination doesn't support upsert mode
 	if (!isDestUpsertModeSupported) return null
 
 	// Ingestion mode is Append if:
 	// 1. Source doesn't support Upsert (forced Append)
 	// 2. OR user selected Append mode
-	const isAppendMode = !isSourceUpsertSupported || !!appendMode
+	const isAppendMode = isUpsertDisabled || !!appendMode
+
+	const upsertTooltip = !isSourceUpsertSupported
+		? "Upsert is not supported for this source"
+		: upsertDisabledMessage
 
 	const handleIngestionModeChange = (ingestionMode: IngestionMode) => {
 		onChange(ingestionMode)
@@ -83,18 +101,20 @@ const IngestionModeSectionView = ({
 			>
 				<Tooltip
 					title={
-						!isSourceUpsertSupported
-							? "Upsert is not supported for this source"
+						isUpsertDisabled
+							? upsertTooltip
 							: undefined
 					}
 				>
-					<Radio
-						value={IngestionMode.UPSERT}
-						disabled={!isSourceUpsertSupported}
-						className={clsx(!isSourceUpsertSupported && "opacity-50")}
-					>
-						Upsert
-					</Radio>
+					<span className="inline-block">
+						<Radio
+							value={IngestionMode.UPSERT}
+							disabled={isUpsertDisabled}
+							className={clsx(isUpsertDisabled && "opacity-50")}
+						>
+							Upsert
+						</Radio>
+					</span>
 				</Tooltip>
 				<Tooltip
 					title={
@@ -112,6 +132,12 @@ const IngestionModeSectionView = ({
 					</Radio>
 				</Tooltip>
 			</Radio.Group>
+			{upsertDisabledMessage && (
+				<div className="mb-4 flex items-center gap-1 text-sm text-[#686868]">
+					<InfoIcon className="size-4 shrink-0" />
+					{upsertDisabledMessage}
+				</div>
+			)}
 			{!isSelected && (
 				<div className="flex items-center gap-1 text-sm text-[#686868]">
 					<InfoIcon className="size-4" />

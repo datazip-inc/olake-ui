@@ -15,6 +15,7 @@ import {
 import { GroupedStreamsCollapsibleListProps } from "../../types"
 import {
 	getIngestionMode,
+	getKafkaUpsertVersionMessage,
 	hasGroupedStreamsStructureChanged,
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
@@ -25,6 +26,7 @@ import IngestionModeChangeModal from "../modals/IngestionModeChangeModal"
 const StreamsCollapsibleList = ({
 	groupedStreams,
 	sourceType,
+	sourceVersion,
 	destinationType,
 }: GroupedStreamsCollapsibleListProps) => {
 	const selectedStreams = useStreamSelectionStore(selectSelectedStreams)
@@ -283,6 +285,12 @@ const StreamsCollapsibleList = ({
 		destinationType,
 	)
 
+	const kafkaUpsertVersionMessage = getKafkaUpsertVersionMessage(
+		sourceType, 
+		sourceVersion
+	)
+
+	const allUpsertSupported = isSourceUpsertModeSupported && isDestUpsertModeSupported && !kafkaUpsertVersionMessage;
 	return (
 		<>
 			<div className="flex h-full flex-col rounded-[4px] border-gray-200">
@@ -318,7 +326,7 @@ const StreamsCollapsibleList = ({
 										onClick={() => {
 											if (
 												ingestionMode !== IngestionMode.UPSERT &&
-												isSourceUpsertModeSupported
+												allUpsertSupported
 											) {
 												setTargetIngestionMode(IngestionMode.UPSERT)
 												setShowIngestionModeChangeModal(true)
@@ -326,7 +334,7 @@ const StreamsCollapsibleList = ({
 										}}
 										className={clsx(
 											`relative z-10 flex items-center justify-center rounded-sm p-1 px-4 text-center transition-colors duration-300`,
-											isSourceUpsertModeSupported
+											allUpsertSupported
 												? "cursor-pointer"
 												: "cursor-not-allowed opacity-40",
 										)}
