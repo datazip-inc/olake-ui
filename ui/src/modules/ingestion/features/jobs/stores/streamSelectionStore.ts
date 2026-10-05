@@ -395,7 +395,6 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 								? {
 										...s,
 										append_mode: appendMode,
-										dedup_keys: appendMode ? [] : s.dedup_keys,
 									}
 								: s,
 						),
@@ -477,7 +476,6 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 
 					if (config.appendMode !== undefined) {
 						newStream.append_mode = config.appendMode
-						if (config.appendMode) newStream.dedup_keys = []
 					}
 					if (config.dedupKeys !== undefined)
 						newStream.dedup_keys = config.dedupKeys
@@ -543,7 +541,6 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 					streams.map(s => ({
 						...s,
 						append_mode: appendMode,
-						dedup_keys: appendMode ? [] : s.dedup_keys,
 					})),
 				]),
 			)

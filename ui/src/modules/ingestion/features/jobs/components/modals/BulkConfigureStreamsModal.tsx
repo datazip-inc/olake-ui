@@ -252,7 +252,6 @@ const BulkConfigureStreamsModal = ({
 			}),
 			...(dirtyFields[BulkDirtyFieldKey.AppendMode] && {
 				appendMode: bulkConfig.appendMode,
-				...(bulkConfig.appendMode ? { dedupKeys: [] } : {}),
 			}),
 			...(dirtyFields[BulkDirtyFieldKey.DedupKeys] &&
 				!bulkConfig.appendMode && {
