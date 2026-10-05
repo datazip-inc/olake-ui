@@ -35,6 +35,7 @@ const DedupKeysSectionView = ({
 			</div>
 			<Select
 				mode="multiple"
+				showSearch={false}
 				className="w-full"
 				disabled={disabled}
 				placeholder="Select dedup keys"
