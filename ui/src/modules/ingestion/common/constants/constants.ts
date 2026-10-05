@@ -81,3 +81,12 @@ export const MIN_SOURCE_NAMING_CONVENTION_VERSION = "v0.7.7"
 
 // Minimum Kafka source version that supports Upsert.
 export const MIN_KAFKA_UPSERT_SOURCE_VERSION = "v0.11.0"
+
+export const KAFKA_KEY_COLUMN = "_kafka_key"
+
+export const KAFKA_META_COLUMNS = new Set([
+	KAFKA_KEY_COLUMN,
+	"_kafka_offset",
+	"_kafka_partition",
+	"_kafka_timestamp",
+])

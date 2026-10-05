@@ -1,6 +1,8 @@
 import semver from "semver"
 
 import {
+	KAFKA_KEY_COLUMN,
+	KAFKA_META_COLUMNS,
 	MIN_COLUMN_SELECTION_SOURCE_VERSION,
 	MIN_JSON_FILTER_VERSION,
 	MIN_KAFKA_UPSERT_SOURCE_VERSION,
@@ -367,12 +369,6 @@ export const validateStreams = (
 	return null
 }
 
-const KAFKA_META_COLUMNS = new Set([
-	"_kafka_key",
-	"_kafka_offset",
-	"_kafka_partition",
-	"_kafka_timestamp",
-])
 
 export const getDedupKeyOptions = (
 	stream: StreamData,
@@ -386,7 +382,7 @@ export const getDedupKeyOptions = (
 		.filter(([name, p]) => !p?.olake_column && !KAFKA_META_COLUMNS.has(name) && isEnabled(name))
 		.map(([name]) => name)
 
-	return "_kafka_key" in props && isEnabled("_kafka_key") ? ["_kafka_key", ...fields] : fields
+	return KAFKA_KEY_COLUMN in props && isEnabled(KAFKA_KEY_COLUMN) ? [KAFKA_KEY_COLUMN, ...fields] : fields
 }
 
 export const getKafkaUpsertVersionMessage = (
