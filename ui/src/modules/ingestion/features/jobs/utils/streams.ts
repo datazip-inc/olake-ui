@@ -14,6 +14,7 @@ import {
 	SelectedStream,
 	SyncMode,
 	StreamIdentifier,
+	UpsertType,
 } from "@/modules/ingestion/common/types"
 import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
 
@@ -23,12 +24,32 @@ import {
 	STREAM_DEFAULTS,
 } from "../constants"
 import { IngestionMode } from "../enums"
-import { CursorFieldValues } from "../types"
+import { AdvancedSettings, CursorFieldValues } from "../types"
 import {
 	castFilterConditionValue,
 	validateFilter,
 	validateFilterConfig,
 } from "./filterUtils"
+
+// The catalog carries the default upsert type on the stream as
+// default_stream_properties.update_type; the selected stream stores it as
+// update_type. Older olake versions omit it, in which case the backend applies
+// its own default and the UI leaves update_type unset.
+export const getDefaultUpsertType = (
+	stream?: StreamData,
+): UpsertType | undefined =>
+	stream?.stream.default_stream_properties?.update_type
+
+// Same lookup, from the streams list by stream identifier.
+export const getDefaultUpsertTypeFor = (
+	streams: StreamData[] | undefined,
+	{ streamName, namespace }: StreamIdentifier,
+): UpsertType | undefined =>
+	getDefaultUpsertType(
+		streams?.find(
+			s => s.stream.name === streamName && s.stream.namespace === namespace,
+		),
+	)
 
 /**
  * Processes the raw SourceStreamsResponse into the
@@ -36,9 +57,21 @@ import {
  */
 export const getStreamsDataFromSourceStreamsResponse = (
 	response: StreamsDataStructure,
+	destinationType?: string,
+	sourceType?: string,
 	sourceVersion?: string,
 ): StreamsDataStructure => {
 	const mergedSelectedStreams: SelectedStreamsByNamespace = {}
+
+	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
+		IngestionMode.UPSERT,
+		destinationType,
+	)
+
+	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(
+		IngestionMode.UPSERT,
+		sourceType,
+	)
 
 	// Column selection is supported from source version v0.4.0 onwards.
 	const supportsColumnSelection =
@@ -65,9 +98,21 @@ export const getStreamsDataFromSourceStreamsResponse = (
 
 		if (matchingSelectedStream) {
 			// Stream is selected, use the selected stream configuration
+			const upsertMode =
+				!matchingSelectedStream.append_mode &&
+				isDestUpsertModeSupported &&
+				isSourceUpsertModeSupported
+			const { update_type: savedUpdateType, ...selectedStreamRest } =
+				matchingSelectedStream
+
 			mergedSelectedStreams[namespace].push({
-				...matchingSelectedStream,
+				...selectedStreamRest,
 				disabled: false,
+				// update_type only applies while the stream runs in upsert mode;
+				// older saved jobs carry no value, so fall back to the catalog default.
+				...(upsertMode && {
+					update_type: savedUpdateType ?? getDefaultUpsertType(stream),
+				}),
 			})
 		} else {
 			// Stream is not selected, use defaults from default_stream_properties
@@ -84,7 +129,6 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				stream_name: streamName,
 				disabled: true,
 				append_mode: true, // Default to append
-				// Add selected_columns only when the source supports it.
 				dedup_keys: [],
 				...(supportsColumnSelection && {
 					selected_columns: {
@@ -179,6 +223,97 @@ export const formatSelectedStreamsPayload = (
 		]),
 	)
 }
+
+// Positional deletes and delete vectors need the destination row index; equality deletes don't.
+const INDEXED_UPSERT_TYPES: UpsertType[] = [
+	UpsertType.POSITIONAL,
+	UpsertType.DELETION_VECTOR,
+]
+
+const usesIndexedUpsert = (stream: SelectedStream): boolean =>
+	!stream.append_mode &&
+	!!stream.update_type &&
+	INDEXED_UPSERT_TYPES.includes(stream.update_type)
+
+const indexedStreamIds = (
+	streamsConfig?: StreamsDataStructure | null,
+): Set<string> =>
+	new Set(
+		Object.entries(
+			getSelectedStreams(streamsConfig?.selected_streams ?? {}),
+		).flatMap(([namespace, streams]) =>
+			streams
+				.filter(usesIndexedUpsert)
+				.map(stream => `${namespace}.${stream.stream_name}`),
+		),
+	)
+
+export const hasIndexedUpsertStream = (
+	streamsConfig?: StreamsDataStructure | null,
+): boolean => indexedStreamIds(streamsConfig).size > 0
+
+// True when the difference covers every enabled stream, meaning clear destination
+// runs across the whole job rather than a subset of its streams.
+export const coversAllSelectedStreams = (
+	streamsConfig: StreamsDataStructure | null | undefined,
+	streamDifference: StreamsDataStructure,
+): boolean => {
+	const streamIds = (selectedStreams: SelectedStreamsByNamespace) =>
+		new Set(
+			Object.entries(getSelectedStreams(selectedStreams)).flatMap(
+				([namespace, streams]) =>
+					streams.map(stream => `${namespace}.${stream.stream_name}`),
+			),
+		)
+
+	const selected = streamIds(streamsConfig?.selected_streams ?? {})
+	const impacted = streamIds(streamDifference.selected_streams ?? {})
+
+	return selected.size > 0 && [...selected].every(id => impacted.has(id))
+}
+
+// Engines only reach the catalog through a discover, so a selection that differs
+// from the saved one has to go through the streams step before it can be saved.
+export const queryEnginesChanged = (
+	advancedSettings: AdvancedSettings | null | undefined,
+	savedAdvancedSettings: AdvancedSettings | null | undefined,
+): boolean => {
+	const selected = advancedSettings?.target_query_engines ?? []
+	const saved = savedAdvancedSettings?.target_query_engines ?? []
+
+	return (
+		selected.length !== saved.length ||
+		selected.some(engine => !saved.includes(engine))
+	)
+}
+
+// The next sync builds the destination index for any pos/dv stream that wasn't
+// already pos/dv in the saved config. Returns true when a stream is:
+//   - newly selected with pos/dv (not in the saved config, or disabled there)
+//   - switched from eq to pos/dv
+//   - switched from append mode to pos/dv
+// Returns false when every pos/dv stream was already pos/dv in the saved config,
+// so no new index is needed. With no saved config (job creation), every pos/dv
+// stream counts as new.
+export const willBuildIndex = (
+	streamsConfig: StreamsDataStructure | null | undefined,
+	savedStreamsConfig?: StreamsDataStructure | null,
+): boolean => {
+	const alreadyIndexed = indexedStreamIds(savedStreamsConfig)
+	const nowIndexed = indexedStreamIds(streamsConfig)
+
+	return [...nowIndexed].some(id => !alreadyIndexed.has(id))
+}
+
+// index_required is derived from the streams config on every write; the rest of
+// advanced settings stays user-configured.
+export const withIndexRequired = (
+	advancedSettings: AdvancedSettings | null | undefined,
+	streamsConfig?: StreamsDataStructure | null,
+): AdvancedSettings => ({
+	...advancedSettings,
+	index_required: hasIndexedUpsertStream(streamsConfig),
+})
 
 // Returns null if all selected stream configurations are valid, or a descriptive error string otherwise.
 export const validateStreams = (
@@ -538,9 +673,13 @@ export const buildBulkCommonStream = (
 export const buildBulkSelectedStreams = (
 	commonStream: StreamData,
 ): SelectedStream => {
+	const { update_type: unusedUpdateType, ...defaultProperties } =
+		commonStream.stream.default_stream_properties ?? {}
+	void unusedUpdateType
+
 	return {
 		...STREAM_DEFAULTS,
-		...commonStream.stream.default_stream_properties,
+		...defaultProperties,
 		stream_name: commonStream.stream.name,
 		append_mode: true,
 		dedup_keys: [],

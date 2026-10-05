@@ -19,6 +19,7 @@ import {
 	FilterConfig,
 	StreamIdentifier,
 	SyncMode,
+	UpsertType,
 } from "@/modules/ingestion/common/types"
 import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
 import { BulkConfigureStreamsModalProps } from "@/modules/ingestion/features/jobs/types"
@@ -38,6 +39,7 @@ import NormalizationSectionBulk from "../streams/NormalizationSectionBulk"
 import PartitionRegexSectionBulk from "../streams/PartitionRegexSectionBulk"
 import SourceNamingConventionSectionBulk from "../streams/SourceNamingConventionSectionBulk"
 import SyncModeSectionBulk from "../streams/SyncModeSectionBulk"
+import UpsertTypeSectionBulk from "../streams/UpsertTypeSectionBulk"
 
 type BulkConfigureStep =
 	| "select-streams"
@@ -51,6 +53,7 @@ type BulkConfig = {
 	cursorField: string | undefined
 	appendMode: boolean
 	dedupKeys: string[]
+	upsertType?: UpsertType
 	normalization: boolean
 	filter: string
 	filterConfig: FilterConfig | undefined
@@ -62,6 +65,7 @@ enum BulkDirtyFieldKey {
 	SyncMode = "syncMode",
 	AppendMode = "appendMode",
 	DedupKeys = "dedupKeys",
+	UpsertType = "upsertType",
 	Normalization = "normalization",
 	Filter = "filter",
 	PartitionRegex = "partitionRegex",
@@ -74,6 +78,7 @@ const INITIAL_DIRTY_FIELDS: BulkDirtyFields = {
 	[BulkDirtyFieldKey.SyncMode]: false,
 	[BulkDirtyFieldKey.AppendMode]: false,
 	[BulkDirtyFieldKey.DedupKeys]: false,
+	[BulkDirtyFieldKey.UpsertType]: false,
 	[BulkDirtyFieldKey.Normalization]: false,
 	[BulkDirtyFieldKey.Filter]: false,
 	[BulkDirtyFieldKey.PartitionRegex]: false,
@@ -85,6 +90,7 @@ const INITIAL_BULK_CONFIG: BulkConfig = {
 	cursorField: undefined,
 	appendMode: true,
 	dedupKeys: [],
+	upsertType: undefined,
 	normalization: false,
 	filter: "",
 	filterConfig: undefined,
@@ -203,8 +209,9 @@ const BulkConfigureStreamsModal = ({
 			syncMode,
 			cursorField:
 				syncMode === SyncMode.INCREMENTAL ? sortedCursors[0] : undefined,
-			appendMode: bulkStreamDefaults.append_mode ?? false,
+			appendMode: bulkStreamDefaults.append_mode ?? true,
 			dedupKeys: bulkStreamDefaults.dedup_keys ?? [],
+			upsertType: bulkStreamDefaults.update_type,
 			normalization: bulkStreamDefaults.normalization,
 			filter: "",
 			filterConfig: undefined,
@@ -250,6 +257,10 @@ const BulkConfigureStreamsModal = ({
 			...(dirtyFields[BulkDirtyFieldKey.DedupKeys] &&
 				!bulkConfig.appendMode && {
 					dedupKeys: bulkConfig.dedupKeys,
+				}),
+			...(dirtyFields[BulkDirtyFieldKey.UpsertType] &&
+				!bulkConfig.appendMode && {
+					upsertType: bulkConfig.upsertType,
 				}),
 			...(dirtyFields[BulkDirtyFieldKey.Normalization] && {
 				normalization: bulkConfig.normalization,
@@ -477,7 +488,9 @@ const BulkConfigureStreamsModal = ({
 										<div className="pointer-events-none flex flex-col gap-4 opacity-60">
 											{(dirtyFields[BulkDirtyFieldKey.SyncMode] ||
 												dirtyFields[BulkDirtyFieldKey.AppendMode] ||
-												dirtyFields[BulkDirtyFieldKey.DedupKeys]) && (
+												dirtyFields[BulkDirtyFieldKey.DedupKeys] ||
+												(dirtyFields[BulkDirtyFieldKey.UpsertType] &&
+													!bulkConfig.appendMode)) && (
 												<div className={CARD_STYLE}>
 													<span className="mb-2 block text-sm font-medium text-olake-text">
 														Ingestion Settings
@@ -508,6 +521,14 @@ const BulkConfigureStreamsModal = ({
 																onChange={() => {}}
 															/>
 														)}
+													{dirtyFields[BulkDirtyFieldKey.UpsertType] && (
+														<UpsertTypeSectionBulk
+															sourceType={sourceType}
+															destinationType={destinationType}
+															bulkAppendMode={bulkConfig.appendMode}
+															bulkUpsertType={bulkConfig.upsertType}
+														/>
+													)}
 												</div>
 											)}
 											{dirtyFields[BulkDirtyFieldKey.Normalization] && (
@@ -763,6 +784,19 @@ const BulkConfigureStreamsModal = ({
 																		}}
 																	/>
 																)}
+																<UpsertTypeSectionBulk
+																	isDirty={
+																		dirtyFields[BulkDirtyFieldKey.UpsertType]
+																	}
+																	sourceType={sourceType}
+																	destinationType={destinationType}
+																	bulkAppendMode={bulkConfig.appendMode}
+																	bulkUpsertType={bulkConfig.upsertType}
+																	onBulkUpsertTypeChange={value => {
+																		setBulkConfigField("upsertType", value)
+																		markDirty(BulkDirtyFieldKey.UpsertType)
+																	}}
+																/>
 															</>
 														)}
 													</div>

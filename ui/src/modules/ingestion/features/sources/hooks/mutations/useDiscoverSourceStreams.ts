@@ -25,6 +25,7 @@ export const useDiscoverSourceStreams = () => {
 				params.job_name,
 				params.job_id,
 				params.max_discover_threads,
+				params.target_query_engines,
 				abortController.signal,
 			)
 		},

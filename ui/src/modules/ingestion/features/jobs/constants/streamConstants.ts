@@ -1,3 +1,5 @@
+import { UpsertType } from "@/modules/ingestion/common/types"
+
 export const PARTITIONING_COLUMNS = [
 	{
 		title: "Column name",
@@ -32,6 +34,37 @@ export const SYNC_MODE_MAP = {
 	STRICT_CDC: "strict_cdc",
 }
 
+export const UPSERT_TYPE_OPTIONS = [
+	{
+		label: "Equality Deletes",
+		value: UpsertType.EQUALITY,
+		icebergFormatVersion: "V2",
+		tooltip:
+			"Rows are matched and deleted by primary key values before the new rows are written",
+	},
+	{
+		label: "Positional Deletes",
+		value: UpsertType.POSITIONAL,
+		icebergFormatVersion: "V2",
+		tooltip:
+			"Rows are deleted by their position in the existing data files before the new rows are written",
+	},
+	{
+		label: "Deletion Vector",
+		value: UpsertType.DELETION_VECTOR,
+		icebergFormatVersion: "V3",
+		tooltip:
+			"Deleted rows are marked in a per-file bitmap instead of a delete file, which Iceberg V3 readers resolve",
+	},
+]
+
+// Catalogs discovered before target query engines existed carry no
+// available_update_types; back then only these two formats were writable.
+export const DEFAULT_AVAILABLE_UPDATE_TYPES = [
+	UpsertType.EQUALITY,
+	UpsertType.POSITIONAL,
+]
+
 export const PartitioningRegexTooltip =
 	"Choose a column to partition your data for faster reads and better performance"
 
@@ -65,7 +98,7 @@ export const TAB_STYLES = {
 	hover: "hover:text-primary",
 }
 
-export const CARD_STYLE = "rounded-xl border border-[#E3E3E3] p-3"
+export const CARD_STYLE = "rounded-xl border border-neutral-border p-3"
 
 export const COLORS = {
 	selected: {

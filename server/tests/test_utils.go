@@ -22,10 +22,10 @@ const (
 	// Install required tools during initial setup
 	setupToolsCmd = `
         apt-get update && 
-        apt-get install -y curl postgresql-client dnsutils iputils-ping ncurses-bin ca-certificates gnupg lsb-release netcat-openbsd && 
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash - &&
+        apt-get install -y curl postgresql-client dnsutils iputils-ping ncurses-bin ca-certificates gnupg lsb-release netcat-openbsd libatomic1 && 
+        curl -fsSL https://deb.nodesource.com/setup_22.x | bash - &&
         apt-get install -y nodejs &&
-        npm install -g pnpm &&
+        npm install -g pnpm@11.24.0 &&
         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg &&
         echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null &&
         apt-get update &&

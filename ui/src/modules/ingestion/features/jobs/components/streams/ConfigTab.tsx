@@ -5,6 +5,7 @@ import DataFilterSectionSingle from "./DataFilterSectionSingle"
 import IngestionModeSectionSingle from "./IngestionModeSectionSingle"
 import NormalizationSectionSingle from "./NormalizationSectionSingle"
 import SyncModeSectionSingle from "./SyncModeSectionSingle"
+import UpsertTypeSectionSingle from "./UpsertTypeSectionSingle"
 import { CARD_STYLE } from "../../constants"
 import DedupKeysSectionSingle from "./dedupKeys/dedupKeysSectionSingle"
 
@@ -27,6 +28,10 @@ const ConfigTab = ({ sourceType, sourceVersion, destinationType }: ConfigTabProp
 				{!!sourceType &&
 					normalizeConnectorType(sourceType).toLowerCase() ===
 						SOURCE_INTERNAL_TYPES.KAFKA && <DedupKeysSectionSingle />}
+				<UpsertTypeSectionSingle
+					sourceType={sourceType}
+					destinationType={destinationType}
+				/>
 			</div>
 			<NormalizationSectionSingle />
 			<DataFilterSectionSingle />
