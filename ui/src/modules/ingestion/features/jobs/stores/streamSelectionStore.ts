@@ -469,7 +469,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 					selected_streams: {
 						...prev.selected_streams,
 						[namespace]: prev.selected_streams[namespace].map(s =>
-							s.stream_name === streamName ? { ...s, dedup_keys: keys } : s,
+							s.stream_name === streamName ? { ...s, dedup_keys: [...keys].sort() } : s,
 						),
 					},
 				},
@@ -527,7 +527,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 						newStream.append_mode = config.appendMode
 					}
 					if (config.dedupKeys !== undefined)
-						newStream.dedup_keys = config.dedupKeys
+						newStream.dedup_keys = [...config.dedupKeys].sort()					
 					if (config.upsertType !== undefined)
 						newStream.update_type = config.upsertType
 					if (
