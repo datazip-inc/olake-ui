@@ -77,7 +77,7 @@ func main() {
 	defer stop()
 
 	go func() {
-		if err := appSvc.ETL().ConvertLegacyJobs(ctx); err != nil {
+		if err := appSvc.ETL().ConvertLegacyJobs(ctx, nil); err != nil {
 			logger.Errorf("failed to convert legacy jobs: %s. upgrade source to version[%s] to support streams v2", err, constants.MinStreamsV2Version)
 		}
 	}()

@@ -45,21 +45,46 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) *ExecutionRequ
 	}
 }
 
+// StreamsCatalog is a catalog in one format: Streams (streams.json) for a legacy catalog, or
+// Available + Selected (available_streams.json, selected_streams.json) for a split catalog.
+type StreamsCatalog struct {
+	Streams   string
+	Available string
+	Selected  string
+}
+
+// JobCatalog returns the catalog a job stores, in the job's format.
+func JobCatalog(job *models.Job) StreamsCatalog {
+	return StreamsCatalog{
+		Streams:   utils.StringValue(job.StreamsConfig),
+		Available: utils.StringValue(job.AvailableStreamsConfig),
+		Selected:  utils.StringValue(job.SelectedStreamsConfig),
+	}
+}
+
+// IsSplit reports whether the catalog is in the split format.
+func (c StreamsCatalog) IsSplit() bool {
+	return c.Available != "" && c.Selected != ""
+}
+
 // buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job.
 // streamsConfig is the stream difference to clear, in the combined {streams, selected_streams}
-// format that every CLI reads with --streams; empty clears the job's whole stored catalog, which
-// a v2 job keeps only in the split files.
+// format that every CLI reads with --streams; empty clears the job's whole stored catalog.
 func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsConfig string) (*ExecutionRequest, error) {
 	streamsDir := fmt.Sprintf("%s-%d", workflowID, time.Now().Unix())
 
+	catalog := StreamsCatalog{Streams: streamsConfig}
+	if streamsConfig == "" {
+		catalog = JobCatalog(job)
+	}
+	// the worker tells the format by the staged files; it reads a legacy catalog from TempPath
+	var files map[string]string
 	var catalogArgs []string
 	var tempPath string
-	var files map[string]string
-
-	if streamsConfig == "" && job.IsStreamsV2() {
+	if catalog.IsSplit() {
 		files = map[string]string{
-			constants.AvailableStreamsFile: utils.StringValue(job.AvailableStreamsConfig),
-			constants.SelectedStreamsFile:  utils.StringValue(job.SelectedStreamsConfig),
+			constants.AvailableStreamsFile: catalog.Available,
+			constants.SelectedStreamsFile:  catalog.Selected,
 		}
 		catalogArgs = []string{
 			"--available-streams", "/mnt/config/" + constants.AvailableStreamsFile,
@@ -67,11 +92,7 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 		}
 		tempPath = filepath.Join(streamsDir, constants.SelectedStreamsFile)
 	} else {
-		catalog := streamsConfig
-		if catalog == "" {
-			catalog = utils.StringValue(job.StreamsConfig)
-		}
-		files = map[string]string{constants.StreamsFile: catalog}
+		files = map[string]string{constants.StreamsFile: catalog.Streams}
 		catalogArgs = []string{"--streams", "/mnt/config/" + constants.StreamsFile}
 		tempPath = filepath.Join(streamsDir, constants.StreamsFile)
 	}

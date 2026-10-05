@@ -11,6 +11,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
@@ -170,6 +171,10 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 		return fmt.Errorf("failed to fetch jobs for source update: %s", err)
 	}
 
+	if err := validateSourceDowngrade(existing.Version, jobs); err != nil {
+		return err
+	}
+
 	if err := cancelAllJobWorkflows(ctx, s.temporal, jobs, projectID); err != nil {
 		return fmt.Errorf("failed to cancel workflows for source update: %s", err)
 	}
@@ -180,12 +185,27 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 
 	// An upgrade can make this source's legacy jobs convertible
 	if utils.SupportsStreamsV2(existing.Version) {
-		if err := s.ConvertLegacyJobsForSource(ctx, existing.ID); err != nil {
+		if err := s.ConvertLegacyJobs(ctx, &existing.ID); err != nil {
 			logger.Errorf("failed to convert legacy jobs after source upgrade source_id[%d]: %s", existing.ID, err)
 		}
 	}
 
 	telemetry.TrackSourcesStatus(ctx)
+	return nil
+}
+
+// validateSourceDowngrade rejects a source version that cannot run the source's split-format jobs:
+// such a job stores only the split catalog, which drivers below MinStreamsV2Version cannot read.
+func validateSourceDowngrade(version string, jobs []*models.Job) error {
+	if utils.SupportsStreamsV2(version) {
+		return nil
+	}
+	for _, job := range jobs {
+		if job.IsStreamsV2() {
+			return fmt.Errorf("%w: source version %s is below %s and job_id[%d] uses the split format",
+				constants.ErrStreamsFormat, version, constants.MinStreamsV2Version, job.ID)
+		}
+	}
 	return nil
 }
 
@@ -251,123 +271,46 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 	return result, logs.Logs, nil
 }
 
-// DiscoverCatalog runs discover and returns the catalog. A v1 source returns {streams, selected_streams}.
-// A v2-capable source on a new job, or an existing job that already stores the split catalog, returns
-// {selected_streams, available_streams}; streams live inside available_streams, and the client detects
-// v2 by that key's presence.
-func (s Service) DiscoverCatalog(ctx context.Context, req *dto.StreamsRequest) (map[string]interface{}, error) {
-	split := utils.SupportsStreamsV2(req.Version)
-	selectedStreams, availableStreams, streamsConfig := "", "", ""
+// DiscoverCatalog runs discover and returns the catalog in one format: available_streams +
+// selected_streams when the driver wrote the split catalog, otherwise streams_config. An existing job
+// discovers from its stored catalog; a legacy job gets streams_config even from a driver that also
+// wrote the split files, because it keeps its format until it is converted.
+func (s Service) DiscoverCatalog(ctx context.Context, req *dto.StreamsRequest) (*dto.DiscoverCatalogResponse, error) {
+	var stored temporal.StreamsCatalog
+	legacyJob := false
 	if req.JobID >= 0 {
 		job, err := s.db.GetJobByID(req.JobID, true)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find job for catalog: %s", err)
 		}
-		split = job.IsStreamsV2()
-		if split {
-			availableStreams, selectedStreams = utils.StringValue(job.AvailableStreamsConfig), utils.StringValue(job.SelectedStreamsConfig)
-		} else {
-			streamsConfig = utils.StringValue(job.StreamsConfig)
-		}
+		stored, legacyJob = temporal.JobCatalog(job), !job.IsStreamsV2()
 	}
 
-	if !split {
-		catalog, err := s.GetSourceCatalog(ctx, req, streamsConfig)
-		if err != nil {
-			return nil, err
-		}
-		var result map[string]interface{}
-		if err := json.Unmarshal([]byte(catalog), &result); err != nil {
-			return nil, fmt.Errorf("failed to parse source catalog: %s", err)
-		}
-		return result, nil
-	}
-
-	newAvailable, newSelected, _, err := s.DiscoverStreamsV2Catalog(ctx, req, availableStreams, selectedStreams)
-	if err != nil {
-		return nil, err
-	}
-	var availableObj, selectedObj map[string]interface{}
-	if err := json.Unmarshal([]byte(newAvailable), &availableObj); err != nil {
-		return nil, fmt.Errorf("failed to parse available streams: %s", err)
-	}
-	if err := json.Unmarshal([]byte(newSelected), &selectedObj); err != nil {
-		return nil, fmt.Errorf("failed to parse selected streams: %s", err)
-	}
-	result := map[string]interface{}{
-		"selected_streams":  selectedObj["selected_streams"],
-		"available_streams": availableObj,
-	}
-	return result, nil
-}
-
-// GetSourceCatalog runs discover with the legacy streams.json and returns the discovered catalog.
-func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest, streamsConfig string) (string, error) {
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
+		return nil, fmt.Errorf("failed to encrypt config for catalog: %s", err)
+	}
+	catalog, err := s.temporal.DiscoverStreams(ctx, req.Type, req.Version, encryptedConfig, stored,
+		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get catalog: %s", err)
 	}
 
-	streamsMap, err := s.temporal.DiscoverStreams(
-		ctx,
-		req.Type,
-		req.Version,
-		encryptedConfig,
-		streamsConfig,
-		req.JobName,
-		req.MaxDiscoverThreads,
-		req.TargetQueryEngines,
-	)
-	if err != nil {
-		return "", fmt.Errorf("failed to get catalog: %s", err)
+	if catalog.IsSplit() && !legacyJob {
+		return &dto.DiscoverCatalogResponse{AvailableStreams: json.RawMessage(catalog.Available), SelectedStreams: json.RawMessage(catalog.Selected)}, nil
 	}
-	streamsJSON, err := utils.MarshalToString(streamsMap)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal catalog: %s", err)
-	}
-	return streamsJSON, nil
-}
-
-// DiscoverStreamsV2Catalog runs discover in the split format (streams v2), merging against available
-// and selected, and returns the new available_streams.json, selected_streams.json and
-// streams.json. The CLI reads a prior catalog only when both are set; otherwise discover runs fresh.
-func (s Service) DiscoverStreamsV2Catalog(ctx context.Context, req *dto.StreamsRequest, available, selected string) (newAvailable, newSelected, streamsConfig string, err error) {
-	encryptedConfig, err := utils.Encrypt(req.Config)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
-	}
-
-	availableMap, selectedMap, streamsMap, err := s.temporal.DiscoverStreamsV2(ctx, req.Type, req.Version, encryptedConfig, available, selected, req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get catalog: %s", err)
-	}
-	if newAvailable, err = utils.MarshalToString(availableMap); err != nil {
-		return "", "", "", fmt.Errorf("failed to marshal available streams: %s", err)
-	}
-	if newSelected, err = utils.MarshalToString(selectedMap); err != nil {
-		return "", "", "", fmt.Errorf("failed to marshal selected streams: %s", err)
-	}
-	if streamsConfig, err = utils.MarshalToString(streamsMap); err != nil {
-		return "", "", "", fmt.Errorf("failed to marshal streams: %s", err)
-	}
-	return newAvailable, newSelected, streamsConfig, nil
+	return &dto.DiscoverCatalogResponse{StreamsConfig: json.RawMessage(catalog.Streams)}, nil
 }
 
 // ConvertCatalog converts a legacy streams_config into the split format (available_streams.json
 // and selected_streams.json) with the CLI of the given source type and version, without
 // connecting to the source.
 func (s Service) ConvertCatalog(ctx context.Context, sourceType, version, streamsConfig string) (available, selected string, err error) {
-	availableMap, selectedMap, err := s.temporal.ConvertStreams(ctx, sourceType, version, streamsConfig)
+	catalog, err := s.temporal.ConvertStreams(ctx, sourceType, version, streamsConfig)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to convert streams: %s", err)
 	}
-	if available, err = utils.MarshalToString(availableMap); err != nil {
-		return "", "", fmt.Errorf("failed to marshal available streams: %s", err)
-	}
-	if selected, err = utils.MarshalToString(selectedMap); err != nil {
-		return "", "", fmt.Errorf("failed to marshal selected streams: %s", err)
-	}
-	return available, selected, nil
+	return catalog.Available, catalog.Selected, nil
 }
 
 func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {

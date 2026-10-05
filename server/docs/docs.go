@@ -1323,7 +1323,7 @@ const docTemplate = `{
         },
         "/api/v1/project/{projectid}/jobs/{id}/stream-difference": {
             "post": {
-                "description": "Compares the job's stored catalog against a submitted edit.\nSend updated_streams_config for any job, or\nupdated_available_streams_config + updated_selected_streams_config for jobs with a split catalog.",
+                "description": "Compares the job's stored catalog against a submitted edit.\nSend updated_streams_config, or updated_available_streams_config + updated_selected_streams_config.\nAn invalid catalog format returns 400.",
                 "tags": [
                     "Jobs"
                 ],
@@ -1992,7 +1992,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "object"
+                                            "$ref": "#/definitions/dto.DiscoverCatalogResponse"
                                         }
                                     }
                                 }
@@ -3237,6 +3237,20 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.DiscoverCatalogResponse": {
+            "type": "object",
+            "properties": {
+                "available_streams": {
+                    "type": "object"
+                },
+                "selected_streams": {
+                    "type": "object"
+                },
+                "streams_config": {
+                    "type": "object"
+                }
+            }
+        },
         "dto.DriverConfig": {
             "type": "object",
             "properties": {
@@ -3901,11 +3915,11 @@ const docTemplate = `{
                 },
                 "frequency": {
                     "type": "string",
-                    "example": "0 */6 * * *"
+                    "example": "0 */12 * * *"
                 },
                 "name": {
                     "type": "string",
-                    "example": "my-sync-job"
+                    "example": "my-sync-job-updated"
                 },
                 "selected_streams_config": {
                     "type": "string"

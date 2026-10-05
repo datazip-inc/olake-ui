@@ -97,7 +97,7 @@ func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, proje
 		return fmt.Errorf("failed to process source: %s", err)
 	}
 
-	if err := validateStreamsFormat(req.AvailableStreamsConfig, req.SelectedStreamsConfig, req.StreamsConfig, source.Version, nil); err != nil {
+	if err := validateStreamsFormat(req.StreamsConfig, req.AvailableStreamsConfig, req.SelectedStreamsConfig, source.Version, nil); err != nil {
 		return err
 	}
 
@@ -181,7 +181,7 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 		return fmt.Errorf("failed to process source for job update: %s", err)
 	}
 
-	if err := validateStreamsFormat(req.AvailableStreamsConfig, req.SelectedStreamsConfig, req.StreamsConfig, source.Version, existingJob); err != nil {
+	if err := validateStreamsFormat(req.StreamsConfig, req.AvailableStreamsConfig, req.SelectedStreamsConfig, source.Version, existingJob); err != nil {
 		return err
 	}
 
@@ -393,37 +393,27 @@ func (s Service) ClearDestination(ctx context.Context, projectID string, jobID i
 }
 
 // GetStreamDifference diffs the job's stored catalog against the edited one, sent as
-// updated_streams_config for a legacy job or updated_available_streams_config +
-// updated_selected_streams_config for a split-format job.
+// updated_streams_config or updated_available_streams_config + updated_selected_streams_config. The
+// two sides may be in different formats: a legacy job can be edited into the split format.
 func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
-	job, err := s.differenceJob(jobID)
+	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
+		return nil, fmt.Errorf("job not found: %s", err)
+	}
+	if job.Source == nil {
+		return nil, fmt.Errorf("job source details not found")
+	}
+	if err := utils.CheckClearDestinationCompatibility(job.Source.Version); err != nil {
 		return nil, err
 	}
 
 	newAvailable, newSelected := req.UpdatedAvailableStreamsConfig, req.UpdatedSelectedStreamsConfig
-	if err := validateStreamsV2(newAvailable, newSelected); err != nil {
-		return nil, fmt.Errorf("%w: updated_available_streams_config and updated_selected_streams_config must be set together", constants.ErrStreamsFormat)
+	if err := validateStreamsFormat(req.UpdatedStreamsConfig, newAvailable, newSelected, job.Source.Version, job); err != nil {
+		return nil, err
 	}
 
-	splitRequest := newAvailable != "" && newSelected != ""
-	if splitRequest == (req.UpdatedStreamsConfig != "") {
-		return nil, fmt.Errorf("%w: set either updated_streams_config or updated_available_streams_config + updated_selected_streams_config", constants.ErrStreamsFormat)
-	}
-
-	var diffCatalog map[string]interface{}
-	switch {
-	case !splitRequest && job.IsStreamsV2():
-		// v2 job has no streams_config to diff against.
-		return nil, fmt.Errorf("%w: job uses the split streams format, set updated_available_streams_config + updated_selected_streams_config", constants.ErrStreamsFormat)
-	case splitRequest && !job.IsStreamsV2():
-		// legacy job cannot accept a split request via this endpoint.
-		return nil, fmt.Errorf("%w: job uses the legacy streams format, set updated_streams_config", constants.ErrStreamsFormat)
-	case splitRequest:
-		diffCatalog, err = s.temporal.GetStreamsV2Difference(ctx, job, utils.StringValue(job.AvailableStreamsConfig), utils.StringValue(job.SelectedStreamsConfig), newAvailable, newSelected)
-	default:
-		diffCatalog, err = s.temporal.GetStreamDifference(ctx, job, utils.StringValue(job.StreamsConfig), req.UpdatedStreamsConfig)
-	}
+	edited := temporal.StreamsCatalog{Streams: req.UpdatedStreamsConfig, Available: newAvailable, Selected: newSelected}
+	diffCatalog, err := s.temporal.GetStreamDifference(ctx, job, temporal.JobCatalog(job), edited)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stream difference: %s", err)
 	}
@@ -437,15 +427,17 @@ func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, r
 	return diffCatalog, nil
 }
 
-// validateStreamsFormat rejects a catalog that: sets only one of available/selected; uses the split
-// format on a source that does not support it; or downgrades a split-catalog job to legacy.
-// Exactly one catalog format must be supplied: either streamsConfig (legacy) or both split fields.
-func validateStreamsFormat(available, selected, streamsConfig, sourceVersion string, existingJob *models.Job) error {
-	if err := validateStreamsV2(available, selected); err != nil {
-		return fmt.Errorf("%w: %s", constants.ErrStreamsFormat, err)
-	}
+// validateStreamsFormat rejects a catalog that: is not exactly one format (streams, or available and
+// selected together); uses the split format on a source that does not support it; or downgrades a
+// split-catalog job to legacy.
+func validateStreamsFormat(streamsConfig, available, selected, sourceVersion string, existingJob *models.Job) error {
 	split := available != "" && selected != ""
-	if !split && streamsConfig == "" {
+	switch {
+	case (available != "") != (selected != ""):
+		return fmt.Errorf("%w: available_streams_config and selected_streams_config must be set together", constants.ErrStreamsFormat)
+	case split && streamsConfig != "":
+		return fmt.Errorf("%w: set either streams_config or available_streams_config + selected_streams_config, not both", constants.ErrStreamsFormat)
+	case !split && streamsConfig == "":
 		return fmt.Errorf("%w: either streams_config or available_streams_config + selected_streams_config is required", constants.ErrStreamsFormat)
 	}
 	if split && !utils.SupportsStreamsV2(sourceVersion) {
@@ -458,29 +450,19 @@ func validateStreamsFormat(available, selected, streamsConfig, sourceVersion str
 	return nil
 }
 
-// ConvertLegacyJobs converts, one at a time, every legacy job whose source reads the split format
-// (streams v2). It runs at startup; a job that fails stays legacy and runs as before.
-func (s Service) ConvertLegacyJobs(ctx context.Context) error {
-	logger.Infof("Converting legacy jobs to streams v2 format...")
-	jobs, err := s.db.ListLegacyCatalogJobs()
+// ConvertLegacyJobs converts, one at a time, the legacy jobs whose source reads the split format:
+// every such job at startup, or one source's jobs (sourceID) after a source upgrade.
+// A job that fails stays legacy and runs as before.
+func (s Service) ConvertLegacyJobs(ctx context.Context, sourceID *int) error {
+	logger.Infof("Converting legacy jobs to the split format...")
+	jobs, err := s.db.ListLegacyCatalogJobs(sourceID)
 	if err != nil {
 		return fmt.Errorf("streams conversion: failed to list legacy jobs: %s", err)
 	}
 	return s.convertLegacyJobs(ctx, jobs)
 }
 
-// ConvertLegacyJobsForSource converts the legacy jobs of a single source, used after a source
-// upgrade so only that source's jobs are scanned and converted.
-func (s Service) ConvertLegacyJobsForSource(ctx context.Context, sourceID int) error {
-	logger.Infof("Converting legacy jobs to streams v2 format for source_id[%d]...", sourceID)
-	jobs, err := s.db.ListLegacyCatalogJobsBySource(sourceID)
-	if err != nil {
-		return fmt.Errorf("streams conversion: failed to list legacy jobs for source_id[%d]: %s", sourceID, err)
-	}
-	return s.convertLegacyJobs(ctx, jobs)
-}
-
-// convertLegacyJobs converts each legacy job to the streams v2 format, one at a time. The guarded
+// convertLegacyJobs converts each legacy job to the split format, one at a time. The guarded
 // write in SetStreamsV2Catalog skips a job that was saved or deleted meanwhile.
 func (s Service) convertLegacyJobs(ctx context.Context, jobs []*models.Job) error {
 	for _, job := range jobs {
@@ -497,42 +479,23 @@ func (s Service) convertLegacyJobs(ctx context.Context, jobs []*models.Job) erro
 		legacyCatalog := utils.StringValue(job.StreamsConfig)
 		available, selected, err := s.ConvertCatalog(ctx, job.Source.Type, job.Source.Version, legacyCatalog)
 		if err != nil {
-			logger.Warnf("streams conversion: job_id[%d] stays in the streams v1 format: %s", job.ID, err)
+			logger.Warnf("streams conversion: job_id[%d] stays legacy: %s", job.ID, err)
 			continue
 		}
-		if _, err := s.db.SetStreamsV2Catalog(job.ID, legacyCatalog, available, selected); err != nil {
-			logger.Warnf("streams conversion: job_id[%d] failed to store the streams v2 catalog: %s", job.ID, err)
+		updated, err := s.db.SetStreamsV2Catalog(job.ID, legacyCatalog, available, selected)
+		if err != nil {
+			logger.Warnf("streams conversion: job_id[%d] failed to store the split catalog: %s", job.ID, err)
 			continue
 		}
-		logger.Infof("Job %d converted to streams v2 format successfully", job.ID)
+		if !updated {
+			logger.Infof("streams conversion: job_id[%d] changed during conversion, skipping", job.ID)
+			continue
+		}
+		logger.Infof("Job %d converted to the split format successfully", job.ID)
 	}
 
-	logger.Infof("supported legacy jobs converted to streams v2 format")
+	logger.Infof("supported legacy jobs converted to the split format")
 	return nil
-}
-
-// validateStreamsV2 rejects a request that sets only one half of the split catalog: available
-// and selected streams are one catalog and are stored together or not at all.
-func validateStreamsV2(available, selected string) error {
-	if (utils.StringPtr(available) == nil) != (utils.StringPtr(selected) == nil) {
-		return fmt.Errorf("available_streams_config and selected_streams_config must be set together")
-	}
-	return nil
-}
-
-// differenceJob loads a job for stream difference and checks its driver supports it.
-func (s Service) differenceJob(jobID int) (*models.Job, error) {
-	job, err := s.db.GetJobByID(jobID, true)
-	if err != nil {
-		return nil, fmt.Errorf("job not found: %s", err)
-	}
-	if job.Source == nil {
-		return nil, fmt.Errorf("job source details not found")
-	}
-	if err := utils.CheckClearDestinationCompatibility(job.Source.Version); err != nil {
-		return nil, err
-	}
-	return job, nil
 }
 
 func (s Service) GetClearDestinationStatus(ctx context.Context, projectID string, jobID int) (bool, error) {

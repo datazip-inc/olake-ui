@@ -388,7 +388,7 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 // @Tags Jobs
 // @Description Compares the job's stored catalog against a submitted edit.
 // @Description Send updated_streams_config, or updated_available_streams_config + updated_selected_streams_config.
-// @Description When either side is legacy and the other is split, the legacy side is converted (source must support streams v2).
+// @Description An invalid catalog format returns 400.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   id            path    int     true    "job id"
 // @Param   body          body    dto.StreamDifferenceRequest true "stream difference data"
