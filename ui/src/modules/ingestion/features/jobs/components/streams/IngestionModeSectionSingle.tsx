@@ -44,7 +44,7 @@ const IngestionModeSectionSingle = ({
 			destinationType={destinationType}
 			isSelected={storeIsSelected}
 			appendMode={!!storeSelectedStream.append_mode}
-			dedupKeyCount={isKafka ? getDedupKeyOptions(storeStream).length : undefined}
+			dedupKeyCount={isKafka ? getDedupKeyOptions(storeStream, storeSelectedStream).length : undefined}
 			onChange={ingestionMode =>
 				updateIngestionMode(
 					{

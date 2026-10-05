@@ -353,6 +353,14 @@ export const validateStreams = (
 			if (isKafka && !sel.append_mode && (sel.dedup_keys?.length ?? 0) === 0) {
 				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Upsert requires atleast one dedup key`
 			}
+			if (
+				isKafka && !sel.append_mode &&
+				sel.selected_columns &&
+				(sel.dedup_keys ?? []).some(
+					key => !sel.selected_columns!.columns.includes(key),
+				)) {
+				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Dedup keys must be included in the selected schema columns`
+			}
 		}
 	}
 
@@ -366,13 +374,19 @@ const KAFKA_META_COLUMNS = new Set([
 	"_kafka_timestamp",
 ])
 
-export const getDedupKeyOptions = (stream: StreamData): string[] => {
+export const getDedupKeyOptions = (
+	stream: StreamData,
+	selectedStream?: SelectedStream
+): string[] => {
 	const props = stream.stream.type_schema?.properties ?? {}
+	const isEnabled = (name: string) =>
+		!selectedStream || isColumnEnabled(name, selectedStream)
+
 	const fields = Object.entries(props)
-		.filter(([name, p]) => !p?.olake_column && !KAFKA_META_COLUMNS.has(name))
+		.filter(([name, p]) => !p?.olake_column && !KAFKA_META_COLUMNS.has(name) && isEnabled(name))
 		.map(([name]) => name)
 
-	return "_kafka_key" in props ? ["_kafka_key", ...fields] : fields
+	return "_kafka_key" in props && isEnabled("_kafka_key") ? ["_kafka_key", ...fields] : fields
 }
 
 export const getKafkaUpsertVersionMessage = (

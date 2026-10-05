@@ -23,7 +23,7 @@ const DedupKeysSectionSingle = () => {
 
 	return (
 		<DedupKeysSectionView
-			options={getDedupKeyOptions(storeStream)}
+			options={getDedupKeyOptions(storeStream, storeSelectedStream)}
 			value={storeSelectedStream?.dedup_keys ?? []}
 			disabled={!isSelected}
 			onChange={keys =>

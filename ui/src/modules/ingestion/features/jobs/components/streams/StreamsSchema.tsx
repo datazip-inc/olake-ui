@@ -47,6 +47,10 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 	// Column selection is editable only if it supported and stream is enabled
 	const isEditable = columnSelectionSupported && !selectedStream.disabled
 
+	const isDedupKeyLocked = (name: string) =>
+		!selectedStream.append_mode &&
+		(selectedStream.dedup_keys ?? []).includes(name)
+
 	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const query = event.target.value
 		const props = typeSchemaProperties
@@ -67,9 +71,12 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 
 		if (selectAll) {
 			newColumns = [...new Set([...current.columns, ...visibleColumnNames])]
+
 		} else {
-			newColumns = current.columns.filter(
-				c => !visibleColumnNames.includes(c) || isOlakeColumn(c),
+			newColumns = newColumns = current.columns.filter(c =>
+				!visibleColumnNames.includes(c) ||
+				isOlakeColumn(c) ||
+				isDedupKeyLocked(c),
 			)
 		}
 
@@ -88,6 +95,9 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 			isOlakeColumn(columnName) ||
 			!selectedStream.selected_columns
 		)
+			return
+
+		if (!checked && isDedupKeyLocked(columnName))
 			return
 
 		const current = selectedStream.selected_columns
@@ -119,7 +129,7 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 	}
 
 	const visibleNonLocked = Object.keys(columnsToDisplay).filter(
-		name => !isOlakeColumn(name),
+		name => !isOlakeColumn(name) && !isDedupKeyLocked(name),
 	)
 	const isAllSelected =
 		visibleNonLocked.length > 0 &&
@@ -229,7 +239,7 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 						: true
 					// Disabled when stream is unselected, driver is legacy, or column is locked (olake column)
 					const checkboxDisabled =
-						!isEditable || columnSchema?.olake_column === true
+						!isEditable || columnSchema?.olake_column === true || isDedupKeyLocked(item)
 					const checkbox = (
 						<Checkbox
 							checked={checked}
@@ -246,6 +256,11 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 							<div className="flex w-16 items-center justify-center">
 								{isOlakeColumn(item) ? (
 									<Tooltip title="OLake generated column. It is mandatory and cannot be deselected.">
+										{checkbox}
+									</Tooltip>
+								) : 
+								isDedupKeyLocked(item) ? (
+									<Tooltip title="Used as a dedup key. Remove it from Dedup Keys on the Config tab before excluding this column.">
 										{checkbox}
 									</Tooltip>
 								) : (
