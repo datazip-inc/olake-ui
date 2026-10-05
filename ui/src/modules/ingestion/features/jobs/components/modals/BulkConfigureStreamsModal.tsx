@@ -83,7 +83,7 @@ const INITIAL_DIRTY_FIELDS: BulkDirtyFields = {
 const INITIAL_BULK_CONFIG: BulkConfig = {
 	syncMode: SyncMode.FULL_REFRESH,
 	cursorField: undefined,
-	appendMode: false,
+	appendMode: true,
 	dedupKeys: [],
 	normalization: false,
 	filter: "",
@@ -159,14 +159,8 @@ const BulkConfigureStreamsModal = ({
 	)
 
 	const { stream: bulkStream, defaults: bulkStreamDefaults } = useMemo(
-		() =>
-			buildBulkStreamsData(
-				bulkSelectedStreams,
-				streamsData,
-				sourceType,
-				destinationType,
-			),
-		[selectionKey, streamsData, sourceType, destinationType],
+		() => buildBulkStreamsData(bulkSelectedStreams, streamsData),
+		[selectionKey, streamsData],
 	)
 
 	useEffect(() => {

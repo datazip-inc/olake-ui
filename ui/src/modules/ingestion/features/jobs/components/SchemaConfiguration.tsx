@@ -125,12 +125,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			{
 				onSuccess: response => {
 					const data: StreamsDataStructure =
-						getStreamsDataFromSourceStreamsResponse(
-							response,
-							destinationType,
-							sourceConnector,
-							sourceVersion,
-						)
+						getStreamsDataFromSourceStreamsResponse(response, sourceVersion)
 
 					initializeFromDiscovery(data)
 				},

@@ -42,7 +42,7 @@ export const useJobStore = create<JobUIState>()(set => ({
 	showDestinationDatabaseModal: false,
 	showResetStreamsModal: false,
 	showIngestionModeChangeModal: false,
-	ingestionMode: IngestionMode.UPSERT,
+	ingestionMode: IngestionMode.APPEND,
 
 	setShowDeleteJobModal: show => set({ showDeleteJobModal: show }),
 	setShowClearDataModal: show => set({ showClearDataModal: show }),

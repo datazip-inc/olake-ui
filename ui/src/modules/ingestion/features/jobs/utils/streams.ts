@@ -35,21 +35,9 @@ import {
  */
 export const getStreamsDataFromSourceStreamsResponse = (
 	response: StreamsDataStructure,
-	destinationType?: string,
-	sourceType?: string,
 	sourceVersion?: string,
 ): StreamsDataStructure => {
 	const mergedSelectedStreams: SelectedStreamsByNamespace = {}
-
-	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
-		IngestionMode.UPSERT,
-		destinationType,
-	)
-
-	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(
-		IngestionMode.UPSERT,
-		sourceType,
-	)
 
 	// Column selection is supported from source version v0.4.0 onwards.
 	const supportsColumnSelection =
@@ -94,7 +82,7 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				...defaults,
 				stream_name: streamName,
 				disabled: true,
-				append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported, // Default to append if either source or destination does not support upsert
+				append_mode: true, // Default to append
 				// Add selected_columns only when the source supports it.
 				dedup_keys: [],
 				...(supportsColumnSelection && {
@@ -268,7 +256,7 @@ export const getIngestionMode = (
 		allSelectedStreams.push(...streams)
 	})
 
-	if (allSelectedStreams.length === 0) return IngestionMode.UPSERT
+	if (allSelectedStreams.length === 0) return IngestionMode.APPEND
 
 	const appendCount = allSelectedStreams.filter(
 		s => s.append_mode === true,
@@ -422,7 +410,7 @@ const EMPTY_BULK_STREAM: StreamData = {
 		sync_mode: SyncMode.FULL_REFRESH,
 		default_stream_properties: {
 			normalization: false,
-			append_mode: false,
+			append_mode: true,
 		},
 	},
 }
@@ -535,23 +523,12 @@ export const buildBulkCommonStream = (
 // Returns EMPTY_BULK_STREAM_DEFAULTS when no valid stream is provided.
 export const buildBulkSelectedStreams = (
 	commonStream: StreamData,
-	sourceType?: string,
-	destinationType?: string,
 ): SelectedStream => {
-	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
-		IngestionMode.UPSERT,
-		destinationType,
-	)
-	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(
-		IngestionMode.UPSERT,
-		sourceType,
-	)
-
 	return {
 		...STREAM_DEFAULTS,
 		...commonStream.stream.default_stream_properties,
 		stream_name: commonStream.stream.name,
-		append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported,
+		append_mode: true,
 		dedup_keys: [],
 	}
 }
@@ -559,10 +536,8 @@ export const buildBulkSelectedStreams = (
 export const buildBulkStreamsData = (
 	selectedStreamsInput: StreamIdentifier[],
 	streamsData: StreamsDataStructure | null,
-	sourceType?: string,
-	destinationType?: string,
 ): { stream: StreamData; defaults: SelectedStream } => {
 	const stream = buildBulkCommonStream(selectedStreamsInput, streamsData)
-	const defaults = buildBulkSelectedStreams(stream, sourceType, destinationType)
+	const defaults = buildBulkSelectedStreams(stream)
 	return { stream, defaults }
 }
