@@ -69,7 +69,12 @@ export const useSourceConnectionTest = () => {
 
 		const connection: TestConnectionResponse["connection_result"] | undefined =
 			result?.data?.connection_result
-		if (connection?.status !== TEST_CONNECTION_STATUS.SUCCEEDED) {
+		const checks = connection?.prerequisites ?? []
+		const requiredFailed = checks.some(c => c.required && !c.passed)
+		if (
+			connection?.status !== TEST_CONNECTION_STATUS.SUCCEEDED &&
+			!requiredFailed
+		) {
 			finish({
 				outcome: "connection_failed",
 				error: {
@@ -80,7 +85,6 @@ export const useSourceConnectionTest = () => {
 			return
 		}
 
-		const checks = connection.prerequisites ?? []
 		if (checks.length === 0) {
 			// Nothing to review (driver without CDC checks): keep the plain success flow
 			showSuccessThenPass()
