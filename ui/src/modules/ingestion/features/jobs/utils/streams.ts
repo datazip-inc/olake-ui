@@ -33,6 +33,10 @@ import {
 	StreamDifferenceRequest,
 } from "../types"
 import {
+	configuredDestinationDatabase,
+	destinationDatabaseFor,
+} from "./destination-database"
+import {
 	castFilterConditionValue,
 	validateFilter,
 	validateFilterConfig,
@@ -87,6 +91,11 @@ export const getStreamsDataFromSourceStreamsResponse = (
 		!!semver.valid(sourceVersion) &&
 		semver.gte(sourceVersion, MIN_COLUMN_SELECTION_SOURCE_VERSION)
 
+	// Computed once: streams without a database follow the one the selected entries use.
+	const configuredDatabase = configuredDestinationDatabase(
+		response.selected_streams ?? {},
+	)
+
 	// Iterate through all streams
 	response.available_streams.streams.forEach((stream: StreamData) => {
 		const namespace = stream.stream.namespace || ""
@@ -138,7 +147,7 @@ export const getStreamsDataFromSourceStreamsResponse = (
 					syncMode === SyncMode.INCREMENTAL ? cursorField : undefined,
 				destination_database:
 					matchingSelectedStream.destination_database ??
-					stream.stream.destination_database,
+					destinationDatabaseFor(stream.stream, configuredDatabase),
 				append_mode: appendMode,
 				normalization:
 					matchingSelectedStream.normalization ?? defaults.normalization,
@@ -161,7 +170,10 @@ export const getStreamsDataFromSourceStreamsResponse = (
 					stream.stream.sync_mode === SyncMode.INCREMENTAL
 						? stream.stream.cursor_field
 						: undefined,
-				destination_database: stream.stream.destination_database,
+				destination_database: destinationDatabaseFor(
+					stream.stream,
+					configuredDatabase,
+				),
 				append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported, // Default to append if either source or destination does not support upsert
 				// update_type only applies while the stream runs in upsert mode.
 				...(isDestUpsertModeSupported &&
