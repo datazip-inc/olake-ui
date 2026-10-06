@@ -3,8 +3,9 @@ import { Radio, Tooltip } from "antd"
 import clsx from "clsx"
 
 import { IngestionMode } from "../../enums"
+import { useJobConfigurationStore } from "../../stores"
 import {
-	getKafkaUpsertVersionMessage,
+	getKafkaUpsertNotSupportedMessage,
 	isSourceIngestionModeSupported,
 	isDestinationIngestionModeSupported,
 } from "../../utils/streams"
@@ -30,6 +31,9 @@ const IngestionModeSectionView = ({
 	dedupKeyCount,
 	onChange,
 }: IngestionModeSectionViewProps) => {
+	const targetQueryEngines = useJobConfigurationStore(
+		s => s.advancedSettings?.target_query_engines,
+	)
 	const isSourceUpsertSupported = isSourceIngestionModeSupported(
 		IngestionMode.UPSERT,
 		sourceType,
@@ -45,13 +49,18 @@ const IngestionModeSectionView = ({
 		destinationType,
 	)
 
-	const versionMessage = getKafkaUpsertVersionMessage(sourceType, sourceVersion)
+	const kafkaUpsertNotSupportedMessage = getKafkaUpsertNotSupportedMessage(
+		sourceType,
+		sourceVersion,
+		targetQueryEngines,
+	)
 	const noCommonDedupMessage =
 		dedupKeyCount !== undefined && dedupKeyCount === 0
 			? "No common dedup keys found."
 			: undefined
 
-	const upsertDisabledMessage = versionMessage || noCommonDedupMessage
+	const upsertDisabledMessage =
+		kafkaUpsertNotSupportedMessage || noCommonDedupMessage
 	const isUpsertDisabled = !isSourceUpsertSupported || !!upsertDisabledMessage
 
 	// Don't render if destination doesn't support upsert mode

@@ -8,6 +8,7 @@ import { StreamData } from "@/modules/ingestion/common/types"
 import StreamPanel from "./StreamPanel"
 import { IngestionMode } from "../../enums"
 import {
+	useJobConfigurationStore,
 	useJobStore,
 	useStreamSelectionStore,
 	selectSelectedStreams,
@@ -15,7 +16,7 @@ import {
 import { GroupedStreamsCollapsibleListProps } from "../../types"
 import {
 	getIngestionMode,
-	getKafkaUpsertVersionMessage,
+	getKafkaUpsertNotSupportedMessage,
 	hasGroupedStreamsStructureChanged,
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
@@ -39,6 +40,9 @@ const StreamsCollapsibleList = ({
 	)
 	const { setShowIngestionModeChangeModal, ingestionMode, setIngestionMode } =
 		useJobStore()
+	const targetQueryEngines = useJobConfigurationStore(
+		s => s.advancedSettings?.target_query_engines,
+	)
 	const [openNamespaces, setOpenNamespaces] = useState<{
 		[ns: string]: boolean
 	}>({})
@@ -285,15 +289,16 @@ const StreamsCollapsibleList = ({
 		destinationType,
 	)
 
-	const kafkaUpsertVersionMessage = getKafkaUpsertVersionMessage(
+	const kafkaUpsertNotSupportedMessage = getKafkaUpsertNotSupportedMessage(
 		sourceType,
 		sourceVersion,
+		targetQueryEngines,
 	)
 
 	const allUpsertSupported =
 		isSourceUpsertModeSupported &&
 		isDestUpsertModeSupported &&
-		!kafkaUpsertVersionMessage
+		!kafkaUpsertNotSupportedMessage
 	return (
 		<>
 			<div className="flex h-full flex-col rounded-[4px] border-gray-200">

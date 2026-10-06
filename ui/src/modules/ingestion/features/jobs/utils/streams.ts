@@ -3,6 +3,7 @@ import semver from "semver"
 import {
 	KAFKA_KEY_COLUMN,
 	KAFKA_META_COLUMNS,
+	KAFKA_UPSERT_UNSUPPORTED_QUERY_ENGINES,
 	MIN_COLUMN_SELECTION_SOURCE_VERSION,
 	MIN_JSON_FILTER_VERSION,
 	MIN_KAFKA_UPSERT_SOURCE_VERSION,
@@ -399,15 +400,26 @@ export const getDedupKeyOptions = (
 		: fields
 }
 
-export const getKafkaUpsertVersionMessage = (
+export const getKafkaUpsertNotSupportedMessage = (
 	sourceType?: string,
 	sourceVersion?: string,
+	targetQueryEngines?: string[],
 ): string | undefined => {
 	const isKafka =
 		!!sourceType &&
 		normalizeConnectorType(sourceType).toLowerCase() ===
 			SOURCE_INTERNAL_TYPES.KAFKA
 	if (!isKafka) return undefined
+
+	if (
+		targetQueryEngines?.some(engine =>
+			(KAFKA_UPSERT_UNSUPPORTED_QUERY_ENGINES as readonly string[]).includes(
+				engine.toLowerCase(),
+			),
+		)
+	) {
+		return "Upsert is not supported for this query engine."
+	}
 
 	if (!sourceVersion) {
 		return `Upsert is supported from version ${MIN_KAFKA_UPSERT_SOURCE_VERSION} onwards`
@@ -418,7 +430,7 @@ export const getKafkaUpsertVersionMessage = (
 	if (semver.gte(sourceVersion, MIN_KAFKA_UPSERT_SOURCE_VERSION)) {
 		return undefined
 	}
-	
+
 	return `Upsert is supported from version ${MIN_KAFKA_UPSERT_SOURCE_VERSION} onwards`
 }
 

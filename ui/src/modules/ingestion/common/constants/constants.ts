@@ -90,3 +90,22 @@ export const KAFKA_META_COLUMNS = new Set([
 	"_kafka_partition",
 	"_kafka_timestamp",
 ])
+
+// Engines that can read Kafka upsert (positional deletes).
+export const KAFKA_UPSERT_SUPPORTED_QUERY_ENGINES = [
+	"spark",
+	"flink",
+	"trino",
+	"presto",
+	"starrocks",
+	"hive",
+	"duckdb",
+	"athena",
+	"snowflake",
+	"bigquery",
+	"dremio",
+	"clickhouse",
+] as const
+
+// Engines that cannot read Kafka upsert. Databricks: DV only, no pos.
+export const KAFKA_UPSERT_UNSUPPORTED_QUERY_ENGINES = ["databricks"] as const
