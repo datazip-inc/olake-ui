@@ -143,6 +143,19 @@ const withUpsertTypeSynced = (
 	return stream
 }
 
+const withDedupKeys = (
+	stream: SelectedStream,
+	keys: string[],
+): SelectedStream => {
+	const next = { ...stream }
+	if (keys.length > 0) {
+		next.dedup_keys = [...keys].sort()
+	} else {
+		delete next.dedup_keys
+	}
+	return next
+}
+
 export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 	...initialState,
 
@@ -185,7 +198,6 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 							stream_name: streamName,
 							disabled: false,
 							append_mode: ingestionMode === IngestionMode.APPEND,
-							dedup_keys: [],
 							...(ingestionMode !== IngestionMode.APPEND && {
 								update_type: getDefaultUpsertTypeFor(prev.streams, stream),
 							}),
@@ -469,9 +481,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 					selected_streams: {
 						...prev.selected_streams,
 						[namespace]: prev.selected_streams[namespace].map(s =>
-							s.stream_name === streamName
-								? { ...s, dedup_keys: [...keys].sort() }
-								: s,
+							s.stream_name === streamName ? withDedupKeys(s, keys) : s,
 						),
 					},
 				},
@@ -528,8 +538,13 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 					if (config.appendMode !== undefined) {
 						newStream.append_mode = config.appendMode
 					}
-					if (config.dedupKeys !== undefined)
-						newStream.dedup_keys = [...config.dedupKeys].sort()
+					if (config.dedupKeys !== undefined) {
+						if (config.dedupKeys.length > 0) {
+							newStream.dedup_keys = [...config.dedupKeys].sort()
+						} else {
+							delete newStream.dedup_keys
+						}
+					}
 					if (config.upsertType !== undefined)
 						newStream.update_type = config.upsertType
 					if (

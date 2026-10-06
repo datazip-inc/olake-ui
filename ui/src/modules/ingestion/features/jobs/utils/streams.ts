@@ -131,7 +131,6 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				stream_name: streamName,
 				disabled: true,
 				append_mode: true, // Default to append
-				dedup_keys: [],
 				...(supportsColumnSelection && {
 					selected_columns: {
 						columns: Object.keys(stream.stream.type_schema?.properties ?? {}),
@@ -209,18 +208,27 @@ export const formatSelectedStreamsPayload = (
 				const typeSchemaProps = typeSchemaByName.get(
 					`${namespace}.${stream.stream_name}`,
 				)
-				if (!stream.filter_config || !typeSchemaProps) return stream
+				const formatted =
+					stream.filter_config && typeSchemaProps
+						? {
+								...stream,
+								// Cast each condition's value to its schema-defined native type
+								filter_config: {
+									...stream.filter_config,
+									conditions: stream.filter_config.conditions.map(cond =>
+										castFilterConditionValue(
+											cond,
+											typeSchemaProps[cond.column],
+										),
+									),
+								},
+							}
+						: stream
 
-				return {
-					...stream,
-					// Cast each condition's value to its schema-defined native type
-					filter_config: {
-						...stream.filter_config,
-						conditions: stream.filter_config.conditions.map(cond =>
-							castFilterConditionValue(cond, typeSchemaProps[cond.column]),
-						),
-					},
-				}
+				if (formatted.dedup_keys?.length) return formatted
+				const withoutEmptyDedup = { ...formatted }
+				delete withoutEmptyDedup.dedup_keys
+				return withoutEmptyDedup
 			}),
 		]),
 	)
@@ -705,7 +713,6 @@ export const buildBulkSelectedStreams = (
 		...defaultProperties,
 		stream_name: commonStream.stream.name,
 		append_mode: true,
-		dedup_keys: [],
 	}
 }
 // Returns the stream data and default selected stream data

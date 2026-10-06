@@ -21,7 +21,6 @@ export const PARTITIONING_COLUMNS = [
 // fallback defaults for streams
 export const STREAM_DEFAULTS = {
 	append_mode: true,
-	dedup_keys: [] as string[],
 	normalization: false,
 	partition_regex: "",
 	filter: "",
