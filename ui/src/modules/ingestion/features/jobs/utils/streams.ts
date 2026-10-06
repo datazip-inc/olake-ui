@@ -703,24 +703,36 @@ export const buildBulkCommonStream = (
 // Returns EMPTY_BULK_STREAM_DEFAULTS when no valid stream is provided.
 export const buildBulkSelectedStreams = (
 	commonStream: StreamData,
+	sourceType?: string,
+	destinationType?: string,
 ): SelectedStream => {
-	const { update_type: unusedUpdateType, ...defaultProperties } =
+	const upsertNotSupported =
+		!isSourceIngestionModeSupported(IngestionMode.UPSERT, sourceType) ||
+		!isDestinationIngestionModeSupported(IngestionMode.UPSERT, destinationType)
+
+	const { update_type: defaultUpsertType, ...defaultProperties } =
 		commonStream.stream.default_stream_properties ?? {}
-	void unusedUpdateType
+
+	const appendMode = upsertNotSupported
+		? true
+		: (commonStream.stream.default_stream_properties?.append_mode ?? true)
 
 	return {
 		...STREAM_DEFAULTS,
 		...defaultProperties,
 		stream_name: commonStream.stream.name,
-		append_mode: true,
+		append_mode: appendMode,
+		...(!appendMode && { update_type: defaultUpsertType }),
 	}
 }
 // Returns the stream data and default selected stream data
 export const buildBulkStreamsData = (
 	selectedStreamsInput: StreamIdentifier[],
 	streamsData: StreamsDataStructure | null,
+	sourceType?: string,
+	destinationType?: string,
 ): { stream: StreamData; defaults: SelectedStream } => {
 	const stream = buildBulkCommonStream(selectedStreamsInput, streamsData)
-	const defaults = buildBulkSelectedStreams(stream)
+	const defaults = buildBulkSelectedStreams(stream, sourceType, destinationType)
 	return { stream, defaults }
 }

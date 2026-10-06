@@ -165,8 +165,14 @@ const BulkConfigureStreamsModal = ({
 	)
 
 	const { stream: bulkStream, defaults: bulkStreamDefaults } = useMemo(
-		() => buildBulkStreamsData(bulkSelectedStreams, streamsData),
-		[selectionKey, streamsData],
+		() =>
+			buildBulkStreamsData(
+				bulkSelectedStreams,
+				streamsData,
+				sourceType,
+				destinationType,
+			),
+		[selectionKey, streamsData, sourceType, destinationType],
 	)
 
 	useEffect(() => {
