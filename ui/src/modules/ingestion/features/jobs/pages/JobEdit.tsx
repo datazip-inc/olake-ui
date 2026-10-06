@@ -5,7 +5,9 @@ import { useState, useEffect, useRef } from "react"
 import { useNavigate, Link, useParams } from "react-router-dom"
 
 import {
+	SelectedStreams,
 	StreamData,
+	StreamDifferenceResponse,
 	StreamsDataStructure,
 	Entity,
 } from "@/modules/ingestion/common/types"
@@ -34,8 +36,10 @@ import {
 } from "../stores"
 import { Job, JobBase, JobCreationSteps } from "../types"
 import {
+	buildCatalogPayload,
+	buildStreamDifferenceRequest,
+	isStreamsV2Job,
 	validateCronExpression,
-	formatSelectedStreamsPayload,
 	validateStreams,
 	queryEnginesChanged,
 	willBuildIndex,
@@ -87,7 +91,7 @@ const JobEdit: React.FC = () => {
 
 	const [nextStep, setNextStep] = useState<JobCreationSteps | null>(null)
 	const [streamDifference, setStreamDifference] =
-		useState<StreamsDataStructure | null>(null)
+		useState<StreamDifferenceResponse | null>(null)
 	const [showQueryEngineWarning, setShowQueryEngineWarning] = useState(false)
 	const [showIndexBuildWarning, setShowIndexBuildWarning] = useState(false)
 
@@ -106,7 +110,7 @@ const JobEdit: React.FC = () => {
 		reset: resetJobConfig,
 	} = useJobConfigurationStore()
 
-	const initialStreamsData = useRef<StreamsDataStructure | null>(null)
+	const initialStreamsData = useRef<SelectedStreams | null>(null)
 
 	const normalizedSourceConnector = sourceSnapshot
 		? getConnectorInLowerCase(sourceSnapshot.type)
@@ -162,14 +166,18 @@ const JobEdit: React.FC = () => {
 
 		setIsEditMode(true)
 
-		// Parse streams config
-		if (job.streams_config) {
+		// Parse streams config: v2 jobs store the entries in selected_streams_config,
+		// legacy jobs in streams_config
+		if (isStreamsV2Job(job)) {
+			try {
+				initialStreamsData.current = JSON.parse(job.selected_streams_config!)
+			} catch (e) {
+				console.error("Error parsing selected streams config:", e)
+			}
+		} else if (job.streams_config) {
 			try {
 				if (job.streams_config === "[]") {
-					initialStreamsData.current = {
-						selected_streams: {},
-						streams: [],
-					}
+					initialStreamsData.current = { selected_streams: {} }
 				} else {
 					const parsedStreamsConfig = JSON.parse(job.streams_config)
 					const streamsConfig = processStreamsConfig(parsedStreamsConfig)
@@ -249,9 +257,28 @@ const JobEdit: React.FC = () => {
 		return null
 	}
 
+	// Catalog part of the update body. streamsConfig is the store's streamsData:
+	// null means the streams store was reset (Back or step click), so no edited
+	// catalog exists and the job's stored one is resent as is, in its own format.
+	const getCatalogPayload = (streamsConfig: StreamsDataStructure | null) => {
+		if (streamsConfig) {
+			return buildCatalogPayload(
+				streamsConfig,
+				useStreamSelectionStore.getState().catalogFormat,
+			)
+		}
+		if (job && isStreamsV2Job(job)) {
+			return {
+				available_streams_config: job.available_streams_config,
+				selected_streams_config: job.selected_streams_config,
+			}
+		}
+		return { streams_config: job?.streams_config }
+	}
+
 	const getJobUpdatePayLoad = (
-		streamsConfig: StreamsDataStructure,
-		diff: StreamsDataStructure | null,
+		streamsConfig: StreamsDataStructure | null,
+		diff: StreamDifferenceResponse | null,
 	): JobBase => ({
 		name: jobName,
 		source: {
@@ -268,14 +295,13 @@ const JobEdit: React.FC = () => {
 			config: destinationSnapshot?.config || "{}",
 			version: destinationSnapshot?.version || "",
 		},
-		streams_config: JSON.stringify({
-			...streamsConfig,
-			selected_streams: formatSelectedStreamsPayload(streamsConfig),
-		}),
+		...getCatalogPayload(streamsConfig),
 		frequency: cronExpression,
 		activate: job?.activate,
 		...(diff && { difference_streams: JSON.stringify(diff) }),
-		advanced_settings: withIndexRequired(advancedSettings, streamsConfig),
+		advanced_settings: streamsConfig
+			? withIndexRequired(advancedSettings, streamsConfig)
+			: advancedSettings,
 	})
 
 	const handleStreamDifference = async () => {
@@ -299,10 +325,10 @@ const JobEdit: React.FC = () => {
 			const streamDifferenceResponse = (
 				await getStreamDifference({
 					jobId,
-					streamsConfig: JSON.stringify({
-						...streamsData,
-						selected_streams: formatSelectedStreamsPayload(streamsData),
-					}),
+					request: buildStreamDifferenceRequest(
+						streamsData,
+						useStreamSelectionStore.getState().catalogFormat,
+					),
 				})
 			)?.difference_streams
 
@@ -336,28 +362,21 @@ const JobEdit: React.FC = () => {
 	}
 
 	// Handle job submission
-	const handleJobSubmit = async (diff: StreamsDataStructure | null) => {
+	const handleJobSubmit = async (diff: StreamDifferenceResponse | null) => {
 		if (!sourceSnapshot || !destinationSnapshot || !jobId) {
 			message.error("Source and destination data are required")
 			return
 		}
 
-		// Use store data if available; fall back to initial data from job API
-		const streamsConfig = streamsData ?? initialStreamsData.current
-
-		if (!streamsConfig) {
-			message.error("No valid streams configuration found")
-			return
-		}
-
-		const submitValidationError = validateStreams(streamsConfig)
+		// Store data when the streams step ran; otherwise the stored catalog is resent
+		const submitValidationError = streamsData && validateStreams(streamsData)
 		if (submitValidationError) {
 			message.error(submitValidationError)
 			return
 		}
 		try {
 			// Create the job update payload
-			const jobUpdatePayload = getJobUpdatePayLoad(streamsConfig, diff)
+			const jobUpdatePayload = getJobUpdatePayLoad(streamsData, diff)
 
 			await updateJob({ jobId, job: jobUpdatePayload })
 			navigate("/jobs")

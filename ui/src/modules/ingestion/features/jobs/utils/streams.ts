@@ -6,10 +6,14 @@ import {
 	MIN_SOURCE_NAMING_CONVENTION_VERSION,
 } from "@/modules/ingestion/common/constants"
 import {
+	CatalogFormat,
+	DiscoverResponse,
+	SelectedStreams,
 	SelectedStreamsByNamespace,
 	StreamsDataStructure,
 	StreamData,
 	SelectedStream,
+	StreamsV2Catalog,
 	SyncMode,
 	StreamIdentifier,
 	UpsertType,
@@ -22,12 +26,18 @@ import {
 	STREAM_DEFAULTS,
 } from "../constants"
 import { IngestionMode } from "../enums"
-import { AdvancedSettings, CursorFieldValues } from "../types"
+import {
+	AdvancedSettings,
+	StreamsCatalogPayload,
+	CursorFieldValues,
+	StreamDifferenceRequest,
+} from "../types"
 import {
 	castFilterConditionValue,
 	validateFilter,
 	validateFilterConfig,
 } from "./filterUtils"
+import { fromLegacyCatalog, toLegacyStreamsConfig } from "./legacyStreams"
 
 // The catalog carries the default upsert type on the stream as
 // default_stream_properties.update_type; the selected stream stores it as
@@ -54,7 +64,7 @@ export const getDefaultUpsertTypeFor = (
  * StreamsDataStructure expected by the UI.
  */
 export const getStreamsDataFromSourceStreamsResponse = (
-	response: StreamsDataStructure,
+	response: StreamsV2Catalog,
 	destinationType?: string,
 	sourceType?: string,
 	sourceVersion?: string,
@@ -78,7 +88,7 @@ export const getStreamsDataFromSourceStreamsResponse = (
 		semver.gte(sourceVersion, MIN_COLUMN_SELECTION_SOURCE_VERSION)
 
 	// Iterate through all streams
-	response.streams.forEach((stream: StreamData) => {
+	response.available_streams.streams.forEach((stream: StreamData) => {
 		const namespace = stream.stream.namespace || ""
 		const streamName = stream.stream.name
 
@@ -94,18 +104,44 @@ export const getStreamsDataFromSourceStreamsResponse = (
 			s => s.stream_name === streamName,
 		)
 
+		const streamDefaults = stream.stream.default_stream_properties
+		const defaults = {
+			...STREAM_DEFAULTS,
+			...streamDefaults,
+		}
+
 		if (matchingSelectedStream) {
 			// Stream is selected, use the selected stream configuration
+			const appendMode =
+				matchingSelectedStream.append_mode ?? defaults.append_mode
 			const upsertMode =
-				!matchingSelectedStream.append_mode &&
-				isDestUpsertModeSupported &&
-				isSourceUpsertModeSupported
+				!appendMode && isDestUpsertModeSupported && isSourceUpsertModeSupported
+			const syncMode =
+				matchingSelectedStream.sync_mode ?? stream.stream.sync_mode
+			const cursorField =
+				matchingSelectedStream.cursor_field ?? stream.stream.cursor_field
 			const { update_type: savedUpdateType, ...selectedStreamRest } =
 				matchingSelectedStream
 
 			mergedSelectedStreams[namespace].push({
+				// Absent selected_columns means all columns; a saved value below wins.
+				...(supportsColumnSelection && {
+					selected_columns: {
+						columns: Object.keys(stream.stream.type_schema?.properties ?? {}),
+						sync_new_columns: true,
+					},
+				}),
 				...selectedStreamRest,
 				disabled: false,
+				sync_mode: syncMode,
+				cursor_field:
+					syncMode === SyncMode.INCREMENTAL ? cursorField : undefined,
+				destination_database:
+					matchingSelectedStream.destination_database ??
+					stream.stream.destination_database,
+				append_mode: appendMode,
+				normalization:
+					matchingSelectedStream.normalization ?? defaults.normalization,
 				// update_type only applies while the stream runs in upsert mode;
 				// older saved jobs carry no value, so fall back to the catalog default.
 				...(upsertMode && {
@@ -116,16 +152,16 @@ export const getStreamsDataFromSourceStreamsResponse = (
 			// Stream is not selected, use defaults from default_stream_properties
 			// Missing properties in default_stream_properties are treated as false/empty
 			// Backward compatibility: fall back to hardcoded defaults if default_stream_properties is not present (older olake versions)
-			const streamDefaults = stream.stream.default_stream_properties
-			const defaults = {
-				...STREAM_DEFAULTS,
-				...streamDefaults,
-			}
-
 			mergedSelectedStreams[namespace].push({
 				...defaults,
 				stream_name: streamName,
 				disabled: true,
+				sync_mode: stream.stream.sync_mode,
+				cursor_field:
+					stream.stream.sync_mode === SyncMode.INCREMENTAL
+						? stream.stream.cursor_field
+						: undefined,
+				destination_database: stream.stream.destination_database,
 				append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported, // Default to append if either source or destination does not support upsert
 				// update_type only applies while the stream runs in upsert mode.
 				...(isDestUpsertModeSupported &&
@@ -144,7 +180,7 @@ export const getStreamsDataFromSourceStreamsResponse = (
 	})
 
 	return {
-		streams: response.streams,
+		streams: response.available_streams.streams,
 		selected_streams: mergedSelectedStreams,
 	}
 }
@@ -227,6 +263,55 @@ export const formatSelectedStreamsPayload = (
 	)
 }
 
+// The server returns available_streams only when the source (new job) or the
+// job (existing job) is on streams v2; the frontend needs no version check.
+export const parseDiscoverResponse = (
+	response: DiscoverResponse,
+): { format: CatalogFormat; response: StreamsV2Catalog } =>
+	"available_streams" in response
+		? { format: CatalogFormat.V2, response }
+		: { format: CatalogFormat.LEGACY, response: fromLegacyCatalog(response) }
+
+// streams[] is never edited, so it is the discover output as-is.
+export const buildCatalogPayload = (
+	streamsData: StreamsDataStructure,
+	format: CatalogFormat,
+): StreamsCatalogPayload => {
+	const selectedStreams = formatSelectedStreamsPayload(streamsData)
+	if (format === CatalogFormat.LEGACY) {
+		return {
+			streams_config: toLegacyStreamsConfig(streamsData, selectedStreams),
+		}
+	}
+	return {
+		available_streams_config: JSON.stringify({ streams: streamsData.streams }),
+		selected_streams_config: JSON.stringify({
+			selected_streams: selectedStreams,
+		}),
+	}
+}
+
+// Narrows a catalog payload to its v2 member (same rule as isStreamsV2Job for a job).
+const isStreamsV2Payload = (
+	payload: StreamsCatalogPayload,
+): payload is {
+	available_streams_config: string
+	selected_streams_config: string
+} => "available_streams_config" in payload
+
+export const buildStreamDifferenceRequest = (
+	streamsData: StreamsDataStructure,
+	format: CatalogFormat,
+): StreamDifferenceRequest => {
+	const payload = buildCatalogPayload(streamsData, format)
+	return isStreamsV2Payload(payload)
+		? {
+				updated_available_streams_config: payload.available_streams_config,
+				updated_selected_streams_config: payload.selected_streams_config,
+			}
+		: { updated_streams_config: payload.streams_config }
+}
+
 // Positional deletes and delete vectors need the destination row index; equality deletes don't.
 const INDEXED_UPSERT_TYPES: UpsertType[] = [
 	UpsertType.POSITIONAL,
@@ -239,7 +324,7 @@ const usesIndexedUpsert = (stream: SelectedStream): boolean =>
 	INDEXED_UPSERT_TYPES.includes(stream.update_type)
 
 const indexedStreamIds = (
-	streamsConfig?: StreamsDataStructure | null,
+	streamsConfig?: SelectedStreams | null,
 ): Set<string> =>
 	new Set(
 		Object.entries(
@@ -252,14 +337,14 @@ const indexedStreamIds = (
 	)
 
 export const hasIndexedUpsertStream = (
-	streamsConfig?: StreamsDataStructure | null,
+	streamsConfig?: SelectedStreams | null,
 ): boolean => indexedStreamIds(streamsConfig).size > 0
 
 // True when the difference covers every enabled stream, meaning clear destination
 // runs across the whole job rather than a subset of its streams.
 export const coversAllSelectedStreams = (
 	streamsConfig: StreamsDataStructure | null | undefined,
-	streamDifference: StreamsDataStructure,
+	streamDifference: SelectedStreams,
 ): boolean => {
 	const streamIds = (selectedStreams: SelectedStreamsByNamespace) =>
 		new Set(
@@ -300,7 +385,7 @@ export const queryEnginesChanged = (
 // stream counts as new.
 export const willBuildIndex = (
 	streamsConfig: StreamsDataStructure | null | undefined,
-	savedStreamsConfig?: StreamsDataStructure | null,
+	savedStreamsConfig?: SelectedStreams | null,
 ): boolean => {
 	const alreadyIndexed = indexedStreamIds(savedStreamsConfig)
 	const nowIndexed = indexedStreamIds(streamsConfig)
@@ -312,7 +397,7 @@ export const willBuildIndex = (
 // advanced settings stays user-configured.
 export const withIndexRequired = (
 	advancedSettings: AdvancedSettings | null | undefined,
-	streamsConfig?: StreamsDataStructure | null,
+	streamsConfig?: SelectedStreams | null,
 ): AdvancedSettings => ({
 	...advancedSettings,
 	index_required: hasIndexedUpsertStream(streamsConfig),
@@ -522,7 +607,6 @@ const EMPTY_BULK_STREAM: StreamData = {
 		available_cursor_fields: [],
 		source_defined_primary_key: [],
 		supported_sync_modes: [],
-		sync_mode: SyncMode.FULL_REFRESH,
 		default_stream_properties: {
 			normalization: false,
 			append_mode: false,
@@ -542,14 +626,14 @@ const intersectArrays = (
 	}, [])
 
 // Builds a StreamData representing the intersection of all selected streams,
-// used as the basis for bulk editing.
+// used as the basis for bulk editing. Catalog metadata only; the configured
+// values (sync_mode etc.) come from buildBulkSelectedStreams.
 //
 // Intersection rules:
 // - type_schema columns: only columns present in every stream with identical types
 // - available_cursor_fields: intersection across all streams, filtered to intersected columns only
 // - source_defined_primary_key: intersection across all streams
 // - supported_sync_mode: taken from the first selected stream
-// - sync_mode: taken from the first selected stream
 // - default_stream_properties: taken from the first selected stream
 //
 // Returns EMPTY_BULK_STREAM when no valid streams are selected.
@@ -605,20 +689,6 @@ export const buildBulkCommonStream = (
 		s => s.stream.source_defined_primary_key,
 	)
 
-	const supportedModes = streams[0].stream.supported_sync_modes || []
-	const noCursorFields = intersectedCursors.length === 0
-	const noCdcSupport =
-		!supportedModes.includes(SyncMode.CDC) &&
-		!supportedModes.includes(SyncMode.STRICT_CDC)
-	// Edge case: no intersected cursors disables incremental, and if CDC/strict_cdc
-	// are also unsupported, only full_refresh is enabled. If full_refresh is also
-	// the default, the user can't interact with the radio group at all — so SyncMode
-	// never gets marked dirty and can't be bulk applied. Setting to undefined
-	// leaves no radio pre-selected, so the user must explicitly pick full_refresh,
-	// ensuring sync mode is only bulk applied when the user explicitly changes it.
-	const commonSyncMode =
-		noCursorFields && noCdcSupport ? undefined : streams[0].stream.sync_mode
-
 	return {
 		stream: {
 			name: "",
@@ -627,17 +697,18 @@ export const buildBulkCommonStream = (
 			type_schema: { properties: intersectedProperties },
 			available_cursor_fields: intersectedCursors,
 			source_defined_primary_key: intersectedPks,
-			supported_sync_modes: supportedModes,
-			sync_mode: commonSyncMode,
+			supported_sync_modes: streams[0].stream.supported_sync_modes || [],
 			default_stream_properties: streams[0].stream.default_stream_properties,
 		},
 	}
 }
 
-// Builds the default SelectedStream for a bulk edit session
+// Builds the default SelectedStream for a bulk edit session, seeded from the
+// first selected stream's entry (the configured values live there, not on the catalog).
 // Returns EMPTY_BULK_STREAM_DEFAULTS when no valid stream is provided.
 export const buildBulkSelectedStreams = (
 	commonStream: StreamData,
+	firstSelected?: SelectedStream,
 	sourceType?: string,
 	destinationType?: string,
 ): SelectedStream => {
@@ -652,6 +723,21 @@ export const buildBulkSelectedStreams = (
 
 	const appendMode = !isDestUpsertModeSupported || !isSourceUpsertModeSupported
 
+	const supportedModes = commonStream.stream.supported_sync_modes || []
+	const noCursorFields =
+		(commonStream.stream.available_cursor_fields || []).length === 0
+	const noCdcSupport =
+		!supportedModes.includes(SyncMode.CDC) &&
+		!supportedModes.includes(SyncMode.STRICT_CDC)
+	// Edge case: no intersected cursors disables incremental, and if CDC/strict_cdc
+	// are also unsupported, only full_refresh is enabled. If full_refresh is also
+	// the default, the user can't interact with the radio group at all — so SyncMode
+	// never gets marked dirty and can't be bulk applied. Setting to undefined
+	// leaves no radio pre-selected, so the user must explicitly pick full_refresh,
+	// ensuring sync mode is only bulk applied when the user explicitly changes it.
+	const syncMode =
+		noCursorFields && noCdcSupport ? undefined : firstSelected?.sync_mode
+
 	// update_type is the catalog's key for the default upsert type; it is carried
 	// on the selected stream as update_type instead.
 	const { update_type: defaultUpsertType, ...defaultProperties } =
@@ -661,6 +747,7 @@ export const buildBulkSelectedStreams = (
 		...STREAM_DEFAULTS,
 		...defaultProperties,
 		stream_name: commonStream.stream.name,
+		sync_mode: syncMode,
 		append_mode: appendMode,
 		...(!appendMode && { update_type: defaultUpsertType }),
 	}
@@ -673,6 +760,17 @@ export const buildBulkStreamsData = (
 	destinationType?: string,
 ): { stream: StreamData; defaults: SelectedStream } => {
 	const stream = buildBulkCommonStream(selectedStreamsInput, streamsData)
-	const defaults = buildBulkSelectedStreams(stream, sourceType, destinationType)
+	const first = selectedStreamsInput[0]
+	const firstSelected = first
+		? streamsData?.selected_streams[first.namespace]?.find(
+				s => s.stream_name === first.streamName,
+			)
+		: undefined
+	const defaults = buildBulkSelectedStreams(
+		stream,
+		firstSelected,
+		sourceType,
+		destinationType,
+	)
 	return { stream, defaults }
 }

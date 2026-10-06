@@ -54,7 +54,9 @@ export type StreamData = {
 		default_cursor_field?: string[]
 		available_cursor_fields?: string[]
 		cursor_field?: string
-		sync_mode: SyncMode | undefined
+		// Discovered default only; in streams v2 the configured sync mode lives on
+		// the selected_streams entry, so the catalog may omit it.
+		sync_mode?: SyncMode
 		destination_database?: string
 		destination_table?: string
 		source_defined_primary_key?: string[]
@@ -89,6 +91,9 @@ export interface SelectedStream {
 	use_source_column_names?: boolean
 	selected_columns?: SelectedColumns
 	filter_config?: FilterConfig
+	sync_mode?: SyncMode
+	cursor_field?: string
+	destination_database?: string
 }
 
 export interface FilterConfig {
@@ -99,7 +104,39 @@ export interface FilterConfig {
 export interface SelectedStreamsByNamespace {
 	[namespace: string]: SelectedStream[]
 }
+
 export interface StreamsDataStructure {
 	selected_streams: SelectedStreamsByNamespace
 	streams: StreamData[]
+}
+
+export enum CatalogFormat {
+	LEGACY = "legacy",
+	V2 = "v2",
+}
+
+export interface AvailableStreams {
+	streams: StreamData[]
+}
+
+export interface SelectedStreams {
+	selected_streams: SelectedStreamsByNamespace
+}
+
+export interface StreamsV2Catalog {
+	available_streams: AvailableStreams
+	selected_streams: SelectedStreamsByNamespace
+}
+
+// Deprecated: legacy streams.json shape, only read and written by legacyStreams.ts.
+export interface LegacyStreamsConfig {
+	streams: StreamData[]
+	selected_streams: SelectedStreamsByNamespace
+}
+
+export type DiscoverResponse = StreamsV2Catalog | LegacyStreamsConfig
+
+export interface StreamDifferenceResponse {
+	selected_streams: SelectedStreamsByNamespace
+	streams?: StreamData[]
 }

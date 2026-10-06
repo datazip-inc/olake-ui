@@ -20,8 +20,8 @@ const SyncModeSectionSingle = () => {
 	useEffect(() => {
 		if (!storeStream || !storeSelectedStream) return
 
-		const activeCursorField = storeStream.stream.cursor_field
-		const initialApiSyncMode = storeStream.stream.sync_mode
+		const activeCursorField = storeSelectedStream.cursor_field
+		const initialApiSyncMode = storeSelectedStream.sync_mode
 
 		if (initialApiSyncMode === "incremental" && !activeCursorField) {
 			const availableCursorFields =
@@ -51,8 +51,8 @@ const SyncModeSectionSingle = () => {
 	return (
 		<SyncModeSectionView
 			stream={storeStream}
-			syncMode={storeStream.stream.sync_mode}
-			cursorField={storeStream.stream.cursor_field}
+			syncMode={storeSelectedStream.sync_mode}
+			cursorField={storeSelectedStream.cursor_field}
 			onChange={(mode, cf) =>
 				updateSyncMode(
 					{

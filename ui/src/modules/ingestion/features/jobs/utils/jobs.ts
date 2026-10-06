@@ -5,7 +5,11 @@ import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
 import { CronParseResult } from "@/modules/ingestion/features/jobs/types"
 
 import { DAYS_MAP } from "../constants"
-import { JobType } from "../types"
+import { Job, JobType } from "../types"
+
+// A job stores exactly one catalog format; v2 means both split fields are set.
+export const isStreamsV2Job = (job: Job): boolean =>
+	!!job.available_streams_config && !!job.selected_streams_config
 
 export const buildConnectorPayload = (
 	entity: {

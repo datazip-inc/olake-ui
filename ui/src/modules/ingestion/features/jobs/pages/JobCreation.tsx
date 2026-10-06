@@ -48,9 +48,9 @@ import {
 } from "../stores"
 import { JobBase, JobCreationSteps } from "../types"
 import {
+	buildCatalogPayload,
 	buildConnectorPayload,
 	validateCronExpression,
-	formatSelectedStreamsPayload,
 	validateStreams,
 	willBuildIndex,
 	withIndexRequired,
@@ -237,10 +237,10 @@ const JobCreation: React.FC = () => {
 				version: destinationConnectorPayload.version,
 				config: destinationConnectorPayload.config,
 			},
-			streams_config: JSON.stringify({
-				...streamsData,
-				selected_streams: formatSelectedStreamsPayload(streamsData),
-			}),
+			...buildCatalogPayload(
+				streamsData,
+				useStreamSelectionStore.getState().catalogFormat,
+			),
 			frequency: cronExpression,
 			advanced_settings: withIndexRequired(advancedSettings, streamsData),
 		}
