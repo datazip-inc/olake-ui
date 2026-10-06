@@ -528,7 +528,9 @@ const BulkConfigureStreamsModal = ({
 															destinationType={destinationType}
 															bulkAppendMode={bulkConfig.appendMode}
 															dedupKeyCount={
-																getDedupKeyOptions(bulkStream).length
+																isKafka
+																	? getDedupKeyOptions(bulkStream).length
+																	: undefined
 															}
 														/>
 													)}
@@ -787,7 +789,9 @@ const BulkConfigureStreamsModal = ({
 																	destinationType={destinationType}
 																	bulkAppendMode={bulkConfig.appendMode}
 																	dedupKeyCount={
-																		getDedupKeyOptions(bulkStream).length
+																		isKafka
+																			? getDedupKeyOptions(bulkStream).length
+																			: undefined
 																	}
 																	onBulkIngestionModeChange={value => {
 																		setBulkConfigField("appendMode", value)
