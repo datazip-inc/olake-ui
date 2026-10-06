@@ -1,11 +1,18 @@
 import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
-import { Radio, Tooltip } from "antd"
+import { Select, Tooltip } from "antd"
 import clsx from "clsx"
 
 import { UpsertType } from "@/modules/ingestion/common/types"
 
-import { UPSERT_TYPE_OPTIONS } from "../../constants"
+import {
+	DEFAULT_AVAILABLE_UPDATE_TYPES,
+	UPSERT_TYPE_OPTIONS,
+} from "../../constants"
 import { IngestionMode } from "../../enums"
+import {
+	selectAvailableUpdateTypes,
+	useStreamSelectionStore,
+} from "../../stores"
 import {
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
@@ -38,6 +45,17 @@ const UpsertTypeSectionView = ({
 		IngestionMode.UPSERT,
 		destinationType,
 	)
+	// Sync skips a stream whose delete format the target query engines can't read,
+	// so only offer the formats discover reported as available.
+	const availableUpdateTypes =
+		useStreamSelectionStore(selectAvailableUpdateTypes) ??
+		DEFAULT_AVAILABLE_UPDATE_TYPES
+	const upsertTypeOptions = UPSERT_TYPE_OPTIONS.filter(option =>
+		availableUpdateTypes.includes(option.value),
+	)
+	const selectedUpsertTypeOption = upsertTypeOptions.find(
+		option => option.value === upsertType,
+	)
 
 	// Visible only while the stream actually runs in upsert mode.
 	if (!isDestUpsertModeSupported || !isSourceUpsertSupported) return null
@@ -66,24 +84,52 @@ const UpsertTypeSectionView = ({
 					)}
 				>
 					Specify Iceberg delete mode (for faster reads and multi query engine
-					support use positional)
+					support use positional).{" "}
+					<a
+						href="https://olake.io/docs/understanding/terminologies/olake/#upsert"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-primary underline hover:opacity-80"
+					>
+						Learn more
+					</a>
 				</div>
 			</div>
-			<Radio.Group
+			<Select
 				disabled={!isSelected}
-				className="mb-4 grid grid-cols-2 gap-4"
+				className="w-full"
 				value={upsertType}
-				onChange={e => onChange(e.target.value)}
-			>
-				{UPSERT_TYPE_OPTIONS.map(option => (
-					<Tooltip
-						key={option.value}
-						title={option.tooltip}
-					>
-						<Radio value={option.value}>{option.label}</Radio>
-					</Tooltip>
-				))}
-			</Radio.Group>
+				onChange={onChange}
+				options={upsertTypeOptions.map(option => ({
+					value: option.value,
+					label: <Tooltip title={option.tooltip}>{option.label}</Tooltip>,
+				}))}
+			/>
+			{selectedUpsertTypeOption && (
+				<div className="mb-4 mt-2 text-xs text-gray-500">
+					Iceberg format version:{" "}
+					<span className="font-medium">
+						{selectedUpsertTypeOption.icebergFormatVersion}
+					</span>
+				</div>
+			)}
+			{upsertType === UpsertType.POSITIONAL && (
+				<div className="mb-4 flex items-start gap-1.5 text-xs leading-5 text-amber-700">
+					<WarningIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
+					<span>
+						Positional deletes need a newer OLake version.{" "}
+						<a
+							href="https://olake.io/docs/understanding/terminologies/olake/#upsert"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-primary underline hover:opacity-80"
+						>
+							Check here
+						</a>{" "}
+						and upgrade (ignore if already done).
+					</span>
+				</div>
+			)}
 			{!isSelected && (
 				<div className="flex items-center gap-1 text-sm text-[#686868]">
 					<InfoIcon className="size-4" />

@@ -41,4 +41,5 @@ export interface DiscoverSourceStreamsParams {
 	job_name: string
 	job_id?: number
 	max_discover_threads?: number | null
+	target_query_engines?: string[]
 }

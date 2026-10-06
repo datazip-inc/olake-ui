@@ -1886,7 +1886,7 @@ const docTemplate = `{
         },
         "/api/v1/project/{projectid}/sources/spec": {
             "post": {
-                "description": "Retrieve the UI spec for a specific source type/version.",
+                "description": "Retrieve the UI spec for a specific source type/version, or the supported query engines when available_query_engines is set.",
                 "tags": [
                     "Sources"
                 ],
@@ -2963,9 +2963,25 @@ const docTemplate = `{
         "dto.AdvancedSettings": {
             "type": "object",
             "properties": {
+                "index_required": {
+                    "description": "IndexRequired is derived by the UI: true when any selected stream upserts\nwith positional deletes.",
+                    "type": "boolean",
+                    "example": true
+                },
                 "max_discover_threads": {
                     "type": "integer",
                     "example": 50
+                },
+                "target_query_engines": {
+                    "description": "TargetQueryEngines are the engines expected to read the destination tables. OLake\nkeeps them nowhere, so they are stored here and resent on every discover; changing\nthem requires regenerating the catalog to recompute available_update_types.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "spark",
+                        "duckdb"
+                    ]
                 }
             }
         },
@@ -3659,6 +3675,11 @@ const docTemplate = `{
                 "version"
             ],
             "properties": {
+                "available_query_engines": {
+                    "description": "AvailableQueryEngines swaps the connector UI spec for the query engines the connector\nsupports and the delete formats each can read. The response carries a null spec on\nconnector versions that predate the feature.",
+                    "type": "boolean",
+                    "example": false
+                },
                 "type": {
                     "description": "enum: postgres,mongodb,mysql,mssql,db2,s3,kafka,iceberg",
                     "type": "string",
@@ -3735,6 +3756,17 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "my-postgres-source"
+                },
+                "target_query_engines": {
+                    "description": "TargetQueryEngines are the engines expected to read the destination tables. OLake\nturns them into each stream's available_update_types; it stores nothing else, so the\nselection must be sent on every discover to stay applied.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "spark",
+                        "duckdb"
+                    ]
                 },
                 "type": {
                     "type": "string",
@@ -3916,6 +3948,10 @@ const docTemplate = `{
                 },
                 "job_id": {
                     "type": "integer"
+                },
+                "properties": {
+                    "type": "object",
+                    "additionalProperties": {}
                 },
                 "workflow_id": {
                     "type": "string"

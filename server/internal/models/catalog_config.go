@@ -3,6 +3,9 @@ package models
 // Note: not importing it from "github.com/datazip-inc/olake", as it will bring
 // unnecessary dependencies in go.mod
 
+// TODO: move the complete spec.json / spec logic to olake-fusion and deperecate / remove
+// the current spec.json & mapping logics in olake-ui.
+
 // CatalogType represents supported Iceberg catalog implementations
 type CatalogType string
 
@@ -19,12 +22,14 @@ const (
 
 type Config struct {
 	// S3-compatible Storage Configuration
-	Region             string `json:"aws_region,omitempty"`
-	AccessKey          string `json:"aws_access_key,omitempty"`
-	SecretKey          string `json:"aws_secret_key,omitempty"`
-	SessionToken       string `json:"aws_session_token,omitempty"`
-	ProfileName        string `json:"aws_profile,omitempty"`
-	NoIdentifierFields bool   `json:"no_identifier_fields"` // Needed to set true for Databricks Unity Catalog as it doesn't support identifier fields
+	Region       string `json:"aws_region,omitempty"`
+	AccessKey    string `json:"aws_access_key,omitempty"`
+	SecretKey    string `json:"aws_secret_key,omitempty"`
+	SessionToken string `json:"aws_session_token,omitempty"`
+	ProfileName  string `json:"aws_profile,omitempty"`
+	// TODO: remove NoIdentifierFields flag in both spec / mapping logics as
+	// it is unrequired by the optimization service
+	NoIdentifierFields bool `json:"no_identifier_fields"` // Needed to set true for Databricks Unity Catalog as it doesn't support identifier fields
 
 	// S3 endpoint for custom S3-compatible services (like MinIO)
 	S3Endpoint  string `json:"s3_endpoint,omitempty"`
@@ -69,6 +74,12 @@ type Config struct {
 	RestAuthType      string `json:"rest_auth_type,omitempty"`
 	RestScope         string `json:"scope,omitempty"`
 	RestCredential    string `json:"credential,omitempty"`
+
+	// GCP auth for GoogleAuthManager (e.g. BigLake). Inline SA key JSON;
+	GCPServiceAccountJSON string `json:"gcp_service_account_json,omitempty"`
+	GCPAuthScopes         string `json:"gcp_auth_scopes,omitempty"`
+	// Required by BigLake for request routing/billing (sent as the x-goog-user-project header).
+	GCPProjectID string `json:"gcp_project_id,omitempty"`
 
 	UseArrowWrites bool `json:"arrow_writes,omitempty"`
 
