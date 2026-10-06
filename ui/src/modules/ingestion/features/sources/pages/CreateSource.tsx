@@ -12,9 +12,10 @@ import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
+import { hasCdcOption, UPDATE_METHOD_CDC } from "@/common/components/form/cdc"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
-import { widgets } from "@/common/components/form/widgets"
+import { sourceFields, widgets } from "@/common/components/form/widgets"
 import {
 	ErrorLogsModal,
 	SourceTestConnectionModal,
@@ -117,6 +118,18 @@ const CreateSource: React.FC = () => {
 			handleSpecResponse(specData, setSchema, setUiSchema, "source")
 		}
 	}, [specData])
+
+	// CDC is on by default for a new source. When a spec loads, rjsf has already filled
+	// update_method with the spec's first option (Standalone for MySQL and Postgres), so
+	// anything other than CDC here is that default, not a user choice.
+	useEffect(() => {
+		if (setupType !== SETUP_TYPES.NEW || !hasCdcOption(schema)) return
+		setFormData((prev: any) =>
+			prev?.update_method?.type === UPDATE_METHOD_CDC
+				? prev
+				: { ...prev, update_method: { type: UPDATE_METHOD_CDC } },
+		)
+	}, [schema])
 
 	useEffect(() => {
 		if (specQueryError) {
@@ -404,6 +417,7 @@ const CreateSource: React.FC = () => {
 									},
 								}}
 								widgets={widgets}
+								fields={sourceFields}
 								formData={formData}
 								onChange={e => {
 									const trimmedData = trimFormDataStrings(e.formData)

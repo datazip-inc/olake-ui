@@ -17,7 +17,7 @@ import { useParams, useNavigate, Link } from "react-router-dom"
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
-import { widgets } from "@/common/components/form/widgets"
+import { sourceFields, widgets } from "@/common/components/form/widgets"
 import {
 	ErrorLogsModal,
 	SourceTestConnectionModal,
@@ -495,6 +495,7 @@ const SourceEdit: React.FC = () => {
 														},
 													}}
 													widgets={widgets}
+													fields={sourceFields}
 													formData={formData}
 													onChange={e => {
 														const trimmedData = trimFormDataStrings(e.formData)
