@@ -45,11 +45,11 @@ const IngestionModeSectionView = ({
 		destinationType,
 	)
 
-	const versionMessage = getKafkaUpsertVersionMessage(sourceType, sourceVersion);
+	const versionMessage = getKafkaUpsertVersionMessage(sourceType, sourceVersion)
 	const noCommonDedupMessage =
 		dedupKeyCount !== undefined && dedupKeyCount === 0
 			? "No common dedup keys found."
-			: undefined;
+			: undefined
 
 	const upsertDisabledMessage = versionMessage || noCommonDedupMessage
 	const isUpsertDisabled = !isSourceUpsertSupported || !!upsertDisabledMessage
@@ -99,13 +99,7 @@ const IngestionModeSectionView = ({
 				value={isAppendMode ? IngestionMode.APPEND : IngestionMode.UPSERT}
 				onChange={e => handleIngestionModeChange(e.target.value)}
 			>
-				<Tooltip
-					title={
-						isUpsertDisabled
-							? upsertTooltip
-							: undefined
-					}
-				>
+				<Tooltip title={isUpsertDisabled ? upsertTooltip : undefined}>
 					<span className="inline-block">
 						<Radio
 							value={IngestionMode.UPSERT}

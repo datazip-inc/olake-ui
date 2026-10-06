@@ -124,7 +124,7 @@ const BulkConfigureStreamsModal = ({
 	const isKafka =
 		!!sourceType &&
 		normalizeConnectorType(sourceType).toLowerCase() ===
-		SOURCE_INTERNAL_TYPES.KAFKA
+			SOURCE_INTERNAL_TYPES.KAFKA
 	const schemaTabVisible = isUseSourceColumnNamesSupported(sourceVersion)
 	const [step, setStep] = useState<BulkConfigureStep>("select-streams")
 	const [activeTab, setActiveTab] = useState<BulkConfigurationTab>("config")
@@ -256,12 +256,12 @@ const BulkConfigureStreamsModal = ({
 			}),
 			...(dirtyFields[BulkDirtyFieldKey.DedupKeys] &&
 				!bulkConfig.appendMode && {
-				dedupKeys: bulkConfig.dedupKeys,
-			}),
+					dedupKeys: bulkConfig.dedupKeys,
+				}),
 			...(dirtyFields[BulkDirtyFieldKey.UpsertType] &&
 				!bulkConfig.appendMode && {
-				upsertType: bulkConfig.upsertType,
-			}),
+					upsertType: bulkConfig.upsertType,
+				}),
 			...(dirtyFields[BulkDirtyFieldKey.Normalization] && {
 				normalization: bulkConfig.normalization,
 			}),
@@ -281,9 +281,11 @@ const BulkConfigureStreamsModal = ({
 		setStep("success")
 	}
 
-	const missingUpsertDedupKeys = isKafka &&
+	const missingUpsertDedupKeys =
+		isKafka &&
 		!bulkConfig.appendMode &&
-		(dirtyFields[BulkDirtyFieldKey.AppendMode] || dirtyFields[BulkDirtyFieldKey.DedupKeys]) &&
+		(dirtyFields[BulkDirtyFieldKey.AppendMode] ||
+			dirtyFields[BulkDirtyFieldKey.DedupKeys]) &&
 		bulkConfig.dedupKeys.length === 0
 
 	const handleRemoveSelectedStream = (streamToRemove: StreamIdentifier) => {
@@ -347,7 +349,6 @@ const BulkConfigureStreamsModal = ({
 								</Button>
 							</span>
 						</Tooltip>
-
 					</div>
 				</div>
 			)
@@ -450,9 +451,9 @@ const BulkConfigureStreamsModal = ({
 											{(isSummaryStreamsExpanded
 												? bulkSelectedStreams
 												: bulkSelectedStreams.slice(
-													0,
-													MAX_VISIBLE_SELECTED_STREAMS,
-												)
+														0,
+														MAX_VISIBLE_SELECTED_STREAMS,
+													)
 											).map(stream => {
 												const streamId = `${stream.namespace}__${stream.streamName}`
 												return (
@@ -486,7 +487,7 @@ const BulkConfigureStreamsModal = ({
 												)}
 											{isSummaryStreamsExpanded &&
 												bulkSelectedStreams.length >
-												MAX_VISIBLE_SELECTED_STREAMS && (
+													MAX_VISIBLE_SELECTED_STREAMS && (
 													<button
 														type="button"
 														onClick={() => setIsSummaryStreamsExpanded(false)}
@@ -509,46 +510,48 @@ const BulkConfigureStreamsModal = ({
 												dirtyFields[BulkDirtyFieldKey.DedupKeys] ||
 												(dirtyFields[BulkDirtyFieldKey.UpsertType] &&
 													!bulkConfig.appendMode)) && (
-													<div className={CARD_STYLE}>
-														<span className="mb-2 block text-sm font-medium text-olake-text">
-															Ingestion Settings
-														</span>
-														{dirtyFields[BulkDirtyFieldKey.SyncMode] && (
-															<SyncModeSectionBulk
-																bulkStream={bulkStream}
-																bulkSyncMode={bulkConfig.syncMode}
-																bulkCursorField={bulkConfig.cursorField}
+												<div className={CARD_STYLE}>
+													<span className="mb-2 block text-sm font-medium text-olake-text">
+														Ingestion Settings
+													</span>
+													{dirtyFields[BulkDirtyFieldKey.SyncMode] && (
+														<SyncModeSectionBulk
+															bulkStream={bulkStream}
+															bulkSyncMode={bulkConfig.syncMode}
+															bulkCursorField={bulkConfig.cursorField}
+														/>
+													)}
+													{dirtyFields[BulkDirtyFieldKey.AppendMode] && (
+														<IngestionModeSectionBulk
+															sourceType={sourceType}
+															sourceVersion={sourceVersion}
+															destinationType={destinationType}
+															bulkAppendMode={bulkConfig.appendMode}
+															dedupKeyCount={
+																getDedupKeyOptions(bulkStream).length
+															}
+														/>
+													)}
+													{isKafka &&
+														dirtyFields[BulkDirtyFieldKey.DedupKeys] &&
+														!bulkConfig.appendMode && (
+															<DedupKeysSectionBulk
+																options={getDedupKeyOptions(bulkStream)}
+																value={bulkConfig.dedupKeys}
+																isDirty
+																onChange={() => {}}
 															/>
 														)}
-														{dirtyFields[BulkDirtyFieldKey.AppendMode] && (
-															<IngestionModeSectionBulk
-																sourceType={sourceType}
-																sourceVersion={sourceVersion}
-																destinationType={destinationType}
-																bulkAppendMode={bulkConfig.appendMode}
-																dedupKeyCount={getDedupKeyOptions(bulkStream).length}
-															/>
-														)}
-														{isKafka &&
-															dirtyFields[BulkDirtyFieldKey.DedupKeys] &&
-															!bulkConfig.appendMode && (
-																<DedupKeysSectionBulk
-																	options={getDedupKeyOptions(bulkStream)}
-																	value={bulkConfig.dedupKeys}
-																	isDirty
-																	onChange={() => { }}
-																/>
-															)}
-														{dirtyFields[BulkDirtyFieldKey.UpsertType] && (
-															<UpsertTypeSectionBulk
-																sourceType={sourceType}
-																destinationType={destinationType}
-																bulkAppendMode={bulkConfig.appendMode}
-																bulkUpsertType={bulkConfig.upsertType}
-															/>
-														)}
-													</div>
-												)}
+													{dirtyFields[BulkDirtyFieldKey.UpsertType] && (
+														<UpsertTypeSectionBulk
+															sourceType={sourceType}
+															destinationType={destinationType}
+															bulkAppendMode={bulkConfig.appendMode}
+															bulkUpsertType={bulkConfig.upsertType}
+														/>
+													)}
+												</div>
+											)}
 											{dirtyFields[BulkDirtyFieldKey.Normalization] && (
 												<NormalizationSectionBulk
 													normalization={bulkConfig.normalization}
@@ -633,7 +636,7 @@ const BulkConfigureStreamsModal = ({
 												)}
 											{isSelectedStreamsExpanded &&
 												bulkSelectedStreams.length >
-												MAX_VISIBLE_SELECTED_STREAMS && (
+													MAX_VISIBLE_SELECTED_STREAMS && (
 													<button
 														type="button"
 														onClick={() => setIsSelectedStreamsExpanded(false)}
@@ -722,7 +725,7 @@ const BulkConfigureStreamsModal = ({
 													<SourceNamingConventionSectionBulk
 														isDirty={
 															dirtyFields[
-															BulkDirtyFieldKey.UseSourceColumnNames
+																BulkDirtyFieldKey.UseSourceColumnNames
 															]
 														}
 														useSourceColumnNames={
@@ -783,7 +786,9 @@ const BulkConfigureStreamsModal = ({
 																	sourceVersion={sourceVersion}
 																	destinationType={destinationType}
 																	bulkAppendMode={bulkConfig.appendMode}
-																	dedupKeyCount={getDedupKeyOptions(bulkStream).length}
+																	dedupKeyCount={
+																		getDedupKeyOptions(bulkStream).length
+																	}
 																	onBulkIngestionModeChange={value => {
 																		setBulkConfigField("appendMode", value)
 																		markDirty(BulkDirtyFieldKey.AppendMode)

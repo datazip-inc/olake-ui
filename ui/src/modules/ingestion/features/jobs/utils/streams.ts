@@ -356,11 +356,13 @@ export const validateStreams = (
 				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Upsert requires atleast one dedup key`
 			}
 			if (
-				isKafka && !sel.append_mode &&
+				isKafka &&
+				!sel.append_mode &&
 				sel.selected_columns &&
 				(sel.dedup_keys ?? []).some(
 					key => !sel.selected_columns!.columns.includes(key),
-				)) {
+				)
+			) {
 				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Dedup keys must be included in the selected schema columns`
 			}
 		}
@@ -369,30 +371,41 @@ export const validateStreams = (
 	return null
 }
 
-
 export const getDedupKeyOptions = (
 	stream: StreamData,
-	selectedStream?: SelectedStream
+	selectedStream?: SelectedStream,
 ): string[] => {
 	const props = stream.stream.type_schema?.properties ?? {}
 	const isEnabled = (name: string) =>
 		!selectedStream || isColumnEnabled(name, selectedStream)
 
 	const fields = Object.entries(props)
-		.filter(([name, p]) => !p?.olake_column && !KAFKA_META_COLUMNS.has(name) && isEnabled(name))
+		.filter(
+			([name, p]) =>
+				!p?.olake_column && !KAFKA_META_COLUMNS.has(name) && isEnabled(name),
+		)
 		.map(([name]) => name)
 
-	return KAFKA_KEY_COLUMN in props && isEnabled(KAFKA_KEY_COLUMN) ? [KAFKA_KEY_COLUMN, ...fields] : fields
+	return KAFKA_KEY_COLUMN in props && isEnabled(KAFKA_KEY_COLUMN)
+		? [KAFKA_KEY_COLUMN, ...fields]
+		: fields
 }
 
 export const getKafkaUpsertVersionMessage = (
 	sourceType?: string,
 	sourceVersion?: string,
 ): string | undefined => {
-	const isKafka = !!sourceType && normalizeConnectorType(sourceType).toLowerCase() === SOURCE_INTERNAL_TYPES.KAFKA;
-	if (!isKafka) return undefined;
+	const isKafka =
+		!!sourceType &&
+		normalizeConnectorType(sourceType).toLowerCase() ===
+			SOURCE_INTERNAL_TYPES.KAFKA
+	if (!isKafka) return undefined
 
-	if (!!sourceVersion && !!semver.valid(sourceVersion) && semver.gte(sourceVersion, MIN_KAFKA_UPSERT_SOURCE_VERSION)) {
+	if (
+		!!sourceVersion &&
+		!!semver.valid(sourceVersion) &&
+		semver.gte(sourceVersion, MIN_KAFKA_UPSERT_SOURCE_VERSION)
+	) {
 		return undefined
 	}
 	return `Upsert is available in version ${MIN_KAFKA_UPSERT_SOURCE_VERSION} and above`
@@ -452,7 +465,7 @@ export const isDestinationIngestionModeSupported = (
 	const normDestType = normalizeConnectorType(destinationType).toLowerCase()
 	const destModes =
 		DESTINATION_SUPPORTED_INGESTION_MODES[
-		normDestType as keyof typeof DESTINATION_SUPPORTED_INGESTION_MODES
+			normDestType as keyof typeof DESTINATION_SUPPORTED_INGESTION_MODES
 		]
 
 	return destModes?.some(m => m === mode) ?? false

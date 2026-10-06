@@ -71,12 +71,12 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 
 		if (selectAll) {
 			newColumns = [...new Set([...current.columns, ...visibleColumnNames])]
-
 		} else {
-			newColumns = newColumns = current.columns.filter(c =>
-				!visibleColumnNames.includes(c) ||
-				isOlakeColumn(c) ||
-				isDedupKeyLocked(c),
+			newColumns = newColumns = current.columns.filter(
+				c =>
+					!visibleColumnNames.includes(c) ||
+					isOlakeColumn(c) ||
+					isDedupKeyLocked(c),
 			)
 		}
 
@@ -97,8 +97,7 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 		)
 			return
 
-		if (!checked && isDedupKeyLocked(columnName))
-			return
+		if (!checked && isDedupKeyLocked(columnName)) return
 
 		const current = selectedStream.selected_columns
 		const newColumns = checked
@@ -239,7 +238,9 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 						: true
 					// Disabled when stream is unselected, driver is legacy, or column is locked (olake column)
 					const checkboxDisabled =
-						!isEditable || columnSchema?.olake_column === true || isDedupKeyLocked(item)
+						!isEditable ||
+						columnSchema?.olake_column === true ||
+						isDedupKeyLocked(item)
 					const checkbox = (
 						<Checkbox
 							checked={checked}
@@ -258,8 +259,7 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 									<Tooltip title="OLake generated column. It is mandatory and cannot be deselected.">
 										{checkbox}
 									</Tooltip>
-								) : 
-								isDedupKeyLocked(item) ? (
+								) : isDedupKeyLocked(item) ? (
 									<Tooltip title="Used as a dedup key. Remove it from Dedup Keys on the Config tab before excluding this column.">
 										{checkbox}
 									</Tooltip>

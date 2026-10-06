@@ -286,11 +286,14 @@ const StreamsCollapsibleList = ({
 	)
 
 	const kafkaUpsertVersionMessage = getKafkaUpsertVersionMessage(
-		sourceType, 
-		sourceVersion
+		sourceType,
+		sourceVersion,
 	)
 
-	const allUpsertSupported = isSourceUpsertModeSupported && isDestUpsertModeSupported && !kafkaUpsertVersionMessage;
+	const allUpsertSupported =
+		isSourceUpsertModeSupported &&
+		isDestUpsertModeSupported &&
+		!kafkaUpsertVersionMessage
 	return (
 		<>
 			<div className="flex h-full flex-col rounded-[4px] border-gray-200">

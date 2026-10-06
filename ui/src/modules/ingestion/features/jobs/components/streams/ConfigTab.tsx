@@ -15,7 +15,11 @@ interface ConfigTabProps {
 	destinationType?: string
 }
 
-const ConfigTab = ({ sourceType, sourceVersion, destinationType }: ConfigTabProps) => {
+const ConfigTab = ({
+	sourceType,
+	sourceVersion,
+	destinationType,
+}: ConfigTabProps) => {
 	return (
 		<div className="flex flex-col gap-4">
 			<div className={CARD_STYLE}>
