@@ -409,13 +409,16 @@ export const getKafkaUpsertVersionMessage = (
 			SOURCE_INTERNAL_TYPES.KAFKA
 	if (!isKafka) return undefined
 
-	if (
-		!!sourceVersion &&
-		!!semver.valid(sourceVersion) &&
-		semver.gte(sourceVersion, MIN_KAFKA_UPSERT_SOURCE_VERSION)
-	) {
+	if (!sourceVersion) {
+		return `Upsert is supported from version ${MIN_KAFKA_UPSERT_SOURCE_VERSION} onwards`
+	}
+	if (!semver.valid(sourceVersion)) {
 		return undefined
 	}
+	if (semver.gte(sourceVersion, MIN_KAFKA_UPSERT_SOURCE_VERSION)) {
+		return undefined
+	}
+	
 	return `Upsert is supported from version ${MIN_KAFKA_UPSERT_SOURCE_VERSION} onwards`
 }
 
