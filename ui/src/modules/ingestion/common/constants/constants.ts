@@ -80,7 +80,7 @@ export const MIN_JSON_FILTER_VERSION = "v0.6.0"
 export const MIN_SOURCE_NAMING_CONVENTION_VERSION = "v0.7.7"
 
 // Minimum Kafka source version that supports Upsert.
-export const MIN_KAFKA_UPSERT_SOURCE_VERSION = "v0.11.0"
+export const MIN_KAFKA_UPSERT_SOURCE_VERSION = "v0.11.3"
 
 export const KAFKA_KEY_COLUMN = "_kafka_key"
 
