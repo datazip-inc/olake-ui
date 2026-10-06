@@ -416,7 +416,7 @@ export const getKafkaUpsertVersionMessage = (
 	) {
 		return undefined
 	}
-	return `Upsert is available in version ${MIN_KAFKA_UPSERT_SOURCE_VERSION} and above`
+	return `Upsert is supported from version ${MIN_KAFKA_UPSERT_SOURCE_VERSION} onwards`
 }
 
 export const getIngestionMode = (
