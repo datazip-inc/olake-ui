@@ -129,7 +129,7 @@ const initialState = {
 	bulkApplyVersion: 0,
 }
 
-// update_type is only carried by streams running in upsert mode.
+// update_type and dedup_keys are only carried by streams running in upsert mode.
 // Mutates and returns the same object so callers can use it inline.
 const withUpsertTypeSynced = (
 	stream: SelectedStream,
@@ -137,6 +137,7 @@ const withUpsertTypeSynced = (
 ): SelectedStream => {
 	if (stream.append_mode) {
 		delete stream.update_type
+		delete stream.dedup_keys
 	} else if (!stream.update_type && defaultUpsertType) {
 		stream.update_type = defaultUpsertType
 	}
