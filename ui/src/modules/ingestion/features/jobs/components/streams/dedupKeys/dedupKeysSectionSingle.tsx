@@ -1,8 +1,8 @@
 import {
 	selectActiveSelectedStream,
 	selectActiveStreamData,
+	selectAvailableUpdateTypes,
 	selectIsStreamEnabled,
-	useJobConfigurationStore,
 	useStreamSelectionStore,
 } from "@/modules/ingestion/features/jobs/stores"
 import {
@@ -21,8 +21,8 @@ const DedupKeysSectionSingle = ({
 	sourceType,
 	sourceVersion,
 }: DedupKeysSectionSingleProps) => {
-	const targetQueryEngines = useJobConfigurationStore(
-		s => s.advancedSettings?.target_query_engines,
+	const availableUpdateTypes = useStreamSelectionStore(
+		selectAvailableUpdateTypes,
 	)
 	const updateDedupKeys = useStreamSelectionStore(s => s.updateDedupKeys)
 	const storeStream = useStreamSelectionStore(selectActiveStreamData)
@@ -39,7 +39,7 @@ const DedupKeysSectionSingle = ({
 		getKafkaUpsertNotSupportedMessage(
 			sourceType,
 			sourceVersion,
-			targetQueryEngines,
+			availableUpdateTypes,
 		)
 	) {
 		return null

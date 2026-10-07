@@ -25,7 +25,10 @@ import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
 import { BulkConfigureStreamsModalProps } from "@/modules/ingestion/features/jobs/types"
 
 import { CARD_STYLE } from "../../constants"
-import { useJobConfigurationStore, useStreamSelectionStore } from "../../stores"
+import {
+	selectAvailableUpdateTypes,
+	useStreamSelectionStore,
+} from "../../stores"
 import {
 	buildBulkStreamsData,
 	getDedupKeyOptions,
@@ -126,13 +129,13 @@ const BulkConfigureStreamsModal = ({
 		!!sourceType &&
 		normalizeConnectorType(sourceType).toLowerCase() ===
 			SOURCE_INTERNAL_TYPES.KAFKA
-	const targetQueryEngines = useJobConfigurationStore(
-		s => s.advancedSettings?.target_query_engines,
+	const availableUpdateTypes = useStreamSelectionStore(
+		selectAvailableUpdateTypes,
 	)
 	const kafkaUpsertBlocked = !!getKafkaUpsertNotSupportedMessage(
 		sourceType,
 		sourceVersion,
-		targetQueryEngines,
+		availableUpdateTypes,
 	)
 	const schemaTabVisible = isUseSourceColumnNamesSupported(sourceVersion)
 	const [step, setStep] = useState<BulkConfigureStep>("select-streams")

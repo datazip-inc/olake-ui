@@ -3,7 +3,10 @@ import { Radio, Tooltip } from "antd"
 import clsx from "clsx"
 
 import { IngestionMode } from "../../enums"
-import { useJobConfigurationStore } from "../../stores"
+import {
+	selectAvailableUpdateTypes,
+	useStreamSelectionStore,
+} from "../../stores"
 import {
 	getKafkaUpsertNotSupportedMessage,
 	isSourceIngestionModeSupported,
@@ -31,8 +34,8 @@ const IngestionModeSectionView = ({
 	dedupKeyCount,
 	onChange,
 }: IngestionModeSectionViewProps) => {
-	const targetQueryEngines = useJobConfigurationStore(
-		s => s.advancedSettings?.target_query_engines,
+	const availableUpdateTypes = useStreamSelectionStore(
+		selectAvailableUpdateTypes,
 	)
 	const isSourceUpsertSupported = isSourceIngestionModeSupported(
 		IngestionMode.UPSERT,
@@ -52,7 +55,7 @@ const IngestionModeSectionView = ({
 	const kafkaUpsertNotSupportedMessage = getKafkaUpsertNotSupportedMessage(
 		sourceType,
 		sourceVersion,
-		targetQueryEngines,
+		availableUpdateTypes,
 	)
 	const noCommonDedupMessage =
 		dedupKeyCount !== undefined && dedupKeyCount === 0
