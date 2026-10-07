@@ -18,12 +18,23 @@ x-signup-defaults:
 x-encryption:
   key: &encryptionKey ""
 
+x-images:
+  curl: &curlImage ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/curlimages/curl:8.21.0
+
 x-envs:
   shared: &sharedEnvs
     CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
     OLAKE_SECRET_KEY: *encryptionKey
     PERSISTENT_DIR: *hostPersistencePath
     ENABLE_OPTIMIZATION: ${ENABLE_OPTIMIZATION:-false}
+    # S3 log file storage — uncomment and fill values below to enable
+    # OLAKE_STORAGE_MODE: s3
+    # OLAKE_S3_BUCKET: ""
+    # OLAKE_S3_REGION: ""
+    # OLAKE_S3_PREFIX: ""          # optional key prefix
+    # OLAKE_S3_ENDPOINT: ""        # required for non-AWS S3 (MinIO, GCS S3 API, etc.)
+    # OLAKE_S3_ACCESS_KEY_ID: ""
+    # OLAKE_S3_SECRET_ACCESS_KEY: ""
 
 services:
   olake-ui:
@@ -70,7 +81,7 @@ services:
       start_period: 30s # Give it time to start up before first health check
 
   signup-init:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/curlimages/curl:latest
+    image: *curlImage
     container_name: olake-signup-init
     networks:
       - olake-network
@@ -335,7 +346,7 @@ services:
     stdin_open: true
 
   fusion-init:
-    image: curlimages/curl
+    image: *curlImage
     container_name: fusion-init
     profiles:
       - fusion

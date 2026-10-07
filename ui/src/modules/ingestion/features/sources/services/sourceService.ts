@@ -1,4 +1,5 @@
 import {
+	awaitOperation,
 	OperationAccepted,
 	runOperation,
 } from "@/common/services/operationsService"
@@ -14,7 +15,7 @@ import {
 } from "@/modules/ingestion/common/types"
 import { describeConnectionFailure } from "@/modules/ingestion/common/utils"
 
-/** Every request here is short now: submissions just start work, and versions is bounded server-side. */
+/** For calls that only hand work to the server and return a ticket. */
 const SUBMIT_TIMEOUT_MS = 30000
 
 export const sourceService = {
@@ -171,25 +172,31 @@ export const sourceService = {
 		type: string,
 		version: string,
 		signal?: AbortSignal,
+		available_query_engines = false,
 	) => {
 		try {
-			// The POST only starts the spec fetch; the result arrives by polling.
-			return await runOperation<SpecResponse>(
-				async () => {
-					const response = await api.post<OperationAccepted>(
-						`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/spec`,
-						{
-							type: type.toLowerCase(),
-							version,
-						},
-						{
-							timeout: SUBMIT_TIMEOUT_MS,
-							signal,
-							disableErrorNotification: true,
-						},
-					)
-					return response.data
+			// The POST only starts the spec fetch; the result arrives by polling. The one
+			// exception is a query-engine request against an image too old to support it:
+			// there is nothing to run, so the server answers 200 with the final (empty)
+			// spec straight away.
+			const response = await api.post<OperationAccepted | SpecResponse>(
+				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/spec`,
+				{
+					type: type.toLowerCase(),
+					version,
+					available_query_engines,
 				},
+				{
+					timeout: SUBMIT_TIMEOUT_MS,
+					signal,
+					disableErrorNotification: true,
+				},
+			)
+			if (response.status !== 202) {
+				return response.data as SpecResponse
+			}
+			return await awaitOperation<SpecResponse>(
+				(response.data as OperationAccepted).operation_id,
 				{ signal },
 			)
 		} catch (error: any) {
@@ -210,11 +217,11 @@ export const sourceService = {
 		job_name: string,
 		job_id?: number,
 		max_discover_threads?: number | null,
+		target_query_engines?: string[],
 		signal?: AbortSignal,
 	) => {
 		try {
-			// Discovery is the longest of these and the one a user is most likely to
-			// navigate away from, so it rejoins rather than restarting.
+			// The POST only starts discovery; the catalog arrives by polling.
 			return await runOperation<StreamsDataStructure>(
 				async () => {
 					const response = await api.post<OperationAccepted>(
@@ -227,6 +234,7 @@ export const sourceService = {
 							version,
 							config,
 							max_discover_threads,
+							target_query_engines,
 						},
 						{
 							timeout: SUBMIT_TIMEOUT_MS,

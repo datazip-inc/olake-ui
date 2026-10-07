@@ -131,13 +131,14 @@ func (s Service) GetOperationResult(ctx context.Context, projectID, operationID 
 		return nil, fmt.Errorf("failed to read operation result: %s", err)
 	}
 
-	return s.decodeOperationOutput(kind, operationID, state, output)
+	return s.decodeOperationOutput(ctx, kind, operationID, state, output)
 }
 
 // decodeOperationOutput reshapes a workflow's raw output into the response body its
 // originating endpoint has always returned. Keeping the shaping here — rather than in the
 // handler — is what keeps the payloads identical to the previous blocking API.
 func (s Service) decodeOperationOutput(
+	ctx context.Context,
 	kind temporal.OperationKind,
 	operationID string,
 	state *temporal.OperationState,
@@ -158,7 +159,7 @@ func (s Service) decodeOperationOutput(
 		}
 		// Tail the connector's own logs from the operation directory, which is named
 		// after the operation ID.
-		logs, err := utils.ReadLogs(filepath.Join(constants.DefaultConfigDir, operationID), -1, -1, "older")
+		logs, err := utils.ReadLogs(ctx, filepath.Join(constants.DefaultConfigDir, operationID), -1, -1, "older")
 		if err != nil {
 			return nil, fmt.Errorf("failed to read logs for operation %s: %s", operationID, err)
 		}

@@ -2,7 +2,7 @@ overrides:
   brace-expansion@1: ^1.1.16
   brace-expansion@2: ^2.1.2
   browserslist: ^4.28.7
-  fast-uri: 3.1.6
+  fast-uri: 3.1.7
   flatted: ^3.4.2
   form-data: 4.0.6
   glob@10: ^10.5.0

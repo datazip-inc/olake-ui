@@ -30,6 +30,8 @@ var (
 	DefaultSpecVersion               = "v0.2.0"
 	DefaultClearDestinationVersion   = "v0.3.0"
 	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
+	// DefaultQueryEnginesVersion is the first release with the query engine flags; older images reject them.
+	DefaultQueryEnginesVersion = "v0.11.0"
 
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"
@@ -41,6 +43,8 @@ var (
 
 	// command flags
 	MaxDiscoverThreadsFlag    = "--max-discover-threads"
+	AvailableQueryEnginesFlag = "--available-query-engines"
+	TargetQueryEnginesFlag    = "--target-query-engines"
 	DefaultMaxDiscoverThreads = 50
 
 	// conf keys
@@ -72,6 +76,10 @@ var (
 	EnvAppEnvironment    = "APP_ENV"
 	EnvCustomDriverImage = "CUSTOM_DRIVER_VERSION"
 
+	// job config storage
+	StorageModeS3  = "s3"
+	StorageModeNFS = "nfs"
+
 	// App environment supported values: production/development
 	AppEnvProduction  = "production"
 	AppEnvDevelopment = "development"
@@ -88,6 +96,9 @@ var (
 
 	// DefaultLogsDirection is the fallback pagination direction ("older" or "newer").
 	DefaultLogsDirection = "older"
+
+	ConnectorLogPrefix = "connector"
+	WorkerLogPrefix    = "worker"
 
 	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.

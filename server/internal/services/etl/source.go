@@ -248,6 +248,7 @@ func (s Service) GetSourceCatalog(ctx context.Context, projectID string, req *dt
 		oldStreams,
 		req.JobName,
 		req.MaxDiscoverThreads,
+		req.TargetQueryEngines,
 	)
 }
 
@@ -262,7 +263,8 @@ func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.
 }
 
 // TODO: cache spec in db for each version
-// GetSourceSpec starts a spec fetch and returns its operation ID.
+// GetSourceSpec starts a spec fetch and returns its operation ID. An empty ID means no
+// workflow was needed — see StartDriverSpecs.
 func (s Service) GetSourceSpec(ctx context.Context, projectID string, req *dto.SpecRequest) (string, error) {
-	return s.temporal.StartDriverSpecs(ctx, projectID, "", req.Type, req.Version, req.Type, req.Version)
+	return s.temporal.StartDriverSpecs(ctx, projectID, "", req.Type, req.Version, req.Type, req.Version, req.AvailableQueryEngines)
 }

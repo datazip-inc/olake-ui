@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
@@ -67,7 +68,8 @@ const (
 
 // StartDiscoverStreams starts a catalog discovery and returns its operation ID without
 // waiting for it to finish. Callers poll the operation instead of holding the request
-func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int) (string, error) {
+// open for the container run.
+func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (string, error) {
 	workflowID, err := NewOperationID(OperationDiscoverCatalog, projectID)
 	if err != nil {
 		return "", err
@@ -79,7 +81,7 @@ func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceTy
 		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
 	}
 
-	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
 		return "", fmt.Errorf("failed to setup config files: %s", err)
 	}
 
@@ -104,6 +106,11 @@ func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceTy
 
 	if streamsConfig != "" {
 		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
+	}
+
+	// OLake stores no engines, so an omitted flag means unconstrained rather than "reuse the last choice".
+	if len(targetQueryEngines) > 0 && supportsQueryEngines(version) {
+		cmdArgs = append(cmdArgs, constants.TargetQueryEnginesFlag, strings.Join(targetQueryEngines, ","))
 	}
 
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
@@ -138,7 +145,15 @@ func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceTy
 // specType and specVersion are what the caller asked for, which is not always what the
 // workflow runs: a destination spec runs inside a source connector image. They are
 // recorded on the workflow memo so the result endpoint can echo them back verbatim.
-func (t *Temporal) StartDriverSpecs(ctx context.Context, projectID, destinationType, sourceType, version, specType, specVersion string) (string, error) {
+//
+// An empty operation ID with a nil error means no workflow was started and there is
+// nothing to poll; the caller answers immediately instead.
+func (t *Temporal) StartDriverSpecs(ctx context.Context, projectID, destinationType, sourceType, version, specType, specVersion string, availableQueryEngines bool) (string, error) {
+	// An older image rejects the flag and fails the workflow, so report the feature as absent instead.
+	if availableQueryEngines && !supportsQueryEngines(version) {
+		return "", nil
+	}
+
 	workflowID, err := NewOperationID(OperationSpec, projectID)
 	if err != nil {
 		return "", err
@@ -152,7 +167,10 @@ func (t *Temporal) StartDriverSpecs(ctx context.Context, projectID, destinationT
 	cmdArgs := []string{
 		"spec",
 	}
-	if destinationType != "" {
+	// Exclusive: --available-query-engines exits before any spec file resolves, ignoring --destination-type.
+	if availableQueryEngines {
+		cmdArgs = append(cmdArgs, constants.AvailableQueryEnginesFlag)
+	} else if destinationType != "" {
 		cmdArgs = append(cmdArgs, "--destination-type", destinationType)
 	}
 
@@ -184,6 +202,11 @@ func (t *Temporal) StartDriverSpecs(ctx context.Context, projectID, destinationT
 	return workflowID, nil
 }
 
+// supportsQueryEngines reports whether the version takes the engine flags; custom builds are assumed current.
+func supportsQueryEngines(version string) bool {
+	return utils.GetCustomDriverVersion() != "" || semver.Compare(version, constants.DefaultQueryEnginesVersion) >= 0
+}
+
 // StartVerifyDriverCredentials starts a connection check and returns its operation ID
 // without waiting. The operation ID doubles as the directory name under the shared
 // config volume, which is where the check's logs land.
@@ -197,7 +220,7 @@ func (t *Temporal) StartVerifyDriverCredentials(ctx context.Context, projectID, 
 		{Name: "config.json", Data: config},
 	}
 
-	if err := SetupConfigFiles(Check, workflowID, configs); err != nil {
+	if err := SetupConfigFiles(ctx, Check, workflowID, configs); err != nil {
 		return "", fmt.Errorf("failed to setup config files: %s", err)
 	}
 
@@ -263,7 +286,7 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	}
 
 	// update schedule to use clear-destination request
-	clearReq, err := buildExecutionReqForClearDestination(job, workflowID, streamsConfig)
+	clearReq, err := buildExecutionReqForClearDestination(ctx, job, workflowID, streamsConfig)
 	if err != nil {
 		return fmt.Errorf("failed to build execution request for clear-destination: %s", err)
 	}
@@ -297,7 +320,7 @@ func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, o
 		{Name: "new_streams.json", Data: newConfig},
 	}
 
-	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
 		return "", fmt.Errorf("failed to setup config files: %s", err)
 	}
 

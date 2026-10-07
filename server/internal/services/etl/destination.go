@@ -248,5 +248,6 @@ func (s Service) GetDestinationSpec(ctx context.Context, projectID string, req *
 		return "", fmt.Errorf("failed to get driver image tags: %s", err)
 	}
 
-	return s.temporal.StartDriverSpecs(ctx, projectID, req.Type, driver, req.Version, req.Type, req.Version)
+	// The matrix describes engines, not destinations, so this endpoint always serves the destination UI spec.
+	return s.temporal.StartDriverSpecs(ctx, projectID, req.Type, driver, req.Version, req.Type, req.Version, false)
 }

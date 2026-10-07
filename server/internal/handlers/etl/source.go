@@ -303,7 +303,7 @@ func (h *Handler) GetSourceVersions(c *gin.Context) {
 
 // @Summary Get source UI spec
 // @Tags Sources
-// @Description Retrieve the UI spec for a specific source type/version.
+// @Description Retrieve the UI spec for a specific source type/version, or the supported query engines when available_query_engines is set.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.SpecRequest true "spec request data"
 // @Success 200 {object} dto.JSONResponse{data=dto.SpecResponse}
@@ -331,6 +331,16 @@ func (h *Handler) GetSourceSpec(c *gin.Context) {
 	operationID, err := h.etl.GetSourceSpec(c.Request.Context(), projectID, &req)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source spec: %s", err), err)
+		return
+	}
+	// No workflow was needed — a query-engine request against an image too old for the
+	// flag. There is nothing to poll, so answer now with the empty spec that reports the
+	// feature as absent.
+	if operationID == "" {
+		utils.SuccessResponse(c, fmt.Sprintf("source %s spec fetched successfully", req.Type), dto.SpecResponse{
+			Version: req.Version,
+			Type:    req.Type,
+		})
 		return
 	}
 	utils.AcceptedResponse(c, fmt.Sprintf("source %s spec fetch started", req.Type), dto.OperationAcceptedResponse{
