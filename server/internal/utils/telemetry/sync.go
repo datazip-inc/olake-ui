@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -223,9 +224,16 @@ func addStatsProperties(ctx context.Context, properties map[string]interface{}, 
 }
 
 func addStreamsProperties(ctx context.Context, properties map[string]interface{}, mainSyncDir string) error {
-	streamsData, err := ReadSyncJobFile(ctx, mainSyncDir, "streams.json")
+	// a split catalog keeps its selection in selected_streams.json, a legacy one in streams.json;
+	// both hold the same selected_streams object
+	filename := constants.SelectedStreamsFile
+	streamsData, err := ReadSyncJobFile(ctx, mainSyncDir, filename)
+	if errors.Is(err, fs.ErrNotExist) {
+		filename = constants.StreamsFile
+		streamsData, err = ReadSyncJobFile(ctx, mainSyncDir, filename)
+	}
 	if err != nil {
-		return fmt.Errorf("failed to read streams.json: %s", err)
+		return fmt.Errorf("failed to read %s: %s", filename, err)
 	}
 
 	var streamsConfig struct {
@@ -236,7 +244,7 @@ func addStreamsProperties(ctx context.Context, properties map[string]interface{}
 	}
 
 	if err := json.Unmarshal(streamsData, &streamsConfig); err != nil {
-		return fmt.Errorf("error unmarshalling streams.json: %s", err)
+		return fmt.Errorf("error unmarshalling %s: %s", filename, err)
 	}
 
 	normalizedCount, partitionedCount := 0, 0

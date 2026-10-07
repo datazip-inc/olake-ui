@@ -6,8 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 	"go.temporal.io/sdk/client"
@@ -80,11 +80,6 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		{Name: "config.json", Data: config},
 		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
 	}
-
-	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
-		return nil, fmt.Errorf("failed to setup config files: %s", err)
-	}
-
 	cmdArgs := []string{
 		"discover",
 		"--config",
@@ -123,7 +118,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/"+constants.StreamsFile)
 	}
 
-	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
 		return StreamsCatalog{}, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
@@ -135,14 +130,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	if err := t.discoverWorkflow(ctx, sourceType, version, workflowID, cmdArgs, constants.StreamsFile); err != nil {
 		return StreamsCatalog{}, err
 	}
-	discovered, err := readDiscoveredCatalog(workflowID)
-	if err != nil {
-		return StreamsCatalog{}, err
-	}
-	if discovered.Streams == "" {
-		return StreamsCatalog{}, fmt.Errorf("discover wrote no %s", constants.StreamsFile)
-	}
-	return discovered, nil
+	return readDiscoveredCatalog(ctx, workflowID)
 }
 
 // ConvertStreams converts a legacy streams.json into the split format with the CLI's offline
@@ -152,7 +140,7 @@ func (t *Temporal) ConvertStreams(ctx context.Context, sourceType, version, stre
 	workflowID := fmt.Sprintf("convert-streams-%s-%d", sourceType, time.Now().UnixNano())
 
 	configs := []JobConfig{{Name: constants.StreamsFile, Data: streamsConfig}}
-	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
 		return StreamsCatalog{}, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
@@ -160,7 +148,7 @@ func (t *Temporal) ConvertStreams(ctx context.Context, sourceType, version, stre
 	if err := t.discoverWorkflow(ctx, sourceType, version, workflowID, args, constants.SelectedStreamsFile); err != nil {
 		return StreamsCatalog{}, err
 	}
-	catalog, err := readDiscoveredCatalog(workflowID)
+	catalog, err := readDiscoveredCatalog(ctx, workflowID)
 	if err != nil {
 		return StreamsCatalog{}, err
 	}
@@ -191,12 +179,11 @@ func (t *Temporal) discoverWorkflow(ctx context.Context, sourceType, version, wo
 	return nil
 }
 
-// readDiscoveredCatalog reads the catalog files a discover or a conversion wrote in the workflow
-// directory, as written. A file the CLI did not write stays empty: a driver below
-// MinStreamsV2Version writes only streams.json, a newer one also writes the split files.
-func readDiscoveredCatalog(workflowID string) (StreamsCatalog, error) {
+// readDiscoveredCatalog reads the catalog files that a discover or convert workflow wrote.
+// Drivers below MinStreamsV2Version write only streams.json, so a missing file returns "".
+func readDiscoveredCatalog(ctx context.Context, workflowID string) (StreamsCatalog, error) {
 	read := func(name string) (string, error) {
-		data, err := os.ReadFile(filepath.Join(constants.DefaultConfigDir, workflowID, name))
+		data, err := storage.ReadFile(ctx, path.Join(workflowID, name))
 		if errors.Is(err, fs.ErrNotExist) {
 			return "", nil
 		}

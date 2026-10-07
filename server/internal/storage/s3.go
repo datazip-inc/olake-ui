@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"path"
 	"path/filepath"
 	"strings"
@@ -206,6 +207,10 @@ func ReadFileFromS3(ctx context.Context, workDir, relativePath string, validateJ
 		Key:    &key,
 	})
 	if err != nil {
+		var noSuchKey *s3types.NoSuchKey
+		if errors.As(err, &noSuchKey) {
+			return "", time.Time{}, fmt.Errorf("s3://%s/%s: %w", bucket, key, fs.ErrNotExist)
+		}
 		return "", time.Time{}, fmt.Errorf("failed to download %s from s3://%s/%s: %s", relativePath, bucket, key, err)
 	}
 	defer out.Body.Close()
