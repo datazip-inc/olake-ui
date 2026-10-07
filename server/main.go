@@ -37,6 +37,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
 	"github.com/datazip-inc/olake-ui/server/internal/httpserver"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 
@@ -53,15 +54,23 @@ func main() {
 		return
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	// Initialize unified AppService
-	appSvc, err := services.InitAppService(db)
+	appSvc, err := services.InitAppService(ctx, db)
 	if err != nil {
 		logger.Fatalf("Failed to initialize services: %s", err)
 		return
 	}
 	logger.Info("Application services initialized successfully")
 
-	telemetry.InitTelemetry(db)
+	if err := storage.InitStorage(ctx); err != nil {
+		logger.Fatalf("Failed to initialize storage: %s", err)
+		return
+	}
+
+	telemetry.InitTelemetry(ctx, db)
 
 	// Set Swagger Info version to match the application's runtime version.
 	if constants.AppVersion != "" {
@@ -72,9 +81,6 @@ func main() {
 	if cfg.EncryptionKey == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	api := handlers.NewHandler(appSvc, &cfg, db)
 	server := httpserver.New(&cfg, api)

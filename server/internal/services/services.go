@@ -21,7 +21,7 @@ type AppService struct {
 	opt *optimization.Service
 }
 
-func InitAppService(db *database.Database) (*AppService, error) {
+func InitAppService(ctx context.Context, db *database.Database) (*AppService, error) {
 	// Initialize ETL service
 	etlSvc, err := etl.InitService(db)
 	if err != nil {
@@ -42,7 +42,7 @@ func InitAppService(db *database.Database) (*AppService, error) {
 		}
 
 		appSvc.opt = optSvc
-		pushInstallIDToOptimization(optSvc)
+		pushInstallIDToOptimization(ctx, optSvc)
 	}
 
 	return appSvc, nil
@@ -51,8 +51,8 @@ func InitAppService(db *database.Database) (*AppService, error) {
 // pushInstallIDToOptimization tells Fusion which install id to report telemetry under. It runs in
 // the background and its failures are only logged: telemetry must never delay or break startup,
 // and the next UI start pushes the same id again.
-func pushInstallIDToOptimization(opt *optimization.Service) {
-	installID := telemetry.EnsureUserID()
+func pushInstallIDToOptimization(ctx context.Context, opt *optimization.Service) {
+	installID := telemetry.EnsureUserID(ctx)
 	if installID == "" {
 		return
 	}
