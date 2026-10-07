@@ -80,6 +80,11 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		{Name: "config.json", Data: config},
 		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
 	}
+
+	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
+		return nil, fmt.Errorf("failed to setup config files: %s", err)
+	}
+
 	cmdArgs := []string{
 		"discover",
 		"--config",
@@ -285,7 +290,7 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		{Name: "config.json", Data: config},
 	}
 
-	if err := SetupConfigFiles(Check, workflowID, configs); err != nil {
+	if err := SetupConfigFiles(ctx, Check, workflowID, configs); err != nil {
 		return nil, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
@@ -350,7 +355,7 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	}
 
 	// update schedule to use clear-destination request
-	clearReq, err := buildExecutionReqForClearDestination(job, workflowID, streamsConfig)
+	clearReq, err := buildExecutionReqForClearDestination(ctx, job, workflowID, streamsConfig)
 	if err != nil {
 		return fmt.Errorf("failed to build execution request for clear-destination: %s", err)
 	}
@@ -404,7 +409,8 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		configs = append(configs, JobConfig{Name: "new_" + constants.StreamsFile, Data: newCatalog.Streams})
 		cmdArgs = append(cmdArgs, "--difference", "/mnt/config/new_"+constants.StreamsFile)
 	}
-	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+
+	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
 		return nil, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
