@@ -2,13 +2,28 @@ import {
 	selectActiveSelectedStream,
 	selectActiveStreamData,
 	selectIsStreamEnabled,
+	useJobConfigurationStore,
 	useStreamSelectionStore,
 } from "@/modules/ingestion/features/jobs/stores"
-import { getDedupKeyOptions } from "@/modules/ingestion/features/jobs/utils/streams"
+import {
+	getDedupKeyOptions,
+	getKafkaUpsertNotSupportedMessage,
+} from "@/modules/ingestion/features/jobs/utils/streams"
 
 import DedupKeysSectionView from "./dedupKeysSectionView"
 
-const DedupKeysSectionSingle = () => {
+interface DedupKeysSectionSingleProps {
+	sourceType?: string
+	sourceVersion?: string
+}
+
+const DedupKeysSectionSingle = ({
+	sourceType,
+	sourceVersion,
+}: DedupKeysSectionSingleProps) => {
+	const targetQueryEngines = useJobConfigurationStore(
+		s => s.advancedSettings?.target_query_engines,
+	)
 	const updateDedupKeys = useStreamSelectionStore(s => s.updateDedupKeys)
 	const storeStream = useStreamSelectionStore(selectActiveStreamData)
 	const storeSelectedStream = useStreamSelectionStore(
@@ -20,6 +35,15 @@ const DedupKeysSectionSingle = () => {
 
 	if (!storeStream || !storeSelectedStream) return null
 	if (storeSelectedStream.append_mode) return null
+	if (
+		getKafkaUpsertNotSupportedMessage(
+			sourceType,
+			sourceVersion,
+			targetQueryEngines,
+		)
+	) {
+		return null
+	}
 
 	return (
 		<DedupKeysSectionView

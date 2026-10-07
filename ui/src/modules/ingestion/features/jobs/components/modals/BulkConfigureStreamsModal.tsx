@@ -25,10 +25,11 @@ import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
 import { BulkConfigureStreamsModalProps } from "@/modules/ingestion/features/jobs/types"
 
 import { CARD_STYLE } from "../../constants"
-import { useStreamSelectionStore } from "../../stores"
+import { useJobConfigurationStore, useStreamSelectionStore } from "../../stores"
 import {
 	buildBulkStreamsData,
 	getDedupKeyOptions,
+	getKafkaUpsertNotSupportedMessage,
 	isUseSourceColumnNamesSupported,
 } from "../../utils/streams"
 import BulkStreamSelectorList from "../streams/BulkStreamSelectorList"
@@ -125,6 +126,14 @@ const BulkConfigureStreamsModal = ({
 		!!sourceType &&
 		normalizeConnectorType(sourceType).toLowerCase() ===
 			SOURCE_INTERNAL_TYPES.KAFKA
+	const targetQueryEngines = useJobConfigurationStore(
+		s => s.advancedSettings?.target_query_engines,
+	)
+	const kafkaUpsertBlocked = !!getKafkaUpsertNotSupportedMessage(
+		sourceType,
+		sourceVersion,
+		targetQueryEngines,
+	)
 	const schemaTabVisible = isUseSourceColumnNamesSupported(sourceVersion)
 	const [step, setStep] = useState<BulkConfigureStep>("select-streams")
 	const [activeTab, setActiveTab] = useState<BulkConfigurationTab>("config")
@@ -289,6 +298,7 @@ const BulkConfigureStreamsModal = ({
 
 	const missingUpsertDedupKeys =
 		isKafka &&
+		!kafkaUpsertBlocked &&
 		!bulkConfig.appendMode &&
 		(dirtyFields[BulkDirtyFieldKey.AppendMode] ||
 			dirtyFields[BulkDirtyFieldKey.DedupKeys]) &&
@@ -541,6 +551,7 @@ const BulkConfigureStreamsModal = ({
 														/>
 													)}
 													{isKafka &&
+														!kafkaUpsertBlocked &&
 														dirtyFields[BulkDirtyFieldKey.DedupKeys] &&
 														!bulkConfig.appendMode && (
 															<DedupKeysSectionBulk
@@ -804,19 +815,21 @@ const BulkConfigureStreamsModal = ({
 																		markDirty(BulkDirtyFieldKey.AppendMode)
 																	}}
 																/>
-																{isKafka && !bulkConfig.appendMode && (
-																	<DedupKeysSectionBulk
-																		isDirty={
-																			dirtyFields[BulkDirtyFieldKey.DedupKeys]
-																		}
-																		options={getDedupKeyOptions(bulkStream)}
-																		value={bulkConfig.dedupKeys}
-																		onChange={keys => {
-																			setBulkConfigField("dedupKeys", keys)
-																			markDirty(BulkDirtyFieldKey.DedupKeys)
-																		}}
-																	/>
-																)}
+																{isKafka &&
+																	!kafkaUpsertBlocked &&
+																	!bulkConfig.appendMode && (
+																		<DedupKeysSectionBulk
+																			isDirty={
+																				dirtyFields[BulkDirtyFieldKey.DedupKeys]
+																			}
+																			options={getDedupKeyOptions(bulkStream)}
+																			value={bulkConfig.dedupKeys}
+																			onChange={keys => {
+																				setBulkConfigField("dedupKeys", keys)
+																				markDirty(BulkDirtyFieldKey.DedupKeys)
+																			}}
+																		/>
+																	)}
 																<UpsertTypeSectionBulk
 																	isDirty={
 																		dirtyFields[BulkDirtyFieldKey.UpsertType]
