@@ -121,7 +121,7 @@ var (
 	OptPathTableOptimizingProcesses = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes"
 	OptPathTerminalExecute          = "/api/ams/v1/terminal/catalogs/%s/execute"
 	OptPathTerminalLogs             = "/api/ams/v1/terminal/%s/logs"
-	OptPathTelemetryInstallID       = "/api/ams/v1/telemetry"
+	OptPathTelemetryInstallID       = "/api/ams/v1/telemetry/install-id"
 
 	// others
 	OptMaxTimeout         = 10 * time.Minute
