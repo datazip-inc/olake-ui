@@ -388,7 +388,7 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 // @Tags Jobs
 // @Description Compares the job's stored catalog against a submitted edit.
 // @Description Send updated_streams_config, or updated_available_streams_config + updated_selected_streams_config.
-// @Description When either side is legacy and the other is split, the legacy side is converted (source must support streams v2).
+// @Description An invalid catalog format returns 400.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   id            path    int     true    "job id"
 // @Param   body          body    dto.StreamDifferenceRequest true "stream difference data"
@@ -583,7 +583,7 @@ func (h *Handler) DownloadTaskLogs(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Download task logs initiated job_id[%d] file_path[%s]", id, filePath)
-	filename, err := utils.GetLogArchiveFilename(id, filePath)
+	filename, err := utils.GetLogArchiveFilename(c.Request.Context(), id, filePath)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, fmt.Sprintf("failed to prepare log archive: %s", err), err)
 		return
@@ -596,7 +596,7 @@ func (h *Handler) DownloadTaskLogs(c *gin.Context) {
 	// Expose Content-Disposition header so browser JS can access filename for download
 	c.Header("Access-Control-Expose-Headers", "Content-Disposition")
 
-	if err := h.etl.StreamLogArchive(id, filePath, c.Writer); err != nil {
+	if err := h.etl.StreamLogArchive(c.Request.Context(), id, filePath, c.Writer); err != nil {
 		logger.Errorf("failed to stream log archive job_id[%d]: %s", id, err)
 		return
 	}

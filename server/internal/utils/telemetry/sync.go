@@ -6,11 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
+	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
@@ -126,6 +129,9 @@ func prepareCommonProperties(info SyncEventInfo, eventType string, details *jobD
 // TrackSyncEvent sends a sync event (EventSyncStarted/Completed/Failed/Cancelled)
 func TrackSyncEvent(info SyncEventInfo, eventType string) {
 	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
 		defer func() {
 			if r := recover(); r != nil {
 				logger.Debugf("recovered panic tracking %s: %v", eventType, r)
@@ -144,12 +150,12 @@ func TrackSyncEvent(info SyncEventInfo, eventType string) {
 		// Best-effort: a missing or unparsable stats.json/streams.json must
 		// not drop the event. There's nothing to enrich yet at "started".
 		if eventType != EventSyncStarted {
-			if err := enrichWithSyncStats(properties, info.WorkflowID); err != nil {
+			if err := enrichWithSyncStats(ctx, properties, info.WorkflowID); err != nil {
 				logger.Debugf("failed to enrich %s event: %s", eventType, err)
 			}
 		}
 
-		if err := TrackEvent(context.Background(), eventType, properties); err != nil {
+		if err := TrackEvent(ctx, eventType, properties); err != nil {
 			logger.Debugf("failed to track %s event: %s", eventType, err)
 		}
 	}()
@@ -186,20 +192,19 @@ func buildProperties(info SyncEventInfo, eventType string) (map[string]interface
 	return prepareCommonProperties(info, eventType, details), nil
 }
 
-func enrichWithSyncStats(properties map[string]interface{}, workflowID string) error {
+func enrichWithSyncStats(ctx context.Context, properties map[string]interface{}, workflowID string) error {
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
 	mainSyncDir := filepath.Join(constants.DefaultConfigDir, syncFolderName)
 
-	if err := addStatsProperties(properties, mainSyncDir); err != nil {
+	if err := addStatsProperties(ctx, properties, mainSyncDir); err != nil {
 		return err
 	}
 
-	return addStreamsProperties(properties, mainSyncDir)
+	return addStreamsProperties(ctx, properties, mainSyncDir)
 }
 
-func addStatsProperties(properties map[string]interface{}, mainSyncDir string) error {
-	statsPath := filepath.Join(mainSyncDir, "stats.json")
-	statsData, err := os.ReadFile(statsPath)
+func addStatsProperties(ctx context.Context, properties map[string]interface{}, mainSyncDir string) error {
+	statsData, err := ReadSyncJobFile(ctx, mainSyncDir, "stats.json")
 	if err != nil {
 		return err
 	}
@@ -218,11 +223,17 @@ func addStatsProperties(properties map[string]interface{}, mainSyncDir string) e
 	return nil
 }
 
-func addStreamsProperties(properties map[string]interface{}, mainSyncDir string) error {
-	streamsPath := filepath.Join(mainSyncDir, "streams.json")
-	streamsData, err := os.ReadFile(streamsPath)
+func addStreamsProperties(ctx context.Context, properties map[string]interface{}, mainSyncDir string) error {
+	// a split catalog keeps its selection in selected_streams.json, a legacy one in streams.json;
+	// both hold the same selected_streams object
+	filename := constants.SelectedStreamsFile
+	streamsData, err := ReadSyncJobFile(ctx, mainSyncDir, filename)
+	if errors.Is(err, fs.ErrNotExist) {
+		filename = constants.StreamsFile
+		streamsData, err = ReadSyncJobFile(ctx, mainSyncDir, filename)
+	}
 	if err != nil {
-		return fmt.Errorf("failed to read streams.json: %s", err)
+		return fmt.Errorf("failed to read %s: %s", filename, err)
 	}
 
 	var streamsConfig struct {
@@ -233,7 +244,7 @@ func addStreamsProperties(properties map[string]interface{}, mainSyncDir string)
 	}
 
 	if err := json.Unmarshal(streamsData, &streamsConfig); err != nil {
-		return fmt.Errorf("error unmarshalling streams.json: %s", err)
+		return fmt.Errorf("error unmarshalling %s: %s", filename, err)
 	}
 
 	normalizedCount, partitionedCount := 0, 0
@@ -251,4 +262,18 @@ func addStreamsProperties(properties map[string]interface{}, mainSyncDir string)
 	properties["normalized_streams_count"] = normalizedCount
 	properties["partitioned_streams_count"] = partitionedCount
 	return nil
+}
+
+// ReadSyncJobFile reads a file from the job work dir (NFS) or the matching S3 key.
+func ReadSyncJobFile(ctx context.Context, mainSyncDir, filename string) ([]byte, error) {
+	switch storagemode.Get() {
+	case constants.StorageModeS3:
+		body, _, err := storage.ReadFileFromS3(ctx, mainSyncDir, filename, false)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(body), nil
+	default:
+		return os.ReadFile(filepath.Join(mainSyncDir, filename))
+	}
 }

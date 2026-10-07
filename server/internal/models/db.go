@@ -78,7 +78,6 @@ func (d *Destination) TableName() string {
 	return constants.TableNameMap[constants.DestinationTable]
 }
 
-// TODO_BEFORE_MERGE: confirm with team if we need to perform hard/soft delete
 // Job represents a synchronization job
 type Job struct {
 	BaseModel
@@ -88,7 +87,7 @@ type Job struct {
 	DestID                 int     `json:"dest_id" gorm:"column:dest_id"`
 	Active                 bool    `json:"active" gorm:"column:active"`
 	Frequency              string  `json:"frequency" gorm:"column:frequency;size:255"`
-	StreamsConfig          *string `json:"streams_config,omitempty" gorm:"column:streams_config;type:jsonb"`
+	StreamsConfig          *string `json:"streams_config" gorm:"column:streams_config;type:jsonb"`
 	AvailableStreamsConfig *string `json:"available_streams_config" gorm:"column:available_streams_config;type:jsonb"`
 	SelectedStreamsConfig  *string `json:"selected_streams_config" gorm:"column:selected_streams_config;type:jsonb"`
 	State                  string  `json:"state" gorm:"column:state;type:jsonb"`

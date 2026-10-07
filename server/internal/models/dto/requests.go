@@ -134,9 +134,8 @@ type UpdateJobRequest struct {
 	AdvancedSettings       *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
-// StreamDifferenceRequest carries the edited catalog in the job's format: updated_streams_config
-// for a legacy job, or updated_available_streams_config + updated_selected_streams_config for a
-// split-format job.
+// StreamDifferenceRequest carries the edited catalog in one format: updated_streams_config, or
+// updated_available_streams_config + updated_selected_streams_config.
 type StreamDifferenceRequest struct {
 	UpdatedStreamsConfig          string `json:"updated_streams_config,omitempty"`
 	UpdatedAvailableStreamsConfig string `json:"updated_available_streams_config,omitempty"`

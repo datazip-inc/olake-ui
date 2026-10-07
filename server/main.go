@@ -38,6 +38,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
 	"github.com/datazip-inc/olake-ui/server/internal/httpserver"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 
@@ -62,7 +63,15 @@ func main() {
 	}
 	logger.Info("Application services initialized successfully")
 
-	telemetry.InitTelemetry(db)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := storage.InitStorage(ctx); err != nil {
+		logger.Fatalf("Failed to initialize storage: %s", err)
+		return
+	}
+
+	telemetry.InitTelemetry(ctx, db)
 
 	// Set Swagger Info version to match the application's runtime version.
 	if constants.AppVersion != "" {
@@ -74,11 +83,8 @@ func main() {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
 	go func() {
-		if err := appSvc.ETL().ConvertLegacyJobs(ctx); err != nil {
+		if err := appSvc.ETL().ConvertLegacyJobs(ctx, nil); err != nil {
 			logger.Errorf("failed to convert legacy jobs: %s. upgrade source to version[%s] to support streams v2", err, constants.MinStreamsV2Version)
 		}
 	}()

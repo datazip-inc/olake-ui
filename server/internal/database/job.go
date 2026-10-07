@@ -188,24 +188,14 @@ func (db *Database) UpdateJob(jobID int, params map[string]any) error {
 }
 
 // ListLegacyCatalogJobs returns the jobs whose catalog is still only in the legacy
-// streams_config, with their sources.
-func (db *Database) ListLegacyCatalogJobs() ([]*models.Job, error) {
+// streams_config, with their sources. A non-nil sourceID limits it to that source's jobs.
+func (db *Database) ListLegacyCatalogJobs(sourceID *int) ([]*models.Job, error) {
+	query := db.conn.Where("available_streams_config IS NULL AND selected_streams_config IS NULL")
+	if sourceID != nil {
+		query = query.Where("source_id = ?", *sourceID)
+	}
 	var jobs []*models.Job
-	err := db.conn.
-		Where("available_streams_config IS NULL AND selected_streams_config IS NULL").
-		Preload("Source").
-		Find(&jobs).Error
-	return jobs, err
-}
-
-// ListLegacyCatalogJobsBySource is ListLegacyCatalogJobs scoped to a single source, used after a
-// source upgrade to convert only that source's jobs.
-func (db *Database) ListLegacyCatalogJobsBySource(sourceID int) ([]*models.Job, error) {
-	var jobs []*models.Job
-	err := db.conn.
-		Where("source_id = ? AND available_streams_config IS NULL AND selected_streams_config IS NULL", sourceID).
-		Preload("Source").
-		Find(&jobs).Error
+	err := query.Preload("Source").Find(&jobs).Error
 	return jobs, err
 }
 
