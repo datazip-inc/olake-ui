@@ -16,6 +16,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/storage"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 	"go.temporal.io/sdk/client"
@@ -73,7 +74,7 @@ const (
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
 // DiscoverStreams runs discover with the job's stored catalog as input; with an empty catalog,
 // discover runs fresh.
-func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config string, stored StreamsCatalog, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (StreamsCatalog, error) {
+func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config string, stored types.StreamsCatalog, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (types.StreamsCatalog, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().UnixNano())
 
 	configs := []JobConfig{
@@ -119,7 +120,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	}
 
 	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
-		return StreamsCatalog{}, fmt.Errorf("failed to setup config files: %s", err)
+		return types.StreamsCatalog{}, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
@@ -128,7 +129,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 
 	// every driver writes streams.json, so it is the file the workflow waits for
 	if err := t.discoverWorkflow(ctx, sourceType, version, workflowID, cmdArgs, constants.StreamsFile); err != nil {
-		return StreamsCatalog{}, err
+		return types.StreamsCatalog{}, err
 	}
 	return readDiscoveredCatalog(ctx, workflowID)
 }
@@ -136,24 +137,24 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 // ConvertStreams converts a legacy streams.json into the split format with the CLI's offline
 // conversion (discover --convert-streams), which reads the catalog the way every command reads a
 // --streams input and never connects to the source. It returns the split catalog it wrote.
-func (t *Temporal) ConvertStreams(ctx context.Context, sourceType, version, streamsConfig string) (StreamsCatalog, error) {
+func (t *Temporal) ConvertStreams(ctx context.Context, sourceType, version, streamsConfig string) (types.StreamsCatalog, error) {
 	workflowID := fmt.Sprintf("convert-streams-%s-%d", sourceType, time.Now().UnixNano())
 
 	configs := []JobConfig{{Name: constants.StreamsFile, Data: streamsConfig}}
 	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
-		return StreamsCatalog{}, fmt.Errorf("failed to setup config files: %s", err)
+		return types.StreamsCatalog{}, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	args := []string{"discover", "--streams", "/mnt/config/" + constants.StreamsFile, "--convert-streams"}
 	if err := t.discoverWorkflow(ctx, sourceType, version, workflowID, args, constants.SelectedStreamsFile); err != nil {
-		return StreamsCatalog{}, err
+		return types.StreamsCatalog{}, err
 	}
 	catalog, err := readDiscoveredCatalog(ctx, workflowID)
 	if err != nil {
-		return StreamsCatalog{}, err
+		return types.StreamsCatalog{}, err
 	}
 	if !catalog.IsSplit() {
-		return StreamsCatalog{}, fmt.Errorf("conversion wrote no %s and %s", constants.AvailableStreamsFile, constants.SelectedStreamsFile)
+		return types.StreamsCatalog{}, fmt.Errorf("conversion wrote no %s and %s", constants.AvailableStreamsFile, constants.SelectedStreamsFile)
 	}
 	return catalog, nil
 }
@@ -181,7 +182,7 @@ func (t *Temporal) discoverWorkflow(ctx context.Context, sourceType, version, wo
 
 // readDiscoveredCatalog reads the catalog files that a discover or convert workflow wrote.
 // Drivers below MinStreamsV2Version write only streams.json, so a missing file returns "".
-func readDiscoveredCatalog(ctx context.Context, workflowID string) (StreamsCatalog, error) {
+func readDiscoveredCatalog(ctx context.Context, workflowID string) (types.StreamsCatalog, error) {
 	read := func(name string) (string, error) {
 		data, err := storage.ReadFile(ctx, path.Join(workflowID, name))
 		if errors.Is(err, fs.ErrNotExist) {
@@ -196,19 +197,19 @@ func readDiscoveredCatalog(ctx context.Context, workflowID string) (StreamsCatal
 		return string(data), nil
 	}
 
-	var catalog StreamsCatalog
+	var catalog types.StreamsCatalog
 	var err error
 	if catalog.Streams, err = read(constants.StreamsFile); err != nil {
-		return StreamsCatalog{}, err
+		return types.StreamsCatalog{}, err
 	}
 	if catalog.Available, err = read(constants.AvailableStreamsFile); err != nil {
-		return StreamsCatalog{}, err
+		return types.StreamsCatalog{}, err
 	}
 	if catalog.Selected, err = read(constants.SelectedStreamsFile); err != nil {
-		return StreamsCatalog{}, err
+		return types.StreamsCatalog{}, err
 	}
 	if (catalog.Available == "") != (catalog.Selected == "") {
-		return StreamsCatalog{}, fmt.Errorf("%s and %s must be written together", constants.AvailableStreamsFile, constants.SelectedStreamsFile)
+		return types.StreamsCatalog{}, fmt.Errorf("%s and %s must be written together", constants.AvailableStreamsFile, constants.SelectedStreamsFile)
 	}
 	return catalog, nil
 }
@@ -365,7 +366,7 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 
 // GetStreamDifference compares the job's stored catalog with an edited one and returns the
 // difference. Each catalog is passed in its own format.
-func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, oldCatalog, newCatalog StreamsCatalog) (map[string]interface{}, error) {
+func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, oldCatalog, newCatalog types.StreamsCatalog) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("difference-%s-%d-%d", job.ProjectID, job.ID, time.Now().UnixNano())
 
 	var configs []JobConfig

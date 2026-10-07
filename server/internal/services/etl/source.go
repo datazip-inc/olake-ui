@@ -11,7 +11,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
@@ -201,7 +201,7 @@ func validateSourceDowngrade(version string, jobs []*models.Job) error {
 		return nil
 	}
 	for _, job := range jobs {
-		if job.IsStreamsV2() {
+		if job.StreamsCatalog().IsSplit() {
 			return fmt.Errorf("%w: source version %s is below %s and job_id[%d] uses the split format",
 				constants.ErrStreamsFormat, version, constants.MinStreamsV2Version, job.ID)
 		}
@@ -276,14 +276,15 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 // discovers from its stored catalog; a legacy job gets streams_config even from a driver that also
 // wrote the split files, because it keeps its format until it is converted.
 func (s Service) DiscoverCatalog(ctx context.Context, req *dto.StreamsRequest) (*dto.DiscoverCatalogResponse, error) {
-	var stored temporal.StreamsCatalog
+	var stored types.StreamsCatalog
 	legacyJob := false
 	if req.JobID >= 0 {
 		job, err := s.db.GetJobByID(req.JobID, true)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find job for catalog: %s", err)
 		}
-		stored, legacyJob = temporal.JobCatalog(job), !job.IsStreamsV2()
+		stored = job.StreamsCatalog()
+		legacyJob = !stored.IsSplit()
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)

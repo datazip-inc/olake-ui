@@ -12,7 +12,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
 )
 
 // LogEntry represents a log entry
@@ -23,7 +23,7 @@ type LogEntry struct {
 }
 
 func ReadLogs(ctx context.Context, logDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
-	switch storagemode.Get() {
+	switch storage.Mode() {
 	case constants.StorageModeS3:
 		if workRel, err := filepath.Rel(constants.DefaultConfigDir, logDir); err == nil {
 			logDir = workRel
@@ -52,7 +52,7 @@ func GetLogArchiveFilename(ctx context.Context, jobID int, filePath string) (str
 
 // GetAndValidateLogBaseDir returns the log base path for the active storage mode.
 func GetAndValidateLogBaseDir(ctx context.Context, workflowID string) (string, error) {
-	switch storagemode.Get() {
+	switch storage.Mode() {
 	case constants.StorageModeS3:
 		return GetAndValidateS3LogBaseDir(ctx, workflowID)
 	default:
@@ -62,7 +62,7 @@ func GetAndValidateLogBaseDir(ctx context.Context, workflowID string) (string, e
 
 // GetAndValidateSyncFolder returns the sync_* folder name for the active storage mode.
 func GetAndValidateSyncFolder(ctx context.Context, baseDir string) (string, error) {
-	switch storagemode.Get() {
+	switch storage.Mode() {
 	case constants.StorageModeS3:
 		return GetAndValidateS3SyncDir(ctx, baseDir)
 	default:
@@ -124,7 +124,7 @@ func parseLines(entries []LogEntry) []map[string]interface{} {
 
 // AddFilesToArchive adds state.json and the logs/ tree to the tar archive for the active storage mode.
 func AddFilesToArchive(ctx context.Context, baseDir string, tarWriter *tar.Writer) error {
-	switch storagemode.Get() {
+	switch storage.Mode() {
 	case constants.StorageModeS3:
 		return addS3FilesToArchive(ctx, baseDir, tarWriter)
 	default:

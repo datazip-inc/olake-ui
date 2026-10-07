@@ -7,14 +7,13 @@ import (
 	"path/filepath"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 )
 
 // WriteFiles writes files under relDir, a path relative to the config dir shared with the
 // worker: the NFS mount, or the matching S3 prefix.
 func WriteFiles(ctx context.Context, relDir string, files []JobConfig) error {
 	workDir := filepath.Join(constants.DefaultConfigDir, relDir)
-	if storagemode.Get() == constants.StorageModeS3 {
+	if Mode() == constants.StorageModeS3 {
 		return WriteFilesToS3(ctx, workDir, files)
 	}
 
@@ -33,7 +32,7 @@ func WriteFiles(ctx context.Context, relDir string, files []JobConfig) error {
 // ReadFile reads relPath, a path relative to the config dir shared with the worker. A missing
 // file returns an error that matches fs.ErrNotExist in both storage modes.
 func ReadFile(ctx context.Context, relPath string) ([]byte, error) {
-	if storagemode.Get() == constants.StorageModeS3 {
+	if Mode() == constants.StorageModeS3 {
 		body, _, err := ReadFileFromS3(ctx, "", relPath, false)
 		if err != nil {
 			return nil, err
