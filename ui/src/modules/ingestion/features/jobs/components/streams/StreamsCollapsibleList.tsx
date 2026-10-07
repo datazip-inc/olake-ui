@@ -299,6 +299,13 @@ const StreamsCollapsibleList = ({
 		isSourceUpsertModeSupported &&
 		isDestUpsertModeSupported &&
 		!kafkaUpsertNotSupportedMessage
+
+	useEffect(() => {
+		if (!kafkaUpsertNotSupportedMessage) return
+		setIngestionMode(IngestionMode.APPEND)
+		updateAllIngestionMode(true)
+	}, [kafkaUpsertNotSupportedMessage])
+
 	return (
 		<>
 			<div className="flex h-full flex-col rounded-[4px] border-gray-200">
