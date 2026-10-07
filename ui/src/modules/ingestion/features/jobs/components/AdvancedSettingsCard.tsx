@@ -1,9 +1,10 @@
 import { InfoIcon, SlidersIcon, WarningIcon } from "@phosphor-icons/react"
 import { InputNumber, Select, Spin, Tag, Tooltip } from "antd"
-import clsx from "clsx"
 import React from "react"
+import semver from "semver"
 
 import { restrictNumericInput } from "@/common/utils"
+import { MIN_QUERY_ENGINES_VERSION } from "@/modules/ingestion/common/constants"
 import { useAvailableQueryEngines } from "@/modules/ingestion/features/sources/hooks"
 
 import { useJobConfigurationStore } from "../stores"
@@ -11,13 +12,11 @@ import { useJobConfigurationStore } from "../stores"
 interface AdvancedSettingsCardProps {
 	sourceType?: string
 	sourceVersion?: string
-	queryEnginesDisabled?: boolean
 }
 
 const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 	sourceType,
 	sourceVersion,
-	queryEnginesDisabled = false,
 }) => {
 	const {
 		advancedSettings,
@@ -27,6 +26,11 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 		isEditMode,
 	} = useJobConfigurationStore()
 
+	const version = sourceVersion ?? selectedSource?.version ?? ""
+	// An unknown or unparsable version is treated as supported.
+	const isVersionSupported =
+		!semver.valid(version) || semver.gte(version, MIN_QUERY_ENGINES_VERSION)
+
 	const {
 		data: queryEngines = [],
 		isLoading: isLoadingQueryEngines,
@@ -35,7 +39,7 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 		refetch: refetchQueryEngines,
 	} = useAvailableQueryEngines(
 		(sourceType ?? selectedSource?.type ?? "").toLowerCase(),
-		sourceVersion ?? selectedSource?.version ?? "",
+		isVersionSupported ? version : "",
 	)
 
 	const targetQueryEngines = advancedSettings?.target_query_engines ?? []
@@ -43,11 +47,9 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 		setAdvancedSettings({ ...advancedSettings, target_query_engines })
 
 	const savedQueryEngines = savedAdvancedSettings?.target_query_engines ?? []
-	// Hidden in create mode, when query engines are disabled (job settings), or
-	// when Snowflake was already in the saved selection.
+	// Hidden in create mode, or when Snowflake was already in the saved selection.
 	const showSnowflakeWarning =
 		isEditMode &&
-		!queryEnginesDisabled &&
 		targetQueryEngines.some(
 			engine =>
 				!savedQueryEngines.includes(engine) &&
@@ -62,7 +64,8 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 					Advanced Settings
 				</span>
 			</div>
-			{(isLoadingQueryEngines ||
+			{(!isVersionSupported ||
+				isLoadingQueryEngines ||
 				isQueryEnginesError ||
 				queryEngines.length > 0) && (
 				<div className="mb-6 border-b border-olake-border pb-6">
@@ -71,20 +74,20 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 							<label className="text-sm text-gray-600">
 								Target Query Engines
 							</label>
-							<Tooltip
-								title={
-									queryEnginesDisabled
-										? "To change these, open Edit Streams, go back to Job Config, then select Next to re-discover streams."
-										: "Query engines that will query the tables written by this job."
-								}
-							>
+							<Tooltip title="Query engines that will query the tables written by this job.">
 								<InfoIcon
 									size={16}
 									className="cursor-help text-slate-900"
 								/>
 							</Tooltip>
 						</div>
-						{isLoadingQueryEngines ? (
+						{!isVersionSupported ? (
+							<div className="flex items-center gap-2 text-sm text-gray-500">
+								<InfoIcon className="size-4 shrink-0" />
+								Upgrade your source version to {MIN_QUERY_ENGINES_VERSION} or
+								later to use this option.
+							</div>
+						) : isLoadingQueryEngines ? (
 							<div className="flex items-center gap-x-2">
 								<Spin size="small" />
 								<span className="">Fetching available query engines</span>
@@ -108,7 +111,6 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 								className="w-full"
 								placeholder="Select Query Engines"
 								loading={isFetchingQueryEngines}
-								disabled={queryEnginesDisabled}
 								maxTagCount="responsive"
 								maxTagPlaceholder={omitted => `+${omitted.length} more`}
 								value={targetQueryEngines}
@@ -123,12 +125,7 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 										// Keeps the dropdown from toggling when the tag is closed.
 										onMouseDown={event => event.preventDefault()}
 										onClose={onClose}
-										className={clsx(
-											"mr-1 rounded font-medium",
-											queryEnginesDisabled
-												? "border-neutral-disabled bg-neutral-light text-gray-500"
-												: "border-primary-100 bg-primary-50 text-brand-blue",
-										)}
+										className="mr-1 rounded border-primary-100 bg-primary-50 font-medium text-brand-blue"
 									>
 										{label}
 									</Tag>

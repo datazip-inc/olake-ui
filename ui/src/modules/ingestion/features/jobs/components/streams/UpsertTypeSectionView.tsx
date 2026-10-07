@@ -83,8 +83,7 @@ const UpsertTypeSectionView = ({
 						!isSelected ? "text-gray-500" : "text-neutral-700",
 					)}
 				>
-					Specify Iceberg delete mode (for faster reads and multi query engine
-					support use positional).{" "}
+					Specify Iceberg delete mode.{" "}
 					<a
 						href="https://olake.io/docs/understanding/terminologies/olake/#upsert"
 						target="_blank"
@@ -113,11 +112,15 @@ const UpsertTypeSectionView = ({
 					</span>
 				</div>
 			)}
-			{upsertType === UpsertType.POSITIONAL && (
+			{(upsertType === UpsertType.POSITIONAL ||
+				upsertType === UpsertType.DELETION_VECTOR) && (
 				<div className="mb-4 flex items-start gap-1.5 text-xs leading-5 text-amber-700">
 					<WarningIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
 					<span>
-						Positional deletes need a newer OLake version.{" "}
+						{upsertType === UpsertType.POSITIONAL
+							? "Positional deletes"
+							: "Deletion vectors"}{" "}
+						need a newer OLake version.{" "}
 						<a
 							href="https://olake.io/docs/understanding/terminologies/olake/#upsert"
 							target="_blank"
