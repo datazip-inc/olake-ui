@@ -35,6 +35,8 @@ var (
 	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
 	// TODO(BEFORE_MERGE): set to the release that ships streams v2
 	MinStreamsV2Version = "v0.11.0"
+	// StreamsMigrationConcurrency bounds the conversion workflows a streams migration runs at once
+	StreamsMigrationConcurrency = 8
 
 	StreamsFile          = "streams.json"
 	AvailableStreamsFile = "available_streams.json"

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
@@ -462,51 +463,52 @@ func validateStreamsFormat(streamsConfig, available, selected, sourceVersion str
 	return nil
 }
 
-// ConvertLegacyJobs converts, one at a time, the legacy jobs whose source reads the split format:
-// every such job at startup, or one source's jobs (sourceID) after a source upgrade.
-// A job that fails stays legacy and runs as before.
-func (s Service) ConvertLegacyJobs(ctx context.Context, sourceID *int) error {
+// ConvertLegacyJobs migrates legacy (Streams V1) jobs to the split format.
+func (s Service) ConvertLegacyJobs(ctx context.Context) error {
 	logger.Infof("Converting legacy jobs to the split format...")
-	jobs, err := s.db.ListLegacyCatalogJobs(sourceID)
+	jobs, err := s.db.ListLegacyCatalogJobs()
 	if err != nil {
 		return fmt.Errorf("streams conversion: failed to list legacy jobs: %s", err)
 	}
-	return s.convertLegacyJobs(ctx, jobs)
-}
 
-// convertLegacyJobs converts each legacy job to the split format, one at a time. The guarded
-// write in SetStreamsV2Catalog skips a job that was saved or deleted meanwhile.
-func (s Service) convertLegacyJobs(ctx context.Context, jobs []*models.Job) error {
+	var supported []*models.Job
 	for _, job := range jobs {
-		if ctx.Err() != nil {
-			return fmt.Errorf("streams conversion: context cancelled: %s", ctx.Err())
+		if utils.SupportsStreamsV2(job.Source.Version) {
+			supported = append(supported, job)
 		}
-		if job.Source == nil {
-			logger.Warnf("streams conversion: job_id[%d] has no source, skipping", job.ID)
-			continue
-		}
-		if !utils.SupportsStreamsV2(job.Source.Version) {
-			continue
-		}
-		legacyCatalog := utils.StringValue(job.StreamsConfig)
-		available, selected, err := s.ConvertCatalog(ctx, job.Source.Type, job.Source.Version, legacyCatalog)
-		if err != nil {
+	}
+	err = utils.ForEachConcurrently(ctx, supported, constants.StreamsMigrationConcurrency, func(ctx context.Context, _ int, job *models.Job) error {
+		if err := s.convertLegacyJob(ctx, job); err != nil {
 			logger.Warnf("streams conversion: job_id[%d] stays legacy: %s", job.ID, err)
-			continue
+			telemetry.TrackStreamsMigrationFailure(ctx, telemetry.MigrationTriggerStartup, job.Source, 1, err)
 		}
-		updated, err := s.db.SetStreamsV2Catalog(job.ID, legacyCatalog, available, selected)
-		if err != nil {
-			logger.Warnf("streams conversion: job_id[%d] failed to store the split catalog: %s", job.ID, err)
-			continue
-		}
-		if !updated {
-			logger.Infof("streams conversion: job_id[%d] changed during conversion, skipping", job.ID)
-			continue
-		}
-		logger.Infof("Job %d converted to the split format successfully", job.ID)
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("streams conversion: context cancelled: %s", err)
 	}
 
 	logger.Infof("supported legacy jobs converted to the split format")
+	return nil
+}
+
+// convertLegacyJob converts one job and stores its split catalog. A job edited or deleted meanwhile
+// is skipped, not failed.
+func (s Service) convertLegacyJob(ctx context.Context, job *models.Job) error {
+	legacy := utils.StringValue(job.StreamsConfig)
+	catalog, err := s.temporal.ConvertStreams(ctx, job.ID, job.Source.Type, job.Source.Version, legacy)
+	if err != nil {
+		return fmt.Errorf("failed to convert streams: %s", err)
+	}
+	updated, err := s.db.SetStreamsV2Catalog(database.ConvertedCatalog{JobID: job.ID, From: legacy, Available: catalog.Available, Selected: catalog.Selected})
+	if err != nil {
+		return fmt.Errorf("failed to store the split catalog: %s", err)
+	}
+	if !updated {
+		logger.Infof("streams conversion: job_id[%d] changed during conversion, skipping", job.ID)
+		return nil
+	}
+	logger.Infof("Job %d converted to the split format successfully", job.ID)
 	return nil
 }
 

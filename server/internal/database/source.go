@@ -97,18 +97,30 @@ func (db *Database) GetSourceByID(id int) (*models.Source, error) {
 	return &source, nil
 }
 
-func (db *Database) UpdateSource(source *models.Source) error {
+func (db *Database) UpdateSource(source *models.Source, catalogs []ConvertedCatalog) error {
 	// Encrypt config before saving
 	eConfig, err := utils.Encrypt(source.Config)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt source config id[%d]: %s", source.ID, err)
 	}
 	source.Config = eConfig
-	return db.conn.
-		Model(&models.Source{}).
-		Where("id = ?", source.ID).
-		Select("name", "type", "version", "config", "updated_by_id").
-		Updates(source).Error
+
+	return db.conn.Transaction(func(tx *gorm.DB) error {
+		txDB := &Database{conn: tx}
+		for _, catalog := range catalogs {
+			updated, err := txDB.SetStreamsV2Catalog(catalog)
+			if err != nil {
+				return fmt.Errorf("failed to store the split catalog of job_id[%d]: %s", catalog.JobID, err)
+			}
+			if !updated {
+				return fmt.Errorf("job_id[%d] changed during the migration", catalog.JobID)
+			}
+		}
+		return tx.Model(&models.Source{}).
+			Where("id = ?", source.ID).
+			Select("name", "type", "version", "config", "updated_by_id").
+			Updates(source).Error
+	})
 }
 
 func (db *Database) DeleteSource(id int) error {

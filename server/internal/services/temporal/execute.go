@@ -137,8 +137,8 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 // ConvertStreams converts a legacy streams.json into the split format with the CLI's offline
 // conversion (discover --convert-streams), which reads the catalog the way every command reads a
 // --streams input and never connects to the source. It returns the split catalog it wrote.
-func (t *Temporal) ConvertStreams(ctx context.Context, sourceType, version, streamsConfig string) (types.StreamsCatalog, error) {
-	workflowID := fmt.Sprintf("convert-streams-%s-%d", sourceType, time.Now().UnixNano())
+func (t *Temporal) ConvertStreams(ctx context.Context, jobID int, sourceType, version, streamsConfig string) (types.StreamsCatalog, error) {
+	workflowID := fmt.Sprintf("convert-streams-%s-%d-%d", sourceType, jobID, time.Now().UnixNano())
 
 	configs := []JobConfig{{Name: constants.StreamsFile, Data: streamsConfig}}
 	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {

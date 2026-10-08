@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
-	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 )
 
@@ -157,6 +157,7 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 		return fmt.Errorf("failed to get source: %s", err)
 	}
 
+	prevVersion := existing.Version
 	existing.Name = req.Name
 	existing.Config = req.Config
 	existing.Type = req.Type
@@ -175,19 +176,41 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 		return err
 	}
 
+	// A version upgrade migrates the source's legacy jobs, constants.StreamsMigrationConcurrency at a
+	// time: if any job fails to migrate, nothing is migrated and the source is not updated.
+	var catalogs []database.ConvertedCatalog
+	if utils.SupportsStreamsV2(existing.Version) && existing.Version != prevVersion {
+		var legacyJobs []*models.Job
+		for _, job := range jobs {
+			if !job.StreamsCatalog().IsSplit() {
+				legacyJobs = append(legacyJobs, job)
+			}
+		}
+		catalogs = make([]database.ConvertedCatalog, len(legacyJobs))
+		err := utils.ForEachConcurrently(ctx, legacyJobs, constants.StreamsMigrationConcurrency, func(ctx context.Context, i int, job *models.Job) error {
+			legacy := utils.StringValue(job.StreamsConfig)
+			catalog, err := s.temporal.ConvertStreams(ctx, job.ID, existing.Type, existing.Version, legacy)
+			if err != nil {
+				return fmt.Errorf("job_id[%d] could not be migrated to the split streams format: %s", job.ID, err)
+			}
+			catalogs[i] = database.ConvertedCatalog{JobID: job.ID, From: legacy, Available: catalog.Available, Selected: catalog.Selected}
+			return nil
+		})
+		if err != nil {
+			telemetry.TrackStreamsMigrationFailure(ctx, telemetry.MigrationTriggerSourceUpgrade, existing, len(legacyJobs), err)
+			return fmt.Errorf("source version upgrade aborted: %s", err)
+		}
+	}
+
 	if err := cancelAllJobWorkflows(ctx, s.temporal, jobs, projectID); err != nil {
 		return fmt.Errorf("failed to cancel workflows for source update: %s", err)
 	}
 
-	if err := s.db.UpdateSource(existing); err != nil {
-		return fmt.Errorf("failed to update source: %s", err)
-	}
-
-	// An upgrade can make this source's legacy jobs convertible
-	if utils.SupportsStreamsV2(existing.Version) {
-		if err := s.ConvertLegacyJobs(ctx, &existing.ID); err != nil {
-			logger.Errorf("failed to convert legacy jobs after source upgrade source_id[%d]: %s", existing.ID, err)
+	if err := s.db.UpdateSource(existing, catalogs); err != nil {
+		if len(catalogs) > 0 {
+			telemetry.TrackStreamsMigrationFailure(ctx, telemetry.MigrationTriggerSourceUpgrade, existing, len(catalogs), err)
 		}
+		return fmt.Errorf("failed to update source: %s", err)
 	}
 
 	telemetry.TrackSourcesStatus(ctx)
@@ -301,17 +324,6 @@ func (s Service) DiscoverCatalog(ctx context.Context, req *dto.StreamsRequest) (
 		return &dto.DiscoverCatalogResponse{AvailableStreams: json.RawMessage(catalog.Available), SelectedStreams: json.RawMessage(catalog.Selected)}, nil
 	}
 	return &dto.DiscoverCatalogResponse{StreamsConfig: json.RawMessage(catalog.Streams)}, nil
-}
-
-// ConvertCatalog converts a legacy streams_config into the split format (available_streams.json
-// and selected_streams.json) with the CLI of the given source type and version, without
-// connecting to the source.
-func (s Service) ConvertCatalog(ctx context.Context, sourceType, version, streamsConfig string) (available, selected string, err error) {
-	catalog, err := s.temporal.ConvertStreams(ctx, sourceType, version, streamsConfig)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to convert streams: %s", err)
-	}
-	return catalog.Available, catalog.Selected, nil
 }
 
 func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {

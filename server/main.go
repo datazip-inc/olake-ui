@@ -82,9 +82,10 @@ func main() {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
 
+	// TODO: make the startup migration synchronous in a later version.
 	go func() {
-		if err := appSvc.ETL().ConvertLegacyJobs(ctx, nil); err != nil {
-			logger.Errorf("failed to convert legacy jobs: %s. upgrade source to version[%s] to support streams v2", err, constants.MinStreamsV2Version)
+		if err := appSvc.ETL().ConvertLegacyJobs(ctx); err != nil {
+			logger.Errorf("failed to migrate legacy jobs to streams v2: %s", err)
 		}
 	}()
 
