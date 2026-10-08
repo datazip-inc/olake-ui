@@ -365,37 +365,20 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, diff t
 }
 
 // GetStreamDifference compares the job's stored catalog with an edited one and returns the
-// difference. Each catalog is passed in its own format.
+// difference. Each catalog is passed in its own format. For a split new catalog OLake writes
+// difference_available_streams.json and difference_selected_streams.json; only the selected one is returned.
 func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, oldCatalog, newCatalog types.StreamsCatalog) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("difference-%s-%d-%d", job.ProjectID, job.ID, time.Now().UnixNano())
 
-	var configs []JobConfig
-	cmdArgs := []string{"discover"}
-	if oldCatalog.IsSplit() {
-		configs = append(configs,
-			JobConfig{Name: "old_" + constants.AvailableStreamsFile, Data: oldCatalog.Available},
-			JobConfig{Name: "old_" + constants.SelectedStreamsFile, Data: oldCatalog.Selected},
-		)
-		cmdArgs = append(cmdArgs,
-			"--available-streams", "/mnt/config/old_"+constants.AvailableStreamsFile,
-			"--selected-streams", "/mnt/config/old_"+constants.SelectedStreamsFile,
-		)
-	} else {
-		configs = append(configs, JobConfig{Name: "old_" + constants.StreamsFile, Data: oldCatalog.Streams})
-		cmdArgs = append(cmdArgs, "--streams", "/mnt/config/old_"+constants.StreamsFile)
-	}
+	// A split new catalog always passes its available_streams: a newly discovered stream is selectable
+	// only if it is in the new streams[], and default changes are read from there.
+	configs, cmdArgs := stageCatalog(oldCatalog, "old_", "--streams", "--available-streams", "--selected-streams")
+	newConfigs, newArgs := stageCatalog(newCatalog, "new_", "--difference", "--difference-available-streams", "--difference-selected-streams")
+	configs = append(configs, newConfigs...)
+	cmdArgs = append(append([]string{"discover"}, cmdArgs...), newArgs...)
+	outputFile := "difference_streams.json"
 	if newCatalog.IsSplit() {
-		configs = append(configs,
-			JobConfig{Name: "new_" + constants.AvailableStreamsFile, Data: newCatalog.Available},
-			JobConfig{Name: "new_" + constants.SelectedStreamsFile, Data: newCatalog.Selected},
-		)
-		cmdArgs = append(cmdArgs,
-			"--difference-available-streams", "/mnt/config/new_"+constants.AvailableStreamsFile,
-			"--difference-selected-streams", "/mnt/config/new_"+constants.SelectedStreamsFile,
-		)
-	} else {
-		configs = append(configs, JobConfig{Name: "new_" + constants.StreamsFile, Data: newCatalog.Streams})
-		cmdArgs = append(cmdArgs, "--difference", "/mnt/config/new_"+constants.StreamsFile)
+		outputFile = "difference_selected_streams.json"
 	}
 
 	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
@@ -415,7 +398,7 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		WorkflowID:    workflowID,
 		JobID:         job.ID,
 		Timeout:       GetWorkflowTimeout(Discover),
-		OutputFile:    "difference_streams.json",
+		OutputFile:    outputFile,
 	}
 
 	workflowOptions := client.StartWorkflowOptions{
@@ -434,4 +417,20 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 	}
 
 	return result, nil
+}
+
+// stageCatalog returns the config files of a catalog, named with prefix, and the discover flags that
+// point at them: streamsFlag for a legacy catalog, availableFlag and selectedFlag for a split one.
+func stageCatalog(catalog types.StreamsCatalog, prefix, streamsFlag, availableFlag, selectedFlag string) ([]JobConfig, []string) {
+	if catalog.IsSplit() {
+		return []JobConfig{
+				{Name: prefix + constants.AvailableStreamsFile, Data: catalog.Available},
+				{Name: prefix + constants.SelectedStreamsFile, Data: catalog.Selected},
+			}, []string{
+				availableFlag, "/mnt/config/" + prefix + constants.AvailableStreamsFile,
+				selectedFlag, "/mnt/config/" + prefix + constants.SelectedStreamsFile,
+			}
+	}
+	return []JobConfig{{Name: prefix + constants.StreamsFile, Data: catalog.Streams}},
+		[]string{streamsFlag, "/mnt/config/" + prefix + constants.StreamsFile}
 }

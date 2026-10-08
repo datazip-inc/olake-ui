@@ -342,12 +342,12 @@ func (s Service) ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRe
 }
 
 // differenceCatalog is the stream difference to clear, in the format the job runs in after the
-// update. The difference is one {streams, selected_streams} document: a legacy job passes it with
-// --streams, as before; a split job with --available-streams and --selected-streams, whose reader
-// takes streams[] from the first file and selected_streams from the second.
+// update. A legacy job passes the {streams, selected_streams} difference with --streams, as before.
+// A split job passes the difference as selected_streams, with the updated available streams from the
+// request as available_streams.
 func differenceCatalog(req *dto.UpdateJobRequest) types.StreamsCatalog {
 	if req.AvailableStreamsConfig != "" && req.SelectedStreamsConfig != "" {
-		return types.StreamsCatalog{Available: req.DifferenceStreams, Selected: req.DifferenceStreams}
+		return types.StreamsCatalog{Available: req.AvailableStreamsConfig, Selected: req.DifferenceStreams}
 	}
 	return types.StreamsCatalog{Streams: req.DifferenceStreams}
 }
