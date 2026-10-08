@@ -47,6 +47,7 @@ type Config struct {
 	OptimizationUsername           string
 	OptimizationPassword           string
 	OptimizationRequestTimeout     time.Duration
+	GitOpsEnabled                  bool
 	OlakeStorageMode               string
 	OlakeS3Bucket                  string
 	OlakeS3Region                  string
@@ -129,6 +130,7 @@ func loadConfig() Config {
 		OptimizationPassword:       strings.TrimSpace(v.GetString("PASSWORD")),
 		OptimizationRequestTimeout: v.GetDuration("OPTIMIZATION_REQUEST_TIMEOUT"),
 
+		GitOpsEnabled:          v.GetBool("GITOPS_ENABLED"),
 		OlakeStorageMode:       strings.TrimSpace(v.GetString("OLAKE_STORAGE_MODE")),
 		OlakeS3Bucket:          strings.TrimSpace(v.GetString("OLAKE_S3_BUCKET")),
 		OlakeS3Region:          strings.TrimSpace(v.GetString("OLAKE_S3_REGION")),

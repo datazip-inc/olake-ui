@@ -62,6 +62,33 @@ func (s Service) GetSource(ctx context.Context, projectID string, sourceID int) 
 	return item, nil
 }
 
+// GetSourceByName returns a source model by name within a project.
+func (s Service) GetSourceByName(_ context.Context, projectID, name string) (*models.Source, error) {
+	source, err := s.db.GetSourceByName(projectID, name)
+	if err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
+		return nil, err
+	}
+	return source, nil
+}
+
+// GetSourceByID returns a source model by ID within a project.
+func (s Service) GetSourceByID(_ context.Context, projectID string, id int) (*models.Source, error) {
+	source, err := s.db.GetSourceByID(id)
+	if err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
+		return nil, err
+	}
+	if source.ProjectID != projectID {
+		return nil, fmt.Errorf("%w: source not found id[%d] project_id[%s]", constants.ErrSourceNotFound, id, projectID)
+	}
+	return source, nil
+}
+
 // GetAllSources returns all sources for a project with lightweight job summaries.
 func (s Service) ListSources(ctx context.Context, projectID string) ([]dto.SourceDataItem, error) {
 	sources, err := s.db.ListSourcesByProjectID(projectID)
@@ -130,7 +157,7 @@ func (s Service) CreateSource(ctx context.Context, req *dto.CreateSourceRequest,
 		Name:      req.Name,
 		Type:      req.Type,
 		Version:   req.Version,
-		Config:    req.Config,
+		Config:    req.Config.String(),
 		ProjectID: projectID,
 	}
 
@@ -158,7 +185,7 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 	}
 
 	existing.Name = req.Name
-	existing.Config = req.Config
+	existing.Config = req.Config.String()
 	existing.Type = req.Type
 	existing.Version = req.Version
 
@@ -242,7 +269,7 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 		return nil, nil, fmt.Errorf("temporal client not available")
 	}
 
-	encryptedConfig, err := utils.Encrypt(req.Config)
+	encryptedConfig, err := utils.Encrypt(req.Config.String())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}
@@ -257,7 +284,7 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 	}
 
 	if err != nil {
-		return result, nil, fmt.Errorf("connection test failed: %s", err)
+		return result, nil, fmt.Errorf("connection test failed: %w", err)
 	}
 	homeDir := constants.DefaultConfigDir
 	mainLogDir := filepath.Join(homeDir, workflowID)
@@ -287,20 +314,30 @@ func (s Service) DiscoverCatalog(ctx context.Context, req *dto.StreamsRequest) (
 		legacyJob = !stored.IsSplit()
 	}
 
-	encryptedConfig, err := utils.Encrypt(req.Config)
+	catalog, err := s.DiscoverWithCatalog(ctx, req, stored)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt config for catalog: %s", err)
-	}
-	catalog, err := s.temporal.DiscoverStreams(ctx, req.Type, req.Version, encryptedConfig, stored,
-		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get catalog: %s", err)
+		return nil, err
 	}
 
 	if catalog.IsSplit() && !legacyJob {
 		return &dto.DiscoverCatalogResponse{AvailableStreams: json.RawMessage(catalog.Available), SelectedStreams: json.RawMessage(catalog.Selected)}, nil
 	}
 	return &dto.DiscoverCatalogResponse{StreamsConfig: json.RawMessage(catalog.Streams)}, nil
+}
+
+// DiscoverWithCatalog runs discover with stored as the prior catalog and returns what the driver
+// wrote. With an empty stored catalog, discover runs fresh.
+func (s Service) DiscoverWithCatalog(ctx context.Context, req *dto.StreamsRequest, stored types.StreamsCatalog) (types.StreamsCatalog, error) {
+	encryptedConfig, err := utils.Encrypt(req.Config.String())
+	if err != nil {
+		return types.StreamsCatalog{}, fmt.Errorf("failed to encrypt config for catalog: %s", err)
+	}
+	catalog, err := s.temporal.DiscoverStreams(ctx, req.Type, req.Version, encryptedConfig, stored,
+		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines)
+	if err != nil {
+		return types.StreamsCatalog{}, fmt.Errorf("failed to get catalog: %w", err)
+	}
+	return catalog, nil
 }
 
 // ConvertCatalog converts a legacy streams_config into the split format (available_streams.json
