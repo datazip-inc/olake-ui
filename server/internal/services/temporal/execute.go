@@ -333,7 +333,7 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 	}, nil
 }
 
-func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, streamsConfig string) error {
+func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, diff types.StreamsCatalog) error {
 	workflowID, scheduleID := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
 
 	// update the sync schedule to use clear-destination request
@@ -343,7 +343,7 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	}
 
 	// update schedule to use clear-destination request
-	clearReq, err := buildExecutionReqForClearDestination(ctx, job, workflowID, streamsConfig)
+	clearReq, err := buildExecutionReqForClearDestination(ctx, job, workflowID, diff)
 	if err != nil {
 		return fmt.Errorf("failed to build execution request for clear-destination: %s", err)
 	}

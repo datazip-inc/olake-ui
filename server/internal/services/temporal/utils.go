@@ -48,14 +48,14 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) *ExecutionRequ
 }
 
 // buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job.
-// streamsConfig is the stream difference to clear, in the combined {streams, selected_streams}
-// format that every CLI reads with --streams; empty clears the job's whole stored catalog.
-func buildExecutionReqForClearDestination(ctx context.Context, job *models.Job, workflowID, streamsConfig string) (*ExecutionRequest, error) {
+// diff is the stream difference to clear, staged in the format it is given in; empty clears the
+// job's whole stored catalog.
+func buildExecutionReqForClearDestination(ctx context.Context, job *models.Job, workflowID string, diff types.StreamsCatalog) (*ExecutionRequest, error) {
 	streamsDir := fmt.Sprintf("%s-%d", workflowID, time.Now().Unix())
 
-	catalog := types.StreamsCatalog{Streams: streamsConfig}
+	catalog := diff
 	// clear all the selected_streams
-	if streamsConfig == "" {
+	if catalog == (types.StreamsCatalog{}) {
 		catalog = job.StreamsCatalog()
 	}
 	// the worker tells the format by the staged files; it reads a legacy catalog from TempPath

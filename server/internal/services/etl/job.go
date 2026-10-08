@@ -2,6 +2,7 @@ package etl
 
 import (
 	"archive/tar"
+	"cmp"
 	"compress/gzip"
 	"context"
 	"encoding/json"
@@ -208,7 +209,7 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 			return fmt.Errorf("invalid difference_streams JSON: %s", err)
 		}
 		if len(diffCatalog) > 0 {
-			if err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, constants.DefaultCancelSyncWaitTime, false); err != nil {
+			if err := s.ClearDestination(ctx, projectID, jobID, differenceCatalog(req), constants.DefaultCancelSyncWaitTime, false); err != nil {
 				return fmt.Errorf("failed to run clear destination workflow: %s", err)
 			}
 			logger.Infof("successfully triggered clear destination workflow for job %d", existingJob.ID)
@@ -351,7 +352,19 @@ func (s Service) ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRe
 	return nil
 }
 
-func (s Service) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string, syncWaitTime time.Duration, resetState bool) error {
+// differenceCatalog is the stream difference to clear, in the format the job runs in after the
+// update. The difference is one {streams, selected_streams} document: a legacy job passes it with
+// --streams, as before; a split job with --available-streams and --selected-streams, whose reader
+// takes streams[] from the first file and selected_streams from the second.
+func differenceCatalog(req *dto.UpdateJobRequest) types.StreamsCatalog {
+	if req.AvailableStreamsConfig != "" && req.SelectedStreamsConfig != "" {
+		return types.StreamsCatalog{Available: req.DifferenceStreams, Selected: req.DifferenceStreams}
+	}
+	return types.StreamsCatalog{Streams: req.DifferenceStreams}
+}
+
+// ClearDestination clears the streams in diff, or every selected stream of the job when diff is empty.
+func (s Service) ClearDestination(ctx context.Context, projectID string, jobID int, diff types.StreamsCatalog, syncWaitTime time.Duration, resetState bool) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("job not found: %s", err)
@@ -391,9 +404,9 @@ func (s Service) ClearDestination(ctx context.Context, projectID string, jobID i
 		logger.Infof("state file updated to {} for manual clear-destination for job_id[%d]", jobID)
 	}
 
-	logger.Infof("running clear destination workflow for job %d for the following streams:\n%s", job.ID, streamsConfig)
+	logger.Infof("running clear destination workflow for job %d for the following streams:\n%s", job.ID, cmp.Or(diff.Streams, diff.Selected))
 
-	if err := s.temporal.ClearDestination(ctx, job, streamsConfig); err != nil {
+	if err := s.temporal.ClearDestination(ctx, job, diff); err != nil {
 		if rerr := s.temporal.ResumeSchedule(ctx, projectID, jobID); rerr != nil {
 			return fmt.Errorf("clear destination error: %s, resume error: %s", err, rerr)
 		}

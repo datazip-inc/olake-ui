@@ -10,6 +10,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -373,7 +374,7 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Clear destination initiated project_id[%s] job_id[%d]", projectID, id)
-	if err := h.etl.ClearDestination(c.Request.Context(), projectID, id, "", 0, true); err != nil {
+	if err := h.etl.ClearDestination(c.Request.Context(), projectID, id, types.StreamsCatalog{}, 0, true); err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
