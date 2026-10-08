@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"path"
 	"path/filepath"
 	"strings"
@@ -18,7 +19,6 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 )
 
 // JobConfig is a blob written to S3. RelativePath is the object path under workDir
@@ -35,7 +35,7 @@ var (
 
 // InitStorage initializes the shared S3 client when storage mode is S3. No-op for NFS.
 func InitStorage(ctx context.Context) error {
-	if storagemode.Get() != constants.StorageModeS3 {
+	if Mode() != constants.StorageModeS3 {
 		return nil
 	}
 
@@ -206,6 +206,10 @@ func ReadFileFromS3(ctx context.Context, workDir, relativePath string, validateJ
 		Key:    &key,
 	})
 	if err != nil {
+		var noSuchKey *s3types.NoSuchKey
+		if errors.As(err, &noSuchKey) {
+			return "", time.Time{}, fmt.Errorf("s3://%s/%s: %w", bucket, key, fs.ErrNotExist)
+		}
 		return "", time.Time{}, fmt.Errorf("failed to download %s from s3://%s/%s: %s", relativePath, bucket, key, err)
 	}
 	defer out.Body.Close()

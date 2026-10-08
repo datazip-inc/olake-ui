@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
 // BaseModel with common fields
@@ -78,22 +80,23 @@ func (d *Destination) TableName() string {
 	return constants.TableNameMap[constants.DestinationTable]
 }
 
-// TODO_BEFORE_MERGE: confirm with team if we need to perform hard/soft delete
 // Job represents a synchronization job
 type Job struct {
 	BaseModel
-	ID               int     `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
-	Name             string  `json:"name" gorm:"column:name;size:100"`
-	SourceID         int     `json:"source_id" gorm:"column:source_id"`
-	DestID           int     `json:"dest_id" gorm:"column:dest_id"`
-	Active           bool    `json:"active" gorm:"column:active"`
-	Frequency        string  `json:"frequency" gorm:"column:frequency;size:255"`
-	StreamsConfig    string  `json:"streams_config" gorm:"column:streams_config;type:jsonb"`
-	State            string  `json:"state" gorm:"column:state;type:jsonb"`
-	AdvancedSettings *string `json:"advanced_settings" gorm:"column:advanced_settings;type:jsonb"`
-	CreatedByID      int     `json:"-" gorm:"column:created_by_id"`
-	UpdatedByID      int     `json:"-" gorm:"column:updated_by_id"`
-	ProjectID        string  `json:"project_id" gorm:"column:project_id;size:255"`
+	ID                     int     `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
+	Name                   string  `json:"name" gorm:"column:name;size:100"`
+	SourceID               int     `json:"source_id" gorm:"column:source_id"`
+	DestID                 int     `json:"dest_id" gorm:"column:dest_id"`
+	Active                 bool    `json:"active" gorm:"column:active"`
+	Frequency              string  `json:"frequency" gorm:"column:frequency;size:255"`
+	StreamsConfig          *string `json:"streams_config" gorm:"column:streams_config;type:jsonb"`
+	AvailableStreamsConfig *string `json:"available_streams_config" gorm:"column:available_streams_config;type:jsonb"`
+	SelectedStreamsConfig  *string `json:"selected_streams_config" gorm:"column:selected_streams_config;type:jsonb"`
+	State                  string  `json:"state" gorm:"column:state;type:jsonb"`
+	AdvancedSettings       *string `json:"advanced_settings" gorm:"column:advanced_settings;type:jsonb"`
+	CreatedByID            int     `json:"-" gorm:"column:created_by_id"`
+	UpdatedByID            int     `json:"-" gorm:"column:updated_by_id"`
+	ProjectID              string  `json:"project_id" gorm:"column:project_id;size:255"`
 
 	Source      *Source      `json:"source,omitempty" gorm:"foreignKey:SourceID;references:ID"`
 	Destination *Destination `json:"destination,omitempty" gorm:"foreignKey:DestID;references:ID"`
@@ -103,6 +106,16 @@ type Job struct {
 
 func (j *Job) TableName() string {
 	return constants.TableNameMap[constants.JobTable]
+}
+
+// StreamsCatalog returns the catalog the job stores, in the job's format. A job keeps one format:
+// available and selected streams are both set (split), or both empty (legacy).
+func (j *Job) StreamsCatalog() types.StreamsCatalog {
+	return types.StreamsCatalog{
+		Streams:   utils.StringValue(j.StreamsConfig),
+		Available: utils.StringValue(j.AvailableStreamsConfig),
+		Selected:  utils.StringValue(j.SelectedStreamsConfig),
+	}
 }
 
 type Catalog struct {

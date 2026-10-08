@@ -82,6 +82,12 @@ func main() {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
 
+	go func() {
+		if err := appSvc.ETL().ConvertLegacyJobs(ctx, nil); err != nil {
+			logger.Errorf("failed to convert legacy jobs: %s. upgrade source to version[%s] to support streams v2", err, constants.MinStreamsV2Version)
+		}
+	}()
+
 	api := handlers.NewHandler(appSvc, &cfg, db)
 	server := httpserver.New(&cfg, api)
 
