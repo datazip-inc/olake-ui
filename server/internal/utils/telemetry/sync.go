@@ -13,7 +13,6 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/storage"
-	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
@@ -266,7 +265,7 @@ func addStreamsProperties(ctx context.Context, properties map[string]interface{}
 
 // ReadSyncJobFile reads a file from the job work dir (NFS) or the matching S3 key.
 func ReadSyncJobFile(ctx context.Context, mainSyncDir, filename string) ([]byte, error) {
-	switch storagemode.Get() {
+	switch storage.Mode() {
 	case constants.StorageModeS3:
 		body, _, err := storage.ReadFileFromS3(ctx, mainSyncDir, filename, false)
 		if err != nil {

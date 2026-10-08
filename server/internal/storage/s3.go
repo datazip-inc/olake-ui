@@ -19,7 +19,6 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 )
 
 // JobConfig is a blob written to S3. RelativePath is the object path under workDir
@@ -36,7 +35,7 @@ var (
 
 // InitStorage initializes the shared S3 client when storage mode is S3. No-op for NFS.
 func InitStorage(ctx context.Context) error {
-	if storagemode.Get() != constants.StorageModeS3 {
+	if Mode() != constants.StorageModeS3 {
 		return nil
 	}
 

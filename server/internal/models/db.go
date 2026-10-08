@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
 // BaseModel with common fields
@@ -106,11 +108,14 @@ func (j *Job) TableName() string {
 	return constants.TableNameMap[constants.JobTable]
 }
 
-// IsStreamsV2 reports whether the job stores its catalog in the split format (streams v2).
-// A job keeps one format: available and selected streams are both set, or both empty (legacy).
-func (j *Job) IsStreamsV2() bool {
-	return j.AvailableStreamsConfig != nil && *j.AvailableStreamsConfig != "" &&
-		j.SelectedStreamsConfig != nil && *j.SelectedStreamsConfig != ""
+// StreamsCatalog returns the catalog the job stores, in the job's format. A job keeps one format:
+// available and selected streams are both set (split), or both empty (legacy).
+func (j *Job) StreamsCatalog() types.StreamsCatalog {
+	return types.StreamsCatalog{
+		Streams:   utils.StringValue(j.StreamsConfig),
+		Available: utils.StringValue(j.AvailableStreamsConfig),
+		Selected:  utils.StringValue(j.SelectedStreamsConfig),
+	}
 }
 
 type Catalog struct {

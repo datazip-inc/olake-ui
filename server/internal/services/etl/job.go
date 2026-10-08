@@ -15,6 +15,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
@@ -422,8 +423,8 @@ func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, r
 		return nil, err
 	}
 
-	edited := temporal.StreamsCatalog{Streams: req.UpdatedStreamsConfig, Available: newAvailable, Selected: newSelected}
-	diffCatalog, err := s.temporal.GetStreamDifference(ctx, job, temporal.JobCatalog(job), edited)
+	edited := types.StreamsCatalog{Streams: req.UpdatedStreamsConfig, Available: newAvailable, Selected: newSelected}
+	diffCatalog, err := s.temporal.GetStreamDifference(ctx, job, job.StreamsCatalog(), edited)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stream difference: %s", err)
 	}
@@ -454,7 +455,7 @@ func validateStreamsFormat(streamsConfig, available, selected, sourceVersion str
 		return fmt.Errorf("%w: source version %s does not support the split streams format (minimum %s)",
 			constants.ErrStreamsFormat, sourceVersion, constants.MinStreamsV2Version)
 	}
-	if !split && existingJob != nil && existingJob.IsStreamsV2() {
+	if !split && existingJob != nil && existingJob.StreamsCatalog().IsSplit() {
 		return fmt.Errorf("%w: job uses the split streams format, set available_streams_config and selected_streams_config", constants.ErrStreamsFormat)
 	}
 	return nil
