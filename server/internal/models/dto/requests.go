@@ -123,15 +123,12 @@ type CreateJobRequest struct {
 
 type UpdateJobRequest struct {
 	JobMetadata
-	Source                 *DriverConfig     `json:"source" binding:"required"`
-	Destination            *DriverConfig     `json:"destination" binding:"required"`
-	Frequency              string            `json:"frequency" binding:"required" example:"0 */12 * * *"`
-	StreamsConfig          string            `json:"streams_config,omitempty" orm:"type(jsonb)"`
-	AvailableStreamsConfig string            `json:"available_streams_config,omitempty" orm:"type(jsonb)"`
-	SelectedStreamsConfig  string            `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
-	DifferenceStreams      string            `json:"difference_streams,omitempty" example:"[]"`
-	Activate               bool              `json:"activate,omitempty" example:"true"`
-	AdvancedSettings       *AdvancedSettings `json:"advanced_settings,omitempty"`
+	Source                 *DriverConfig `json:"source" binding:"required"`
+	Destination            *DriverConfig `json:"destination" binding:"required"`
+	StreamsConfig          string        `json:"streams_config,omitempty" orm:"type(jsonb)"`
+	AvailableStreamsConfig string        `json:"available_streams_config,omitempty" orm:"type(jsonb)"`
+	SelectedStreamsConfig  string        `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
+	DifferenceStreams      string        `json:"difference_streams,omitempty" example:"[]"`
 }
 
 // StreamDifferenceRequest carries the edited catalog in one format: updated_streams_config, or

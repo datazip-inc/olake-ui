@@ -2,6 +2,7 @@ package gitops
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strconv"
 	"strings"
@@ -208,6 +209,18 @@ func parseResourceID(ref string) (int, bool) {
 	return id, true
 }
 
+// configName returns the OLake entity name in a Source/Destination/Job data.config, or "" when
+// the config is not valid JSON.
+func configName(config string) string {
+	var named struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal([]byte(config), &named); err != nil {
+		return ""
+	}
+	return named.Name
+}
+
 // matchesNameOrID is true when ref is the resource name or its entity id string.
 func matchesNameOrID(ref, name string, entityID int) bool {
 	return ref == name || (entityID > 0 && ref == strconv.Itoa(entityID))
@@ -308,7 +321,10 @@ func reconcileResource(ctx context.Context, sink StatusSink, r resource, res *Re
 	if existing == nil || changed {
 		if err := r.test(ctx, spec); err != nil {
 			logger.Error(err, r.kind()+" connection test failed")
-			return failResource(ctx, sink, res, NonRetryableError(err), observedHash)
+			if !errors.Is(err, ErrNonRetryable) {
+				return requeueTransient(ctx, sink, res, err, observedHash)
+			}
+			return failResource(ctx, sink, res, err, observedHash)
 		}
 	}
 

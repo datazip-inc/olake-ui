@@ -74,6 +74,11 @@ const (
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
 // DiscoverStreams runs discover with the job's stored catalog as input; with an empty catalog,
 // discover runs fresh.
+
+// ErrWorkflowStart means Temporal did not start the workflow (for example, it is unreachable), so
+// the command never ran. Unlike a workflow that ran and failed, a retry can succeed.
+var ErrWorkflowStart = errors.New("failed to start workflow")
+
 func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config string, stored types.StreamsCatalog, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (types.StreamsCatalog, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().UnixNano())
 
@@ -172,7 +177,7 @@ func (t *Temporal) discoverWorkflow(ctx context.Context, sourceType, version, wo
 	}
 	run, err := t.Client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{ID: workflowID, TaskQueue: t.taskQueue}, ExecuteWorkflow, req)
 	if err != nil {
-		return fmt.Errorf("failed to execute discover workflow: %s", err)
+		return fmt.Errorf("%w: discover: %s", ErrWorkflowStart, err)
 	}
 	if _, err := ExtractWorkflowResponse(ctx, run); err != nil {
 		return fmt.Errorf("failed to extract workflow response: %v", err)
@@ -308,7 +313,7 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 
 	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute test connection workflow: %s", err)
+		return nil, fmt.Errorf("%w: test connection: %s", ErrWorkflowStart, err)
 	}
 
 	result, err := ExtractWorkflowResponse(ctx, run)
@@ -425,7 +430,7 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 
 	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute stream difference workflow: %s", err)
+		return nil, fmt.Errorf("%w: stream difference: %s", ErrWorkflowStart, err)
 	}
 
 	result, err := ExtractWorkflowResponse(ctx, run)

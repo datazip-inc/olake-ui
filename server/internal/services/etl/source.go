@@ -284,7 +284,7 @@ func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestCo
 	}
 
 	if err != nil {
-		return result, nil, fmt.Errorf("connection test failed: %s", err)
+		return result, nil, fmt.Errorf("connection test failed: %w", err)
 	}
 	homeDir := constants.DefaultConfigDir
 	mainLogDir := filepath.Join(homeDir, workflowID)
@@ -327,15 +327,15 @@ func (s Service) DiscoverCatalog(ctx context.Context, req *dto.StreamsRequest) (
 
 // DiscoverWithCatalog runs discover with stored as the prior catalog and returns what the driver
 // wrote. With an empty stored catalog, discover runs fresh.
-func (s Service) DiscoverWithCatalog(ctx context.Context, req *dto.StreamsRequest, stored temporal.StreamsCatalog) (temporal.StreamsCatalog, error) {
+func (s Service) DiscoverWithCatalog(ctx context.Context, req *dto.StreamsRequest, stored types.StreamsCatalog) (types.StreamsCatalog, error) {
 	encryptedConfig, err := utils.Encrypt(req.Config.String())
 	if err != nil {
-		return temporal.StreamsCatalog{}, fmt.Errorf("failed to encrypt config for catalog: %s", err)
+		return types.StreamsCatalog{}, fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 	catalog, err := s.temporal.DiscoverStreams(ctx, req.Type, req.Version, encryptedConfig, stored,
 		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines)
 	if err != nil {
-		return temporal.StreamsCatalog{}, fmt.Errorf("failed to get catalog: %s", err)
+		return types.StreamsCatalog{}, fmt.Errorf("failed to get catalog: %w", err)
 	}
 	return catalog, nil
 }

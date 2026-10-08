@@ -259,7 +259,7 @@ func (s Service) TestDestinationConnection(ctx context.Context, req *dto.Destina
 	}
 
 	if err != nil {
-		return result, nil, fmt.Errorf("connection test failed: %s", err)
+		return result, nil, fmt.Errorf("connection test failed: %w", err)
 	}
 
 	homeDir := constants.DefaultConfigDir

@@ -67,7 +67,7 @@ metadata:
 |------|-------------|-------------|---------|
 | source | ConfigMap **or** Secret | `projectId`, `userId`, `config` | Source connector JSON (POST `/sources` shape) |
 | destination | ConfigMap **or** Secret | `projectId`, `userId`, `config` | Destination connector JSON |
-| job | ConfigMap only | `projectId`, `userId`, `config` | Job metadata; `config.source` / `destination` by name or numeric ID |
+| job | ConfigMap only | `projectId`, `userId`, `config` | Job metadata; `config.source` / `destination` by name or numeric ID; `config.activate` defaults to `true` (set `false` to keep the job's schedule paused) |
 | streams | ConfigMap only | `projectId`, `job`, `config` | Streams catalog; `job` matches Job ConfigMap name or job entity ID |
 
 ### Streams catalog formats
@@ -83,7 +83,7 @@ Two shapes are accepted in the Streams ConfigMap `data.config` JSON, and the sha
 }
 ```
 
-The job runs in the legacy format, as a job saved from the UI does: the CM is stored as `streams_config` and every discover, sync, clear-destination and stream-difference passes it with `--catalog` / `--streams`. No discover step on create. `selected_streams` keeps its legacy meaning, and any driver version works.
+The job runs in the legacy format, as a job saved from the UI does: the CM is stored as `streams_config` and every discover, sync, clear-destination and stream-difference passes it with `--catalog` / `--streams`. No discover step on create, and any driver version works. `selected_streams` keeps its legacy meaning. The operator does not convert the catalog: like any legacy job, it moves to the split format at server startup or after a source upgrade to `MinStreamsV2Version` or later. Once a job is split it stays split; a later change to a self-contained CM is merged by discover, which writes the split format from it.
 
 **Selection-only (split)** — user choices only in git:
 
@@ -102,14 +102,15 @@ The job runs in the legacy format, as a job saved from the UI does: the CM is st
 }
 ```
 
-The job runs in the split format: the catalog is stored as `available_streams_config` + `selected_streams_config` (with `streams_config` holding the CLI's legacy `streams.json` rendering of the same catalog) and passed with `--available-streams` / `--selected-streams`. It needs a source driver at `MinSplitStreamsVersion` or later; on older drivers the CM is rejected, since there `selected_streams` keeps its legacy meaning (split-format fields such as `sync_mode` are ignored, unset flags default to `false`). Use the self-contained shape or upgrade the source.
+The job runs in the split format: the catalog is stored as `available_streams_config` + `selected_streams_config` (`streams_config` stays NULL) and passed with `--available-streams` / `--selected-streams`. It needs a source driver at `MinStreamsV2Version` or later; on older drivers the CM is rejected, since there `selected_streams` keeps its legacy meaning (split-format fields such as `sync_mode` are ignored, unset flags default to `false`). Use the self-contained shape or upgrade the source.
 
-- On create the operator runs discover against the source for `available_streams_config`, then discover again against it and the CM's `selected_streams`, so the stored selection and `streams_config` come from the CLI's merge (same as on update).
+- On create the operator runs discover against the source for `available_streams_config`, then discover again against it and the CM's `selected_streams`, so the stored selection comes from the CLI's merge (same as on update).
 - On update with a changed CM (or a changed source/destination), discover merges against the stored `available_streams_config` and the CM's `selected_streams`; the CLI's merge drops selections whose stream no longer exists, updates `selected_columns` when `sync_new_columns` is true, and refreshes `streams[]` when the source schema changes.
 
 For both shapes:
+- An update that does not change the CM (a Job CM edit, or a changed source/destination) starts from the job's stored catalog, not the CM's. A changed source/destination runs discover against that stored catalog.
 - `selected_streams` must be non-empty (deselect-all fails reconcile).
-- A changed CM triggers a stream difference between the stored catalog and the newly merged one, and clear-destination for the streams that differ. When the job switches shape, the difference runs on `streams_config`.
+- A changed CM triggers a stream difference between the stored catalog and the newly merged one, and clear-destination for the streams that differ. When the job switches format, each side of the difference is passed in its own format.
 
 ### Credentials via Secrets (Source and Destination only)
 
@@ -154,7 +155,7 @@ Configure alerts on failed Pods with that label. olake-ui never creates Pods dir
 
 - **Create/update only** — deleting a ConfigMap or Secret from git does **not** delete the OLake entity (v1).
 - **Validation errors** → `phase=Failed`, indicator spawned, no requeue until content changes.
-- **Failed job + source/destination fix** → retrying a Failed job does **not** require editing the job file. Changing the referenced source or destination (ConfigMap or Secret data) invalidates the skip hash and re-runs the job. Streams are not part of that hash (catalogs are large); a Failed job does not auto-retry on a streams-only edit.
+- **Failed job + source/destination fix** → retrying a Failed job does **not** require editing the job file. Changing the referenced source or destination (ConfigMap or Secret data) invalidates the skip hash and re-runs the job. Streams are not part of that hash (catalogs are large); the job checks the Streams CM's own hash instead, so editing its data also re-runs a Failed job. A failed discover or connection test is `Failed` too: it retries on one of these edits, not on a timer.
 - **Missing dependencies** → `phase=Pending`, requeue every 30s, no indicator.
 - **Transient errors** → requeue, stay non-terminal.
 - **Streams** — no standalone reconciler; Job controller owns streams status and drift detection.

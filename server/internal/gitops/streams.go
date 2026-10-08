@@ -1,36 +1,41 @@
 package gitops
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
 )
 
-// streamsCM is a parsed Streams ConfigMap. Its shape picks the catalog format the job runs in:
-// a self-contained CM (streams[] + selected_streams, the streams.json shape) runs in the legacy
-// format; a selection-only CM (selected_streams alone) runs in the split format, with
-// available_streams filled by discover.
-type streamsCM struct {
-	// Split is true for a selection-only CM.
-	Split bool
-	// Catalog is the CM's catalog: streams.json for a legacy CM, selected_streams.json for a
-	// split one.
-	Catalog string
+// parseStreamsCM returns the Streams ConfigMap's catalog. Its shape picks the format: a CM with
+// streams[] is a legacy streams.json (Streams); a selection-only CM is a selected_streams.json
+// (Selected), and discover fills the available streams.
+func parseStreamsCM(config string) (types.StreamsCatalog, error) {
+	var cm struct {
+		Streams         json.RawMessage `json:"streams"`
+		SelectedStreams json.RawMessage `json:"selected_streams"`
+	}
+	if err := json.Unmarshal([]byte(config), &cm); err != nil {
+		return types.StreamsCatalog{}, NonRetryableError(fmt.Errorf("invalid streams config: %w", err))
+	}
+	if isEmptyJSON(cm.SelectedStreams) {
+		return types.StreamsCatalog{}, NonRetryableError(fmt.Errorf("streams config has no selected_streams"))
+	}
+	if isEmptyJSON(cm.Streams) {
+		return types.StreamsCatalog{Selected: config}, nil
+	}
+	return types.StreamsCatalog{Streams: config}, nil
 }
 
-func parseStreamsCM(config string) (streamsCM, error) {
-	available, selected, err := utils.CatalogToStreamsV2(config)
-	if err != nil {
-		return streamsCM{}, NonRetryableError(fmt.Errorf("invalid streams config: %w", err))
+// isEmptyJSON reports whether a JSON value is missing, null, or an empty array or object.
+func isEmptyJSON(value json.RawMessage) bool {
+	switch string(bytes.TrimSpace(value)) {
+	case "", "null", "[]", "{}":
+		return true
 	}
-	if selected == "" {
-		return streamsCM{}, NonRetryableError(fmt.Errorf("streams config has no selected_streams"))
-	}
-	if available == "" {
-		return streamsCM{Split: true, Catalog: selected}, nil
-	}
-	return streamsCM{Catalog: config}, nil
+	return false
 }
 
 // discoverJobID is the JobID for a discover request: the existing job's ID, or -1 on create.

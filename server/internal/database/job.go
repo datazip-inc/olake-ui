@@ -101,7 +101,6 @@ func (db *Database) ListDistinctProjectIDs(ctx context.Context) ([]string, error
 	return projectIDs, nil
 }
 
-// GetByID retrieves a job by ID
 func (db *Database) GetJobByName(projectID, name string) (*models.Job, error) {
 	job := &models.Job{}
 	err := db.conn.

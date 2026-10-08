@@ -185,7 +185,7 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 		return fmt.Errorf("failed to check if clear-destination is running: %s", err)
 	}
 	if clearRunning {
-		return fmt.Errorf("clear-destination is in progress, cannot update job")
+		return constants.ErrClearDestinationRunning
 	}
 
 	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
@@ -439,7 +439,7 @@ func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, r
 	edited := types.StreamsCatalog{Streams: req.UpdatedStreamsConfig, Available: newAvailable, Selected: newSelected}
 	diffCatalog, err := s.temporal.GetStreamDifference(ctx, job, job.StreamsCatalog(), edited)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get stream difference: %s", err)
+		return nil, fmt.Errorf("failed to get stream difference: %w", err)
 	}
 
 	diffCatalogJSON, err := json.Marshal(diffCatalog)
