@@ -7,7 +7,6 @@ import {
 	MIN_JSON_FILTER_VERSION,
 	MIN_KAFKA_UPSERT_SOURCE_VERSION,
 	MIN_SOURCE_NAMING_CONVENTION_VERSION,
-	SOURCE_INTERNAL_TYPES,
 } from "@/modules/ingestion/common/constants"
 import {
 	SelectedStreamsByNamespace,
@@ -18,7 +17,10 @@ import {
 	StreamIdentifier,
 	UpsertType,
 } from "@/modules/ingestion/common/types"
-import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
+import {
+	isKafkaSource,
+	normalizeConnectorType,
+} from "@/modules/ingestion/common/utils"
 
 import {
 	DESTINATION_SUPPORTED_INGESTION_MODES,
@@ -130,7 +132,10 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				...defaults,
 				stream_name: streamName,
 				disabled: true,
-				append_mode: true, // Default to append
+				append_mode:
+					!isDestUpsertModeSupported || !isSourceUpsertModeSupported
+						? true
+						: (defaults.append_mode ?? false),
 				...(supportsColumnSelection && {
 					selected_columns: {
 						columns: Object.keys(stream.stream.type_schema?.properties ?? {}),
@@ -339,6 +344,7 @@ export const validateStreams = (
 	)
 
 	const selectedStreams = getSelectedStreams(streamsConfig.selected_streams)
+	const isKafka = isKafkaSource(sourceType)
 
 	for (const [namespace, nsStreams] of Object.entries(selectedStreams)) {
 		for (const sel of nsStreams) {
@@ -357,9 +363,6 @@ export const validateStreams = (
 
 				if (error) return error
 			}
-			const isKafka =
-				normalizeConnectorType(sourceType).toLowerCase() ===
-				SOURCE_INTERNAL_TYPES.KAFKA
 			if (isKafka && !sel.append_mode && (sel.dedup_keys?.length ?? 0) === 0) {
 				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Upsert requires atleast one dedup key`
 			}
@@ -404,11 +407,7 @@ export const getKafkaUpsertNotSupportedMessage = (
 	sourceVersion?: string,
 	availableUpdateTypes?: UpsertType[],
 ): string | undefined => {
-	const isKafka =
-		!!sourceType &&
-		normalizeConnectorType(sourceType).toLowerCase() ===
-			SOURCE_INTERNAL_TYPES.KAFKA
-	if (!isKafka) return undefined
+	if (!isKafkaSource(sourceType)) return undefined
 
 	if (
 		availableUpdateTypes &&
@@ -447,7 +446,7 @@ export const getIngestionMode = (
 		allSelectedStreams.push(...streams)
 	})
 
-	if (allSelectedStreams.length === 0) return IngestionMode.APPEND
+	if (allSelectedStreams.length === 0) return IngestionMode.UPSERT
 
 	const appendCount = allSelectedStreams.filter(
 		s => s.append_mode === true,
@@ -601,7 +600,7 @@ const EMPTY_BULK_STREAM: StreamData = {
 		sync_mode: SyncMode.FULL_REFRESH,
 		default_stream_properties: {
 			normalization: false,
-			append_mode: true,
+			append_mode: false,
 		},
 	},
 }
@@ -726,7 +725,7 @@ export const buildBulkSelectedStreams = (
 
 	const appendMode = upsertNotSupported
 		? true
-		: (commonStream.stream.default_stream_properties?.append_mode ?? true)
+		: (commonStream.stream.default_stream_properties?.append_mode ?? false)
 
 	return {
 		...STREAM_DEFAULTS,

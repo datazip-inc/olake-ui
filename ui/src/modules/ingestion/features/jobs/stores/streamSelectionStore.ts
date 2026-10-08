@@ -534,17 +534,13 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 				)
 
 				if (streamIndex !== -1) {
-					const newStream = { ...streamList[streamIndex] }
+					let newStream = { ...streamList[streamIndex] }
 
 					if (config.appendMode !== undefined) {
 						newStream.append_mode = config.appendMode
 					}
 					if (config.dedupKeys !== undefined) {
-						if (config.dedupKeys.length > 0) {
-							newStream.dedup_keys = [...config.dedupKeys].sort()
-						} else {
-							delete newStream.dedup_keys
-						}
+						newStream = withDedupKeys(newStream, config.dedupKeys)
 					}
 					if (config.upsertType !== undefined)
 						newStream.update_type = config.upsertType

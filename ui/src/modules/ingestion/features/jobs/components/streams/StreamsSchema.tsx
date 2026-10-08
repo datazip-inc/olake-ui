@@ -72,7 +72,7 @@ const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 		if (selectAll) {
 			newColumns = [...new Set([...current.columns, ...visibleColumnNames])]
 		} else {
-			newColumns = newColumns = current.columns.filter(
+			newColumns = current.columns.filter(
 				c =>
 					!visibleColumnNames.includes(c) ||
 					isOlakeColumn(c) ||

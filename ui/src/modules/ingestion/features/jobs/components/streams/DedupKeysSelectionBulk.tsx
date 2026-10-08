@@ -1,4 +1,4 @@
-import DedupKeysSectionView from "./dedupKeysSectionView"
+import DedupKeysSelectionView from "./DedupKeysSelectionView"
 interface Props {
 	options: string[]
 	value: string[]
@@ -6,8 +6,13 @@ interface Props {
 	onChange: (keys: string[]) => void
 }
 
-const DedupKeysSectionBulk = ({ options, value, isDirty, onChange }: Props) => (
-	<DedupKeysSectionView
+const DedupKeysSelectionBulk = ({
+	options,
+	value,
+	isDirty,
+	onChange,
+}: Props) => (
+	<DedupKeysSelectionView
 		options={options}
 		value={value}
 		isDirty={isDirty}
@@ -16,4 +21,4 @@ const DedupKeysSectionBulk = ({ options, value, isDirty, onChange }: Props) => (
 	/>
 )
 
-export default DedupKeysSectionBulk
+export default DedupKeysSelectionBulk

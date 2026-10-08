@@ -10,17 +10,17 @@ import {
 	getKafkaUpsertNotSupportedMessage,
 } from "@/modules/ingestion/features/jobs/utils/streams"
 
-import DedupKeysSectionView from "./dedupKeysSectionView"
+import DedupKeysSelectionView from "./DedupKeysSelectionView"
 
-interface DedupKeysSectionSingleProps {
+interface DedupKeysSelectionSingleProps {
 	sourceType?: string
 	sourceVersion?: string
 }
 
-const DedupKeysSectionSingle = ({
+const DedupKeysSelectionSingle = ({
 	sourceType,
 	sourceVersion,
-}: DedupKeysSectionSingleProps) => {
+}: DedupKeysSelectionSingleProps) => {
 	const availableUpdateTypes = useStreamSelectionStore(
 		selectAvailableUpdateTypes,
 	)
@@ -46,7 +46,7 @@ const DedupKeysSectionSingle = ({
 	}
 
 	return (
-		<DedupKeysSectionView
+		<DedupKeysSelectionView
 			options={getDedupKeyOptions(storeStream, storeSelectedStream)}
 			value={storeSelectedStream?.dedup_keys ?? []}
 			disabled={!isSelected}
@@ -63,4 +63,4 @@ const DedupKeysSectionSingle = ({
 	)
 }
 
-export default DedupKeysSectionSingle
+export default DedupKeysSelectionSingle

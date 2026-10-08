@@ -20,11 +20,11 @@ export const PARTITIONING_COLUMNS = [
 
 // fallback defaults for streams
 export const STREAM_DEFAULTS = {
-	append_mode: true,
+	append_mode: false,
 	normalization: false,
 	partition_regex: "",
 	filter: "",
-}
+} as const
 
 export const SYNC_MODE_MAP = {
 	FULL_REFRESH: "full_refresh",

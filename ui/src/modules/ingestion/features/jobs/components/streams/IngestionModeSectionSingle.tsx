@@ -1,5 +1,4 @@
-import { SOURCE_INTERNAL_TYPES } from "@/modules/ingestion/common/constants"
-import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
+import { isKafkaSource } from "@/modules/ingestion/common/utils"
 
 import IngestionModeSectionView from "./IngestionModeSectionView"
 import { IngestionMode } from "../../enums"
@@ -35,10 +34,7 @@ const IngestionModeSectionSingle = ({
 
 	if (!storeStream || !storeSelectedStream) return null
 
-	const isKafka =
-		!!sourceType &&
-		normalizeConnectorType(sourceType).toLowerCase() ===
-			SOURCE_INTERNAL_TYPES.KAFKA
+	const isKafka = isKafkaSource(sourceType)
 
 	return (
 		<IngestionModeSectionView

@@ -2,9 +2,8 @@ import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
 import { Select, Tooltip } from "antd"
 import clsx from "clsx"
 
-import { SOURCE_INTERNAL_TYPES } from "@/modules/ingestion/common/constants"
 import { UpsertType } from "@/modules/ingestion/common/types"
-import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
+import { isKafkaSource } from "@/modules/ingestion/common/utils"
 
 import {
 	DEFAULT_AVAILABLE_UPDATE_TYPES,
@@ -53,10 +52,7 @@ const UpsertTypeSectionView = ({
 		useStreamSelectionStore(selectAvailableUpdateTypes) ??
 		DEFAULT_AVAILABLE_UPDATE_TYPES
 
-	const isKafka =
-		!!sourceType &&
-		normalizeConnectorType(sourceType).toLowerCase() ===
-			SOURCE_INTERNAL_TYPES.KAFKA
+	const isKafka = isKafkaSource(sourceType)
 
 	const upsertTypeOptions = UPSERT_TYPE_OPTIONS.filter(option => {
 		if (!availableUpdateTypes.includes(option.value)) return false

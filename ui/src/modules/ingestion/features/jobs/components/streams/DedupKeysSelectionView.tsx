@@ -2,7 +2,7 @@ import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
 import { Select, Tooltip } from "antd"
 import clsx from "clsx"
 
-interface DedupKeysSectionViewProps {
+interface DedupKeysSelectionViewProps {
 	options: string[]
 	value: string[]
 	disabled?: boolean
@@ -10,13 +10,13 @@ interface DedupKeysSectionViewProps {
 	onChange: (keys: string[]) => void
 }
 
-const DedupKeysSectionView = ({
+const DedupKeysSelectionView = ({
 	options,
 	value,
 	disabled,
 	isDirty,
 	onChange,
-}: DedupKeysSectionViewProps) => {
+}: DedupKeysSelectionViewProps) => {
 	return (
 		<div
 			className={clsx("mb-4", disabled ? "text-gray-500" : "text-neutral-text")}
@@ -47,4 +47,4 @@ const DedupKeysSectionView = ({
 	)
 }
 
-export default DedupKeysSectionView
+export default DedupKeysSelectionView

@@ -14,14 +14,13 @@ import { Button, Modal, Tooltip } from "antd"
 import clsx from "clsx"
 import { useEffect, useMemo, useState } from "react"
 
-import { SOURCE_INTERNAL_TYPES } from "@/modules/ingestion/common/constants"
 import {
 	FilterConfig,
 	StreamIdentifier,
 	SyncMode,
 	UpsertType,
 } from "@/modules/ingestion/common/types"
-import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
+import { isKafkaSource } from "@/modules/ingestion/common/utils"
 import { BulkConfigureStreamsModalProps } from "@/modules/ingestion/features/jobs/types"
 
 import { CARD_STYLE } from "../../constants"
@@ -37,7 +36,7 @@ import {
 } from "../../utils/streams"
 import BulkStreamSelectorList from "../streams/BulkStreamSelectorList"
 import DataFilterSectionBulk from "../streams/DataFilterSectionBulk"
-import DedupKeysSectionBulk from "../streams/dedupKeys/dedupKeysSectionBulk"
+import DedupKeysSelectionBulk from "../streams/DedupKeysSelectionBulk"
 import IngestionModeSectionBulk from "../streams/IngestionModeSectionBulk"
 import NormalizationSectionBulk from "../streams/NormalizationSectionBulk"
 import PartitionRegexSectionBulk from "../streams/PartitionRegexSectionBulk"
@@ -125,10 +124,7 @@ const BulkConfigureStreamsModal = ({
 	sourceVersion,
 	destinationType,
 }: BulkConfigureStreamsModalProps) => {
-	const isKafka =
-		!!sourceType &&
-		normalizeConnectorType(sourceType).toLowerCase() ===
-			SOURCE_INTERNAL_TYPES.KAFKA
+	const isKafka = isKafkaSource(sourceType)
 	const availableUpdateTypes = useStreamSelectionStore(
 		selectAvailableUpdateTypes,
 	)
@@ -227,7 +223,7 @@ const BulkConfigureStreamsModal = ({
 			syncMode,
 			cursorField:
 				syncMode === SyncMode.INCREMENTAL ? sortedCursors[0] : undefined,
-			appendMode: bulkStreamDefaults.append_mode ?? true,
+			appendMode: bulkStreamDefaults.append_mode ?? false,
 			dedupKeys: bulkStreamDefaults.dedup_keys ?? [],
 			upsertType: bulkStreamDefaults.update_type,
 			normalization: bulkStreamDefaults.normalization,
@@ -557,7 +553,7 @@ const BulkConfigureStreamsModal = ({
 														!kafkaUpsertBlocked &&
 														dirtyFields[BulkDirtyFieldKey.DedupKeys] &&
 														!bulkConfig.appendMode && (
-															<DedupKeysSectionBulk
+															<DedupKeysSelectionBulk
 																options={getDedupKeyOptions(bulkStream)}
 																value={bulkConfig.dedupKeys}
 																isDirty
@@ -821,7 +817,7 @@ const BulkConfigureStreamsModal = ({
 																{isKafka &&
 																	!kafkaUpsertBlocked &&
 																	!bulkConfig.appendMode && (
-																		<DedupKeysSectionBulk
+																		<DedupKeysSelectionBulk
 																			isDirty={
 																				dirtyFields[BulkDirtyFieldKey.DedupKeys]
 																			}
