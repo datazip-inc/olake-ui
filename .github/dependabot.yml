@@ -1,0 +1,101 @@
+version: 2
+
+# Note: target-branch applies to VERSION updates only. Dependabot security
+# updates always open against the repository default branch; that is a
+# Dependabot limitation and cannot be configured.
+updates:
+  # Go server (BFF + Temporal worker code).
+  - package-ecosystem: "gomod"
+    directory: "/server"
+    target-branch: "staging"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "go"
+    groups:
+      # One PR for routine bumps; security updates stay separate.
+      go-dependencies:
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Frontend (pnpm; Dependabot detects pnpm from pnpm-lock.yaml).
+  - package-ecosystem: "npm"
+    directory: "/ui"
+    target-branch: "staging"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "javascript"
+    groups:
+      npm-production:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+      npm-development:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+    ignore:
+      # Majors (react, antd, vite, eslint, ...) need manual migration work.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Base images in the root Dockerfile (golang, node, alpine).
+  - package-ecosystem: "docker"
+    directory: "/"
+    target-branch: "staging"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
+    groups:
+      docker-images:
+        update-types: ["minor", "patch"]
+    ignore:
+      # Node major must match the frontend toolchain; bump by hand.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Images in compose files (postgres, temporal, elasticsearch, ...).
+  # `latest` tags are skipped by Dependabot automatically.
+  - package-ecosystem: "docker-compose"
+    directories:
+      - "/"
+      - "/server"
+      - "/server/tests"
+    target-branch: "staging"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
+    groups:
+      docker-compose-images:
+        update-types: ["minor", "patch"]
+    ignore:
+      # Stateful services (postgres, elasticsearch, temporal) need a data
+      # migration on major bumps.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # minio/mc use RELEASE.<timestamp> tags that do not follow semver.
+      - dependency-name: "olakego/minio"
+      - dependency-name: "olakego/mc"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "staging"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    groups:
+      github-actions:
+        update-types: ["minor", "patch"]
