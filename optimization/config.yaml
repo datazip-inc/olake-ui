@@ -41,8 +41,6 @@ ams:
     task-execute-timeout: 1h # 3600000
     polling-timeout: 3s # 3000
     max-planning-parallelism: 1 # default 1
-    bootstrap:
-      group-name: "spark-container"
 
   blocker:
     timeout: 1min # 60000
@@ -113,3 +111,45 @@ ams:
       using-session-catalog-for-hive: false
       spark.sql.iceberg.handle-timestamp-without-timezone: false
       spark.sql.codegen.wholeStage: false
+
+containers:
+  - name: sparkContainer
+    container-impl: org.apache.amoro.server.manager.SparkOptimizerContainer
+    properties:
+      ams-optimizing-uri: "thrift://fusion.olake.internal:1261"
+      spark-home: /opt/spark/
+      # Kind control-plane hostname — resolved via Docker DNS (iceberg-net)
+      master: k8s://https://fusion-cluster-control-plane:6443
+      deploy-mode: cluster
+      job-uri: "local:///opt/spark/usrlib/optimizer-job.jar"
+      export.HADOOP_USER_NAME: spark
+      export.SPARK_CONF_DIR: /opt/spark/conf/
+      spark-conf.spark.kubernetes.container.image: "olakego/fusion-spark:latest"
+      spark-conf.spark.kubernetes.container.image.pullPolicy: "IfNotPresent"
+      spark-conf.spark.kubernetes.namespace: spark
+      spark-conf.spark.kubernetes.authenticate.driver.serviceAccountName: spark
+      spark-conf.spark.kubernetes.authenticate.executor.serviceAccountName: spark
+      spark-conf.spark.dynamicAllocation.enabled: "true"
+      spark-conf.spark.shuffle.service.enabled: "false"
+      spark-conf.spark.dynamicAllocation.shuffleTracking.enabled: "true"
+      spark-conf.spark.driver.memory: "1g"
+      spark-conf.spark.executor.memory: "1g"
+      spark-conf.spark.executor.cores: "1"
+      # Configs to prevent spark context from getting failed on executor failures
+      # Number of retries by spark = spark-conf.spark.task.maxFailures - 1
+      spark-conf.spark.executor.maxNumFailures: "100"
+      spark-conf.spark.executor.failuresValidityInterval: "60s"
+      spark-conf.spark.task.maxFailures: "4"
+      # Mount shared log volume so driver/executor pods write logs to the same path
+      # that LogController reads from (via the Kind node hostPath extraMount).
+      spark-conf.spark.kubernetes.driver.volumes.hostPath.amoro-logs.mount.path: "/mnt/amoro-logs"
+      spark-conf.spark.kubernetes.driver.volumes.hostPath.amoro-logs.mount.readOnly: "false"
+      spark-conf.spark.kubernetes.driver.volumes.hostPath.amoro-logs.options.path: "/mnt/amoro-logs"
+      spark-conf.spark.kubernetes.executor.volumes.hostPath.amoro-logs.mount.path: "/mnt/amoro-logs"
+      spark-conf.spark.kubernetes.executor.volumes.hostPath.amoro-logs.mount.readOnly: "false"
+      spark-conf.spark.kubernetes.executor.volumes.hostPath.amoro-logs.options.path: "/mnt/amoro-logs"
+      # Force Log4j2 to use the routing config (belt-and-suspenders with the Dockerfile COPY)
+      spark-conf.spark.driver.extraJavaOptions: "-Dlog4j2.configurationFile=file:///opt/spark/conf/log4j2.xml"
+      spark-conf.spark.executor.extraJavaOptions: "-Dlog4j2.configurationFile=file:///opt/spark/conf/log4j2.xml"
+      # Placeholder for environment variables to be injected into Spark driver/executor pods, e.g. for credentials
+      SPARK_POD_ENVS_PLACEHOLDER
