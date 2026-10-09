@@ -28,6 +28,7 @@ import {
 	parseCronExpression,
 	validateCronExpression,
 	isValidCronExpression,
+	isStreamsV2Job,
 	generateCronExpression,
 } from "../utils"
 
@@ -263,10 +264,13 @@ const JobSettings: React.FC = () => {
 							? job.destination.config
 							: JSON.stringify(job.destination.config),
 				},
-				streams_config:
-					typeof job.streams_config === "string"
-						? job.streams_config
-						: JSON.stringify(job.streams_config),
+				// Streams are not modified here, so the stored catalog is resent in its own format
+				...(isStreamsV2Job(job)
+					? {
+							available_streams_config: job.available_streams_config,
+							selected_streams_config: job.selected_streams_config,
+						}
+					: { streams_config: job.streams_config }),
 				// In settings page, we are not modifying the streams, there will be no stream difference
 				difference_streams: "{}",
 				// Streams can't change here, so index_required round-trips

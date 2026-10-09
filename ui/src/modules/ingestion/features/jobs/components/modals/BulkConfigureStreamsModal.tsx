@@ -195,7 +195,7 @@ const BulkConfigureStreamsModal = ({
 
 	useEffect(() => {
 		// Reset all config state to defaults on selection change.
-		const syncMode = bulkStream.stream.sync_mode
+		const syncMode = bulkStreamDefaults.sync_mode
 		const availableCursors = bulkStream.stream.available_cursor_fields ?? []
 		const primaryKeys = bulkStream.stream.source_defined_primary_key ?? []
 		const sortedCursors = sortCursorFields(availableCursors, primaryKeys)

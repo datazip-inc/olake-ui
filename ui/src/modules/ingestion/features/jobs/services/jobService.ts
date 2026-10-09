@@ -1,12 +1,13 @@
 import { API_CONFIG } from "@/config/apiConfig"
 import { api } from "@/core/api"
-import { StreamsDataStructure } from "@/modules/ingestion/common/types"
+import { StreamDifferenceResponse } from "@/modules/ingestion/common/types"
 import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
 
 import {
 	Job,
 	JobBase,
 	JobTask,
+	StreamDifferenceRequest,
 	TaskLogsDirection,
 	TaskLogsPaginationParams,
 	TaskLogsResponse,
@@ -211,14 +212,14 @@ export const jobService = {
 	},
 	getStreamDifference: async (
 		jobId: string,
-		streamsConfig: string,
-	): Promise<{ difference_streams: StreamsDataStructure }> => {
+		request: StreamDifferenceRequest,
+	): Promise<{ difference_streams: StreamDifferenceResponse }> => {
 		try {
 			const response = await api.post<{
-				difference_streams: StreamsDataStructure
+				difference_streams: StreamDifferenceResponse
 			}>(
 				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/stream-difference`,
-				{ updated_streams_config: streamsConfig },
+				request,
 				{ timeout: 0 },
 			)
 			return response.data

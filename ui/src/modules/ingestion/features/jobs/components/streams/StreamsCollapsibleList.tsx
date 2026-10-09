@@ -187,7 +187,6 @@ const StreamsCollapsibleList = ({
 					namespace: ns,
 				},
 				checked,
-				ingestionMode,
 			)
 		})
 	}
@@ -221,7 +220,6 @@ const StreamsCollapsibleList = ({
 						namespace: ns,
 					},
 					checked,
-					ingestionMode,
 				)
 			})
 		})
@@ -264,7 +262,6 @@ const StreamsCollapsibleList = ({
 				namespace: ns,
 			},
 			checked,
-			ingestionMode,
 		)
 	}
 
