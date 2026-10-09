@@ -282,14 +282,11 @@ services:
               for (k in ENVIRON) {
                 v = ENVIRON[k]
                 gsub(/"/, "\\\"", v)
-                # Driver: the optimizer pod is the driver, so these are plain pod env entries.
-                driver_lines = driver_lines sprintf("            - name: %s\n              value: \"%s\"\n", k, v)
-                # Executors: created by the driver, so these are spark-submit arguments.
-                executor_lines = executor_lines sprintf("            - --conf\n            - spark.executorEnv.%s=%s\n", k, v)
+                env_lines = env_lines sprintf("      spark-conf.spark.kubernetes.driverEnv.%s: \"%s\"\n", k, v)
+                env_lines = env_lines sprintf("      spark-conf.spark.executorEnv.%s: \"%s\"\n", k, v)
               }
             }
-            /OPTIMIZER_POD_ENVS_PLACEHOLDER/ { printf "%s", driver_lines; next }
-            /SPARK_EXECUTOR_ENVS_PLACEHOLDER/ { printf "%s", executor_lines; next }
+            /SPARK_POD_ENVS_PLACEHOLDER/ { printf "%s", env_lines; next }
             { print }
           ' "$$src" > "$$dst"
         }
@@ -299,11 +296,10 @@ services:
 
         echo "==> Fetching Fusion config files from GitHub..."
         BASE="https://raw.githubusercontent.com/datazip-inc/olake-ui/master/optimization"
-        curl -fsSL "$${BASE}/config.yaml"           -o /fusion-config/config.yaml
-        curl -fsSL "$${BASE}/kind-config.yaml"      -o /fusion-config/kind-config.yaml
-        curl -fsSL "$${BASE}/spark-rbac.yaml"       -o /fusion-config/spark-rbac.yaml
-        curl -fsSL "$${BASE}/spark-optimizer.yaml"  -o /tmp/spark-optimizer.yaml
-        inject_pod_envs /tmp/spark-optimizer.yaml /fusion-config/spark-optimizer.yaml
+        curl -fsSL "$${BASE}/config.yaml"      -o /tmp/config.yaml
+        curl -fsSL "$${BASE}/kind-config.yaml" -o /fusion-config/kind-config.yaml
+        curl -fsSL "$${BASE}/spark-rbac.yaml"  -o /fusion-config/spark-rbac.yaml
+        inject_pod_envs /tmp/config.yaml /fusion-config/config.yaml
 
         echo "==> fusion-db-init complete."
     restart: "no"
@@ -377,6 +373,43 @@ services:
           -d '{"user":"admin","password":"password"}'
         echo ""
 
+        # ---- Optimizer Group (Spark on Kubernetes) ----
+        echo "Checking optimizer group..."
+        GROUPS=$$(curl -s -b /tmp/cookies.txt \
+          -H "X-Request-Source: Web" \
+          http://fusion:1630/api/ams/v1/optimize/resourceGroups)
+
+        if echo "$$GROUPS" | grep -q '"name":"spark-container"'; then
+          echo "  Optimizer group 'spark-container' already exists — skipping."
+        else
+          echo "  Creating optimizer group 'spark-container' (Spark on K8s)..."
+          curl -s -b /tmp/cookies.txt \
+            -X POST http://fusion:1630/api/ams/v1/optimize/resourceGroups \
+            -H "Content-Type: application/json" \
+            -H "X-Request-Source: Web" \
+            -d '{"name":"spark-container","container":"sparkContainer","properties":{}}'
+          echo ""
+          sleep 5
+        fi
+
+        # ---- Optimizer (always ensure at least 1 is running) ----
+        echo "Checking optimizers..."
+        OPTIMIZERS=$$(curl -s -b /tmp/cookies.txt \
+          -H "X-Request-Source: Web" \
+          "http://fusion:1630/api/ams/v1/optimize/optimizerGroups/spark-container/optimizers?page=1&pageSize=10")
+
+        if echo "$$OPTIMIZERS" | grep -q '"jobStatus":"RUNNING"'; then
+          echo "  Spark optimizer already running — skipping."
+        else
+          echo "  Scaling out Spark optimizer (parallelism=1)..."
+          curl -s -b /tmp/cookies.txt \
+            -X POST http://fusion:1630/api/ams/v1/optimize/optimizerGroups/spark-container/optimizers \
+            -H "Content-Type: application/json" \
+            -H "X-Request-Source: Web" \
+            -d '{"parallelism":1}'
+          echo ""
+          sleep 5
+        fi
 
         echo ""
         echo "============================================"
@@ -433,10 +466,6 @@ services:
 
         echo "==> Applying Spark RBAC (namespace + service account)..."
         cat /fusion-config/spark-rbac.yaml | docker exec -i fusion-cluster-control-plane \
-          kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
-
-        echo "==> Deploying the Spark optimizer..."
-        cat /fusion-config/spark-optimizer.yaml | docker exec -i fusion-cluster-control-plane \
           kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
 
         echo "==> Generating kubeconfig for Fusion..."
