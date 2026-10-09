@@ -139,8 +139,8 @@ const IngestionModeSectionView = ({
 				</Tooltip>
 			</Radio.Group>
 			{upsertDisabledMessage && (
-				<div className="mb-4 flex items-center gap-1 text-sm text-[#686868]">
-					<InfoIcon className="size-4 shrink-0" />
+				<div className="mb-4 flex items-center gap-1 text-xs font-medium text-olake-text-tertiary">
+					<InfoIcon className="size-3.5 shrink-0" />
 					{upsertDisabledMessage}
 				</div>
 			)}
