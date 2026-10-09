@@ -1,3 +1,5 @@
+import { AxiosError } from "axios"
+
 import {
 	AWSS3,
 	ApacheIceBerg,
@@ -9,6 +11,7 @@ import {
 	Postgres,
 	MSSQL,
 } from "@/assets"
+import { OperationError } from "@/common/services/operationsService"
 
 import { DESTINATION_INTERNAL_TYPES, DESTINATION_LABELS } from "../constants"
 
@@ -88,4 +91,29 @@ export const getConnectorInLowerCase = (connector?: string | null) => {
 		default:
 			return lowerConnector
 	}
+}
+
+/**
+ * Extracts a message to show when a connection test could not produce a verdict.
+ *
+ * A connector that runs and reports it cannot reach the database is a *successful*
+ * operation carrying a FAILED status, and never reaches here. This covers the other case:
+ * the workflow itself did not complete — a failed image pull, a timeout, a lost
+ * connection while polling. Those surface as OperationError, so unwrapping only
+ * AxiosError would reduce a real, actionable message to "Unknown error occurred".
+ */
+export const describeConnectionFailure = (error: unknown): string => {
+	if (error instanceof OperationError) {
+		return error.message || "Connection test failed"
+	}
+	if (error instanceof AxiosError) {
+		return (
+			error.response?.data?.message ??
+			"Network error - please check your connection"
+		)
+	}
+	if (error instanceof Error && error.message) {
+		return error.message
+	}
+	return "Unknown error occurred"
 }

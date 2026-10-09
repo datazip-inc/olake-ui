@@ -9,6 +9,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -211,6 +212,11 @@ func (h *Handler) DeleteDestination(c *gin.Context) {
 // @Failure 413 {object} dto.Error413Response "payload too large"
 // @Router /api/v1/project/{projectid}/destinations/test [post]
 func (h *Handler) TestDestinationConnection(c *gin.Context) {
+	projectID, err := utils.GetProjectID(c)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
 	// need to remove sourceVersion from request
 	var req dto.DestinationTestConnectionRequest
 	if err := utils.BindAndValidate(c, &req); err != nil {
@@ -220,14 +226,15 @@ func (h *Handler) TestDestinationConnection(c *gin.Context) {
 
 	logger.Infof("Test destination connection initiated destination_type[%s] destination_version[%s]", req.Type, req.Version)
 
-	result, logs, err := h.etl.TestDestinationConnection(c.Request.Context(), &req)
+	operationID, err := h.etl.TestDestinationConnection(c.Request.Context(), projectID, &req)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to verify driver credentials: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(c, fmt.Sprintf("destination %s connection tested successfully", req.Type), dto.TestConnectionResponse{
-		ConnectionResult: result,
-		Logs:             logs,
+	utils.AcceptedResponse(c, fmt.Sprintf("destination %s connection test started", req.Type), dto.OperationAcceptedResponse{
+		OperationID: operationID,
+		Kind:        string(temporal.OperationTestConnection),
+		Status:      string(temporal.OperationRunning),
 	})
 }
 
@@ -287,10 +294,14 @@ func (h *Handler) GetDestinationSpec(c *gin.Context) {
 	}
 	logger.Debugf("Get destination spec initiated project_id[%s] destination_type[%s] destination_version[%s]",
 		projectID, req.Type, req.Version)
-	resp, err := h.etl.GetDestinationSpec(c.Request.Context(), &req)
+	operationID, err := h.etl.GetDestinationSpec(c.Request.Context(), projectID, &req)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get destination spec: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(c, fmt.Sprintf("destination %s spec fetched successfully", req.Type), resp)
+	utils.AcceptedResponse(c, fmt.Sprintf("destination %s spec fetch started", req.Type), dto.OperationAcceptedResponse{
+		OperationID: operationID,
+		Kind:        string(temporal.OperationSpec),
+		Status:      string(temporal.OperationRunning),
+	})
 }
