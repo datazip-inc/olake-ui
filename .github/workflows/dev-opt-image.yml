@@ -1,0 +1,17 @@
+name: Olake UI Dev Optimizer Image
+on:
+  push:
+    branches:
+      - fix/optimizer_in_fusion-dev
+  workflow_dispatch:
+
+jobs:
+  release:
+    uses: ./.github/workflows/build-and-release.yml
+    with:
+      environment: dev
+      ref: ${{ github.sha }}
+      # release.sh prefixes dev builds with "dev-", publishing <DOCKER_REPO>:dev-opt-v1
+      version: opt-v1
+      skip_latest_tag: true
+    secrets: inherit
