@@ -10,11 +10,13 @@ import { IngestionMode } from "../../enums"
 import {
 	useJobStore,
 	useStreamSelectionStore,
+	selectAvailableUpdateTypes,
 	selectSelectedStreams,
 } from "../../stores"
 import { GroupedStreamsCollapsibleListProps } from "../../types"
 import {
 	getIngestionMode,
+	getKafkaUpsertNotSupportedMessage,
 	hasGroupedStreamsStructureChanged,
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
@@ -25,6 +27,7 @@ import IngestionModeChangeModal from "../modals/IngestionModeChangeModal"
 const StreamsCollapsibleList = ({
 	groupedStreams,
 	sourceType,
+	sourceVersion,
 	destinationType,
 }: GroupedStreamsCollapsibleListProps) => {
 	const selectedStreams = useStreamSelectionStore(selectSelectedStreams)
@@ -37,6 +40,9 @@ const StreamsCollapsibleList = ({
 	)
 	const { setShowIngestionModeChangeModal, ingestionMode, setIngestionMode } =
 		useJobStore()
+	const availableUpdateTypes = useStreamSelectionStore(
+		selectAvailableUpdateTypes,
+	)
 	const [openNamespaces, setOpenNamespaces] = useState<{
 		[ns: string]: boolean
 	}>({})
@@ -283,6 +289,23 @@ const StreamsCollapsibleList = ({
 		destinationType,
 	)
 
+	const kafkaUpsertNotSupportedMessage = getKafkaUpsertNotSupportedMessage(
+		sourceType,
+		sourceVersion,
+		availableUpdateTypes,
+	)
+
+	const allUpsertSupported =
+		isSourceUpsertModeSupported &&
+		isDestUpsertModeSupported &&
+		!kafkaUpsertNotSupportedMessage
+
+	useEffect(() => {
+		if (!kafkaUpsertNotSupportedMessage) return
+		setIngestionMode(IngestionMode.APPEND)
+		updateAllIngestionMode(true)
+	}, [kafkaUpsertNotSupportedMessage])
+
 	return (
 		<>
 			<div className="flex h-full flex-col rounded-[4px] border-gray-200">
@@ -318,7 +341,7 @@ const StreamsCollapsibleList = ({
 										onClick={() => {
 											if (
 												ingestionMode !== IngestionMode.UPSERT &&
-												isSourceUpsertModeSupported
+												allUpsertSupported
 											) {
 												setTargetIngestionMode(IngestionMode.UPSERT)
 												setShowIngestionModeChangeModal(true)
@@ -326,7 +349,7 @@ const StreamsCollapsibleList = ({
 										}}
 										className={clsx(
 											`relative z-10 flex items-center justify-center rounded-sm p-1 px-4 text-center transition-colors duration-300`,
-											isSourceUpsertModeSupported
+											allUpsertSupported
 												? "cursor-pointer"
 												: "cursor-not-allowed opacity-40",
 										)}

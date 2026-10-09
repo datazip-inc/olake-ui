@@ -354,6 +354,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						<StreamsCollapsibleList
 							groupedStreams={groupedFilteredStreams}
 							sourceType={sourceConnector}
+							sourceVersion={sourceVersion}
 							destinationType={destinationType}
 						/>
 					) : isLoading ? (

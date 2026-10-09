@@ -10,7 +10,11 @@ import {
 	MSSQL,
 } from "@/assets"
 
-import { DESTINATION_INTERNAL_TYPES, DESTINATION_LABELS } from "../constants"
+import {
+	DESTINATION_INTERNAL_TYPES,
+	DESTINATION_LABELS,
+	SOURCE_INTERNAL_TYPES,
+} from "../constants"
 
 // Normalizes old connector types to their current internal types
 export const normalizeConnectorType = (connectorType: string): string => {
@@ -28,6 +32,11 @@ export const normalizeConnectorType = (connectorType: string): string => {
 			return connectorType
 	}
 }
+
+export const isKafkaSource = (sourceType?: string): boolean =>
+	!!sourceType &&
+	normalizeConnectorType(sourceType).toLowerCase() ===
+		SOURCE_INTERNAL_TYPES.KAFKA
 
 // These are used to show in connector dropdowns
 export const getConnectorImage = (connector: string) => {
