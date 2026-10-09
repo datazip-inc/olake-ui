@@ -117,7 +117,7 @@ func (h *Handler) CheckAuth(c *gin.Context) {
 func (h *Handler) TelemetryID(c *gin.Context) {
 	logger.Info("Get telemetry ID initiated")
 	utils.SuccessResponse(c, "telemetry ID fetched successfully", dto.TelemetryIDResponse{
-		TelemetryUserID: telemetry.GetTelemetryUserID(),
+		TelemetryUserID: telemetry.GetTelemetryUserID(c.Request.Context()),
 		OlakeUIVersion:  telemetry.GetVersion(),
 	})
 }

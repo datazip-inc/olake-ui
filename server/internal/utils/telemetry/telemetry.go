@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -23,7 +24,11 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
-var instance *Telemetry
+var (
+	instance   *Telemetry
+	userIDOnce sync.Once
+	userID     string
+)
 
 type LocationInfo struct {
 	Country string `json:"country"`
@@ -48,45 +53,72 @@ type Telemetry struct {
 	db             *database.Database
 }
 
+// Disabled reports whether telemetry is switched off for this process.
+func Disabled() bool {
+	disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED"))
+	return disabled
+}
+
+// EnsureUserID resolves the anonymous OLake install id, generating and persisting one on first
+// run. The OLake UI owns this id: every other OLake product, Fusion included, reports telemetry
+// under the value returned here. It is safe to call from anywhere and resolves only once.
+func EnsureUserID(ctx context.Context) string {
+	if Disabled() {
+		return ""
+	}
+
+	userIDOnce.Do(func() {
+		configDir := filepath.Join(os.TempDir(), "olake-config", "telemetry")
+		idPath := filepath.Join(configDir, TelemetryUserIDFile)
+		relativePath := path.Join("telemetry", TelemetryUserIDFile)
+		newID := func() string {
+			hash := sha256.New()
+			hash.Write([]byte(time.Now().String()))
+			return hex.EncodeToString(hash.Sum(nil))[:32]
+		}
+
+		switch storagemode.Get() {
+		case constants.StorageModeS3:
+			if idBytes, _, err := storage.ReadFileFromS3(ctx, "", relativePath, false); err == nil {
+				userID = string(idBytes)
+				return
+			}
+
+			id := newID()
+			_ = storage.WriteFilesToS3(ctx, constants.DefaultConfigDir, []storage.JobConfig{{RelativePath: relativePath, Data: id}})
+			userID = id
+		default:
+			if idBytes, err := os.ReadFile(idPath); err == nil {
+				userID = string(idBytes)
+				return
+			}
+
+			id := newID()
+			if err := os.MkdirAll(configDir, 0755); err != nil {
+				userID = id
+			}
+			_ = os.WriteFile(idPath, []byte(id), 0600)
+			userID = id
+		}
+	})
+
+	return userID
+}
+
 func InitTelemetry(ctx context.Context, db *database.Database) {
 	go func() {
-		if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
+		if Disabled() {
 			return
 		}
 
 		ip := getOutboundIP()
 
 		// Generate user ID during initialization
-		tempUserID := func() string {
-			configDir := filepath.Join(os.TempDir(), "olake-config", "telemetry")
-			idPath := filepath.Join(configDir, TelemetryUserIDFile)
-			relativePath := path.Join("telemetry", TelemetryUserIDFile)
-			newID := func() string {
-				hash := sha256.New()
-				hash.Write([]byte(time.Now().String()))
-				return hex.EncodeToString(hash.Sum(nil))[:32]
-			}
-
-			switch storagemode.Get() {
-			case constants.StorageModeS3:
-				if idBytes, _, err := storage.ReadFileFromS3(ctx, "", relativePath, false); err == nil {
-					return string(idBytes)
-				}
-				id := newID()
-				_ = storage.WriteFilesToS3(ctx, constants.DefaultConfigDir, []storage.JobConfig{{RelativePath: relativePath, Data: id}})
-				return id
-			default:
-				if idBytes, err := os.ReadFile(idPath); err == nil {
-					return string(idBytes)
-				}
-				id := newID()
-				if err := os.MkdirAll(configDir, 0755); err != nil {
-					return id
-				}
-				_ = os.WriteFile(idPath, []byte(id), 0600)
-				return id
-			}
-		}()
+		tempUserID := EnsureUserID(ctx)
+		if tempUserID == "" {
+			logger.Debug("no user id found skipping telemetry")
+			return
+		}
 
 		logger.Infof("telemetry initialized with user ID: %s, and App version: %s", tempUserID, constants.AppVersion)
 
@@ -227,11 +259,8 @@ func SetUsername(username string) {
 	}
 }
 
-func GetTelemetryUserID() string {
-	if instance != nil {
-		return instance.TempUserID
-	}
-	return ""
+func GetTelemetryUserID(ctx context.Context) string {
+	return EnsureUserID(ctx)
 }
 
 func GetVersion() string {

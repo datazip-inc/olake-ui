@@ -74,7 +74,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	configs := []JobConfig{
 		{Name: "config.json", Data: config},
 		{Name: "streams.json", Data: streamsConfig},
-		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
+		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID(ctx)},
 	}
 
 	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
