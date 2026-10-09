@@ -10,6 +10,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -106,7 +107,11 @@ func (h *Handler) CreateJob(c *gin.Context) {
 	}
 	logger.Debugf("Create job initiated project_id[%s] user_id[%v] job_name[%s]", projectID, userID, req.Name)
 	if err := h.etl.CreateJob(c.Request.Context(), &req, projectID, userID); err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create job: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrStreamsFormat) {
+			status = http.StatusBadRequest
+		}
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to create job: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(c, fmt.Sprintf("job '%s' created successfully", req.Name), nil)
@@ -154,8 +159,11 @@ func (h *Handler) UpdateJob(c *gin.Context) {
 	logger.Debugf("Update job initiated project_id[%s] job_id[%d] user_id[%v]", projectID, jobID, userID)
 	if err := h.etl.UpdateJob(c.Request.Context(), &req, projectID, jobID, userID); err != nil {
 		status := http.StatusInternalServerError
-		if errors.Is(err, constants.ErrJobNotFound) {
+		switch {
+		case errors.Is(err, constants.ErrJobNotFound):
 			status = http.StatusNotFound
+		case errors.Is(err, constants.ErrStreamsFormat):
+			status = http.StatusBadRequest
 		}
 		utils.ErrorResponse(c, status, fmt.Sprintf("failed to update job: %s", err), err)
 		return
@@ -366,7 +374,7 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Clear destination initiated project_id[%s] job_id[%d]", projectID, id)
-	if err := h.etl.ClearDestination(c.Request.Context(), projectID, id, "", 0, true); err != nil {
+	if err := h.etl.ClearDestination(c.Request.Context(), projectID, id, types.StreamsCatalog{}, 0, true); err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
@@ -379,7 +387,9 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 
 // @Summary Get stream differences
 // @Tags Jobs
-// @Description Get difference between current streams.json and existing streams.json.
+// @Description Compares the job's stored catalog against a submitted edit.
+// @Description Send updated_streams_config, or updated_available_streams_config + updated_selected_streams_config.
+// @Description An invalid catalog format returns 400.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   id            path    int     true    "job id"
 // @Param   body          body    dto.StreamDifferenceRequest true "stream difference data"
@@ -410,8 +420,11 @@ func (h *Handler) GetStreamDifference(c *gin.Context) {
 	diffStreams, err := h.etl.GetStreamDifference(c.Request.Context(), projectID, id, req)
 	if err != nil {
 		status := http.StatusInternalServerError
-		if errors.Is(err, constants.ErrJobNotFound) {
+		switch {
+		case errors.Is(err, constants.ErrJobNotFound):
 			status = http.StatusNotFound
+		case errors.Is(err, constants.ErrStreamsFormat):
+			status = http.StatusBadRequest
 		}
 		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get stream difference: %s", err), err)
 		return
