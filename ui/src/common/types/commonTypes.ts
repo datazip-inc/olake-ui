@@ -18,6 +18,8 @@ export interface PrerequisiteCheck {
 	current_value: string
 	recommended_value: string
 	description: string
+	// why the check could not be evaluated; absent when the check ran
+	error?: string
 }
 
 export interface TestConnectionResponse {

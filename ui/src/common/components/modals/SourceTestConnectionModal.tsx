@@ -4,6 +4,7 @@ import {
 	CaretUpIcon,
 	CheckCircleIcon,
 	CircleIcon,
+	ListBulletsIcon,
 	SpinnerIcon,
 	WarningCircleIcon,
 	WarningIcon,
@@ -12,11 +13,16 @@ import { Button, Modal } from "antd"
 import clsx from "clsx"
 import { ReactNode, useEffect, useMemo, useState } from "react"
 
-import { PrerequisiteCheck } from "@/common/types"
+import { LogEntry, PrerequisiteCheck } from "@/common/types"
+
+import ErrorLogsModal from "./ErrorLogsModal"
 
 // Delay between revealing consecutive checks. The backend returns every check at once,
 // so the reveal only paces the results for the user.
 const REVEAL_INTERVAL_MS = 300
+
+// Longer check errors are cut in the row; the full text opens in a popup
+const ERROR_PREVIEW_LENGTH = 120
 
 type SectionKey = "required" | "optional"
 type SectionStatus = "pending" | "running" | "passed" | "failed" | "warning"
@@ -128,12 +134,16 @@ const PrerequisiteRow = ({
 	check,
 	status,
 	isLast,
+	onViewError,
 }: {
 	check: PrerequisiteCheck
 	status: RowStatus
 	isLast: boolean
+	onViewError: (check: PrerequisiteCheck) => void
 }) => {
 	const failed = status === "done" && !check.passed
+	const errorText = check.error?.trim() ?? ""
+	const errorIsLong = errorText.length > ERROR_PREVIEW_LENGTH
 	const failColor = check.required ? "text-olake-error" : "text-olake-warning"
 
 	const icon =
@@ -203,6 +213,29 @@ const PrerequisiteRow = ({
 								</span>
 							</div>
 						</div>
+						{errorText && (
+							<div className="mt-2 flex flex-col items-start gap-1">
+								<p
+									className={clsx(
+										"whitespace-pre-wrap break-words text-xs",
+										failColor,
+									)}
+								>
+									{errorIsLong
+										? `${errorText.slice(0, ERROR_PREVIEW_LENGTH)}…`
+										: errorText}
+								</p>
+								{errorIsLong && (
+									<Button
+										size="small"
+										className="mt-1"
+										onClick={() => onViewError(check)}
+									>
+										Show details
+									</Button>
+								)}
+							</div>
+						)}
 					</>
 				)}
 			</div>
@@ -217,6 +250,7 @@ const SourceTestConnectionModal = ({
 	prerequisites,
 	startedAt,
 	finishedAt,
+	logs = [],
 	onConfirm,
 	onAllPassed,
 	onRetry,
@@ -227,12 +261,16 @@ const SourceTestConnectionModal = ({
 	// Connection test timing; finishedAt also identifies the attempt shown
 	startedAt: number
 	finishedAt: number
+	// driver logs of the test, shown from the banner's "View all logs"
+	logs?: LogEntry[]
 	onConfirm: () => void
 	onAllPassed: () => void
 	onRetry: () => void
 	onCancel: () => void
 }) => {
 	const [revealed, setRevealed] = useState(0)
+	const [errorCheck, setErrorCheck] = useState<PrerequisiteCheck | null>(null)
+	const [showLogs, setShowLogs] = useState(false)
 	const [expandedOverride, setExpandedOverride] = useState<
 		Partial<Record<SectionKey, boolean>>
 	>({})
@@ -331,6 +369,7 @@ const SourceTestConnectionModal = ({
 				check={check}
 				status={rowStatus(offset + i)}
 				isLast={i === checks.length - 1}
+				onViewError={setErrorCheck}
 			/>
 		))
 
@@ -338,93 +377,135 @@ const SourceTestConnectionModal = ({
 	const canConfirm = revealDone && requiredFailed === 0 && optionalFailed > 0
 
 	return (
-		<Modal
-			open={open}
-			title="Testing Source Configuration"
-			onCancel={onCancel}
-			maskClosable={false}
-			centered
-			width={780}
-			destroyOnHidden
-			footer={null}
-			styles={{
-				content: { padding: 0, overflow: "hidden", borderRadius: 20 },
-				header: {
-					padding: "32px 36px 20px",
-					margin: 0,
-					borderBottom: "1px solid #D9D9D9",
-				},
-				body: { padding: 0 },
-			}}
-		>
-			<div className="flex h-[560px] flex-col">
-				<div className="flex-1 overflow-auto px-9 py-6">
-					<Section
-						title="Test Connection"
-						subtitle={connectionSubtitle}
-						status="passed"
-						isLast={!showRequired && !showOptional}
-					/>
-					{showRequired && (
+		<>
+			<Modal
+				open={open}
+				title="Testing Source Configuration"
+				onCancel={onCancel}
+				maskClosable={false}
+				centered
+				width={780}
+				destroyOnHidden
+				footer={null}
+				styles={{
+					content: { padding: 0, overflow: "hidden", borderRadius: 20 },
+					header: {
+						padding: "32px 36px 20px",
+						margin: 0,
+						borderBottom: "1px solid #D9D9D9",
+					},
+					body: { padding: 0 },
+				}}
+			>
+				<div className="flex h-[560px] flex-col">
+					<div className="flex-1 overflow-auto px-9 py-6">
 						<Section
-							title="Required Source CDC Pre-Requisites"
-							{...requiredSection}
-							isLast={!showOptional}
-						>
-							{renderRows(required, 0)}
-						</Section>
-					)}
-					{showOptional && (
-						<Section
-							title="Optional Source CDC Settings"
-							{...optionalSection}
-							isLast
-						>
-							{renderRows(optional, required.length)}
-						</Section>
-					)}
-				</div>
-
-				{blocked && (
-					<div className="flex items-center gap-2 border-t border-olake-border bg-olake-error-bg px-9 py-2 text-sm text-olake-error">
-						<WarningCircleIcon size={16} />
-						Some required source server settings are misconfigured. Configure
-						them to the recommended values for reliable CDC syncs.
-					</div>
-				)}
-				{canConfirm && (
-					<div className="flex items-center gap-2 border-t border-olake-border bg-olake-success-bg px-9 py-2 text-sm text-olake-success-strong">
-						<CheckCircleIcon
-							size={16}
-							className="text-olake-success"
+							title="Test Connection"
+							subtitle={connectionSubtitle}
+							status="passed"
+							isLast={!showRequired && !showOptional}
 						/>
-						Some optional settings are not configured to the recommended values.
-						Updating them is recommended for reliable CDC syncs.
+						{showRequired && (
+							<Section
+								title="Required Source CDC Pre-Requisites"
+								{...requiredSection}
+								isLast={!showOptional}
+							>
+								{renderRows(required, 0)}
+							</Section>
+						)}
+						{showOptional && (
+							<Section
+								title="Optional Source CDC Settings"
+								{...optionalSection}
+								isLast
+							>
+								{renderRows(optional, required.length)}
+							</Section>
+						)}
 					</div>
-				)}
 
-				<div className="flex items-center gap-2 border-t border-olake-border px-9 py-5">
-					{blocked ? (
-						<Button
-							type="primary"
-							onClick={onRetry}
-						>
-							Try Again
-						</Button>
-					) : canConfirm ? (
-						<Button
-							type="primary"
-							onClick={onConfirm}
-						>
-							Continue anyway
-						</Button>
-					) : (
-						<Button disabled>In Progress...</Button>
+					{blocked && (
+						<div className="flex items-center gap-2 border-t border-olake-border bg-olake-error-bg px-9 py-2 text-sm text-olake-error">
+							<WarningCircleIcon size={16} />
+							<span>
+								Some required source server settings are misconfigured.
+								Configure them to the recommended values for reliable CDC syncs.
+							</span>
+							{logs.length > 0 && (
+								<Button
+									size="small"
+									className="ml-auto shrink-0"
+									icon={<ListBulletsIcon size={14} />}
+									onClick={() => setShowLogs(true)}
+								>
+									View all logs
+								</Button>
+							)}
+						</div>
 					)}
-					<Button onClick={onCancel}>Cancel</Button>
+					{canConfirm && (
+						<div className="flex items-center gap-2 border-t border-olake-border bg-olake-success-bg px-9 py-2 text-sm text-olake-success-strong">
+							<CheckCircleIcon
+								size={16}
+								className="text-olake-success"
+							/>
+							<span>
+								Some optional settings are not configured to the recommended
+								values. Updating them is recommended for reliable CDC syncs.
+							</span>
+							{logs.length > 0 && (
+								<Button
+									size="small"
+									className="ml-auto shrink-0"
+									icon={<ListBulletsIcon size={14} />}
+									onClick={() => setShowLogs(true)}
+								>
+									View all logs
+								</Button>
+							)}
+						</div>
+					)}
+
+					<div className="flex items-center gap-2 border-t border-olake-border px-9 py-5">
+						{blocked ? (
+							<Button
+								type="primary"
+								onClick={onRetry}
+							>
+								Try Again
+							</Button>
+						) : canConfirm ? (
+							<Button
+								type="primary"
+								onClick={onConfirm}
+							>
+								Continue anyway
+							</Button>
+						) : (
+							<Button disabled>In Progress...</Button>
+						)}
+						<Button onClick={onCancel}>Cancel</Button>
+					</div>
 				</div>
-			</div>
-		</Modal>
+			</Modal>
+			<ErrorLogsModal
+				open={!!errorCheck}
+				onClose={() => setErrorCheck(null)}
+				title={`Could not check ${errorCheck?.name ?? ""}`}
+				subtitle={errorCheck?.description}
+				error={errorCheck?.error ?? ""}
+			/>
+			<ErrorLogsModal
+				open={showLogs}
+				onClose={() => setShowLogs(false)}
+				title="All test connection logs"
+				subtitle="Every log line from this connection test, including all check errors"
+				logsTitle="Logs"
+				error=""
+				logs={logs}
+			/>
+		</>
 	)
 }
 

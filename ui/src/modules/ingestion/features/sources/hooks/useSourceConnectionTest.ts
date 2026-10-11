@@ -2,6 +2,7 @@ import { useRef, useState } from "react"
 
 import { TEST_CONNECTION_STATUS } from "@/common/constants"
 import type {
+	LogEntry,
 	PrerequisiteCheck,
 	TestConnectionError,
 	TestConnectionResponse,
@@ -32,6 +33,7 @@ export const useSourceConnectionTest = () => {
 	const [open, setOpen] = useState(false)
 	const [showSuccess, setShowSuccess] = useState(false)
 	const [prerequisites, setPrerequisites] = useState<PrerequisiteCheck[]>([])
+	const [logs, setLogs] = useState<LogEntry[]>([])
 	const [startedAt, setStartedAt] = useState(() => Date.now())
 	const [finishedAt, setFinishedAt] = useState(() => Date.now())
 
@@ -91,6 +93,7 @@ export const useSourceConnectionTest = () => {
 			return
 		}
 		setPrerequisites(checks)
+		setLogs(result?.data?.logs ?? [])
 		setStartedAt(started)
 		setFinishedAt(Date.now())
 		setOpen(true)
@@ -123,6 +126,7 @@ export const useSourceConnectionTest = () => {
 		modalProps: {
 			open,
 			prerequisites,
+			logs,
 			startedAt,
 			finishedAt,
 			onConfirm: () => finish({ outcome: "passed" }),
