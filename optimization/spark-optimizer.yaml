@@ -65,6 +65,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
             - name: HADOOP_USER_NAME
               value: spark
             - name: LOG_DIR
@@ -84,6 +88,10 @@ spec:
             # that executors keep reaching the driver after Kubernetes replaces the pod.
             - --conf
             - spark.driver.bindAddress=$(POD_IP)
+            # Makes the executors owned by this pod, so Kubernetes deletes them with it even when the
+            # driver is killed before it can delete them itself.
+            - --conf
+            - spark.kubernetes.driver.pod.name=$(POD_NAME)
             - --conf
             - spark.driver.host=fusion-optimizer.spark.svc.cluster.local
             - --conf
@@ -100,8 +108,8 @@ spec:
             - spark.kubernetes.container.image.pullPolicy=IfNotPresent
             - --conf
             - spark.kubernetes.authenticate.executor.serviceAccountName=spark
-            - --conf
-            - spark.kubernetes.executor.podNamePrefix=fusion-optimizer-executor
+            # No spark.kubernetes.executor.podNamePrefix: Spark then generates one per application, so
+            # the executors of a restarted driver never collide with executor pods left by the previous one.
             - --conf
             - spark.kubernetes.executor.label.optimizer-group=spark-container
             - --conf
