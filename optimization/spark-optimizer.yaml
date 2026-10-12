@@ -135,9 +135,10 @@ spec:
             - spark.kubernetes.executor.volumes.hostPath.amoro-logs.options.path=/mnt/amoro-logs
             - --conf
             - spark.executorEnv.LOG_DIR=/mnt/amoro-logs
-            # Force Log4j2 to use the routing config (belt-and-suspenders with the Dockerfile COPY)
+            # Force Log4j2 to use the routing config (belt-and-suspenders with the Dockerfile COPY).
+            # the driver exits on its first OutOfMemoryError.
             - --conf
-            - spark.driver.extraJavaOptions=-Dlog4j2.configurationFile=file:///opt/spark/conf/log4j2.xml
+            - spark.driver.extraJavaOptions=-Dlog4j2.configurationFile=file:///opt/spark/conf/log4j2.xml -XX:+ExitOnOutOfMemoryError
             - --conf
             - spark.executor.extraJavaOptions=-Dlog4j2.configurationFile=file:///opt/spark/conf/log4j2.xml
             # Placeholder for environment variables injected into executor pods, e.g. credentials
