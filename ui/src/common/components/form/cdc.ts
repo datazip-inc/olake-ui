@@ -66,13 +66,23 @@ export const isCdcEnabled = (
 	return cdcFields.some(key => key in value)
 }
 
+/**
+ * Turns update_method into the CdcToggle field for drivers with the new form layout
+ * ("ui:sections"). The driver uischema sends neither key: rjsf hides a field's label whenever
+ * "ui:field" is set, and "ui:fieldReplacesAnyOrOneOf" hides the oneOf radio, so an older UI
+ * without CdcToggle would lose the "Update Method" label or the radio. Only this UI, which has
+ * the field, adds them.
+ */
 export const withCdcToggle = <T extends Record<string, any> | null>(
 	uiSchema: T,
 ): T => {
-	const updateMethod = uiSchema?.update_method
-	if (updateMethod?.["ui:field"] !== CDC_TOGGLE_FIELD) return uiSchema
+	if (!uiSchema?.["ui:sections"] || !uiSchema.update_method) return uiSchema
 	return {
 		...uiSchema,
-		update_method: { ...updateMethod, "ui:fieldReplacesAnyOrOneOf": true },
+		update_method: {
+			...uiSchema.update_method,
+			"ui:field": CDC_TOGGLE_FIELD,
+			"ui:fieldReplacesAnyOrOneOf": true,
+		},
 	}
 }
