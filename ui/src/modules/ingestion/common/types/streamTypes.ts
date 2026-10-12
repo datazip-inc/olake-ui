@@ -84,6 +84,7 @@ export interface SelectedStream {
 	filter?: string
 	disabled?: boolean
 	append_mode?: boolean
+	dedup_keys?: string[]
 	// Only present when the stream runs in upsert mode (append_mode falsy).
 	update_type?: UpsertType
 	use_source_column_names?: boolean
