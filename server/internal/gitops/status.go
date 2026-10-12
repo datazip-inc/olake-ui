@@ -12,7 +12,10 @@ import (
 
 const (
 	syncRequeueAfter = 30 * time.Second
-	syncRetryTimeout = 5 * time.Minute
+	// syncRetryTimeout bounds retries of a transient error (Temporal or the DB unreachable); after it the
+	// resource is Failed and is not retried until its data changes. If the cause is fixed later, force a
+	// retry with: `kubectl annotate cm|secret <name> olake.io/phase-`
+	syncRetryTimeout = 30 * time.Minute
 )
 
 // retryMap tracks retries
@@ -43,7 +46,7 @@ func failResource(ctx context.Context, sink StatusSink, r *ResourceData, err err
 	retryMap.Delete(r.key())
 	msg := err.Error()
 	hash := observedHashForResource(r, observedHash)
-	_ = sink.SetPhase(ctx, r, PhaseFailed, msg, "", hash)
+	_ = sink.SetPhase(ctx, r, PhaseFailed, msg, r.Annotations[AnnotationEntityID], hash)
 	_ = sink.SpawnIndicator(ctx, r, msg)
 	return ctrl.Result{}, nil
 }
@@ -51,7 +54,7 @@ func failResource(ctx context.Context, sink StatusSink, r *ResourceData, err err
 func waitResource(ctx context.Context, sink StatusSink, r *ResourceData, msg, observedHash string) (ctrl.Result, error) {
 	retryMap.Delete(r.key())
 	hash := observedHashForResource(r, observedHash)
-	_ = sink.SetPhase(ctx, r, PhasePending, msg, "", hash)
+	_ = sink.SetPhase(ctx, r, PhasePending, msg, r.Annotations[AnnotationEntityID], hash)
 	return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
 }
 
@@ -69,7 +72,7 @@ func requeueTransient(ctx context.Context, sink StatusSink, r *ResourceData, err
 		return failResource(ctx, sink, r, NonRetryableError(fmt.Errorf("sync retry timed out after %s: %w", syncRetryTimeout, err)), observedHash)
 	}
 	hash := observedHashForResource(r, observedHash)
-	_ = sink.SetPhase(ctx, r, PhasePending, fmt.Sprintf("retrying: %s", err), "", hash)
+	_ = sink.SetPhase(ctx, r, PhasePending, fmt.Sprintf("retrying: %s", err), r.Annotations[AnnotationEntityID], hash)
 	return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
 }
 

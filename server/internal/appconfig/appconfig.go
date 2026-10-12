@@ -49,6 +49,13 @@ type Config struct {
 	OptimizationRequestTimeout     time.Duration
 	GitOpsEnabled                  bool
 	GitOpsFileDir                  string // file based configuration for olake
+	OlakeStorageMode               string
+	OlakeS3Bucket                  string
+	OlakeS3Region                  string
+	OlakeS3Prefix                  string
+	OlakeS3AccessKeyID             string
+	OlakeS3SecretAccessKey         string
+	OlakeS3Endpoint                string
 }
 
 var cfg = loadConfig()
@@ -124,7 +131,14 @@ func loadConfig() Config {
 		OptimizationPassword:       strings.TrimSpace(v.GetString("PASSWORD")),
 		OptimizationRequestTimeout: v.GetDuration("OPTIMIZATION_REQUEST_TIMEOUT"),
 
-		GitOpsEnabled: v.GetBool("GITOPS_ENABLED"),
-		GitOpsFileDir: strings.TrimSpace(v.GetString("GITOPS_FILE_DIR")),
+		GitOpsEnabled:          v.GetBool("GITOPS_ENABLED"),
+		GitOpsFileDir:          strings.TrimSpace(v.GetString("GITOPS_FILE_DIR")),
+		OlakeStorageMode:       strings.TrimSpace(v.GetString("OLAKE_STORAGE_MODE")),
+		OlakeS3Bucket:          strings.TrimSpace(v.GetString("OLAKE_S3_BUCKET")),
+		OlakeS3Region:          strings.TrimSpace(v.GetString("OLAKE_S3_REGION")),
+		OlakeS3Prefix:          strings.TrimSpace(v.GetString("OLAKE_S3_PREFIX")),
+		OlakeS3AccessKeyID:     strings.TrimSpace(v.GetString("OLAKE_S3_ACCESS_KEY_ID")),
+		OlakeS3SecretAccessKey: strings.TrimSpace(v.GetString("OLAKE_S3_SECRET_ACCESS_KEY")),
+		OlakeS3Endpoint:        strings.TrimSpace(v.GetString("OLAKE_S3_ENDPOINT")),
 	}
 }

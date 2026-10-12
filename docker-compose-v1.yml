@@ -18,16 +18,27 @@ x-signup-defaults:
 x-encryption:
   key: &encryptionKey ""
 
+x-images:
+  curl: &curlImage ${CONTAINER_REGISTRY_BASE:-docker.io}/curlimages/curl:8.21.0
+
 x-envs:
   shared: &sharedEnvs
-    CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
+    CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-docker.io}
     OLAKE_SECRET_KEY: *encryptionKey
     PERSISTENT_DIR: *hostPersistencePath
     ENABLE_OPTIMIZATION: ${ENABLE_OPTIMIZATION:-false}
+    # S3 log file storage — uncomment and fill values below to enable
+    # OLAKE_STORAGE_MODE: s3
+    # OLAKE_S3_BUCKET: ""
+    # OLAKE_S3_REGION: ""
+    # OLAKE_S3_PREFIX: ""          # optional key prefix
+    # OLAKE_S3_ENDPOINT: ""        # required for non-AWS S3 (MinIO, GCS S3 API, etc.)
+    # OLAKE_S3_ACCESS_KEY_ID: ""
+    # OLAKE_S3_SECRET_ACCESS_KEY: ""
 
 services:
   olake-ui:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/olakego/ui:latest
     pull_policy: always
     container_name: olake-ui
     environment:
@@ -70,7 +81,7 @@ services:
       start_period: 30s # Give it time to start up before first health check
 
   signup-init:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/curlimages/curl:latest
+    image: *curlImage
     container_name: olake-signup-init
     networks:
       - olake-network
@@ -112,7 +123,7 @@ services:
     restart: "no"
 
   temporal-worker:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui-worker:latest
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/olakego/ui-worker:latest
     pull_policy: always
     container_name: olake-temporal-worker
     networks:
@@ -138,7 +149,7 @@ services:
 
   postgresql:
     container_name: temporal-postgresql
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/postgres:13
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/library/postgres:13
     environment:
       POSTGRES_USER: temporal
       POSTGRES_PASSWORD: temporal
@@ -155,7 +166,7 @@ services:
 
   temporal:
     container_name: temporal
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/server:1.32.0
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/temporalio/server:1.32.0
     depends_on:
       temporal-schema-migrate:
         condition: service_completed_successfully
@@ -182,7 +193,7 @@ services:
 
   temporal-schema-migrate:
     container_name: temporal-schema-migrate
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/admin-tools:1.32.0
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/temporalio/admin-tools:1.32.0
     depends_on:
       postgresql:
         condition: service_healthy
@@ -205,7 +216,7 @@ services:
 
   temporal-create-namespace:
     container_name: temporal-create-namespace
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/admin-tools:1.32.0
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/temporalio/admin-tools:1.32.0
     depends_on:
       temporal:
         condition: service_healthy
@@ -221,7 +232,7 @@ services:
 
   temporal-ui:
     container_name: temporal-ui
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/ui:2.54.1
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/temporalio/ui:2.54.1
     profiles:
       - debug
     depends_on:
@@ -236,7 +247,7 @@ services:
     restart: unless-stopped
 
   fusion-db-init:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/postgres:13
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/library/postgres:13
     container_name: fusion-db-init
     profiles:
       - fusion
@@ -335,7 +346,7 @@ services:
     stdin_open: true
 
   fusion-init:
-    image: curlimages/curl
+    image: *curlImage
     container_name: fusion-init
     profiles:
       - fusion

@@ -34,10 +34,14 @@ var (
 	DefaultClearDestinationVersion   = "v0.3.0"
 	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
 	// TODO(BEFORE_MERGE): set to the release that ships streams v2
-	MinSplitStreamsVersion = "v0.11.0"
+	MinStreamsV2Version = "v0.11.0"
+	// StreamsMigrationConcurrency bounds the conversion workflows a streams migration runs at once
+	StreamsMigrationConcurrency = 8
 
+	StreamsFile          = "streams.json"
 	AvailableStreamsFile = "available_streams.json"
 	SelectedStreamsFile  = "selected_streams.json"
+
 	// DefaultQueryEnginesVersion is the first release with the query engine flags; older images reject them.
 	DefaultQueryEnginesVersion = "v0.11.0"
 
@@ -84,6 +88,10 @@ var (
 	EnvAppEnvironment    = "APP_ENV"
 	EnvCustomDriverImage = "CUSTOM_DRIVER_VERSION"
 
+	// job config storage
+	StorageModeS3  = "s3"
+	StorageModeNFS = "nfs"
+
 	// App environment supported values: production/development
 	AppEnvProduction  = "production"
 	AppEnvDevelopment = "development"
@@ -100,6 +108,9 @@ var (
 
 	// DefaultLogsDirection is the fallback pagination direction ("older" or "newer").
 	DefaultLogsDirection = "older"
+
+	ConnectorLogPrefix = "connector"
+	WorkerLogPrefix    = "worker"
 
 	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.

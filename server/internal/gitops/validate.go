@@ -52,7 +52,10 @@ func ParseAndValidateDestination(config string) (*dto.CreateDestinationRequest, 
 }
 
 func ParseAndValidateJobConfig(config string) (*JobConfig, error) {
-	var req JobConfig
+	// A job is active unless the config sets "activate": false. Activate is a plain bool, so an
+	// omitted key would decode as false and the reconciler would pause the job right after
+	// CreateJob. Setting true before decoding keeps it unless the key is present.
+	req := JobConfig{JobMetadata: dto.JobMetadata{Activate: true}}
 	if err := json.Unmarshal([]byte(config), &req); err != nil {
 		return nil, NonRetryableError(fmt.Errorf("invalid spec.config JSON: %w", err))
 	}

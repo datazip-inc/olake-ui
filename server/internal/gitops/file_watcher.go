@@ -38,11 +38,13 @@ type FileWatcher struct {
 	temporalClient *temporal.Temporal
 
 	mu        sync.Mutex
-	resources map[string]ResourceData
+	resources map[string]ResourceData // resource key -> last parsed manifest
+	paths     map[string]string       // resource key -> file it was read from
 	state     map[string]resourceState
 	debounce  map[string]*time.Timer
 	retries   map[string]*time.Timer
 	reconcile chan string
+	stop      chan struct{}
 	watcher   *fsnotify.Watcher
 }
 
@@ -51,10 +53,12 @@ func newFileWatcher(dir string, etlSvc *etl.Service, t *temporal.Temporal) *File
 		Dir:            dir,
 		temporalClient: t,
 		resources:      map[string]ResourceData{},
+		paths:          map[string]string{},
 		state:          map[string]resourceState{},
 		debounce:       map[string]*time.Timer{},
 		retries:        map[string]*time.Timer{},
 		reconcile:      make(chan string, 64),
+		stop:           make(chan struct{}),
 	}
 	sink := StatusSink(fw)
 	fw.source = &SourceReconciler{ETL: etlSvc, Sink: sink}
@@ -79,6 +83,7 @@ func (fw *FileWatcher) setup() error {
 
 func (fw *FileWatcher) run(ctx context.Context) error {
 	defer fw.watcher.Close()
+	defer close(fw.stop)
 	entries, err := os.ReadDir(fw.Dir)
 	if err != nil {
 		return fmt.Errorf("read %s: %w", fw.Dir, err)
@@ -98,10 +103,12 @@ func (fw *FileWatcher) run(ctx context.Context) error {
 			if !ok {
 				return nil
 			}
-			if event.Op&(fsnotify.Create|fsnotify.Write) != 0 && isYAML(event.Name) {
+			// remove/rename is processed too: the file is gone, so process drops it from the index
+			// (the OLake entity is kept, as in-cluster). Editors that save by rename are a remove
+			// followed by a create, which the debounce folds into one reconcile.
+			if event.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Remove|fsnotify.Rename) != 0 && isYAML(event.Name) {
 				fw.enqueue(event.Name, fileDebounce)
 			}
-			// v0: delete is no-op
 		case err, ok := <-fw.watcher.Errors:
 			if !ok {
 				return nil
@@ -120,10 +127,11 @@ func (fw *FileWatcher) enqueue(path string, delay time.Duration) {
 		t.Stop()
 	}
 	fw.debounce[path] = time.AfterFunc(delay, func() {
+		// block instead of dropping: a reconcile can run for minutes (discover), and a dropped
+		// path would not be retried until its file changes again
 		select {
 		case fw.reconcile <- path:
-		default:
-			logger.Warnf("gitops file watcher queue full, dropping %s", path)
+		case <-fw.stop:
 		}
 	})
 }
@@ -132,6 +140,7 @@ func (fw *FileWatcher) process(ctx context.Context, path string) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			fw.forget(path)
 			return
 		}
 		logger.Errorf("read %s: %s", path, err)
@@ -144,8 +153,15 @@ func (fw *FileWatcher) process(ctx context.Context, path string) {
 	}
 
 	fw.mu.Lock()
+	// the file now holds another resource (metadata.name or kind changed): drop the old one
+	for key, p := range fw.paths {
+		if p == path && key != res.key() {
+			fw.dropLocked(key)
+		}
+	}
 	res.Annotations = fw.annotationsFor(res)
 	fw.resources[res.key()] = *res
+	fw.paths[res.key()] = path
 	fw.mu.Unlock()
 
 	result, syncErr := fw.sync(ctx, res)
@@ -156,9 +172,26 @@ func (fw *FileWatcher) process(ctx context.Context, path string) {
 		fw.scheduleRetry(path, result.RequeueAfter)
 	}
 
-	if res.Kind == KindStreams {
-		fw.reconcileJobs(ctx, res)
+	fw.enqueueDependentJobs(res)
+}
+
+// forget drops the resource read from path, as a deleted ConfigMap drops out of the in-cluster
+// lists: jobs stop seeing it. The OLake entity is not deleted.
+func (fw *FileWatcher) forget(path string) {
+	fw.mu.Lock()
+	defer fw.mu.Unlock()
+	for key, p := range fw.paths {
+		if p == path {
+			fw.dropLocked(key)
+		}
 	}
+}
+
+// dropLocked removes a resource from the index. Caller must hold fw.mu.
+func (fw *FileWatcher) dropLocked(key string) {
+	delete(fw.resources, key)
+	delete(fw.paths, key)
+	delete(fw.state, key)
 }
 
 func (fw *FileWatcher) scheduleRetry(path string, after time.Duration) {
@@ -172,35 +205,67 @@ func (fw *FileWatcher) scheduleRetry(path string, after time.Duration) {
 	})
 }
 
-func (fw *FileWatcher) reconcileJobs(ctx context.Context, streams *ResourceData) {
+// enqueueDependentJobs re-runs the jobs a Source, Destination or Streams change can unblock or
+// retry, as the in-cluster job controller's watches do. Going through the queue keeps their
+// Pending/transient requeues.
+func (fw *FileWatcher) enqueueDependentJobs(changed *ResourceData) {
 	fw.mu.Lock()
-	var jobs []ResourceData
-	for _, r := range fw.resources {
-		if r.Kind != KindJob {
+	changedRes := *changed
+	changedRes.Annotations = fw.annotationsFor(&changedRes) // entity ID may be set by this reconcile
+
+	var match func(job *ResourceData) bool
+	switch changed.Kind {
+	case KindStreams:
+		match = func(job *ResourceData) bool {
+			return matchesNameOrID(changedRes.JobRef(), job.Name, job.EntityID())
+		}
+	case KindSource, KindDestination:
+		// a job refers to the OLake entity name from the object's config, not the object's name
+		name := configName(changedRes.Config())
+		match = func(job *ResourceData) bool {
+			cfg, err := ParseAndValidateJobConfig(job.Config())
+			if err != nil {
+				return false
+			}
+			ref := cfg.Source
+			if changed.Kind == KindDestination {
+				ref = cfg.Destination
+			}
+			return matchesNameOrID(ref, name, changedRes.EntityID())
+		}
+	default:
+		fw.mu.Unlock()
+		return
+	}
+
+	var paths []string
+	for key, r := range fw.resources {
+		if r.Kind != KindJob || r.Namespace != changed.Namespace {
 			continue
 		}
-		cp := r
-		cp.Annotations = fw.annotationsFor(&cp)
-		if !matchesNameOrID(streams.JobRef(), cp.Name, cp.EntityID()) {
-			continue
+		job := r
+		job.Annotations = fw.annotationsFor(&job)
+		if match(&job) {
+			paths = append(paths, fw.paths[key])
 		}
-		jobs = append(jobs, cp)
 	}
 	fw.mu.Unlock()
-	for i := range jobs {
-		_, _ = fw.job.sync(ctx, &jobs[i])
+
+	for _, p := range paths {
+		fw.enqueue(p, 0)
 	}
 }
 
 func (fw *FileWatcher) sync(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
 	switch res.Kind {
 	case KindSource:
-		return fw.source.sync(ctx, res)
+		return reconcileResource(ctx, fw, fw.source, res)
 	case KindDestination:
-		return fw.dest.sync(ctx, res)
+		return reconcileResource(ctx, fw, fw.dest, res)
 	case KindJob:
-		return fw.job.sync(ctx, res)
+		return fw.job.reconcileJob(ctx, res)
 	case KindStreams:
+		// no standalone reconciler; the job owns streams status (enqueueDependentJobs)
 		return ctrl.Result{}, nil
 	default:
 		return ctrl.Result{}, fmt.Errorf("unsupported olake.io/kind %q", res.Kind)
@@ -211,7 +276,7 @@ func (fw *FileWatcher) findStreams(_ context.Context, job *ResourceData, project
 	fw.mu.Lock()
 	defer fw.mu.Unlock()
 	for _, r := range fw.resources {
-		if r.Kind != KindStreams {
+		if r.Kind != KindStreams || r.Namespace != job.Namespace {
 			continue
 		}
 		if r.ProjectID() != projectID {

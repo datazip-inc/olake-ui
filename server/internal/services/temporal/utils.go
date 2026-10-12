@@ -2,33 +2,21 @@ package temporal
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"go.temporal.io/sdk/client"
 )
 
-// usesSplitCatalog reports whether a job runs with the split catalog files
-func usesSplitCatalog(job *models.Job) bool {
-	return job.AvailableStreamsConfig != nil && job.SelectedStreamsConfig != nil && utils.SupportsSplitStreams(job.Source.Version)
-}
-
-// catalogFlags returns the catalog flags for the split or the legacy format
-func catalogFlags(split bool) []string {
-	if split {
-		return []string{
-			"--available-streams", "/mnt/config/" + constants.AvailableStreamsFile,
-			"--selected-streams", "/mnt/config/" + constants.SelectedStreamsFile,
-		}
-	}
-	return []string{"--streams", "/mnt/config/streams.json"}
-}
-
-// buildExecutionReqForSync builds the ExecutionRequest for a sync job
+// buildExecutionReqForSync builds the ExecutionRequest for a sync job.
+// Split jobs use --available-streams/--selected-streams; legacy jobs use --streams.
+// Configs for sync are written by the worker, so only the flag style is set here.
 func buildExecutionReqForSync(job *models.Job, workflowID string) *ExecutionRequest {
 	args := []string{
 		"sync",
@@ -36,7 +24,14 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) *ExecutionRequ
 		"--destination", "/mnt/config/destination.json",
 		"--state", "/mnt/config/state.json",
 	}
-	args = append(args, catalogFlags(usesSplitCatalog(job))...)
+	if job.StreamsCatalog().IsSplit() {
+		args = append(args,
+			"--available-streams", "/mnt/config/"+constants.AvailableStreamsFile,
+			"--selected-streams", "/mnt/config/"+constants.SelectedStreamsFile,
+		)
+	} else {
+		args = append(args, "--streams", "/mnt/config/"+constants.StreamsFile)
+	}
 
 	return &ExecutionRequest{
 		Command:       Sync,
@@ -52,45 +47,39 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) *ExecutionRequ
 	}
 }
 
-// buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job
-func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsConfig string) (*ExecutionRequest, error) {
+// buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job.
+// diff is the stream difference to clear, staged in the format it is given in; empty clears the
+// job's whole stored catalog.
+func buildExecutionReqForClearDestination(ctx context.Context, job *models.Job, workflowID string, diff types.StreamsCatalog) (*ExecutionRequest, error) {
 	streamsDir := fmt.Sprintf("%s-%d", workflowID, time.Now().Unix())
 
-	var files map[string]string
-	var tempFile string
-	splitCatalog := usesSplitCatalog(job)
-	if splitCatalog {
-		available, selected := utils.StringValue(job.AvailableStreamsConfig), utils.StringValue(job.SelectedStreamsConfig)
-		if streamsConfig != "" {
-			var err error
-			if available, selected, err = utils.SplitCatalog(streamsConfig); err != nil {
-				return nil, fmt.Errorf("failed to split clear-destination catalog: %s", err)
-			}
-		}
-		// The CLI rejects empty split files, and a difference with no changed streams is empty:
-		// stage that one in the legacy format, as legacy jobs do.
-		splitCatalog = available != "" && selected != ""
-		if splitCatalog {
-			files = map[string]string{
-				constants.AvailableStreamsFile: available,
-				constants.SelectedStreamsFile:  selected,
-			}
-			tempFile = constants.SelectedStreamsFile
-		}
+	catalog := diff
+	// clear all the selected_streams
+	if catalog == (types.StreamsCatalog{}) {
+		catalog = job.StreamsCatalog()
 	}
-	if !splitCatalog {
-		catalog := streamsConfig
-		if catalog == "" {
-			catalog = job.StreamsConfig
+	// the worker tells the format by the staged files; it reads a legacy catalog from TempPath
+	var files []storage.JobConfig
+	var catalogArgs []string
+	var tempPath string
+	if catalog.IsSplit() {
+		files = []storage.JobConfig{
+			{RelativePath: constants.AvailableStreamsFile, Data: catalog.Available},
+			{RelativePath: constants.SelectedStreamsFile, Data: catalog.Selected},
 		}
-		files = map[string]string{"streams.json": catalog}
-		tempFile = "streams.json"
+		catalogArgs = []string{
+			"--available-streams", "/mnt/config/" + constants.AvailableStreamsFile,
+			"--selected-streams", "/mnt/config/" + constants.SelectedStreamsFile,
+		}
+		tempPath = filepath.Join(streamsDir, constants.SelectedStreamsFile)
+	} else {
+		files = []storage.JobConfig{{RelativePath: constants.StreamsFile, Data: catalog.Streams}}
+		catalogArgs = []string{"--streams", "/mnt/config/" + constants.StreamsFile}
+		tempPath = filepath.Join(streamsDir, constants.StreamsFile)
 	}
-	for name, data := range files {
-		path := filepath.Join(constants.DefaultConfigDir, streamsDir, name)
-		if err := utils.WriteFile(path, []byte(data), constants.DefaultFileMode); err != nil {
-			return nil, fmt.Errorf("failed to write %s to file: %v", name, err)
-		}
+
+	if err := storage.WriteFiles(ctx, streamsDir, files); err != nil {
+		return nil, fmt.Errorf("failed to write streams config: %s", err)
 	}
 
 	args := []string{
@@ -98,8 +87,7 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 		"--state", "/mnt/config/state.json",
 		"--destination", "/mnt/config/destination.json",
 	}
-	args = append(args, catalogFlags(splitCatalog)...)
-	relativePath := filepath.Join(streamsDir, tempFile)
+	args = append(args, catalogArgs...)
 
 	return &ExecutionRequest{
 		Command:       ClearDestination,
@@ -112,7 +100,7 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 		JobID:         job.ID,
 		Timeout:       GetWorkflowTimeout(ClearDestination),
 		OutputFile:    "state.json",
-		TempPath:      relativePath,
+		TempPath:      tempPath,
 	}, nil
 }
 
@@ -129,12 +117,14 @@ func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[s
 		return nil, fmt.Errorf("invalid response format from worker")
 	}
 
-	responsePath := filepath.Join(constants.DefaultConfigDir, response)
-	workflowResponse, err := utils.ReadJSONFile(responsePath)
+	data, err := storage.ReadFile(ctx, response)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read workflow response: %v", err)
+		return nil, fmt.Errorf("failed to read workflow response: %s", err)
 	}
-
+	var workflowResponse map[string]interface{}
+	if err := json.Unmarshal(data, &workflowResponse); err != nil {
+		return nil, fmt.Errorf("failed to parse workflow response %s: %s", response, err)
+	}
 	return workflowResponse, nil
 }
 

@@ -1323,7 +1323,7 @@ const docTemplate = `{
         },
         "/api/v1/project/{projectid}/jobs/{id}/stream-difference": {
             "post": {
-                "description": "Get difference between current streams.json and existing streams.json.",
+                "description": "Compares the job's stored catalog against a submitted edit.\nSend updated_streams_config, or updated_available_streams_config + updated_selected_streams_config.\nAn invalid catalog format returns 400.",
                 "tags": [
                     "Jobs"
                 ],
@@ -1992,7 +1992,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "object"
+                                            "$ref": "#/definitions/dto.DiscoverCatalogResponse"
                                         }
                                     }
                                 }
@@ -2973,7 +2973,7 @@ const docTemplate = `{
                     "example": 50
                 },
                 "target_query_engines": {
-                    "description": "TargetQueryEngines are the engines expected to read the destination tables. OLake\nkeeps them nowhere, so they are stored here and resent on every discover; changing\nthem requires regenerating the catalog to recompute available_update_types.",
+                    "description": "TargetQueryEngines are stored here because OLake keeps none; changing them needs the catalog regenerated.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -3058,8 +3058,7 @@ const docTemplate = `{
                 "destination",
                 "frequency",
                 "name",
-                "source",
-                "streams_config"
+                "source"
             ],
             "properties": {
                 "activate": {
@@ -3068,6 +3067,9 @@ const docTemplate = `{
                 },
                 "advanced_settings": {
                     "$ref": "#/definitions/dto.AdvancedSettings"
+                },
+                "available_streams_config": {
+                    "type": "string"
                 },
                 "destination": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3079,6 +3081,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "my-sync-job"
+                },
+                "selected_streams_config": {
+                    "type": "string"
                 },
                 "source": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3229,6 +3234,20 @@ const docTemplate = `{
                 "version": {
                     "type": "string",
                     "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.DiscoverCatalogResponse": {
+            "type": "object",
+            "properties": {
+                "available_streams": {
+                    "type": "object"
+                },
+                "selected_streams": {
+                    "type": "object"
+                },
+                "streams_config": {
+                    "type": "object"
                 }
             }
         },
@@ -3400,6 +3419,9 @@ const docTemplate = `{
                 "advanced_settings": {
                     "$ref": "#/definitions/dto.AdvancedSettings"
                 },
+                "available_streams_config": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string",
                     "example": "2024-01-01T00:00:00Z"
@@ -3435,6 +3457,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "my-sync-job"
+                },
+                "selected_streams_config": {
+                    "type": "string"
                 },
                 "source": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3676,7 +3701,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "available_query_engines": {
-                    "description": "AvailableQueryEngines swaps the connector UI spec for the query engines the connector\nsupports and the delete formats each can read. The response carries a null spec on\nconnector versions that predate the feature.",
+                    "description": "AvailableQueryEngines swaps the UI spec for the engine matrix; the spec is null on older connectors.",
                     "type": "boolean",
                     "example": false
                 },
@@ -3709,10 +3734,13 @@ const docTemplate = `{
         },
         "dto.StreamDifferenceRequest": {
             "type": "object",
-            "required": [
-                "updated_streams_config"
-            ],
             "properties": {
+                "updated_available_streams_config": {
+                    "type": "string"
+                },
+                "updated_selected_streams_config": {
+                    "type": "string"
+                },
                 "updated_streams_config": {
                     "type": "string"
                 }
@@ -3758,7 +3786,7 @@ const docTemplate = `{
                     "example": "my-postgres-source"
                 },
                 "target_query_engines": {
-                    "description": "TargetQueryEngines are the engines expected to read the destination tables. OLake\nturns them into each stream's available_update_types; it stores nothing else, so the\nselection must be sent on every discover to stay applied.",
+                    "description": "TargetQueryEngines become each stream's available_update_types; OLake stores none, so resend every discover.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -3865,8 +3893,7 @@ const docTemplate = `{
                 "destination",
                 "frequency",
                 "name",
-                "source",
-                "streams_config"
+                "source"
             ],
             "properties": {
                 "activate": {
@@ -3875,6 +3902,9 @@ const docTemplate = `{
                 },
                 "advanced_settings": {
                     "$ref": "#/definitions/dto.AdvancedSettings"
+                },
+                "available_streams_config": {
+                    "type": "string"
                 },
                 "destination": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3890,6 +3920,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "my-sync-job-updated"
+                },
+                "selected_streams_config": {
+                    "type": "string"
                 },
                 "source": {
                     "$ref": "#/definitions/dto.DriverConfig"

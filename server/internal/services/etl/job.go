@@ -2,21 +2,22 @@ package etl
 
 import (
 	"archive/tar"
+	"cmp"
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
@@ -96,10 +97,6 @@ func (s Service) GetJobByName(_ context.Context, projectID, name string) (*model
 }
 
 func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
-	if err := validateSplitCatalog(req.AvailableStreamsConfig, req.SelectedStreamsConfig); err != nil {
-		return err
-	}
-
 	unique, err := s.db.IsJobNameUniqueInProject(ctx, projectID, req.Name)
 	if err != nil {
 		return fmt.Errorf("failed to check job name uniqueness: %s", err)
@@ -111,6 +108,10 @@ func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, proje
 	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source: %s", err)
+	}
+
+	if err := validateStreamsFormat(req.StreamsConfig, req.AvailableStreamsConfig, req.SelectedStreamsConfig, source.Version, nil); err != nil {
+		return err
 	}
 
 	dest, err := s.upsertDestination(ctx, req.Destination, projectID, userID)
@@ -138,7 +139,7 @@ func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, proje
 		Destination:            dest,
 		Active:                 true,
 		Frequency:              req.Frequency,
-		StreamsConfig:          req.StreamsConfig,
+		StreamsConfig:          utils.StringPtr(req.StreamsConfig),
 		AvailableStreamsConfig: utils.StringPtr(req.AvailableStreamsConfig),
 		SelectedStreamsConfig:  utils.StringPtr(req.SelectedStreamsConfig),
 		State:                  "{}",
@@ -170,10 +171,6 @@ func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, proje
 }
 
 func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error {
-	if err := validateSplitCatalog(req.AvailableStreamsConfig, req.SelectedStreamsConfig); err != nil {
-		return err
-	}
-
 	// TODO: remove fetching existing job from database to verify it's existence, fetch only if the details aren't already available in the params/request. If job not exists it will fail during query execution.
 	existingJob, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
@@ -189,7 +186,16 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 		return fmt.Errorf("failed to check if clear-destination is running: %s", err)
 	}
 	if clearRunning {
-		return fmt.Errorf("clear-destination is in progress, cannot update job")
+		return constants.ErrClearDestinationRunning
+	}
+
+	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to process source for job update: %s", err)
+	}
+
+	if err := validateStreamsFormat(req.StreamsConfig, req.AvailableStreamsConfig, req.SelectedStreamsConfig, source.Version, existingJob); err != nil {
+		return err
 	}
 
 	// Cancel sync before updating the job
@@ -204,17 +210,13 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 			return fmt.Errorf("invalid difference_streams JSON: %s", err)
 		}
 		if len(diffCatalog) > 0 {
-			if err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, constants.DefaultCancelSyncWaitTime, false); err != nil {
+			if err := s.ClearDestination(ctx, projectID, jobID, differenceCatalog(req), constants.DefaultCancelSyncWaitTime, false); err != nil {
 				return fmt.Errorf("failed to run clear destination workflow: %s", err)
 			}
 			logger.Infof("successfully triggered clear destination workflow for job %d", existingJob.ID)
 		}
 	}
 
-	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
-	if err != nil {
-		return fmt.Errorf("failed to process source for job update: %s", err)
-	}
 	dest, err := s.upsertDestination(ctx, req.Destination, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process destination for job update: %s", err)
@@ -226,7 +228,7 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 		"dest_id":                  dest.ID,
 		"active":                   req.Activate,
 		"frequency":                req.Frequency,
-		"streams_config":           req.StreamsConfig,
+		"streams_config":           utils.StringPtr(req.StreamsConfig),
 		"project_id":               projectID,
 		"updated_by_id":            *userID,
 		"available_streams_config": utils.StringPtr(req.AvailableStreamsConfig),
@@ -351,7 +353,19 @@ func (s Service) ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRe
 	return nil
 }
 
-func (s Service) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string, syncWaitTime time.Duration, resetState bool) error {
+// differenceCatalog is the stream difference to clear, in the format the job runs in after the
+// update. A legacy job passes the {streams, selected_streams} difference with --streams, as before.
+// A split job passes the difference as selected_streams, with the updated available streams from the
+// request as available_streams.
+func differenceCatalog(req *dto.UpdateJobRequest) types.StreamsCatalog {
+	if req.AvailableStreamsConfig != "" && req.SelectedStreamsConfig != "" {
+		return types.StreamsCatalog{Available: req.AvailableStreamsConfig, Selected: req.DifferenceStreams}
+	}
+	return types.StreamsCatalog{Streams: req.DifferenceStreams}
+}
+
+// ClearDestination clears the streams in diff, or every selected stream of the job when diff is empty.
+func (s Service) ClearDestination(ctx context.Context, projectID string, jobID int, diff types.StreamsCatalog, syncWaitTime time.Duration, resetState bool) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("job not found: %s", err)
@@ -391,9 +405,9 @@ func (s Service) ClearDestination(ctx context.Context, projectID string, jobID i
 		logger.Infof("state file updated to {} for manual clear-destination for job_id[%d]", jobID)
 	}
 
-	logger.Infof("running clear destination workflow for job %d for the following streams:\n%s", job.ID, streamsConfig)
+	logger.Infof("running clear destination workflow for job %d for the following streams:\n%s", job.ID, cmp.Or(diff.Streams, diff.Selected))
 
-	if err := s.temporal.ClearDestination(ctx, job, streamsConfig); err != nil {
+	if err := s.temporal.ClearDestination(ctx, job, diff); err != nil {
 		if rerr := s.temporal.ResumeSchedule(ctx, projectID, jobID); rerr != nil {
 			return fmt.Errorf("clear destination error: %s, resume error: %s", err, rerr)
 		}
@@ -403,15 +417,30 @@ func (s Service) ClearDestination(ctx context.Context, projectID string, jobID i
 	return nil
 }
 
+// GetStreamDifference diffs the job's stored catalog against the edited one, sent as
+// updated_streams_config or updated_available_streams_config + updated_selected_streams_config. The
+// two sides may be in different formats: a legacy job can be edited into the split format.
 func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
-	job, err := s.differenceJob(jobID)
+	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
+		return nil, fmt.Errorf("job not found: %s", err)
+	}
+	if job.Source == nil {
+		return nil, fmt.Errorf("job source details not found")
+	}
+	if err := utils.CheckClearDestinationCompatibility(job.Source.Version); err != nil {
 		return nil, err
 	}
 
-	diffCatalog, err := s.temporal.GetStreamDifference(ctx, job, job.StreamsConfig, req.UpdatedStreamsConfig)
+	newAvailable, newSelected := req.UpdatedAvailableStreamsConfig, req.UpdatedSelectedStreamsConfig
+	if err := validateStreamsFormat(req.UpdatedStreamsConfig, newAvailable, newSelected, job.Source.Version, job); err != nil {
+		return nil, err
+	}
+
+	edited := types.StreamsCatalog{Streams: req.UpdatedStreamsConfig, Available: newAvailable, Selected: newSelected}
+	diffCatalog, err := s.temporal.GetStreamDifference(ctx, job, job.StreamsCatalog(), edited)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get stream difference: %s", err)
+		return nil, fmt.Errorf("failed to get stream difference: %w", err)
 	}
 
 	diffCatalogJSON, err := json.Marshal(diffCatalog)
@@ -423,44 +452,76 @@ func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, r
 	return diffCatalog, nil
 }
 
-// GetSplitCatalogDifference diffs two catalogs in the split format (available + selected streams)
-func (s Service) GetSplitCatalogDifference(ctx context.Context, jobID int, oldAvailable, oldSelected, newAvailable, newSelected string) (map[string]interface{}, error) {
-	job, err := s.differenceJob(jobID)
-	if err != nil {
-		return nil, err
+// validateStreamsFormat rejects a catalog that: is not exactly one format (streams, or available and
+// selected together); uses the split format on a source that does not support it; or downgrades a
+// split-catalog job to legacy.
+func validateStreamsFormat(streamsConfig, available, selected, sourceVersion string, existingJob *models.Job) error {
+	split := available != "" && selected != ""
+	switch {
+	case (available != "") != (selected != ""):
+		return fmt.Errorf("%w: available_streams_config and selected_streams_config must be set together", constants.ErrStreamsFormat)
+	case split && streamsConfig != "":
+		return fmt.Errorf("%w: set either streams_config or available_streams_config + selected_streams_config, not both", constants.ErrStreamsFormat)
+	case !split && streamsConfig == "":
+		return fmt.Errorf("%w: either streams_config or available_streams_config + selected_streams_config is required", constants.ErrStreamsFormat)
 	}
-
-	diffCatalog, err := s.temporal.GetSplitStreamDifference(ctx, job, oldAvailable, oldSelected, newAvailable, newSelected)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get stream difference: %s", err)
+	if split && !utils.SupportsStreamsV2(sourceVersion) {
+		return fmt.Errorf("%w: source version %s does not support the split streams format (minimum %s)",
+			constants.ErrStreamsFormat, sourceVersion, constants.MinStreamsV2Version)
 	}
-
-	logger.Infof("stream difference retrieved successfully for job %d", job.ID)
-	return diffCatalog, nil
-}
-
-// validateSplitCatalog rejects a request that sets only one half of the split catalog: available
-// and selected streams are one catalog and are stored together or not at all.
-func validateSplitCatalog(available, selected string) error {
-	if (utils.StringPtr(available) == nil) != (utils.StringPtr(selected) == nil) {
-		return fmt.Errorf("available_streams_config and selected_streams_config must be set together")
+	if !split && existingJob != nil && existingJob.StreamsCatalog().IsSplit() {
+		return fmt.Errorf("%w: job uses the split streams format, set available_streams_config and selected_streams_config", constants.ErrStreamsFormat)
 	}
 	return nil
 }
 
-// differenceJob loads a job for stream difference and checks its driver supports it.
-func (s Service) differenceJob(jobID int) (*models.Job, error) {
-	job, err := s.db.GetJobByID(jobID, true)
+// ConvertLegacyJobs migrates legacy (Streams V1) jobs to the split format.
+func (s Service) ConvertLegacyJobs(ctx context.Context) error {
+	logger.Infof("Converting legacy jobs to the split format...")
+	jobs, err := s.db.ListLegacyCatalogJobs()
 	if err != nil {
-		return nil, fmt.Errorf("job not found: %s", err)
+		return fmt.Errorf("streams conversion: failed to list legacy jobs: %s", err)
 	}
-	if job.Source == nil {
-		return nil, fmt.Errorf("job source details not found")
+
+	var supported []*models.Job
+	for _, job := range jobs {
+		if utils.SupportsStreamsV2(job.Source.Version) {
+			supported = append(supported, job)
+		}
 	}
-	if err := utils.CheckClearDestinationCompatibility(job.Source.Version); err != nil {
-		return nil, err
+	err = utils.ForEachConcurrently(ctx, supported, constants.StreamsMigrationConcurrency, func(ctx context.Context, _ int, job *models.Job) error {
+		if err := s.convertLegacyJob(ctx, job); err != nil {
+			logger.Warnf("streams conversion: job_id[%d] stays legacy: %s", job.ID, err)
+			telemetry.TrackStreamsMigrationFailure(ctx, telemetry.MigrationTriggerStartup, job.Source, 1, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("streams conversion: context cancelled: %s", err)
 	}
-	return job, nil
+
+	logger.Infof("supported legacy jobs converted to the split format")
+	return nil
+}
+
+// convertLegacyJob converts one job and stores its split catalog. A job edited or deleted meanwhile
+// is skipped, not failed.
+func (s Service) convertLegacyJob(ctx context.Context, job *models.Job) error {
+	legacy := utils.StringValue(job.StreamsConfig)
+	catalog, err := s.temporal.ConvertStreams(ctx, job.ID, job.Source.Type, job.Source.Version, legacy)
+	if err != nil {
+		return fmt.Errorf("failed to convert streams: %s", err)
+	}
+	updated, err := s.db.SetStreamsV2Catalog(database.ConvertedCatalog{JobID: job.ID, From: legacy, Available: catalog.Available, Selected: catalog.Selected})
+	if err != nil {
+		return fmt.Errorf("failed to store the split catalog: %s", err)
+	}
+	if !updated {
+		logger.Infof("streams conversion: job_id[%d] changed during conversion, skipping", job.ID)
+		return nil
+	}
+	logger.Infof("Job %d converted to the split format successfully", job.ID)
+	return nil
 }
 
 func (s Service) GetClearDestinationStatus(ctx context.Context, projectID string, jobID int) (bool, error) {
@@ -540,7 +601,7 @@ func (s Service) GetJobTasks(ctx context.Context, projectID string, jobID int) (
 	return tasks, nil
 }
 
-func (s Service) GetTaskLogs(_ context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
+func (s Service) GetTaskLogs(ctx context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		if errors.Is(err, constants.ErrJobNotFound) {
@@ -550,12 +611,12 @@ func (s Service) GetTaskLogs(_ context.Context, jobID int, filePath string, curs
 	}
 
 	// Get and validate base directory from file path
-	mainSyncDir, err := utils.GetAndValidateLogBaseDir(filePath)
+	mainSyncDir, err := utils.GetAndValidateLogBaseDir(ctx, filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	logs, err := utils.ReadLogs(mainSyncDir, cursor, limit, direction)
+	logs, err := utils.ReadLogs(ctx, mainSyncDir, cursor, limit, direction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read logs: %s", err)
 	}
@@ -575,7 +636,7 @@ func (s Service) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, incl
 	}
 
 	if includeConfig {
-		jobResp.StreamsConfig = job.StreamsConfig
+		jobResp.StreamsConfig = utils.StringValue(job.StreamsConfig)
 		jobResp.AvailableStreamsConfig = utils.StringValue(job.AvailableStreamsConfig)
 		jobResp.SelectedStreamsConfig = utils.StringValue(job.SelectedStreamsConfig)
 	}
@@ -772,14 +833,14 @@ func (s Service) RecoverFromClearDestination(ctx context.Context, projectID stri
 	return nil
 }
 
-// StreamLogArchive creates and streams a tar.gz archive of job logs to the provided writer
-func (s Service) StreamLogArchive(jobID int, taskLogFilePath string, writer io.Writer) error {
-	baseDir, err := utils.GetAndValidateLogBaseDir(taskLogFilePath)
+// StreamLogArchive creates and streams a tar.gz archive of job logs to the provided writer.
+func (s Service) StreamLogArchive(ctx context.Context, jobID int, taskLogFilePath string, writer io.Writer) error {
+	baseDir, err := utils.GetAndValidateLogBaseDir(ctx, taskLogFilePath)
 	if err != nil {
 		return err
 	}
 
-	logsDir, _, err := utils.GetAndValidateSyncDir(baseDir)
+	_, err = utils.GetAndValidateSyncFolder(ctx, baseDir)
 	if err != nil {
 		return err
 	}
@@ -793,29 +854,9 @@ func (s Service) StreamLogArchive(jobID int, taskLogFilePath string, writer io.W
 	tarWriter := tar.NewWriter(gzipWriter)
 	defer tarWriter.Close()
 
-	stateFile := filepath.Join(baseDir, "state.json")
-	if err := utils.AddFileToArchive(tarWriter, stateFile, "state.json"); err != nil {
-		logger.Warnf("failed to add state.json to archive: %s", err)
-		// Continue anyway - state.json might not exist
-	}
-
-	logger.Debugf("Adding files from %s to archive", logsDir)
-	err = filepath.Walk(logsDir, func(path string, info os.FileInfo, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-
-		// Only include files, skip directories
-		if info.IsDir() {
-			return nil
-		}
-
-		archivePath := filepath.Join("logs", filepath.Base(path))
-		return utils.AddFileToArchive(tarWriter, path, archivePath)
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to add files from logs directory %s: %s", logsDir, err)
+	logger.Debugf("Adding files from %s to archive", baseDir)
+	if err := utils.AddFilesToArchive(ctx, baseDir, tarWriter); err != nil {
+		return err
 	}
 
 	logger.Infof("Successfully created log archive for job_id[%d]", jobID)
