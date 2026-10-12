@@ -7,8 +7,8 @@ import type { FieldProps, RJSFSchema, UiSchema } from "@rjsf/utils"
 import { useRef } from "react"
 
 import {
-	getUpdateMethodOptions,
 	isCdcEnabled,
+	parseUpdateMethod,
 	UPDATE_METHOD_CDC,
 	UPDATE_METHOD_STANDALONE,
 } from "./cdc"
@@ -45,11 +45,8 @@ const CdcToggleField = (props: FieldProps) => {
 	// CDC settings typed before turning CDC off, restored when it is turned back on
 	const lastCdcValue = useRef<Record<string, unknown> | null>(null)
 
-	const { cdcOption } = getUpdateMethodOptions(schema)
+	const { cdcOption, cdcFields } = parseUpdateMethod(schema)
 	const enabled = isCdcEnabled(formData, schema)
-	const hasSettings = Object.keys(cdcOption?.properties ?? {}).some(
-		key => key !== "type",
-	)
 
 	const handleToggle = (on: boolean) => {
 		if (on) {
@@ -71,7 +68,7 @@ const CdcToggleField = (props: FieldProps) => {
 			onToggle={handleToggle}
 			disabled={disabled || readonly}
 		>
-			{cdcOption && hasSettings && (
+			{cdcOption && cdcFields.length > 0 && (
 				<SchemaField
 					name={name}
 					schema={cdcOption as RJSFSchema}

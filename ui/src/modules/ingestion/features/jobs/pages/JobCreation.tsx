@@ -132,7 +132,6 @@ const JobCreation: React.FC = () => {
 	const { setShowResetStreamsModal } = useJobStore()
 	const isDiscovering = useStreamSelectionStore(state => state.isDiscovering)
 
-	const [showTestingModal, setShowTestingModal] = useState(false)
 	const [showSuccessModal, setShowSuccessModal] = useState(false)
 	const [showFailureModal, setShowFailureModal] = useState(false)
 	const [showEntitySavedModal, setShowEntitySavedModal] = useState(false)
@@ -186,7 +185,6 @@ const JobCreation: React.FC = () => {
 			}
 			return result.outcome === "passed"
 		}
-		setShowTestingModal(true)
 		try {
 			const testResult = await testDestinationMutation.mutateAsync({
 				destination: {
@@ -198,7 +196,6 @@ const JobCreation: React.FC = () => {
 				sourceType: sourceConnectorPayload.type,
 				sourceVersion: sourceConnectorPayload.version,
 			})
-			setShowTestingModal(false)
 			if (
 				testResult.data?.connection_result.status ===
 				TEST_CONNECTION_STATUS.SUCCEEDED
@@ -215,7 +212,6 @@ const JobCreation: React.FC = () => {
 			setShowFailureModal(true)
 			return false
 		} catch {
-			setShowTestingModal(false)
 			message.error("Destination connection test failed")
 			return false
 		}
@@ -443,7 +439,9 @@ const JobCreation: React.FC = () => {
 						)}
 					</button>
 					<TestConnectionModal
-						open={showTestingModal || sourceConnectionTest.testing}
+						open={
+							testDestinationMutation.isPending || sourceConnectionTest.testing
+						}
 						connectionType={connectionTestType}
 					/>
 					<SourceTestConnectionModal {...sourceConnectionTest.modalProps} />

@@ -11,10 +11,11 @@ import { useQueryClient } from "@tanstack/react-query"
 import { Input, Button, Select, Switch, Table, Spin, Tooltip } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { formatDistanceToNow } from "date-fns"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
+import { withCdcToggle } from "@/common/components/form/cdc"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import { sourceFields, widgets } from "@/common/components/form/widgets"
@@ -76,6 +77,7 @@ const SourceEdit: React.FC = () => {
 	const [showEditModal, setShowEditModal] = useState(false)
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
+	const formUiSchema = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
 	const [specError, setSpecError] = useState<string | null>(null)
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [testConnectionError, setTestConnectionError] =
@@ -503,7 +505,7 @@ const SourceEdit: React.FC = () => {
 													}}
 													transformErrors={transformErrors}
 													onSubmit={() => handleSave()}
-													uiSchema={uiSchema}
+													uiSchema={formUiSchema}
 													validator={validator}
 													showErrorList={false}
 													omitExtraData

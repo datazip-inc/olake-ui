@@ -16,16 +16,26 @@ export interface UiSection {
 	fields?: string[]
 }
 
-const optionType = (option: RJSFSchema): unknown =>
-	(option.properties?.type as RJSFSchema | undefined)?.const
+/** What a source's update_method schema offers, read once from its oneOf options. */
+export interface UpdateMethod {
+	cdcOption?: RJSFSchema
+	cdcFields: string[]
+	defaultsToCdc: boolean
+}
 
-/** The update_method oneOf options, found by their `type` const. */
-export const getUpdateMethodOptions = (schema: RJSFSchema) => {
+const isCdcOption = (option?: RJSFSchema) =>
+	(option?.properties?.type as RJSFSchema | undefined)?.const ===
+	UPDATE_METHOD_CDC
+
+export const parseUpdateMethod = (schema: RJSFSchema): UpdateMethod => {
 	const options = (schema.oneOf ?? []) as RJSFSchema[]
+	const cdcOption = options.find(isCdcOption)
 	return {
-		cdcOption: options.find(o => optionType(o) === UPDATE_METHOD_CDC),
-		firstIsCdc:
-			options.length > 0 && optionType(options[0]) === UPDATE_METHOD_CDC,
+		cdcOption,
+		cdcFields: Object.keys(cdcOption?.properties ?? {}).filter(
+			key => key !== "type",
+		),
+		defaultsToCdc: isCdcOption(options[0]),
 	}
 }
 
@@ -34,7 +44,7 @@ export const hasCdcOption = (schema?: RJSFSchema | null): boolean => {
 	const updateMethod = schema?.properties?.update_method as
 		| RJSFSchema
 		| undefined
-	return !!updateMethod && !!getUpdateMethodOptions(updateMethod).cdcOption
+	return !!updateMethod && !!parseUpdateMethod(updateMethod).cdcOption
 }
 
 /**
@@ -49,12 +59,20 @@ export const isCdcEnabled = (
 	value: Record<string, unknown> | undefined,
 	updateMethodSchema: RJSFSchema,
 ): boolean => {
-	const { cdcOption, firstIsCdc } = getUpdateMethodOptions(updateMethodSchema)
-	if (!value || Object.keys(value).length === 0) return firstIsCdc
+	const { cdcFields, defaultsToCdc } = parseUpdateMethod(updateMethodSchema)
+	if (!value || Object.keys(value).length === 0) return defaultsToCdc
 	if (value.type === UPDATE_METHOD_CDC) return true
 	if (value.type === UPDATE_METHOD_STANDALONE) return false
-	const cdcKeys = Object.keys(cdcOption?.properties ?? {}).filter(
-		key => key !== "type",
-	)
-	return cdcKeys.some(key => key in value)
+	return cdcFields.some(key => key in value)
+}
+
+export const withCdcToggle = <T extends Record<string, any> | null>(
+	uiSchema: T,
+): T => {
+	const updateMethod = uiSchema?.update_method
+	if (updateMethod?.["ui:field"] !== CDC_TOGGLE_FIELD) return uiSchema
+	return {
+		...uiSchema,
+		update_method: { ...updateMethod, "ui:fieldReplacesAnyOrOneOf": true },
+	}
 }

@@ -8,11 +8,15 @@ import {
 import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
 import { message, Select, Spin, Tooltip } from "antd"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Link } from "react-router-dom"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
-import { hasCdcOption, UPDATE_METHOD_CDC } from "@/common/components/form/cdc"
+import {
+	hasCdcOption,
+	UPDATE_METHOD_CDC,
+	withCdcToggle,
+} from "@/common/components/form/cdc"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import { sourceFields, widgets } from "@/common/components/form/widgets"
@@ -64,6 +68,7 @@ const CreateSource: React.FC = () => {
 	const [formData, setFormData] = useState<any>({})
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
+	const formUiSchema = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
 	const [filteredSources, setFilteredSources] = useState<Source[]>([])
 	const [sourceNameError, setSourceNameError] = useState<string | null>(null)
 	const [existingSource, setExistingSource] = useState<string | null>(null)
@@ -424,7 +429,7 @@ const CreateSource: React.FC = () => {
 									setFormData(trimmedData)
 								}}
 								transformErrors={transformErrors}
-								uiSchema={uiSchema}
+								uiSchema={formUiSchema}
 								validator={validator}
 								omitExtraData
 								liveOmit

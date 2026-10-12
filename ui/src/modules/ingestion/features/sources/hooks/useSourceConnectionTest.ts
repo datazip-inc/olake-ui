@@ -44,10 +44,11 @@ export const useSourceConnectionTest = () => {
 	const resolveRef = useRef<((r: SourceConnectionTestResult) => void) | null>(
 		null,
 	)
-	const attemptRef = useRef(0)
+	const abortRef = useRef<AbortController | null>(null)
 
 	const finish = (result: SourceConnectionTestResult) => {
-		attemptRef.current += 1 // drops any response still in flight
+		abortRef.current?.abort()
+		abortRef.current = null
 		setTesting(false)
 		setOpen(false)
 		resolveRef.current?.(result)
@@ -57,16 +58,19 @@ export const useSourceConnectionTest = () => {
 	const execute = async () => {
 		const request = requestRef.current
 		if (!request) return
-		const attempt = ++attemptRef.current
+		abortRef.current?.abort()
+		const controller = new AbortController()
+		abortRef.current = controller
 
 		const started = Date.now()
 		setOpen(false)
 		setTesting(true)
 
 		const result = await testSourceMutation
-			.mutateAsync(request)
+			.mutateAsync({ ...request, signal: controller.signal })
 			.catch(() => null)
-		if (attempt !== attemptRef.current) return
+		// cancelled, or replaced by a newer attempt: its result no longer matters
+		if (controller.signal.aborted) return
 		setTesting(false)
 
 		const connection: TestConnectionResponse["connection_result"] | undefined =
@@ -110,12 +114,15 @@ export const useSourceConnectionTest = () => {
 	}
 
 	const showSuccessThenPass = () => {
-		const attempt = attemptRef.current
+		const controller = abortRef.current
 		setOpen(false)
 		setShowSuccess(true)
 		setTimeout(() => {
 			setShowSuccess(false)
-			if (attempt === attemptRef.current) finish({ outcome: "passed" })
+			// only if this run is still the current one
+			if (controller && abortRef.current === controller) {
+				finish({ outcome: "passed" })
+			}
 		}, SUCCESS_MODAL_MS)
 	}
 

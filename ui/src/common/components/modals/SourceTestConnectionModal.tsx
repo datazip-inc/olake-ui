@@ -407,7 +407,7 @@ const SourceTestConnectionModal = ({
 						/>
 						{showRequired && (
 							<Section
-								title="Required Source CDC Pre-Requisites"
+								title="Required Source CDC Prerequisites"
 								{...requiredSection}
 								isLast={!showOptional}
 							>
