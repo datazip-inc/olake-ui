@@ -82,6 +82,16 @@ type TestConnectionResponse struct {
 	Logs             []map[string]interface{} `json:"logs" swaggertype:"array,object"`
 }
 
+// DiscoverCatalogResponse carries the discovered catalog in one format, each field holding a
+// catalog file exactly as the CLI wrote it: streams_config (streams.json) for a legacy catalog, or
+// available_streams + selected_streams (available_streams.json, selected_streams.json) for a split
+// catalog. The fields of the other format are null.
+type DiscoverCatalogResponse struct {
+	StreamsConfig    json.RawMessage `json:"streams_config" swaggertype:"object"`
+	AvailableStreams json.RawMessage `json:"available_streams" swaggertype:"object"`
+	SelectedStreams  json.RawMessage `json:"selected_streams" swaggertype:"object"`
+}
+
 type StreamDifferenceResponse struct {
 	DifferenceStreams map[string]interface{} `json:"difference_streams" swaggertype:"object"`
 }

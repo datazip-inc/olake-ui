@@ -173,33 +173,29 @@ func (db *Database) UpdateJob(jobID int, params map[string]any) error {
 // streams_config, with their sources.
 func (db *Database) ListLegacyCatalogJobs() ([]*models.Job, error) {
 	var jobs []*models.Job
-	err := db.conn.
-		Where("available_streams_config IS NULL AND selected_streams_config IS NULL").
-		Preload("Source").
-		Find(&jobs).Error
+	err := db.conn.Where("available_streams_config IS NULL AND selected_streams_config IS NULL").Preload("Source").Find(&jobs).Error
 	return jobs, err
 }
 
-// ListLegacyCatalogJobsBySource is ListLegacyCatalogJobs scoped to a single source, used after a
-// source upgrade to convert only that source's jobs.
-func (db *Database) ListLegacyCatalogJobsBySource(sourceID int) ([]*models.Job, error) {
-	var jobs []*models.Job
-	err := db.conn.
-		Where("source_id = ? AND available_streams_config IS NULL AND selected_streams_config IS NULL", sourceID).
-		Preload("Source").
-		Find(&jobs).Error
-	return jobs, err
+// ConvertedCatalog is the split catalog the CLI converted from a legacy job's streams_config.
+type ConvertedCatalog struct {
+	JobID int
+	// From is the streams_config the catalog was converted from. The catalog is stored only while the
+	// job still has it, so a user edit made during the conversion is not overwritten.
+	From      string
+	Available string
+	Selected  string
 }
 
-// SetStreamsV2Catalog stores a job's split catalog only while the job is still legacy and its
-// streams_config is the one the split catalog was converted from, so a concurrent edit (even one
-// that keeps the job legacy) is never overwritten. It reports whether the job was updated.
-func (db *Database) SetStreamsV2Catalog(jobID int, streamsConfig, available, selected string) (bool, error) {
+// SetStreamsV2Catalog stores c while the job is still legacy with c.From, so a concurrent edit (even
+// one that keeps it legacy) is never overwritten. It reports whether the job was updated: it is not
+// when the job was edited or deleted meanwhile.
+func (db *Database) SetStreamsV2Catalog(c ConvertedCatalog) (bool, error) {
 	result := db.conn.Model(&models.Job{}).
-		Where("id = ? AND available_streams_config IS NULL AND selected_streams_config IS NULL AND streams_config = ?::jsonb", jobID, streamsConfig).
+		Where("id = ? AND available_streams_config IS NULL AND selected_streams_config IS NULL AND streams_config = ?::jsonb", c.JobID, c.From).
 		Updates(map[string]any{
-			"available_streams_config": available,
-			"selected_streams_config":  selected,
+			"available_streams_config": c.Available,
+			"selected_streams_config":  c.Selected,
 			"streams_config":           nil,
 		})
 	return result.RowsAffected == 1, result.Error

@@ -238,7 +238,7 @@ func (s Service) TestDestinationConnection(ctx context.Context, req *dto.Destina
 	homeDir := constants.DefaultConfigDir
 	mainLogDir := filepath.Join(homeDir, workflowID)
 	// Fetch the latest batch of logs by tailing from the end with default limit in the "older" direction.
-	logs, err := utils.ReadLogs(mainLogDir, -1, -1, "older")
+	logs, err := utils.ReadLogs(ctx, mainLogDir, -1, -1, "older")
 	if err != nil {
 		return result, nil, fmt.Errorf("failed to read logs destination_type[%s] destination_version[%s] error[%s]",
 			req.Type, req.Version, err)
