@@ -1,8 +1,11 @@
 import semver from "semver"
 
 import {
+	KAFKA_KEY_COLUMN,
+	KAFKA_META_COLUMNS,
 	MIN_COLUMN_SELECTION_SOURCE_VERSION,
 	MIN_JSON_FILTER_VERSION,
+	MIN_KAFKA_UPSERT_SOURCE_VERSION,
 	MIN_SOURCE_NAMING_CONVENTION_VERSION,
 } from "@/modules/ingestion/common/constants"
 import {
@@ -14,7 +17,10 @@ import {
 	StreamIdentifier,
 	UpsertType,
 } from "@/modules/ingestion/common/types"
-import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
+import {
+	isKafkaSource,
+	normalizeConnectorType,
+} from "@/modules/ingestion/common/utils"
 
 import {
 	DESTINATION_SUPPORTED_INGESTION_MODES,
@@ -126,13 +132,10 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				...defaults,
 				stream_name: streamName,
 				disabled: true,
-				append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported, // Default to append if either source or destination does not support upsert
-				// update_type only applies while the stream runs in upsert mode.
-				...(isDestUpsertModeSupported &&
-					isSourceUpsertModeSupported && {
-						update_type: getDefaultUpsertType(stream),
-					}),
-				// Add selected_columns only when the source supports it.
+				append_mode:
+					!isDestUpsertModeSupported || !isSourceUpsertModeSupported
+						? true
+						: (defaults.append_mode ?? false),
 				...(supportsColumnSelection && {
 					selected_columns: {
 						columns: Object.keys(stream.stream.type_schema?.properties ?? {}),
@@ -210,18 +213,27 @@ export const formatSelectedStreamsPayload = (
 				const typeSchemaProps = typeSchemaByName.get(
 					`${namespace}.${stream.stream_name}`,
 				)
-				if (!stream.filter_config || !typeSchemaProps) return stream
+				const formatted =
+					stream.filter_config && typeSchemaProps
+						? {
+								...stream,
+								// Cast each condition's value to its schema-defined native type
+								filter_config: {
+									...stream.filter_config,
+									conditions: stream.filter_config.conditions.map(cond =>
+										castFilterConditionValue(
+											cond,
+											typeSchemaProps[cond.column],
+										),
+									),
+								},
+							}
+						: stream
 
-				return {
-					...stream,
-					// Cast each condition's value to its schema-defined native type
-					filter_config: {
-						...stream.filter_config,
-						conditions: stream.filter_config.conditions.map(cond =>
-							castFilterConditionValue(cond, typeSchemaProps[cond.column]),
-						),
-					},
-				}
+				if (formatted.dedup_keys?.length) return formatted
+				const withoutEmptyDedup = { ...formatted }
+				delete withoutEmptyDedup.dedup_keys
+				return withoutEmptyDedup
 			}),
 		]),
 	)
@@ -321,6 +333,7 @@ export const withIndexRequired = (
 // Returns null if all selected stream configurations are valid, or a descriptive error string otherwise.
 export const validateStreams = (
 	streamsConfig: StreamsDataStructure,
+	sourceType: string,
 ): string | null => {
 	// Map typeSchemaProperties by stream name for quick lookup
 	const typeSchemaByName = new Map(
@@ -331,6 +344,7 @@ export const validateStreams = (
 	)
 
 	const selectedStreams = getSelectedStreams(streamsConfig.selected_streams)
+	const isKafka = isKafkaSource(sourceType)
 
 	for (const [namespace, nsStreams] of Object.entries(selectedStreams)) {
 		for (const sel of nsStreams) {
@@ -346,12 +360,73 @@ export const validateStreams = (
 					{ streamName: sel.stream_name, namespace },
 					typeSchemaProps,
 				)
+
 				if (error) return error
+			}
+			if (isKafka && !sel.append_mode && (sel.dedup_keys?.length ?? 0) === 0) {
+				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Upsert requires atleast one dedup key`
+			}
+			if (
+				isKafka &&
+				!sel.append_mode &&
+				sel.selected_columns &&
+				(sel.dedup_keys ?? []).some(
+					key => !sel.selected_columns!.columns.includes(key),
+				)
+			) {
+				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Dedup keys must be included in the selected schema columns`
 			}
 		}
 	}
 
 	return null
+}
+
+export const getDedupKeyOptions = (
+	stream: StreamData,
+	selectedStream?: SelectedStream,
+): string[] => {
+	const props = stream.stream.type_schema?.properties ?? {}
+	const isEnabled = (name: string) =>
+		!selectedStream || isColumnEnabled(name, selectedStream)
+
+	const fields = Object.entries(props)
+		.filter(
+			([name, p]) =>
+				!p?.olake_column && !KAFKA_META_COLUMNS.has(name) && isEnabled(name),
+		)
+		.map(([name]) => name)
+
+	return KAFKA_KEY_COLUMN in props && isEnabled(KAFKA_KEY_COLUMN)
+		? [KAFKA_KEY_COLUMN, ...fields]
+		: fields
+}
+
+export const getKafkaUpsertNotSupportedMessage = (
+	sourceType?: string,
+	sourceVersion?: string,
+	availableUpdateTypes?: UpsertType[],
+): string | undefined => {
+	if (!isKafkaSource(sourceType)) return undefined
+
+	if (
+		availableUpdateTypes &&
+		!availableUpdateTypes.includes(UpsertType.POSITIONAL)
+	) {
+		return "Upsert is not supported for this query engine."
+	}
+
+	if (!sourceVersion) {
+		return `Upsert is supported from version ${MIN_KAFKA_UPSERT_SOURCE_VERSION} onwards`
+	}
+	if (!semver.valid(sourceVersion)) {
+		return undefined
+	}
+	if (semver.gte(sourceVersion, MIN_KAFKA_UPSERT_SOURCE_VERSION)) {
+		return undefined
+	}
+
+	return `Upsert is supported from version ${MIN_KAFKA_UPSERT_SOURCE_VERSION} onwards`
 }
 
 export const getIngestionMode = (
@@ -641,21 +716,16 @@ export const buildBulkSelectedStreams = (
 	sourceType?: string,
 	destinationType?: string,
 ): SelectedStream => {
-	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
-		IngestionMode.UPSERT,
-		destinationType,
-	)
-	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(
-		IngestionMode.UPSERT,
-		sourceType,
-	)
+	const upsertNotSupported =
+		!isSourceIngestionModeSupported(IngestionMode.UPSERT, sourceType) ||
+		!isDestinationIngestionModeSupported(IngestionMode.UPSERT, destinationType)
 
-	const appendMode = !isDestUpsertModeSupported || !isSourceUpsertModeSupported
-
-	// update_type is the catalog's key for the default upsert type; it is carried
-	// on the selected stream as update_type instead.
 	const { update_type: defaultUpsertType, ...defaultProperties } =
 		commonStream.stream.default_stream_properties ?? {}
+
+	const appendMode = upsertNotSupported
+		? true
+		: (commonStream.stream.default_stream_properties?.append_mode ?? false)
 
 	return {
 		...STREAM_DEFAULTS,

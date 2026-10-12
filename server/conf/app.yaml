@@ -30,7 +30,7 @@ TEMPORAL_ENABLE_TLS: false
 TEMPORAL_API_KEY: ""
 TEMPORAL_EXTERNAL: false
 TEMPORAL_TASK_QUEUE: ""
-CONTAINER_REGISTRY_BASE: registry-1.docker.io
+CONTAINER_REGISTRY_BASE: docker.io
 
 # Optional credentials/TLS for a generic private Docker Registry v2 registry
 # (Harbor, Nexus, Quay, GitLab, plain registry:2). Leave empty for Docker Hub or
