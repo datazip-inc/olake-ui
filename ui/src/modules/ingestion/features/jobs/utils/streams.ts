@@ -827,9 +827,10 @@ export const buildBulkSelectedStreams = (
 	const { update_type: defaultUpsertType, ...defaultProperties } =
 		commonStream.stream.default_stream_properties ?? {}
 
-	const appendMode = !isDestUpsertModeSupported || !isSourceUpsertModeSupported
-		? true
-		: (commonStream.stream.default_stream_properties?.append_mode ?? false)
+	const appendMode =
+		!isDestUpsertModeSupported || !isSourceUpsertModeSupported
+			? true
+			: (commonStream.stream.default_stream_properties?.append_mode ?? false)
 
 	return {
 		...STREAM_DEFAULTS,
