@@ -1,3 +1,4 @@
+export { default as AssociatedJobs } from "./AssociatedJobs"
 export { default as DocumentationPanel } from "./DocumentationPanel"
 export { default as EndpointTitle } from "./EndpointTitle"
 export { default as FormField } from "./FormField"
