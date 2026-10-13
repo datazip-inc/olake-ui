@@ -2,6 +2,8 @@ package gitops
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,28 +21,35 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
-const fileDebounce = 5 * time.Second
+const (
+	fileDebounce = 5 * time.Second
+	// stateFileName is the default state file, kept in GITOPS_FILE_DIR. It is not YAML, so the
+	// watcher ignores it.
+	stateFileName = ".olake-gitops-state.json"
+)
 
+// resourceState is the file-mode counterpart of the olake.io/* status annotations.
 type resourceState struct {
-	hash     string
-	phase    string
-	message  string
-	entityID string
+	Hash     string `json:"observedHash"`
+	Phase    string `json:"phase"`
+	Message  string `json:"message,omitempty"`
+	EntityID string `json:"entityId,omitempty"`
 }
 
 // FileWatcher watches a directory of ConfigMap YAML files and runs the same
 // reconcile path as the Kubernetes controllers.
 type FileWatcher struct {
 	Dir            string
+	stateFile      string
 	source         *SourceReconciler
 	dest           *DestinationReconciler
 	job            *JobReconciler
 	temporalClient *temporal.Temporal
 
 	mu        sync.Mutex
-	resources map[string]ResourceData // resource key -> last parsed manifest
-	paths     map[string]string       // resource key -> file it was read from
-	state     map[string]resourceState
+	resources map[string]ResourceData  // resource key -> last parsed manifest
+	paths     map[string]string        // resource key -> file it was read from
+	state     map[string]resourceState // resource key -> status, mirrored to stateFile
 	debounce  map[string]*time.Timer
 	retries   map[string]*time.Timer
 	reconcile chan string
@@ -48,9 +57,13 @@ type FileWatcher struct {
 	watcher   *fsnotify.Watcher
 }
 
-func newFileWatcher(dir string, etlSvc *etl.Service, t *temporal.Temporal) *FileWatcher {
+func newFileWatcher(dir, stateFile string, etlSvc *etl.Service, t *temporal.Temporal) *FileWatcher {
+	if stateFile == "" {
+		stateFile = filepath.Join(dir, stateFileName)
+	}
 	fw := &FileWatcher{
 		Dir:            dir,
+		stateFile:      stateFile,
 		temporalClient: t,
 		resources:      map[string]ResourceData{},
 		paths:          map[string]string{},
@@ -68,6 +81,14 @@ func newFileWatcher(dir string, etlSvc *etl.Service, t *temporal.Temporal) *File
 }
 
 func (fw *FileWatcher) setup() error {
+	if err := fw.readStateFile(); err != nil {
+		return err
+	}
+	// write once now so a read-only or missing location fails at startup, not after the first sync
+	if err := fw.writeStateFile(); err != nil {
+		return err
+	}
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return fmt.Errorf("fsnotify: %w", err)
@@ -127,8 +148,7 @@ func (fw *FileWatcher) enqueue(path string, delay time.Duration) {
 		t.Stop()
 	}
 	fw.debounce[path] = time.AfterFunc(delay, func() {
-		// block instead of dropping: a reconcile can run for minutes (discover), and a dropped
-		// path would not be retried until its file changes again
+		// block rather than drop: discover can take minutes; a dropped path won't retry until file changes
 		select {
 		case fw.reconcile <- path:
 		case <-fw.stop:
@@ -140,7 +160,7 @@ func (fw *FileWatcher) process(ctx context.Context, path string) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fw.forget(path)
+			fw.dropFile(path)
 			return
 		}
 		logger.Errorf("read %s: %s", path, err)
@@ -153,12 +173,13 @@ func (fw *FileWatcher) process(ctx context.Context, path string) {
 	}
 
 	fw.mu.Lock()
-	// the file now holds another resource (metadata.name or kind changed): drop the old one
+	// file now holds a different resource (name or kind changed): drop the old one to avoid ghosts
 	for key, p := range fw.paths {
 		if p == path && key != res.key() {
 			fw.dropLocked(key)
 		}
 	}
+	// restore persisted status so reconcilers see the same annotations as before restart
 	res.Annotations = fw.annotationsFor(res)
 	fw.resources[res.key()] = *res
 	fw.paths[res.key()] = path
@@ -175,9 +196,9 @@ func (fw *FileWatcher) process(ctx context.Context, path string) {
 	fw.enqueueDependentJobs(res)
 }
 
-// forget drops the resource read from path, as a deleted ConfigMap drops out of the in-cluster
+// dropFile drops the resource read from path, as a deleted ConfigMap drops out of the in-cluster
 // lists: jobs stop seeing it. The OLake entity is not deleted.
-func (fw *FileWatcher) forget(path string) {
+func (fw *FileWatcher) dropFile(path string) {
 	fw.mu.Lock()
 	defer fw.mu.Unlock()
 	for key, p := range fw.paths {
@@ -187,11 +208,19 @@ func (fw *FileWatcher) forget(path string) {
 	}
 }
 
-// dropLocked removes a resource from the index. Caller must hold fw.mu.
+// dropLocked removes a resource from the index and its status, as a deleted ConfigMap loses its
+// annotations: if the file comes back it is reconciled from scratch. Caller must hold fw.mu.
 func (fw *FileWatcher) dropLocked(key string) {
 	delete(fw.resources, key)
 	delete(fw.paths, key)
+	if _, ok := fw.state[key]; !ok {
+		// no state to persist: skip disk write
+		return
+	}
 	delete(fw.state, key)
+	if err := fw.writeStateFile(); err != nil {
+		logger.Errorf("gitops: %s", err)
+	}
 }
 
 func (fw *FileWatcher) scheduleRetry(path string, after time.Duration) {
@@ -298,10 +327,10 @@ func (fw *FileWatcher) annotationsFor(r *ResourceData) map[string]string {
 		return map[string]string{}
 	}
 	return map[string]string{
-		AnnotationObservedHash: st.hash,
-		AnnotationPhase:        st.phase,
-		AnnotationMessage:      st.message,
-		AnnotationEntityID:     st.entityID,
+		AnnotationObservedHash: st.Hash,
+		AnnotationPhase:        st.Phase,
+		AnnotationMessage:      st.Message,
+		AnnotationEntityID:     st.EntityID,
 	}
 }
 
@@ -313,16 +342,82 @@ func (fw *FileWatcher) DeleteIndicator(ctx context.Context, r *ResourceData) err
 	return deleteIndicator(ctx, fw.temporalClient, r)
 }
 
+// SetPhase records status in memory and in stateFile, and logs each change, standing in for the
+// annotation patch and Event of K8sSink. Unchanged status writes nothing, so a resource requeued
+// every syncRequeueAfter with the same message does not log again.
 func (fw *FileWatcher) SetPhase(_ context.Context, r *ResourceData, phase, message, entityID, observedHash string) error {
-	hash := observedHashForResource(r, observedHash)
+	key := r.key()
+	next := resourceState{
+		Hash:     observedHashForResource(r, observedHash),
+		Phase:    phase,
+		Message:  message,
+		EntityID: entityID,
+	}
+
 	fw.mu.Lock()
-	fw.state[r.key()] = resourceState{
-		hash:     hash,
-		phase:    phase,
-		message:  message,
-		entityID: entityID,
+	prev, existed := fw.state[key]
+	if existed && prev == next {
+		// no change: skip disk write and log (requeues hit this every 30s)
+		fw.mu.Unlock()
+		return nil
+	}
+	fw.state[key] = next
+	if err := fw.writeStateFile(); err != nil {
+		// roll back memory so it stays consistent with the file; next SetPhase call will retry
+		if existed {
+			fw.state[key] = prev
+		} else {
+			delete(fw.state, key)
+		}
+		fw.mu.Unlock()
+		return err
 	}
 	fw.mu.Unlock()
+
+	switch phase {
+	case PhaseReady:
+		logger.Infof("gitops %s %q: synced to OLake (entity %s)", r.Kind, r.Name, entityID)
+	case PhaseFailed:
+		logger.Errorf("gitops %s %q: failed: %s", r.Kind, r.Name, message)
+	default:
+		logger.Infof("gitops %s %q: %s: %s", r.Kind, r.Name, phase, message)
+	}
+	return nil
+}
+
+// readStateFile reads stateFile. A missing file is an empty state (first start). An unreadable one
+// is an error rather than an empty state: starting empty replays every job.
+func (fw *FileWatcher) readStateFile() error {
+	raw, err := os.ReadFile(fw.stateFile)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read gitops state %s: %w", fw.stateFile, err)
+	}
+	state := map[string]resourceState{}
+	if err := json.Unmarshal(raw, &state); err != nil {
+		return fmt.Errorf("parse gitops state %s (delete it to reconcile every resource from scratch): %w", fw.stateFile, err)
+	}
+	fw.state = state
+	return nil
+}
+
+// writeStateFile writes fw.state to stateFile. It writes a temp file and renames it over
+// stateFile, so a crash mid-write cannot leave a truncated file that readStateFile rejects.
+// Caller must hold fw.mu.
+func (fw *FileWatcher) writeStateFile() error {
+	raw, err := json.Marshal(fw.state)
+	if err != nil {
+		return fmt.Errorf("encode gitops state: %w", err)
+	}
+	tmp := fw.stateFile + ".tmp"
+	if err := os.WriteFile(tmp, raw, 0o644); err != nil {
+		return fmt.Errorf("write gitops state %s: %w", fw.stateFile, err)
+	}
+	if err := os.Rename(tmp, fw.stateFile); err != nil {
+		return fmt.Errorf("write gitops state %s: %w", fw.stateFile, err)
+	}
 	return nil
 }
 

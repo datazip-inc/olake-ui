@@ -34,8 +34,9 @@ type Controller struct {
 }
 
 // InitGitOps starts GitOps when enabled. In-cluster uses the ConfigMap
-// controller-runtime manager. Outside the cluster, GITOPS_FILE_DIR must be set.
-func InitGitOps(ctx context.Context, enabled bool, fileDir string, app *services.AppService) error {
+// controller-runtime manager. Outside the cluster, GITOPS_FILE_DIR must be set;
+// stateFile overrides where file mode keeps resource status.
+func InitGitOps(ctx context.Context, enabled bool, fileDir, stateFile string, app *services.AppService) error {
 	if !enabled {
 		return nil
 	}
@@ -57,12 +58,12 @@ func InitGitOps(ctx context.Context, enabled bool, fileDir string, app *services
 	if fileDir == "" {
 		return fmt.Errorf("gitops enabled but not in-cluster and GITOPS_FILE_DIR is empty: %w", err)
 	}
-	return startFileMode(ctx, fileDir, app)
+	return startFileMode(ctx, fileDir, stateFile, app)
 }
 
-func startFileMode(ctx context.Context, fileDir string, app *services.AppService) error {
+func startFileMode(ctx context.Context, fileDir, stateFile string, app *services.AppService) error {
 	ctrl.SetLogger(logger.Logr())
-	fw := newFileWatcher(fileDir, app.ETL(), app.ETL().Temporal())
+	fw := newFileWatcher(fileDir, stateFile, app.ETL(), app.ETL().Temporal())
 	if err := fw.setup(); err != nil {
 		return err
 	}

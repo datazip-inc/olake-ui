@@ -49,6 +49,7 @@ type Config struct {
 	OptimizationRequestTimeout     time.Duration
 	GitOpsEnabled                  bool
 	GitOpsFileDir                  string // file based configuration for olake
+	GitOpsStateFile                string // file mode status; defaults to GITOPS_FILE_DIR/.olake-gitops-state.json
 	OlakeStorageMode               string
 	OlakeS3Bucket                  string
 	OlakeS3Region                  string
@@ -133,6 +134,7 @@ func loadConfig() Config {
 
 		GitOpsEnabled:          v.GetBool("GITOPS_ENABLED"),
 		GitOpsFileDir:          strings.TrimSpace(v.GetString("GITOPS_FILE_DIR")),
+		GitOpsStateFile:        strings.TrimSpace(v.GetString("GITOPS_STATE_FILE")),
 		OlakeStorageMode:       strings.TrimSpace(v.GetString("OLAKE_STORAGE_MODE")),
 		OlakeS3Bucket:          strings.TrimSpace(v.GetString("OLAKE_S3_BUCKET")),
 		OlakeS3Region:          strings.TrimSpace(v.GetString("OLAKE_S3_REGION")),

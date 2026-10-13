@@ -33,6 +33,8 @@ volumes:
   - ./olake-gitops:/etc/olake/gitops
 ```
 
+File mode has no annotations, so status (phase, message, entity ID, observed hash) is kept in `.olake-gitops-state.json` in `GITOPS_FILE_DIR` and written to the olake-ui log on each change. The file plays the role of the annotations: it keeps a restart from re-applying every job, which would cancel running syncs. Keep it on persistent storage, and add it to `.gitignore` if the directory is a git checkout. If the directory is read-only (for example a git-sync mount), set `GITOPS_STATE_FILE` to a writable path. olake-ui fails at startup if it cannot write the file. Deleting the file, or a manifest, makes the next start reconcile those resources from scratch.
+
 ### 2. Apply sample manifests
 
 Replace `projectId` with your OLake project ID. Examples: [olake-helm/examples/gitops/](https://github.com/datazip-inc/olake-helm/tree/master/helm/olake/examples/gitops).
