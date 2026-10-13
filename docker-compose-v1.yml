@@ -310,6 +310,7 @@ services:
 
   fusion:
     image: olakego/fusion:latest
+    pull_policy: always
     container_name: olake-fusion
     profiles:
       - fusion
@@ -512,6 +513,7 @@ services:
 
   spark-copy:
     image: olakego/fusion-spark:latest
+    pull_policy: always
     container_name: fusion-spark-copy
     profiles:
       - fusion
