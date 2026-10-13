@@ -97,6 +97,10 @@ func (s Service) GetJobByName(_ context.Context, projectID, name string) (*model
 }
 
 func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
+	if err := validateStreamsFormat(req.StreamsConfig, req.AvailableStreamsConfig, req.SelectedStreamsConfig, req.Source.Version, nil); err != nil {
+		return err
+	}
+
 	unique, err := s.db.IsJobNameUniqueInProject(ctx, projectID, req.Name)
 	if err != nil {
 		return fmt.Errorf("failed to check job name uniqueness: %s", err)
@@ -108,10 +112,6 @@ func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, proje
 	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source: %s", err)
-	}
-
-	if err := validateStreamsFormat(req.StreamsConfig, req.AvailableStreamsConfig, req.SelectedStreamsConfig, source.Version, nil); err != nil {
-		return err
 	}
 
 	dest, err := s.upsertDestination(ctx, req.Destination, projectID, userID)
@@ -180,6 +180,10 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 		return fmt.Errorf("failed to get job: %s", err)
 	}
 
+	if err := validateStreamsFormat(req.StreamsConfig, req.AvailableStreamsConfig, req.SelectedStreamsConfig, req.Source.Version, existingJob); err != nil {
+		return err
+	}
+
 	// Block when clear-destination is running
 	clearRunning, _, err := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.ClearDestination)
 	if err != nil {
@@ -192,10 +196,6 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source for job update: %s", err)
-	}
-
-	if err := validateStreamsFormat(req.StreamsConfig, req.AvailableStreamsConfig, req.SelectedStreamsConfig, source.Version, existingJob); err != nil {
-		return err
 	}
 
 	// Cancel sync before updating the job
