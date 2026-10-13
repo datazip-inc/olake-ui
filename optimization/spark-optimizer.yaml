@@ -65,6 +65,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
             - name: HADOOP_USER_NAME
               value: spark
             - name: LOG_DIR
@@ -85,6 +89,8 @@ spec:
             - --conf
             - spark.driver.bindAddress=$(POD_IP)
             - --conf
+            - spark.kubernetes.driver.pod.name=$(POD_NAME)
+            - --conf
             - spark.driver.host=fusion-optimizer.spark.svc.cluster.local
             - --conf
             - spark.driver.port=7078
@@ -100,8 +106,7 @@ spec:
             - spark.kubernetes.container.image.pullPolicy=IfNotPresent
             - --conf
             - spark.kubernetes.authenticate.executor.serviceAccountName=spark
-            - --conf
-            - spark.kubernetes.executor.podNamePrefix=fusion-optimizer-executor
+            # No spark.kubernetes.executor.podNamePrefix: Spark then generates one per application
             - --conf
             - spark.kubernetes.executor.label.optimizer-group=spark-container
             - --conf
@@ -135,9 +140,10 @@ spec:
             - spark.kubernetes.executor.volumes.hostPath.amoro-logs.options.path=/mnt/amoro-logs
             - --conf
             - spark.executorEnv.LOG_DIR=/mnt/amoro-logs
-            # Force Log4j2 to use the routing config (belt-and-suspenders with the Dockerfile COPY)
+            # Force Log4j2 to use the routing config (belt-and-suspenders with the Dockerfile COPY).
+            # the driver exits on its first OutOfMemoryError.
             - --conf
-            - spark.driver.extraJavaOptions=-Dlog4j2.configurationFile=file:///opt/spark/conf/log4j2.xml
+            - spark.driver.extraJavaOptions=-Dlog4j2.configurationFile=file:///opt/spark/conf/log4j2.xml -XX:+ExitOnOutOfMemoryError
             - --conf
             - spark.executor.extraJavaOptions=-Dlog4j2.configurationFile=file:///opt/spark/conf/log4j2.xml
             # Placeholder for environment variables injected into executor pods, e.g. credentials
