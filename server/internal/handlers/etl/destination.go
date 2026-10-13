@@ -9,7 +9,6 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -206,7 +205,7 @@ func (h *Handler) DeleteDestination(c *gin.Context) {
 // @Description Validate the connection to a destination using the provided configuration details.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.DestinationTestConnectionRequest true "test connection data"
-// @Success 200 {object} dto.JSONResponse{data=dto.TestConnectionResponse}
+// @Success 202 {object} dto.JSONResponse{data=dto.OperationAcceptedResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 413 {object} dto.Error413Response "payload too large"
@@ -231,11 +230,7 @@ func (h *Handler) TestDestinationConnection(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to verify driver credentials: %s", err), err)
 		return
 	}
-	utils.AcceptedResponse(c, fmt.Sprintf("destination %s connection test started", req.Type), dto.OperationAcceptedResponse{
-		OperationID: operationID,
-		Kind:        string(temporal.OperationTestConnection),
-		Status:      string(temporal.OperationRunning),
-	})
+	utils.AcceptedResponse(c, fmt.Sprintf("destination %s connection test started", req.Type), dto.OperationAcceptedResponse{OperationID: operationID})
 }
 
 // @Summary Get available destination versions
@@ -275,7 +270,7 @@ func (h *Handler) GetDestinationVersions(c *gin.Context) {
 // @Description Retrieve the UI spec for a specific destination type/version.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.SpecRequest true "spec request data"
-// @Success 200 {object} dto.JSONResponse{data=dto.SpecResponse}
+// @Success 202 {object} dto.JSONResponse{data=dto.OperationAcceptedResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 413 {object} dto.Error413Response "payload too large"
@@ -299,9 +294,5 @@ func (h *Handler) GetDestinationSpec(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get destination spec: %s", err), err)
 		return
 	}
-	utils.AcceptedResponse(c, fmt.Sprintf("destination %s spec fetch started", req.Type), dto.OperationAcceptedResponse{
-		OperationID: operationID,
-		Kind:        string(temporal.OperationSpec),
-		Status:      string(temporal.OperationRunning),
-	})
+	utils.AcceptedResponse(c, fmt.Sprintf("destination %s spec fetch started", req.Type), dto.OperationAcceptedResponse{OperationID: operationID})
 }

@@ -207,9 +207,6 @@ func (s Service) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceRes
 	return &dto.DeleteSourceResponse{Name: src.Name}, nil
 }
 
-// TestSourceConnection starts a connection check and returns its operation ID. The check
-// runs a connector container, so the caller polls the operation rather than holding the
-// request open for it.
 func (s Service) TestSourceConnection(ctx context.Context, projectID string, req *dto.SourceTestConnectionRequest) (string, error) {
 	if s.temporal == nil {
 		return "", fmt.Errorf("temporal client not available")
@@ -223,7 +220,6 @@ func (s Service) TestSourceConnection(ctx context.Context, projectID string, req
 	return s.temporal.StartVerifyDriverCredentials(ctx, projectID, "config", req.Type, req.Version, encryptedConfig)
 }
 
-// GetSourceCatalog starts catalog discovery and returns its operation ID.
 func (s Service) GetSourceCatalog(ctx context.Context, projectID string, req *dto.StreamsRequest) (string, error) {
 	oldStreams := ""
 	if req.JobID >= 0 {
@@ -263,8 +259,6 @@ func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.
 }
 
 // TODO: cache spec in db for each version
-// GetSourceSpec starts a spec fetch and returns its operation ID. An empty ID means no
-// workflow was needed — see StartDriverSpecs.
 func (s Service) GetSourceSpec(ctx context.Context, projectID string, req *dto.SpecRequest) (string, error) {
-	return s.temporal.StartDriverSpecs(ctx, projectID, "", req.Type, req.Version, req.Type, req.Version, req.AvailableQueryEngines)
+	return s.temporal.StartDriverSpecs(ctx, projectID, "", req.Type, req.Version, req.AvailableQueryEngines)
 }

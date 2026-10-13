@@ -66,9 +66,6 @@ const (
 //
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
 
-// StartDiscoverStreams starts a catalog discovery and returns its operation ID without
-// waiting for it to finish. Callers poll the operation instead of holding the request
-// open for the container run.
 func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (string, error) {
 	workflowID, err := NewOperationID(OperationDiscoverCatalog, projectID)
 	if err != nil {
@@ -141,14 +138,9 @@ func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceTy
 	return workflowID, nil
 }
 
-// StartDriverSpecs starts a spec fetch and returns its operation ID without waiting.
-// specType and specVersion are what the caller asked for, which is not always what the
-// workflow runs: a destination spec runs inside a source connector image. They are
-// recorded on the workflow memo so the result endpoint can echo them back verbatim.
-//
-// An empty operation ID with a nil error means no workflow was started and there is
-// nothing to poll; the caller answers immediately instead.
-func (t *Temporal) StartDriverSpecs(ctx context.Context, projectID, destinationType, sourceType, version, specType, specVersion string, availableQueryEngines bool) (string, error) {
+// StartDriverSpecs returns an empty operation ID when no workflow was needed, in which
+// case there is nothing to poll and the caller answers immediately.
+func (t *Temporal) StartDriverSpecs(ctx context.Context, projectID, destinationType, sourceType, version string, availableQueryEngines bool) (string, error) {
 	// An older image rejects the flag and fails the workflow, so report the feature as absent instead.
 	if availableQueryEngines && !supportsQueryEngines(version) {
 		return "", nil
@@ -189,10 +181,6 @@ func (t *Temporal) StartDriverSpecs(ctx context.Context, projectID, destinationT
 	workflowOptions := client.StartWorkflowOptions{
 		ID:        workflowID,
 		TaskQueue: t.taskQueue,
-		Memo: map[string]interface{}{
-			MemoSpecType:    specType,
-			MemoSpecVersion: specVersion,
-		},
 	}
 
 	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
@@ -207,9 +195,6 @@ func supportsQueryEngines(version string) bool {
 	return utils.GetCustomDriverVersion() != "" || semver.Compare(version, constants.DefaultQueryEnginesVersion) >= 0
 }
 
-// StartVerifyDriverCredentials starts a connection check and returns its operation ID
-// without waiting. The operation ID doubles as the directory name under the shared
-// config volume, which is where the check's logs land.
 func (t *Temporal) StartVerifyDriverCredentials(ctx context.Context, projectID, flag, sourceType, version, config string) (string, error) {
 	workflowID, err := NewOperationID(OperationTestConnection, projectID)
 	if err != nil {
@@ -255,9 +240,7 @@ func (t *Temporal) StartVerifyDriverCredentials(ctx context.Context, projectID, 
 	return workflowID, nil
 }
 
-// DecodeConnectionStatus reshapes a check workflow's raw output into the {message, status}
-// pair the API has always returned.the workflow that produces the raw shape,
-// and is applied when the result is collected rather than when it is started.
+// DecodeConnectionStatus reshapes the check workflow's raw output into {message, status}.
 func DecodeConnectionStatus(result map[string]interface{}) (map[string]interface{}, error) {
 	connectionStatus, ok := result["connectionStatus"].(map[string]interface{})
 	if !ok || connectionStatus == nil {
@@ -307,8 +290,6 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	return nil
 }
 
-// StartStreamDifference starts a comparison of old and new stream configs and returns
-// its operation ID without waiting.
 func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, oldConfig, newConfig string) (string, error) {
 	workflowID, err := NewOperationID(OperationStreamDifference, job.ProjectID)
 	if err != nil {

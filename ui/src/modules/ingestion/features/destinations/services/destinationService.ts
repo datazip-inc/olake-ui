@@ -1,8 +1,10 @@
+import { SUBMIT_TIMEOUT_MS } from "@/common/constants"
 import {
 	OperationAccepted,
-	runOperation,
-} from "@/common/services/operationsService"
-import { SpecResponse, TestConnectionResponse } from "@/common/types"
+	SpecResponse,
+	TestConnectionResponse,
+} from "@/common/types"
+import { runOperation } from "@/common/utils"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
 import { api } from "@/core/api"
@@ -11,8 +13,8 @@ import {
 	EntityBase,
 	EntityTestRequest,
 } from "@/modules/ingestion/common/types"
-import { describeConnectionFailure } from "@/modules/ingestion/common/utils"
 import {
+	describeConnectionFailure,
 	getConnectorInLowerCase,
 	normalizeConnectorType,
 } from "@/modules/ingestion/common/utils"
@@ -119,9 +121,7 @@ export const destinationService = {
 						source_type: source_type,
 						source_version: source_version,
 					},
-					// Untimed: resolves the driver image from the registry server-side
-					// before starting the workflow, and that lookup has no deadline.
-					{ timeout: 0, disableErrorNotification: true },
+					{ timeout: SUBMIT_TIMEOUT_MS, disableErrorNotification: true },
 				)
 				return response.data
 			})
@@ -169,30 +169,23 @@ export const destinationService = {
 	) => {
 		try {
 			const normalizedType = normalizeConnectorType(type)
-			// Resumable: leaving the form mid-fetch and returning rejoins the same
-			// operation rather than starting a second container.
-			return await runOperation<SpecResponse>(
-				async () => {
-					const response = await api.post<OperationAccepted>(
-						`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
-						{
-							type: normalizedType,
-							version: version,
-							source_type: source_type,
-							source_version: source_version,
-						},
-						{
-							// Untimed: resolves the driver image from the registry
-							// server-side before starting the workflow.
-							timeout: 0,
-							signal,
-							disableErrorNotification: true,
-						},
-					)
-					return response.data
-				},
-				{ signal },
-			)
+			return await runOperation<SpecResponse>(async () => {
+				const response = await api.post<OperationAccepted>(
+					`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
+					{
+						type: normalizedType,
+						version: version,
+						source_type: source_type,
+						source_version: source_version,
+					},
+					{
+						timeout: SUBMIT_TIMEOUT_MS,
+						signal,
+						disableErrorNotification: true,
+					},
+				)
+				return response.data
+			}, signal)
 		} catch (error: any) {
 			console.error("Error getting destination spec:", error)
 			const serverMessage = error?.response?.data?.message

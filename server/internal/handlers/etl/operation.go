@@ -14,11 +14,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
-// operationErrorStatus maps an operations-API error onto an HTTP status.
-//
-// A forbidden operation is reported as 404 rather than 403: operation IDs are the only
-// thing tying an operation to a project, so confirming that someone else's ID exists
-// would leak more than refusing it does.
 func operationErrorStatus(err error) int {
 	switch {
 	case errors.Is(err, services.ErrOperationNotFound), errors.Is(err, services.ErrOperationForbidden):
@@ -30,7 +25,6 @@ func operationErrorStatus(err error) int {
 	}
 }
 
-// parseWaitParam reads the optional long-poll duration, in seconds.
 func parseWaitParam(c *gin.Context) (time.Duration, error) {
 	raw := strings.TrimSpace(c.Query("wait"))
 	if raw == "" {
@@ -45,7 +39,7 @@ func parseWaitParam(c *gin.Context) (time.Duration, error) {
 
 // @Summary Get async operation status
 // @Tags Operations
-// @Description Report whether a long-running operation is still running, and if not, how it ended. With ?wait=N the request is held server-side for up to N seconds (capped by OPERATION_MAX_WAIT) and returns as soon as the operation closes.
+// @Description Report whether a long-running operation is still running, and if not, how it ended. With ?wait=N the request is held server-side for up to N seconds (capped at 10) and returns as soon as the operation closes.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   operationid   path    string  true    "operation id returned by the submitting endpoint"
 // @Param   wait          query   int     false   "seconds to long-poll before answering"
@@ -102,30 +96,4 @@ func (h *Handler) GetOperationResult(c *gin.Context) {
 		return
 	}
 	utils.SuccessResponse(c, fmt.Sprintf("operation %s result fetched successfully", operationID), result)
-}
-
-// @Summary Cancel an async operation
-// @Tags Operations
-// @Description Stop a running operation and the connector container behind it.
-// @Param   projectid     path    string  true    "project id (default is 123)"
-// @Param   operationid   path    string  true    "operation id returned by the submitting endpoint"
-// @Success 200 {object} dto.JSONResponse
-// @Failure 400 {object} dto.Error400Response "failed to validate request"
-// @Failure 401 {object} dto.Error401Response "unauthorized"
-// @Failure 404 {object} dto.Error404Response "operation not found"
-// @Failure 500 {object} dto.Error500Response "failed to cancel operation"
-// @Router /api/v1/project/{projectid}/operations/{operationid} [delete]
-func (h *Handler) CancelOperation(c *gin.Context) {
-	projectID, err := utils.GetProjectID(c)
-	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
-		return
-	}
-	operationID := c.Param("operationid")
-
-	if err := h.etl.CancelOperation(c.Request.Context(), projectID, operationID); err != nil {
-		utils.ErrorResponse(c, operationErrorStatus(err), fmt.Sprintf("failed to cancel operation: %s", err), err)
-		return
-	}
-	utils.SuccessResponse(c, fmt.Sprintf("operation %s cancelled successfully", operationID), nil)
 }

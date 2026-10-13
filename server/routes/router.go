@@ -65,7 +65,6 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 	// Long-running work (spec, test connection, discover, stream difference)
 	etl.GET("/project/:projectid/operations/:operationid", etlHandler.GetOperationStatus)
 	etl.GET("/project/:projectid/operations/:operationid/result", etlHandler.GetOperationResult)
-	etl.DELETE("/project/:projectid/operations/:operationid", etlHandler.CancelOperation)
 
 	// Project settings routes
 	etl.PUT("/project/:projectid/settings", etlHandler.UpsertProjectSettings)

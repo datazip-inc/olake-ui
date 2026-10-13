@@ -1,7 +1,5 @@
-import {
-	OperationAccepted,
-	runOperation,
-} from "@/common/services/operationsService"
+import { OperationAccepted } from "@/common/types"
+import { runOperation } from "@/common/utils"
 import { API_CONFIG } from "@/config/apiConfig"
 import { api } from "@/core/api"
 import { StreamsDataStructure } from "@/modules/ingestion/common/types"

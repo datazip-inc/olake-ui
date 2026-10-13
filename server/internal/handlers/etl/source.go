@@ -9,7 +9,6 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -198,7 +197,7 @@ func (h *Handler) DeleteSource(c *gin.Context) {
 // @Description Validate the connection to a source using the provided configuration details.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.SourceTestConnectionRequest true "test connection data"
-// @Success 200 {object} dto.JSONResponse{data=dto.TestConnectionResponse}
+// @Success 202 {object} dto.JSONResponse{data=dto.OperationAcceptedResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 413 {object} dto.Error413Response "payload too large"
@@ -225,11 +224,7 @@ func (h *Handler) TestSourceConnection(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to verify credentials: %s", err), err)
 		return
 	}
-	utils.AcceptedResponse(c, fmt.Sprintf("source %s connection test started", req.Type), dto.OperationAcceptedResponse{
-		OperationID: operationID,
-		Kind:        string(temporal.OperationTestConnection),
-		Status:      string(temporal.OperationRunning),
-	})
+	utils.AcceptedResponse(c, fmt.Sprintf("source %s connection test started", req.Type), dto.OperationAcceptedResponse{OperationID: operationID})
 }
 
 // @Summary Get source stream catalog
@@ -237,7 +232,7 @@ func (h *Handler) TestSourceConnection(c *gin.Context) {
 // @Description Discover and list available data streams from a source.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.StreamsRequest true "streams request data"
-// @Success 200 {object} dto.JSONResponse{data=object}
+// @Success 202 {object} dto.JSONResponse{data=dto.OperationAcceptedResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 413 {object} dto.Error413Response "payload too large"
@@ -264,11 +259,7 @@ func (h *Handler) GetSourceCatalog(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source streams: %s", err), err)
 		return
 	}
-	utils.AcceptedResponse(c, fmt.Sprintf("source %s catalog discovery started", req.Type), dto.OperationAcceptedResponse{
-		OperationID: operationID,
-		Kind:        string(temporal.OperationDiscoverCatalog),
-		Status:      string(temporal.OperationRunning),
-	})
+	utils.AcceptedResponse(c, fmt.Sprintf("source %s catalog discovery started", req.Type), dto.OperationAcceptedResponse{OperationID: operationID})
 }
 
 // @Summary Get available source versions
@@ -306,7 +297,8 @@ func (h *Handler) GetSourceVersions(c *gin.Context) {
 // @Description Retrieve the UI spec for a specific source type/version, or the supported query engines when available_query_engines is set.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.SpecRequest true "spec request data"
-// @Success 200 {object} dto.JSONResponse{data=dto.SpecResponse}
+// @Success 202 {object} dto.JSONResponse{data=dto.OperationAcceptedResponse}
+// @Success 200 {object} dto.JSONResponse{data=dto.SpecResponse} "no workflow needed: query engines requested on an image that does not support them"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 413 {object} dto.Error413Response "payload too large"
@@ -343,9 +335,5 @@ func (h *Handler) GetSourceSpec(c *gin.Context) {
 		})
 		return
 	}
-	utils.AcceptedResponse(c, fmt.Sprintf("source %s spec fetch started", req.Type), dto.OperationAcceptedResponse{
-		OperationID: operationID,
-		Kind:        string(temporal.OperationSpec),
-		Status:      string(temporal.OperationRunning),
-	})
+	utils.AcceptedResponse(c, fmt.Sprintf("source %s spec fetch started", req.Type), dto.OperationAcceptedResponse{OperationID: operationID})
 }

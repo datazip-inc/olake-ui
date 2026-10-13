@@ -377,7 +377,6 @@ func (s Service) ClearDestination(ctx context.Context, projectID string, jobID i
 	return nil
 }
 
-// GetStreamDifference starts a stream-difference comparison and returns its operation ID.
 func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (string, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {

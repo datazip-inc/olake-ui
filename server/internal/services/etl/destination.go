@@ -205,7 +205,6 @@ func (s Service) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDest
 	return &dto.DeleteDestinationResponse{Name: dest.Name}, nil
 }
 
-// TestDestinationConnection starts a connection check and returns its operation ID.
 func (s Service) TestDestinationConnection(ctx context.Context, projectID string, req *dto.DestinationTestConnectionRequest) (string, error) {
 	version := req.Version
 	driver := req.SourceType
@@ -239,9 +238,6 @@ func (s Service) GetDestinationVersions(ctx context.Context, destType string) (d
 }
 
 // TODO: cache spec in db for each version
-// GetDestinationSpec starts a spec fetch and returns its operation ID. The spec runs
-// inside a source connector image, so the destination type and version the caller asked
-// for are recorded separately for the response.
 func (s Service) GetDestinationSpec(ctx context.Context, projectID string, req *dto.SpecRequest) (string, error) {
 	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
@@ -249,5 +245,5 @@ func (s Service) GetDestinationSpec(ctx context.Context, projectID string, req *
 	}
 
 	// The matrix describes engines, not destinations, so this endpoint always serves the destination UI spec.
-	return s.temporal.StartDriverSpecs(ctx, projectID, req.Type, driver, req.Version, req.Type, req.Version, false)
+	return s.temporal.StartDriverSpecs(ctx, projectID, req.Type, driver, req.Version, false)
 }

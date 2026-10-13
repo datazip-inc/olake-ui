@@ -1,9 +1,10 @@
+import { SUBMIT_TIMEOUT_MS } from "@/common/constants"
 import {
-	awaitOperation,
 	OperationAccepted,
-	runOperation,
-} from "@/common/services/operationsService"
-import { SpecResponse, TestConnectionResponse } from "@/common/types"
+	SpecResponse,
+	TestConnectionResponse,
+} from "@/common/types"
+import { awaitOperation, runOperation } from "@/common/utils"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
 import { api } from "@/core/api"
@@ -14,9 +15,6 @@ import {
 	StreamsDataStructure,
 } from "@/modules/ingestion/common/types"
 import { describeConnectionFailure } from "@/modules/ingestion/common/utils"
-
-/** For calls that only hand work to the server and return a ticket. */
-const SUBMIT_TIMEOUT_MS = 30000
 
 export const sourceService = {
 	getSources: async (): Promise<Entity[]> => {
@@ -197,7 +195,7 @@ export const sourceService = {
 			}
 			return await awaitOperation<SpecResponse>(
 				(response.data as OperationAccepted).operation_id,
-				{ signal },
+				signal,
 			)
 		} catch (error: any) {
 			console.error("Error getting source spec:", error)
@@ -222,30 +220,27 @@ export const sourceService = {
 	) => {
 		try {
 			// The POST only starts discovery; the catalog arrives by polling.
-			return await runOperation<StreamsDataStructure>(
-				async () => {
-					const response = await api.post<OperationAccepted>(
-						`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
-						{
-							name,
-							type,
-							job_name,
-							job_id: job_id ? job_id : -1,
-							version,
-							config,
-							max_discover_threads,
-							target_query_engines,
-						},
-						{
-							timeout: SUBMIT_TIMEOUT_MS,
-							signal,
-							disableErrorNotification: true,
-						},
-					)
-					return response.data
-				},
-				{ signal },
-			)
+			return await runOperation<StreamsDataStructure>(async () => {
+				const response = await api.post<OperationAccepted>(
+					`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
+					{
+						name,
+						type,
+						job_name,
+						job_id: job_id ? job_id : -1,
+						version,
+						config,
+						max_discover_threads,
+						target_query_engines,
+					},
+					{
+						timeout: 0,
+						signal,
+						disableErrorNotification: true,
+					},
+				)
+				return response.data
+			}, signal)
 		} catch (error: any) {
 			console.error("Error getting source streams:", error)
 			const serverMessage = error?.response?.data?.message
