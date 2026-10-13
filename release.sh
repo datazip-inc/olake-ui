@@ -82,9 +82,15 @@ function release_frontend() {
 
     echo "Building and pushing frontend Docker image..."
     
+    local tags=(-t "${image_name}:${tag_version}")
+    if [[ "$SKIP_LATEST_TAG" == "true" ]]; then
+        echo "Skipping latest tag ${image_name}:${latest_tag}"
+    else
+        tags+=(-t "${image_name}:${latest_tag}")
+    fi
+
     docker buildx build --platform "$platform" --push \
-        -t "${image_name}:${tag_version}" \
-        -t "${image_name}:${latest_tag}" \
+        "${tags[@]}" \
         --build-arg ENVIRONMENT="$environment" \
         --build-arg APP_VERSION="$version" \
         -f Dockerfile . || fail "Frontend build failed. Exiting..."

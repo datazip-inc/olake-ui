@@ -17,6 +17,11 @@ on:
         required: true
         default: ""
         type: string
+      skip_latest_tag:
+        description: "Skip pushing the moving latest tag (latest/stag-latest/dev-latest)"
+        required: false
+        default: false
+        type: boolean
   workflow_dispatch:
     inputs:
       environment:
@@ -51,6 +56,7 @@ jobs:
       DOCKER_REPO_WORKER: ${{ secrets.DOCKER_REPO_WORKER || 'olakego' }}
       ENVIRONMENT: ${{ inputs.environment }}
       VERSION: ${{ inputs.version }}
+      SKIP_LATEST_TAG: ${{ inputs.skip_latest_tag && 'true' || 'false' }}
 
     steps:
       - name: Checkout code from explicit ref
