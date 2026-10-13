@@ -1,4 +1,9 @@
-import { InfoIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react"
+import {
+	ArrowSquareOutIcon,
+	InfoIcon,
+	PlusIcon,
+	TrashIcon,
+} from "@phosphor-icons/react"
 import { FieldTemplateProps } from "@rjsf/utils"
 import { Tooltip, Button } from "antd"
 import { useState, useEffect } from "react"
@@ -105,6 +110,7 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 		formData,
 		onChange,
 		rawErrors,
+		registry,
 	} = props
 
 	// --- Derived Variables ---
@@ -120,6 +126,8 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 		(isArrayField && !!objectTitle) ||
 		(displayLabel && !!label)
 	const labelText = objectTitle ?? label
+	// Forms can pass { fieldDocLinks: { [fieldId]: url } } as rjsf formContext
+	const docLink: string | undefined = registry.formContext?.fieldDocLinks?.[id]
 	const [newKey, setNewKey] = useState("")
 	const [newValue, setNewValue] = useState("")
 	const [currentTempKey, setCurrentTempKey] = useState<string | null>(null)
@@ -227,6 +235,17 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 						>
 							<InfoIcon className="ml-1 text-gray-500 hover:text-gray-600" />
 						</Tooltip>
+					)}
+					{docLink && (
+						<a
+							href={docLink}
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label={`Open ${labelText} docs`}
+							className="inline-flex text-text-tertiary hover:text-primary"
+						>
+							<ArrowSquareOutIcon size={14} />
+						</a>
 					)}
 				</label>
 			)}

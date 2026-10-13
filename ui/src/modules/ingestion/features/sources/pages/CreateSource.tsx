@@ -44,6 +44,7 @@ import { SetupTypeSelector } from "@/modules/ingestion/common/components/SetupTy
 import {
 	CONNECTOR_TYPES,
 	ENTITY_TYPES,
+	FIELD_DOC_LINKS,
 	SETUP_TYPES,
 } from "@/modules/ingestion/common/constants"
 import { validationService } from "@/modules/ingestion/common/services/validationService"
@@ -434,6 +435,9 @@ const CreateSource: React.FC = () => {
 								}}
 								transformErrors={transformErrors}
 								onError={notifyFirstFormError}
+								formContext={{
+									fieldDocLinks: FIELD_DOC_LINKS[normalizedConnector],
+								}}
 								uiSchema={uiSchema}
 								validator={formValidator}
 								omitExtraData

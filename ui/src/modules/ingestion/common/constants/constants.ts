@@ -1,3 +1,5 @@
+import { POSTGRES_CDC_DOCS } from "@/common/constants"
+
 export const CONNECTOR_TYPES = {
 	AMAZON_S3: "Amazon S3",
 	APACHE_ICEBERG: "Apache Iceberg",
@@ -90,3 +92,12 @@ export const KAFKA_META_COLUMNS = new Set([
 	"_kafka_partition",
 	"_kafka_timestamp",
 ])
+
+// Docs links rendered next to spec form field labels, keyed by connector and
+// rjsf field id. CDC-only fields render only when CDC is selected.
+export const FIELD_DOC_LINKS: Record<string, Record<string, string>> = {
+	postgres: {
+		root_update_method_replication_slot: POSTGRES_CDC_DOCS.REPLICATION_SLOT,
+		root_update_method_publication: POSTGRES_CDC_DOCS.PUBLICATION,
+	},
+}
