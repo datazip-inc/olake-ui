@@ -232,7 +232,7 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 			)}
 
 			{isDynamicObject ? (
-				<div className="space-y-3">
+				<div className={`space-y-3 ${inputErrorWrapperClass}`}>
 					{/* Existing key-value pairs */}
 					{formData &&
 						Object.entries(formData)

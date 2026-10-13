@@ -5,7 +5,6 @@ import {
 	NotebookIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
-import validator from "@rjsf/validator-ajv8"
 import { useQueryClient } from "@tanstack/react-query"
 import { Input, Button, Select, Switch, Spin, Table, Tooltip } from "antd"
 import type { ColumnsType } from "antd/es/table"
@@ -16,6 +15,10 @@ import { useParams, Link, useNavigate } from "react-router-dom"
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import {
+	formValidator,
+	notifyFirstFormError,
+} from "@/common/components/form/validation"
 import { widgets } from "@/common/components/form/widgets"
 import {
 	ErrorLogsModal,
@@ -521,9 +524,10 @@ const DestinationEdit: React.FC = () => {
 							setAuthType(trimmedData?.writer?.rest_auth_type ?? null)
 						}}
 						transformErrors={transformErrors}
+						onError={notifyFirstFormError}
 						onSubmit={handleSaveChanges}
 						uiSchema={uiSchema}
-						validator={validator}
+						validator={formValidator}
 						showErrorList={false}
 						omitExtraData
 						liveOmit

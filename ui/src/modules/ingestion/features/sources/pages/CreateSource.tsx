@@ -6,7 +6,6 @@ import {
 	NotebookIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
-import validator from "@rjsf/validator-ajv8"
 import { message, Select, Spin, Tooltip } from "antd"
 import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
@@ -14,6 +13,10 @@ import { Link } from "react-router-dom"
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import {
+	formValidator,
+	notifyFirstFormError,
+} from "@/common/components/form/validation"
 import { widgets } from "@/common/components/form/widgets"
 import {
 	ErrorLogsModal,
@@ -429,8 +432,9 @@ const CreateSource: React.FC = () => {
 									setFormData(trimmedData)
 								}}
 								transformErrors={transformErrors}
+								onError={notifyFirstFormError}
 								uiSchema={uiSchema}
-								validator={validator}
+								validator={formValidator}
 								omitExtraData
 								liveOmit
 								showErrorList={false} // adding this will not show error list
