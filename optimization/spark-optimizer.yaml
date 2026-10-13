@@ -72,7 +72,7 @@ spec:
             - name: HADOOP_USER_NAME
               value: spark
             - name: LOG_DIR
-              value: /mnt/amoro-logs
+              value: /mnt/amoro-logs/compaction
             # Placeholder for environment variables injected into the driver pod, e.g. credentials
             OPTIMIZER_POD_ENVS_PLACEHOLDER
           command:
@@ -139,7 +139,7 @@ spec:
             - --conf
             - spark.kubernetes.executor.volumes.hostPath.amoro-logs.options.path=/mnt/amoro-logs
             - --conf
-            - spark.executorEnv.LOG_DIR=/mnt/amoro-logs
+            - spark.executorEnv.LOG_DIR=/mnt/amoro-logs/compaction
             # Force Log4j2 to use the routing config (belt-and-suspenders with the Dockerfile COPY).
             # the driver exits on its first OutOfMemoryError.
             - --conf
