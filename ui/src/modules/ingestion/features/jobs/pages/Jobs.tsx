@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { CommunityHelpBanner } from "@/common/components"
-import { parseDateToTimestamp } from "@/common/utils"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { JobTable, JobEmptyState, DeleteJobModal } from "../components"
@@ -18,7 +17,7 @@ import {
 } from "../hooks"
 import { savedJobsService } from "../services"
 import { useJobStore } from "../stores"
-import { Job, JobStatus, JobType, SavedJobDraft } from "../types"
+import { Job, JobStatus, SavedJobDraft } from "../types"
 
 const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState<JobStatus>(
@@ -133,21 +132,6 @@ const Jobs: React.FC = () => {
 	const showEmpty =
 		!isLoadingJobs && jobs.length === 0 && savedJobs.length === 0
 
-	// The most recent sync across all jobs picks the community banner: a failure
-	// shows the sync-failure banner until a later sync replaces it.
-	const latestSync = jobs.reduce<{ job: Job; startedAt: number } | null>(
-		(latest, job) => {
-			if (job.last_run_type !== JobType.Sync) return latest
-			const startedAt = parseDateToTimestamp(job.last_run_time)
-			return startedAt !== null && (!latest || startedAt > latest.startedAt)
-				? { job, startedAt }
-				: latest
-		},
-		null,
-	)
-	const latestSyncFailed =
-		(latestSync?.job.last_run_state ?? "").toLowerCase() === JOB_STATUS.FAILED
-
 	const tabItems = [
 		{ key: JOB_STATUS.ACTIVE, label: "Active jobs" },
 		{ key: JOB_STATUS.INACTIVE, label: "Inactive jobs" },
@@ -193,19 +177,10 @@ const Jobs: React.FC = () => {
 				A list of all your jobs stacked at one place for you to see
 			</p>
 
-			{latestSyncFailed ? (
-				<CommunityHelpBanner
-					source="jobs"
-					variant="sync_failure"
-				/>
-			) : (
-				jobs.some(job => job?.activate === true) && (
-					<CommunityHelpBanner
-						source="jobs"
-						variant="help"
-					/>
-				)
-			)}
+			<CommunityHelpBanner
+				source="jobs"
+				variant="help"
+			/>
 
 			{showEmpty ? (
 				<JobEmptyState />

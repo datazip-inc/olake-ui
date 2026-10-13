@@ -13,8 +13,8 @@ import {
 } from "@/common/constants"
 import { AnalyticsEvent, trackEvent } from "@/core/analytics"
 
-// "help" is a neutral nudge shown while syncs are fine (including right after
-// creating a job); "sync_failure" is shown when the most recent sync failed.
+// "help" is the neutral nudge always shown on the jobs list; "sync_failure" is
+// shown on job history when that job's most recent run failed.
 const BANNER_VARIANTS = {
 	help: {
 		title: "Need help? Contact the OLake community",
