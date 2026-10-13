@@ -34,6 +34,7 @@ import { trimFormDataStrings, handleSpecResponse } from "@/common/utils"
 import {
 	EntitySavedModal,
 	EntityCancelModal,
+	OpenDocsButton,
 } from "@/modules/ingestion/common/components"
 import { destinationConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
@@ -510,6 +511,8 @@ const CreateDestination: React.FC = () => {
 		setDocsMinimized(prev => !prev)
 	}
 
+	const docUrl = `https://olake.io/docs/writers/${getConnectorDocumentationPath(connector, catalog, authType)}`
+
 	return (
 		<div className="flex h-full">
 			<div className="flex flex-1 flex-col">
@@ -526,6 +529,10 @@ const CreateDestination: React.FC = () => {
 					>
 						Create destination
 					</div>
+					<OpenDocsButton
+						docUrl={docUrl}
+						className="ml-auto"
+					/>
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
@@ -569,7 +576,7 @@ const CreateDestination: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector, catalog, authType)}`}
+						docUrl={docUrl}
 						showResizer={true}
 						isMinimized={docsMinimized}
 						onToggle={handleToggleDocPanel}

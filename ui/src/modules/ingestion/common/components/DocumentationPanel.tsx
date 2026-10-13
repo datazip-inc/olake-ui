@@ -140,24 +140,6 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					)}
 					style={{ transition: "opacity 0.3s ease" }}
 				>
-					{!isDocPanelCollapsed && (
-						<div className="absolute right-16 top-3.5 z-10">
-							<Button
-								type="default"
-								icon={
-									<ArrowSquareOutIcon
-										size={20}
-										weight="bold"
-										className="text-primary"
-									/>
-								}
-								onClick={openInNewTab}
-								className="flex items-center gap-2 border border-gray-200 px-2 py-3 hover:border-blue-600 hover:text-blue-600"
-							>
-								Open Docs
-							</Button>
-						</div>
-					)}
 					<iframe
 						ref={iframeRef}
 						src={docUrl}

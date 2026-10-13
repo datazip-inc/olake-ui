@@ -34,6 +34,7 @@ import { trimFormDataStrings, handleSpecResponse } from "@/common/utils"
 import {
 	EntitySavedModal,
 	EntityCancelModal,
+	OpenDocsButton,
 } from "@/modules/ingestion/common/components"
 import { sourceConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
@@ -446,6 +447,8 @@ const CreateSource: React.FC = () => {
 			</>
 		)
 
+	const docUrl = `https://olake.io/docs/connectors/${normalizedConnector}`
+
 	return (
 		<div className={`flex h-full`}>
 			<div className="flex flex-1 flex-col">
@@ -462,6 +465,10 @@ const CreateSource: React.FC = () => {
 					>
 						Create source
 					</div>
+					<OpenDocsButton
+						docUrl={docUrl}
+						className="ml-auto"
+					/>
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
@@ -508,7 +515,7 @@ const CreateSource: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${normalizedConnector}`}
+						docUrl={docUrl}
 						isMinimized={docsMinimized}
 						onToggle={handleToggleDocPanel}
 						showResizer={true}

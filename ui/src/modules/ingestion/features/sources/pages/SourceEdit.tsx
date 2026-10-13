@@ -42,6 +42,7 @@ import {
 import {
 	DeleteModal,
 	EntityEditModal,
+	OpenDocsButton,
 } from "@/modules/ingestion/common/components"
 import { sourceConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
@@ -392,6 +393,8 @@ const SourceEdit: React.FC = () => {
 		)
 	}
 
+	const docUrl = `https://olake.io/docs/connectors/${getConnectorInLowerCase(connector)}`
+
 	return (
 		<div className="flex h-full">
 			<div className="flex flex-1 flex-col">
@@ -403,6 +406,10 @@ const SourceEdit: React.FC = () => {
 						<ArrowLeftIcon className="size-5" />
 					</Link>
 					<div className="text-lg font-bold">{sourceName}</div>
+					<OpenDocsButton
+						docUrl={docUrl}
+						className="ml-auto"
+					/>
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
@@ -619,7 +626,7 @@ const SourceEdit: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${getConnectorInLowerCase(connector)}`}
+						docUrl={docUrl}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}

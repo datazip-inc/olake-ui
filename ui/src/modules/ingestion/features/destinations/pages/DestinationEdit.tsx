@@ -41,6 +41,7 @@ import { trimFormDataStrings } from "@/common/utils"
 import {
 	DeleteModal,
 	EntityEditModal,
+	OpenDocsButton,
 } from "@/modules/ingestion/common/components"
 import { destinationConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
@@ -580,6 +581,8 @@ const DestinationEdit: React.FC = () => {
 		)
 	}
 
+	const docUrl = `https://olake.io/docs/writers/${getConnectorDocumentationPath(connector || "", catalog ? catalog : "glue", authType)}`
+
 	return (
 		<div className="flex h-full">
 			<div className="flex flex-1 flex-col">
@@ -591,6 +594,10 @@ const DestinationEdit: React.FC = () => {
 						<ArrowLeftIcon className="size-5" />
 					</Link>
 					<div className="text-lg font-bold">{destinationName}</div>
+					<OpenDocsButton
+						docUrl={docUrl}
+						className="ml-auto"
+					/>
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
@@ -653,7 +660,7 @@ const DestinationEdit: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector || "", catalog ? catalog : "glue", authType)}`}
+						docUrl={docUrl}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}

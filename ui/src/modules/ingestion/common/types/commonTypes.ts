@@ -29,6 +29,10 @@ export interface TabsFilterProps {
 	onChange: (key: string) => void
 }
 
+export interface OpenDocsButtonProps {
+	docUrl: string
+	className?: string
+}
 export interface DocumentationPanelProps {
 	docUrl: string
 	isMinimized?: boolean
