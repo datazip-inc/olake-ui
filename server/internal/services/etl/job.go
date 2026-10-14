@@ -452,21 +452,25 @@ func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, r
 }
 
 // validateStreamsFormat requires the catalog in the job's format: streams_config for a legacy (v1)
-// job, otherwise available_streams_config and selected_streams_config. An existing job keeps its
-// stored format; a new job is legacy when its source version does not support streams v2.
+// validateStreamsFormat rejects a catalog that: is not exactly one format (streams, or available and
+// selected together); uses the split format on a source that does not support it; or downgrades a
+// split-catalog job to legacy.
 func validateStreamsFormat(streamsConfig, available, selected, sourceVersion string, existingJob *models.Job) error {
-	legacy := !utils.SupportsStreamsV2(sourceVersion)
-	if existingJob != nil {
-		legacy = !existingJob.StreamsCatalog().IsSplit()
+	split := available != "" && selected != ""
+	switch {
+	case (available != "") != (selected != ""):
+		return fmt.Errorf("%w: available_streams_config and selected_streams_config must be set together", constants.ErrStreamsFormat)
+	case split && streamsConfig != "":
+		return fmt.Errorf("%w: set either streams_config or available_streams_config + selected_streams_config, not both", constants.ErrStreamsFormat)
+	case !split && streamsConfig == "":
+		return fmt.Errorf("%w: either streams_config or available_streams_config + selected_streams_config is required", constants.ErrStreamsFormat)
 	}
-	if legacy {
-		if streamsConfig == "" {
-			return fmt.Errorf("%w: streams_config is required", constants.ErrStreamsFormat)
-		}
-		return nil
+	if split && !utils.SupportsStreamsV2(sourceVersion) {
+		return fmt.Errorf("%w: source version %s does not support the split streams format (minimum %s)",
+			constants.ErrStreamsFormat, sourceVersion, constants.MinStreamsV2Version)
 	}
-	if available == "" || selected == "" {
-		return fmt.Errorf("%w: available_streams_config and selected_streams_config are required", constants.ErrStreamsFormat)
+	if !split && existingJob != nil && existingJob.StreamsCatalog().IsSplit() {
+		return fmt.Errorf("%w: job uses the split streams format, set available_streams_config and selected_streams_config", constants.ErrStreamsFormat)
 	}
 	return nil
 }
