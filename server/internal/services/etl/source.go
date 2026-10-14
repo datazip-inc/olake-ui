@@ -203,29 +203,13 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 		return err
 	}
 
-	// A version upgrade migrates the source's legacy jobs, constants.StreamsMigrationConcurrency at a
-	// time: if any job fails to migrate, nothing is migrated and the source is not updated.
+	// A version upgrade migrates the source's legacy jobs: if any job fails to migrate, nothing is
+	// migrated and the source is not updated.
 	var catalogs []database.ConvertedCatalog
 	if utils.SupportsStreamsV2(existing.Version) && existing.Version != prevVersion {
-		var legacyJobs []*models.Job
-		for _, job := range jobs {
-			if !job.StreamsCatalog().IsSplit() {
-				legacyJobs = append(legacyJobs, job)
-			}
-		}
-		catalogs = make([]database.ConvertedCatalog, len(legacyJobs))
-		err := utils.ForEachConcurrently(ctx, legacyJobs, constants.StreamsMigrationConcurrency, func(ctx context.Context, i int, job *models.Job) error {
-			legacy := utils.StringValue(job.StreamsConfig)
-			catalog, err := s.temporal.ConvertStreams(ctx, job.ID, existing.Type, existing.Version, legacy)
-			if err != nil {
-				return fmt.Errorf("job_id[%d] could not be migrated to the split streams format: %s", job.ID, err)
-			}
-			catalogs[i] = database.ConvertedCatalog{JobID: job.ID, From: legacy, Available: catalog.Available, Selected: catalog.Selected}
-			return nil
-		})
+		catalogs, err = s.migrateForSourceUpgrade(ctx, existing, jobs)
 		if err != nil {
-			telemetry.TrackStreamsMigrationFailure(ctx, telemetry.MigrationTriggerSourceUpgrade, existing, len(legacyJobs), err)
-			return fmt.Errorf("source version upgrade aborted: %s", err)
+			return err
 		}
 	}
 

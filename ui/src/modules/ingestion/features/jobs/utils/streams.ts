@@ -102,16 +102,19 @@ export const getStreamsDataFromSourceStreamsResponse = (
 
 		if (matchingSelectedStream) {
 			// Stream is selected, use the selected stream configuration
-			const upsertMode =
-				!matchingSelectedStream.append_mode &&
-				isDestUpsertModeSupported &&
-				isSourceUpsertModeSupported
+			// Force append when source or destination can't upsert
+			const appendMode =
+				!!matchingSelectedStream.append_mode ||
+				!isDestUpsertModeSupported ||
+				!isSourceUpsertModeSupported
+			const upsertMode = !appendMode
 			const { update_type: savedUpdateType, ...selectedStreamRest } =
 				matchingSelectedStream
 
 			mergedSelectedStreams[namespace].push({
 				...selectedStreamRest,
 				disabled: false,
+				append_mode: appendMode,
 				// update_type only applies while the stream runs in upsert mode;
 				// older saved jobs carry no value, so fall back to the catalog default.
 				...(upsertMode && {
