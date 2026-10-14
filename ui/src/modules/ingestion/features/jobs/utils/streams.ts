@@ -126,11 +126,14 @@ export const getStreamsDataFromSourceStreamsResponse = (
 		}
 
 		if (matchingSelectedStream) {
-			// Stream is selected, use the selected stream configuration
+			// Stream is selected, use the selected stream configuration.
+			// v2 entries omit append_mode when it equals the stream default; force
+			// append when source or destination can't upsert
 			const appendMode =
-				matchingSelectedStream.append_mode ?? defaults.append_mode
-			const upsertMode =
-				!appendMode && isDestUpsertModeSupported && isSourceUpsertModeSupported
+				(matchingSelectedStream.append_mode ?? defaults.append_mode) ||
+				!isDestUpsertModeSupported ||
+				!isSourceUpsertModeSupported
+			const upsertMode = !appendMode
 			const syncMode =
 				matchingSelectedStream.sync_mode ?? stream.stream.sync_mode
 			const cursorField =

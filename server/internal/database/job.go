@@ -173,7 +173,7 @@ func (db *Database) UpdateJob(jobID int, params map[string]any) error {
 // streams_config, with their sources.
 func (db *Database) ListLegacyCatalogJobs() ([]*models.Job, error) {
 	var jobs []*models.Job
-	err := db.conn.Where("available_streams_config IS NULL AND selected_streams_config IS NULL").Preload("Source").Find(&jobs).Error
+	err := db.conn.Where("streams_config IS NOT NULL AND available_streams_config IS NULL AND selected_streams_config IS NULL").Preload("Source").Find(&jobs).Error
 	return jobs, err
 }
 
