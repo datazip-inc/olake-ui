@@ -2,7 +2,6 @@
 // Backward compatibility only: new v2 fields/features are not carried into the
 // legacy format and must be version-gated in the UI. Delete once v2 is the minimum.
 import {
-	LegacyStreamsConfig,
 	SelectedStreamsByNamespace,
 	StreamsDataStructure,
 	StreamsV2Catalog,
@@ -11,7 +10,7 @@ import {
 export const fromLegacyCatalog = ({
 	streams,
 	selected_streams,
-}: LegacyStreamsConfig): StreamsV2Catalog => ({
+}: StreamsDataStructure): StreamsV2Catalog => ({
 	available_streams: { streams },
 	selected_streams: selected_streams ?? {},
 })
@@ -31,6 +30,7 @@ export const toLegacyStreamsConfig = (
 			...s.stream,
 			sync_mode: entry.sync_mode,
 			destination_database: entry.destination_database,
+			destination_table: entry.destination_table ?? s.stream.destination_table,
 		}
 		if (entry.cursor_field) stream.cursor_field = entry.cursor_field
 		else delete stream.cursor_field

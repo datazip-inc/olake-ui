@@ -82,7 +82,8 @@ export interface SelectedColumns {
 export interface SelectedStream {
 	stream_name: string
 	partition_regex: string
-	normalization: boolean
+	normalization?: boolean
+	chunk_column?: string
 	filter?: string
 	disabled?: boolean
 	append_mode?: boolean
@@ -95,6 +96,7 @@ export interface SelectedStream {
 	sync_mode?: SyncMode
 	cursor_field?: string
 	destination_database?: string
+	destination_table?: string
 }
 
 export interface FilterConfig {
@@ -129,13 +131,12 @@ export interface StreamsV2Catalog {
 	selected_streams: SelectedStreamsByNamespace
 }
 
-// Deprecated: legacy streams.json shape, only read and written by legacyStreams.ts.
-export interface LegacyStreamsConfig {
-	streams: StreamData[]
-	selected_streams: SelectedStreamsByNamespace
+// Exactly one format is set; the other format's fields are null.
+export interface DiscoverResponse {
+	streams_config: StreamsDataStructure | null
+	available_streams: AvailableStreams | null
+	selected_streams: SelectedStreams | null
 }
-
-export type DiscoverResponse = StreamsV2Catalog | LegacyStreamsConfig
 
 export interface StreamDifferenceResponse {
 	selected_streams: SelectedStreamsByNamespace

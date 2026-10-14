@@ -23,7 +23,7 @@ import {
 import { isKafkaSource } from "@/modules/ingestion/common/utils"
 import { BulkConfigureStreamsModalProps } from "@/modules/ingestion/features/jobs/types"
 
-import { CARD_STYLE } from "../../constants"
+import { CARD_STYLE, STREAM_DEFAULTS } from "../../constants"
 import {
 	selectAvailableUpdateTypes,
 	useStreamSelectionStore,
@@ -223,10 +223,11 @@ const BulkConfigureStreamsModal = ({
 			syncMode,
 			cursorField:
 				syncMode === SyncMode.INCREMENTAL ? sortedCursors[0] : undefined,
-			appendMode: bulkStreamDefaults.append_mode ?? false,
+			appendMode: bulkStreamDefaults.append_mode ?? STREAM_DEFAULTS.append_mode,
 			dedupKeys: bulkStreamDefaults.dedup_keys ?? [],
 			upsertType: bulkStreamDefaults.update_type,
-			normalization: bulkStreamDefaults.normalization,
+			normalization:
+				bulkStreamDefaults.normalization ?? STREAM_DEFAULTS.normalization,
 			filter: "",
 			filterConfig: undefined,
 			partitionRegex: "",

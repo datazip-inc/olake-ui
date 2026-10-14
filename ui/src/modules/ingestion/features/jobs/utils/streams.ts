@@ -292,9 +292,21 @@ export const formatSelectedStreamsPayload = (
 export const parseDiscoverResponse = (
 	response: DiscoverResponse,
 ): { format: CatalogFormat; response: StreamsV2Catalog } =>
-	"available_streams" in response
-		? { format: CatalogFormat.V2, response }
-		: { format: CatalogFormat.LEGACY, response: fromLegacyCatalog(response) }
+	response.available_streams
+		? {
+				format: CatalogFormat.V2,
+				response: {
+					available_streams: response.available_streams,
+					// selected_streams is the selected_streams.json file, so unwrap it
+					selected_streams: response.selected_streams?.selected_streams ?? {},
+				},
+			}
+		: {
+				format: CatalogFormat.LEGACY,
+				response: fromLegacyCatalog(
+					response.streams_config ?? { streams: [], selected_streams: {} },
+				),
+			}
 
 // streams[] is never edited, so it is the discover output as-is.
 export const buildCatalogPayload = (
