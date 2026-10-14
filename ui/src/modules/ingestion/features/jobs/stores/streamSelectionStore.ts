@@ -21,6 +21,7 @@ export interface BulkStreamConfig {
 	syncMode?: SyncMode
 	cursorField?: string
 	appendMode?: boolean
+	dedupKeys?: string[]
 	upsertType?: UpsertType
 	normalization?: boolean
 	partitionRegex?: string
@@ -91,6 +92,8 @@ interface StreamSelectionState {
 
 	updateIngestionMode: (stream: StreamIdentifier, appendMode: boolean) => void
 
+	updateDedupKeys: (stream: StreamIdentifier, keys: string[]) => void
+
 	// Only meaningful for streams in upsert mode (append_mode falsy).
 	updateUpsertType: (stream: StreamIdentifier, upsertType: UpsertType) => void
 
@@ -126,7 +129,7 @@ const initialState = {
 	bulkApplyVersion: 0,
 }
 
-// update_type is only carried by streams running in upsert mode.
+// update_type and dedup_keys are only carried by streams running in upsert mode.
 // Mutates and returns the same object so callers can use it inline.
 const withUpsertTypeSynced = (
 	stream: SelectedStream,
@@ -134,10 +137,24 @@ const withUpsertTypeSynced = (
 ): SelectedStream => {
 	if (stream.append_mode) {
 		delete stream.update_type
+		delete stream.dedup_keys
 	} else if (!stream.update_type && defaultUpsertType) {
 		stream.update_type = defaultUpsertType
 	}
 	return stream
+}
+
+const withDedupKeys = (
+	stream: SelectedStream,
+	keys: string[],
+): SelectedStream => {
+	const next = { ...stream }
+	if (keys.length > 0) {
+		next.dedup_keys = [...keys].sort()
+	} else {
+		delete next.dedup_keys
+	}
+	return next
 }
 
 export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
@@ -448,6 +465,30 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
+	updateDedupKeys: (stream, keys) =>
+		set(state => {
+			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
+
+			const prev = state.streamsData
+			const streamExists = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+			if (!streamExists) return state
+
+			return {
+				streamsData: {
+					...prev,
+					selected_streams: {
+						...prev.selected_streams,
+						[namespace]: prev.selected_streams[namespace].map(s =>
+							s.stream_name === streamName ? withDedupKeys(s, keys) : s,
+						),
+					},
+				},
+			}
+		}),
+
 	bulkUpdateStreams: (streamsToUpdate, config) =>
 		set(state => {
 			if (!state.streamsData) return state
@@ -493,10 +534,14 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 				)
 
 				if (streamIndex !== -1) {
-					const newStream = { ...streamList[streamIndex] }
+					let newStream = { ...streamList[streamIndex] }
 
-					if (config.appendMode !== undefined)
+					if (config.appendMode !== undefined) {
 						newStream.append_mode = config.appendMode
+					}
+					if (config.dedupKeys !== undefined) {
+						newStream = withDedupKeys(newStream, config.dedupKeys)
+					}
 					if (config.upsertType !== undefined)
 						newStream.update_type = config.upsertType
 					if (
