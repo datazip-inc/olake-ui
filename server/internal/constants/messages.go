@@ -15,7 +15,6 @@ var (
 	ErrDestinationNotFound = errors.New("destination not found")
 	ErrJobNotFound         = errors.New("job not found")
 	ErrConfigDecrypt       = errors.New("failed to decrypt config")
-	ErrInvalidLogCursor    = errors.New("invalid log cursor")
 )
 
 // Validation messages

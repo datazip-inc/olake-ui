@@ -896,8 +896,8 @@ http://localhost:8080
 - **Headers**: `Authorization: Bearer <token>`
 - **Query Params**:
   - `source` _(optional, string)_: `"all"` (default), `"sync"` or `"worker"`.
-  - `cursor` _(optional, string)_: opaque cursor from a previous response (`older_cursor` / `newer_cursor`). Omit or send empty for tailing from the end. A plain number is still accepted as the old `olake.log` byte offset (`-1` = tail).
-  - `limit` _(optional, number)_: number of log entries to return. Defaults to `1000`.
+  - `cursor` _(optional, string)_: opaque cursor from a previous response (`older_cursor` / `newer_cursor`). Omit or send empty for tailing from the end.
+  - `limit` _(optional, number)_: number of log entries to return. Defaults to `1000`, capped at `5000`.
   - `direction` _(optional, string)_: `"older"` (default) to read towards the start of the file, or `"newer"` to read towards the end.
 - **Request Body**:
 
@@ -919,7 +919,6 @@ http://localhost:8080
           "time": "string", // RFC3339, UTC
           "message": "string",
           "source": "string", // "sync" or "worker"
-          "category": "string", // optional failure category, e.g. "oom", "evicted"
           "tip": "boolean" // optional, true for recommendation lines
         }
       ],

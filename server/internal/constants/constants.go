@@ -87,6 +87,16 @@ var (
 	// DefaultLogsLimit is the number of log entries returned if no limit is provided.
 	DefaultLogsLimit = 1000
 
+	// MaxLogsLimit caps the log entries one request may ask for, so a large
+	// limit cannot make the server hold huge pages in memory.
+	MaxLogsLimit = 5000
+
+	// SyncLogFileName is the connector's log inside a run's logs/sync_* folder.
+	SyncLogFileName = "olake.log"
+
+	// WorkerLogFileName is written by the olake worker in a run's logs folder.
+	WorkerLogFileName = "worker.log"
+
 	// DefaultLogsDirection is the fallback pagination direction ("older" or "newer").
 	DefaultLogsDirection = "older"
 

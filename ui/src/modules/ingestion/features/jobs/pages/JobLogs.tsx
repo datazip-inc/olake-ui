@@ -2,8 +2,6 @@ import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
 	ArrowsClockwiseIcon,
-	CpuIcon,
-	DatabaseIcon,
 	DownloadIcon,
 	LightbulbIcon,
 } from "@phosphor-icons/react"
@@ -23,49 +21,13 @@ import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 import { getLogLevelClass, getLogTextColor } from "@/common/utils"
 import { getConnectorImage } from "@/modules/ingestion/common/utils"
 
-import { LOGS_CONFIG } from "../constants"
+import { LOG_SOURCE_STYLES, LOG_SOURCE_TABS, LOGS_CONFIG } from "../constants"
 import { useJobDetails } from "../hooks"
 import { jobService } from "../services"
 import { useTaskStore } from "../stores"
 import { TaskLogEntry, TaskLogSource } from "../types"
 
 const INITIAL_SCROLL_TIMEOUT = 100 // Timeout in ms for initial scroll to bottom
-
-// Per-source styling: badge, the short accent bar and the row tint.
-const LOG_SOURCE_STYLES = {
-	sync: {
-		label: "SYNC",
-		Icon: DatabaseIcon,
-		badgeClass: "border-indigo-300 bg-indigo-50 text-indigo-700",
-		accentClass: "bg-indigo-400",
-		rowClass: "",
-	},
-	worker: {
-		label: "WORKER",
-		Icon: CpuIcon,
-		badgeClass: "border-teal-300 bg-teal-50 text-teal-700",
-		accentClass: "bg-teal-600",
-		rowClass: "bg-teal-50/30",
-	},
-} as const
-
-const LOG_SOURCE_TABS: {
-	value: TaskLogSource
-	label: string
-	dotClass?: string
-}[] = [
-	{ value: "all", label: "All logs" },
-	{
-		value: "sync",
-		label: "Sync logs",
-		dotClass: LOG_SOURCE_STYLES.sync.accentClass,
-	},
-	{
-		value: "worker",
-		label: "Worker logs",
-		dotClass: LOG_SOURCE_STYLES.worker.accentClass,
-	},
-]
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
@@ -93,6 +55,7 @@ const JobLogs: React.FC = () => {
 	const {
 		taskLogs,
 		taskLogsSource,
+		resetTaskLogsSource,
 		isLoadingTaskLogs,
 		isLoadingOlderLogs,
 		isLoadingNewerLogs,
@@ -121,9 +84,11 @@ const JobLogs: React.FC = () => {
 				lowerMessage.includes(search) || lowerLevel.includes(search)
 
 			if (showOnlyErrors) {
+				// a tip is written right after a failure; keep it with its error
 				return (
 					matchesSearch &&
-					(lowerMessage.includes("error") ||
+					(log.tip ||
+						lowerMessage.includes("error") ||
 						lowerLevel.includes("error") ||
 						lowerLevel.includes("fatal"))
 				)
@@ -146,8 +111,8 @@ const JobLogs: React.FC = () => {
 
 	// Every run opens on the merged view
 	useEffect(() => {
-		useTaskStore.setState({ taskLogsSource: "all" })
-	}, [filePath])
+		resetTaskLogsSource()
+	}, [filePath, resetTaskLogsSource])
 
 	// Fetch initial batch of task logs (or refetch after filters are cleared),
 	useEffect(() => {
@@ -350,14 +315,7 @@ const JobLogs: React.FC = () => {
 					onChange={handleSourceChange}
 					options={LOG_SOURCE_TABS.map(tab => ({
 						value: tab.value,
-						label: (
-							<span className="flex items-center gap-2 px-2">
-								{tab.dotClass && (
-									<span className={clsx("size-2 rounded-full", tab.dotClass)} />
-								)}
-								{tab.label}
-							</span>
-						),
+						label: <span className="px-2">{tab.label}</span>,
 					}))}
 				/>
 

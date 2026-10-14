@@ -274,7 +274,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 	}
 
 	logDir := filepath.Join(logsDir, syncFolderName)
-	logPath := filepath.Join(logDir, "olake.log")
+	logPath := filepath.Join(logDir, constants.SyncLogFileName)
 
 	logFile, err := os.Open(logPath)
 	if err != nil {

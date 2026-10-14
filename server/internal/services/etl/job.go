@@ -502,7 +502,7 @@ func (s Service) GetTaskLogs(_ context.Context, jobID int, filePath, source, cur
 
 	logs, err := utils.ReadTaskLogs(mainSyncDir, source, cursor, limit, direction)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read logs: %w", err)
+		return nil, fmt.Errorf("failed to read logs: %s", err)
 	}
 	return logs, nil
 }

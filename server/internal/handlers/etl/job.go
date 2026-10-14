@@ -526,8 +526,8 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 	cursor := c.Query("cursor")
 	limit := constants.DefaultLogsLimit
 	if raw := c.Query("limit"); raw != "" {
-		if parsed, err := strconv.Atoi(raw); err == nil {
-			limit = parsed
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			limit = min(parsed, constants.MaxLogsLimit)
 		}
 	}
 	direction := c.DefaultQuery("direction", constants.DefaultLogsDirection)
@@ -535,11 +535,8 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 	logs, err := h.etl.GetTaskLogs(c.Request.Context(), id, req.FilePath, source, cursor, limit, direction)
 	if err != nil {
 		status := http.StatusInternalServerError
-		switch {
-		case errors.Is(err, constants.ErrJobNotFound):
+		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
-		case errors.Is(err, constants.ErrInvalidLogCursor):
-			status = http.StatusBadRequest
 		}
 		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get task logs: %s", err), err)
 		return

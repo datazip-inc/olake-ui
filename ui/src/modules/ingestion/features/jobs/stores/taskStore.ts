@@ -23,6 +23,8 @@ export interface TaskState {
 	taskLogsHasMoreOlder: boolean
 	taskLogsHasMoreNewer: boolean
 	// Task log actions
+	// every run opens on the merged view
+	resetTaskLogsSource: () => void
 	// source defaults to the currently selected one
 	fetchInitialTaskLogs: (
 		jobId: string,
@@ -53,6 +55,8 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
 	isLoadingOlderLogs: false,
 	isLoadingNewerLogs: false,
 	taskLogsError: null,
+
+	resetTaskLogsSource: () => set({ taskLogsSource: "all" }),
 
 	// Fetch initial batch of logs (first load)
 	fetchInitialTaskLogs: async (

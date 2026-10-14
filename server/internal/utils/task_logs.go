@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,33 +21,34 @@ const (
 	LogSourceWorker = "worker"
 )
 
-// workerLogFileName is written by the olake worker next to the connector's sync_* folders.
-const workerLogFileName = "worker.log"
-
 // taskLogEntry is one log line with the fields the task logs page needs.
-// Unlike LogEntry it keeps the worker's category and tip fields.
+// Unlike LogEntry it keeps the worker's tip flag.
 type taskLogEntry struct {
-	Level    string          `json:"level"`
-	Time     time.Time       `json:"time"`
-	Message  json.RawMessage `json:"message"`
-	Category string          `json:"category"`
-	Tip      bool            `json:"tip"`
+	Level   string          `json:"level"`
+	Time    time.Time       `json:"time"`
+	Message json.RawMessage `json:"message"`
+	Tip     bool            `json:"tip"`
 }
 
-// logFile is one source file taking part in a task logs read.
+// logFile is one source file taking part in a task logs read, with its
+// paging state for the current request.
 type logFile struct {
 	source string
 	path   string
 	file   *os.File
 	size   int64
+
+	start      int64 // where this read starts in the file
+	next       int64 // where the following read continues
+	exhausted  bool  // fewer lines than asked: nothing further in this direction
+	unreturned int   // lines read but cut by the limit
 }
 
 // taskLogLine is a parsed line plus where it came from, used while merging.
 type taskLogLine struct {
-	entry  taskLogEntry
-	source string
-	order  int // position of the source in the merge, breaks timestamp ties
-	pos    LineWithPos
+	entry taskLogEntry
+	file  int // index into files; also the tie-break order (sync first)
+	pos   LineWithPos
 }
 
 // NormalizeLogSource returns a known log source, defaulting to "all".
@@ -71,21 +71,13 @@ func decodeTaskLogCursor(raw string) (taskLogCursor, error) {
 	if raw == "" {
 		return taskLogCursor{}, nil
 	}
-	// clients from before the merged view send a plain olake.log byte offset,
-	// with -1 meaning tail; base64 JSON never parses as a number
-	if offset, err := strconv.ParseInt(raw, 10, 64); err == nil {
-		if offset < 0 {
-			return taskLogCursor{}, nil
-		}
-		return taskLogCursor{LogSourceSync: offset}, nil
-	}
 	data, err := base64.RawURLEncoding.DecodeString(raw)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", constants.ErrInvalidLogCursor, err)
+		return nil, fmt.Errorf("invalid log cursor: %s", err)
 	}
 	var cursor taskLogCursor
 	if err := json.Unmarshal(data, &cursor); err != nil {
-		return nil, fmt.Errorf("%w: %s", constants.ErrInvalidLogCursor, err)
+		return nil, fmt.Errorf("invalid log cursor: %s", err)
 	}
 	return cursor, nil
 }
@@ -111,41 +103,43 @@ func ReadTaskLogs(baseDir, source, rawCursor string, limit int, direction string
 	older := strings.ToLower(strings.TrimSpace(direction)) != "newer"
 
 	files, err := openTaskLogFiles(baseDir, NormalizeLogSource(source))
+	defer closeLogFiles(files)
 	if err != nil {
 		return nil, err
 	}
-	defer closeLogFiles(files)
-
-	// start offset per file; tail (no cursor) starts at the end of every file
-	start := taskLogCursor{}
-	for _, f := range files {
-		offset, ok := cursor[f.source]
-		if !ok {
-			offset = f.size
-		}
-		start[f.source] = min(max(offset, 0), f.size)
-	}
 
 	var candidates []taskLogLine
-	// a file that returned fewer lines than asked has nothing further in this direction
-	exhausted := map[string]bool{}
-	for i, f := range files {
+	for i := range files {
+		f := &files[i]
+		offset, ok := cursor[f.source]
+		if !ok {
+			// no cursor: tail from the end. A file missing from a non-empty
+			// cursor was created after it was issued, so all of it is newer.
+			offset = f.size
+			if len(cursor) > 0 {
+				offset = 0
+			}
+		}
+		f.start = min(max(offset, 0), f.size)
+		f.next = f.start
+
 		var lines []LineWithPos
 		if older {
-			lines, err = readLinesBackwardWithPos(f.file, start[f.source], limit, f.size)
+			lines, err = readLinesBackwardWithPos(f.file, f.start, limit, f.size)
 		} else {
-			lines, _, err = readLinesForwardWithPos(f.file, start[f.source], limit, f.size)
+			lines, _, err = readLinesForwardWithPos(f.file, f.start, limit, f.size)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to read %s logs: %s", f.source, err)
 		}
-		exhausted[f.source] = len(lines) < limit
+		f.exhausted = len(lines) < limit
 		for _, line := range lines {
 			var entry taskLogEntry
 			if err := json.Unmarshal([]byte(line.content), &entry); err != nil {
 				continue
 			}
-			candidates = append(candidates, taskLogLine{entry: entry, source: f.source, order: i, pos: line})
+			candidates = append(candidates, taskLogLine{entry: entry, file: i, pos: line})
+			f.unreturned++
 		}
 	}
 
@@ -155,7 +149,7 @@ func ReadTaskLogs(baseDir, source, rawCursor string, limit int, direction string
 		if !a.entry.Time.Equal(b.entry.Time) {
 			return a.entry.Time.Before(b.entry.Time)
 		}
-		return a.order < b.order
+		return a.file < b.file
 	})
 
 	// keep the lines nearest to the cursor
@@ -168,53 +162,40 @@ func ReadTaskLogs(baseDir, source, rawCursor string, limit int, direction string
 		}
 	}
 
-	// the next offset per file is set by the furthest line returned from it
-	next := taskLogCursor{}
-	for source, offset := range start {
-		next[source] = offset
-	}
-	// lines read from a file but cut by the limit
-	unreturned := map[string]int{}
-	for i := range candidates {
-		unreturned[candidates[i].source]++
-	}
-	for i := range selected {
-		line := &selected[i]
-		unreturned[line.source]--
-		if older {
-			next[line.source] = min(next[line.source], line.pos.startPos)
-		} else {
-			next[line.source] = max(next[line.source], line.pos.endPos)
-		}
-	}
-	// every line read from an exhausted file was returned: jump past what is
-	// left (only debug/invalid lines) so paging stops
-	for _, f := range files {
-		if exhausted[f.source] && unreturned[f.source] == 0 {
-			if older {
-				next[f.source] = 0
-			} else {
-				next[f.source] = f.size
-			}
-		}
-	}
-
+	// the next offset of a file is set by the furthest line returned from it
 	response := &dto.JobTaskLogsResponse{Logs: make([]map[string]interface{}, 0, len(selected))}
 	for i := range selected {
-		response.Logs = append(response.Logs, selected[i].toMap())
+		line := &selected[i]
+		f := &files[line.file]
+		f.unreturned--
+		if older {
+			f.next = min(f.next, line.pos.startPos)
+		} else {
+			f.next = max(f.next, line.pos.endPos)
+		}
+		response.Logs = append(response.Logs, line.toMap(f.source))
 	}
 
-	moreBeyond := false
-	for _, f := range files {
-		if older && next[f.source] > 0 || !older && next[f.source] < f.size {
-			moreBeyond = true
+	start, next := taskLogCursor{}, taskLogCursor{}
+	moreBeyond, moreBehind := false, false
+	for i := range files {
+		f := &files[i]
+		// every line read from an exhausted file was returned: jump past what
+		// is left (only debug/invalid lines) so paging stops
+		if f.exhausted && f.unreturned == 0 {
+			f.next = 0
+			if !older {
+				f.next = f.size
+			}
 		}
-	}
-	moreBehind := false
-	for _, f := range files {
-		if older && start[f.source] < f.size || !older && start[f.source] > 0 {
-			moreBehind = true
+		if older {
+			moreBeyond = moreBeyond || f.next > 0
+			moreBehind = moreBehind || f.start < f.size
+		} else {
+			moreBeyond = moreBeyond || f.next < f.size
+			moreBehind = moreBehind || f.start > 0
 		}
+		start[f.source], next[f.source] = f.start, f.next
 	}
 
 	if older {
@@ -234,11 +215,11 @@ func openTaskLogFiles(baseDir, source string) ([]logFile, error) {
 	var paths []logFile
 	if source == LogSourceAll || source == LogSourceSync {
 		if _, syncFolder, err := GetAndValidateSyncDir(baseDir); err == nil {
-			paths = append(paths, logFile{source: LogSourceSync, path: filepath.Join(logsDir, syncFolder, "olake.log")})
+			paths = append(paths, logFile{source: LogSourceSync, path: filepath.Join(logsDir, syncFolder, constants.SyncLogFileName)})
 		}
 	}
 	if source == LogSourceAll || source == LogSourceWorker {
-		paths = append(paths, logFile{source: LogSourceWorker, path: filepath.Join(logsDir, workerLogFileName)})
+		paths = append(paths, logFile{source: LogSourceWorker, path: filepath.Join(logsDir, constants.WorkerLogFileName)})
 	}
 
 	files := make([]logFile, 0, len(paths))
@@ -248,36 +229,32 @@ func openTaskLogFiles(baseDir, source string) ([]logFile, error) {
 			continue
 		}
 		if err != nil {
-			closeLogFiles(files)
-			return nil, fmt.Errorf("failed to read log file: %s: %s", f.path, err)
+			return files, fmt.Errorf("failed to read log file: %s: %s", f.path, err)
 		}
+		// append before Stat so the file is closed even if Stat fails
+		f.file = file
+		files = append(files, f)
 		stat, err := file.Stat()
 		if err != nil {
-			file.Close()
-			closeLogFiles(files)
-			return nil, fmt.Errorf("failed to stat log file: %s", err)
+			return files, fmt.Errorf("failed to stat log file: %s", err)
 		}
-		f.file, f.size = file, stat.Size()
-		files = append(files, f)
+		files[len(files)-1].size = stat.Size()
 	}
 	return files, nil
 }
 
 func closeLogFiles(files []logFile) {
-	for _, f := range files {
-		f.file.Close()
+	for i := range files {
+		files[i].file.Close()
 	}
 }
 
-func (l *taskLogLine) toMap() map[string]interface{} {
+func (l *taskLogLine) toMap(source string) map[string]interface{} {
 	out := map[string]interface{}{
 		"level":   l.entry.Level,
 		"time":    l.entry.Time.UTC().Format(time.RFC3339),
 		"message": logMessageString(l.entry.Message),
-		"source":  l.source,
-	}
-	if l.entry.Category != "" {
-		out["category"] = l.entry.Category
+		"source":  source,
 	}
 	if l.entry.Tip {
 		out["tip"] = true
