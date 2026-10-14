@@ -34,7 +34,7 @@ type Controller struct {
 }
 
 // InitGitOps starts GitOps when enabled. In-cluster uses the ConfigMap
-// controller-runtime manager. Outside the cluster, GITOPS_FILE_DIR must be set;
+// controller-runtime manager. Outside the cluster it watches `/etc/olake/gitops`
 // stateFile overrides where file mode keeps resource status.
 func InitGitOps(ctx context.Context, enabled bool, fileDir, stateFile string, app *services.AppService) error {
 	if !enabled {
