@@ -1,8 +1,14 @@
 import { CopySimpleIcon } from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
+import clsx from "clsx"
 
 import { ErrorIcon } from "@/assets"
-import { copyToClipboard } from "@/common/utils"
+import type { LogEntry } from "@/common/types"
+import {
+	copyToClipboard,
+	getLogLevelClass,
+	getLogTextColor,
+} from "@/common/utils"
 
 const ErrorLogsModal = ({
 	open,
@@ -10,6 +16,8 @@ const ErrorLogsModal = ({
 	title,
 	subtitle = "Please check your connection and try again",
 	error,
+	logs,
+	logsTitle = "Error",
 	onAction,
 	actionButtonText = "Try Again",
 }: {
@@ -18,6 +26,10 @@ const ErrorLogsModal = ({
 	title: string
 	subtitle?: React.ReactNode
 	error: string
+	// when given, shown as a log list (level + message) instead of the error text
+	logs?: LogEntry[]
+	// heading of the error box (defaults to "Error")
+	logsTitle?: string
 	onAction?: () => void
 	actionButtonText?: string
 }) => {
@@ -26,7 +38,7 @@ const ErrorLogsModal = ({
 	}
 
 	const handleCopyLogs = async () => {
-		await copyToClipboard(error)
+		await copyToClipboard(logs ? JSON.stringify(logs, null, 4) : error)
 	}
 
 	const handleClose = () => {
@@ -71,7 +83,7 @@ const ErrorLogsModal = ({
 				<div className="mt-4 flex min-h-0 w-[573px] flex-1 flex-col self-center overflow-hidden rounded-lg bg-olake-surface-muted">
 					<div className="flex shrink-0 items-start justify-between px-4 py-4">
 						<div className="text-sm font-bold leading-[22px] text-olake-text">
-							Error
+							{logsTitle}
 						</div>
 						<button
 							type="button"
@@ -87,9 +99,37 @@ const ErrorLogsModal = ({
 					</div>
 
 					<div className="min-h-0 flex-1 overflow-auto px-4 pb-4">
-						<pre className="whitespace-pre-wrap font-mono text-xs leading-4 text-olake-error">
-							{error}
-						</pre>
+						{logs ? (
+							<div className="space-y-2 text-xs">
+								{logs.map((log, index) => (
+									<div
+										key={`${log.time}-${index}`}
+										className="flex items-start gap-2"
+									>
+										<span
+											className={clsx(
+												"rounded-md px-2 py-[2px] font-mono text-[10px] capitalize leading-4",
+												getLogLevelClass(log.level),
+											)}
+										>
+											{log.level}
+										</span>
+										<p
+											className={clsx(
+												"whitespace-pre-wrap break-words font-mono text-xs leading-4",
+												getLogTextColor(log.level),
+											)}
+										>
+											{log.message}
+										</p>
+									</div>
+								))}
+							</div>
+						) : (
+							<pre className="whitespace-pre-wrap font-mono text-xs leading-4 text-olake-error">
+								{error}
+							</pre>
+						)}
 					</div>
 				</div>
 

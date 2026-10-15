@@ -154,7 +154,10 @@ http://localhost:8080
   "data": {
     "connection_result": {
       "message": "string",
-      "status": "string"
+      "status": "string",
+      "prerequisites": [ // optional, sources with CDC checks only
+        {"name": "string", "required": boolean, "passed": boolean, "current_value": "string", "recommended_value": "string", "description": "string", "error": "string (optional: why the check could not be evaluated)"}
+      ]
     },
     "logs": "json"
   }

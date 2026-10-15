@@ -11,24 +11,22 @@ import { useQueryClient } from "@tanstack/react-query"
 import { Input, Button, Select, Switch, Table, Spin, Tooltip } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { formatDistanceToNow } from "date-fns"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
+import { withCdcToggle } from "@/common/components/form/cdc"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
-import { widgets } from "@/common/components/form/widgets"
+import { sourceFields, widgets } from "@/common/components/form/widgets"
 import {
 	ErrorLogsModal,
+	SourceTestConnectionModal,
 	TestConnectionFailureModal,
 	TestConnectionModal,
 	TestConnectionSuccessModal,
 } from "@/common/components/modals"
-import {
-	transformErrors,
-	TEST_CONNECTION_STATUS,
-	OLAKE_LATEST_VERSION_URL,
-} from "@/common/constants"
+import { transformErrors, OLAKE_LATEST_VERSION_URL } from "@/common/constants"
 import type { TestConnectionError } from "@/common/types"
 import {
 	getStatusClass,
@@ -57,7 +55,7 @@ import {
 	useSourceSpec,
 	useUpdateSource,
 	useDeleteSource,
-	useTestSourceConnection,
+	useSourceConnectionTest,
 } from "../hooks"
 import { useSourceStore } from "../stores"
 import { SourceJob } from "../types"
@@ -79,12 +77,11 @@ const SourceEdit: React.FC = () => {
 	const [showEditModal, setShowEditModal] = useState(false)
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
+	const formUiSchema = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
 	const [specError, setSpecError] = useState<string | null>(null)
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
-	const [showTestingModal, setShowTestingModal] = useState(false)
-	const [showSuccessModal, setShowSuccessModal] = useState(false)
 	const [showFailureModal, setShowFailureModal] = useState(false)
 	const [showSpecFailedModal, setShowSpecFailedModal] = useState(false)
 
@@ -106,7 +103,7 @@ const SourceEdit: React.FC = () => {
 
 	const updateSourceMutation = useUpdateSource(sourceId ?? "")
 	const deleteSourceMutation = useDeleteSource()
-	const testSourceMutation = useTestSourceConnection()
+	const sourceConnectionTest = useSourceConnectionTest()
 	const { mutate: activateJob } = useActivateJob()
 
 	useEffect(() => {
@@ -193,34 +190,19 @@ const SourceEdit: React.FC = () => {
 		return sourceData
 	}
 
-	const handleConfirmEdit = async () => {
-		setShowEditModal(false)
-		setShowTestingModal(true)
-		const testResult = await testSourceMutation.mutateAsync({
-			source: getSourceData(),
-		})
-		if (
-			testResult.data?.connection_result.status ===
-			TEST_CONNECTION_STATUS.SUCCEEDED
-		) {
-			setTimeout(() => {
-				setShowTestingModal(false)
-			}, 1000)
-			setTimeout(() => {
-				setShowSuccessModal(true)
-			}, 1200)
-			setTimeout(() => {
-				setShowSuccessModal(false)
-				saveSource()
-			}, 2200)
-		} else {
-			setShowTestingModal(false)
-			setTestConnectionError({
-				message: testResult.data?.connection_result.message || "",
-				logs: testResult.data?.logs || [],
-			})
+	const testAndSave = async () => {
+		const result = await sourceConnectionTest.run(getSourceData())
+		if (result.outcome === "passed") {
+			saveSource()
+		} else if (result.outcome === "connection_failed") {
+			setTestConnectionError(result.error)
 			setShowFailureModal(true)
 		}
+	}
+
+	const handleConfirmEdit = async () => {
+		setShowEditModal(false)
+		await testAndSave()
 	}
 
 	const handleSave = async () => {
@@ -231,34 +213,7 @@ const SourceEdit: React.FC = () => {
 			return
 		}
 
-		setShowTestingModal(true)
-		const testResult = await testSourceMutation.mutateAsync({
-			source: getSourceData(),
-		})
-		if (
-			testResult.data?.connection_result.status ===
-			TEST_CONNECTION_STATUS.SUCCEEDED
-		) {
-			setTimeout(() => {
-				setShowTestingModal(false)
-			}, 1000)
-
-			setTimeout(() => {
-				setShowSuccessModal(true)
-			}, 1200)
-
-			setTimeout(() => {
-				setShowSuccessModal(false)
-				saveSource()
-			}, 2200)
-		} else {
-			setShowTestingModal(false)
-			setTestConnectionError({
-				message: testResult.data?.connection_result.message || "",
-				logs: testResult.data?.logs || [],
-			})
-			setShowFailureModal(true)
-		}
+		await testAndSave()
 	}
 
 	const saveSource = () => {
@@ -542,6 +497,7 @@ const SourceEdit: React.FC = () => {
 														},
 													}}
 													widgets={widgets}
+													fields={sourceFields}
 													formData={formData}
 													onChange={e => {
 														const trimmedData = trimFormDataStrings(e.formData)
@@ -549,7 +505,7 @@ const SourceEdit: React.FC = () => {
 													}}
 													transformErrors={transformErrors}
 													onSubmit={() => handleSave()}
-													uiSchema={uiSchema}
+													uiSchema={formUiSchema}
 													validator={validator}
 													showErrorList={false}
 													omitExtraData
@@ -624,11 +580,12 @@ const SourceEdit: React.FC = () => {
 			</div>
 
 			<TestConnectionModal
-				open={showTestingModal}
+				open={sourceConnectionTest.testing}
 				connectionType="source"
 			/>
+			<SourceTestConnectionModal {...sourceConnectionTest.modalProps} />
 			<TestConnectionSuccessModal
-				open={showSuccessModal}
+				open={sourceConnectionTest.showSuccess}
 				connectionType="source"
 			/>
 			<TestConnectionFailureModal
