@@ -1,6 +1,10 @@
-import { AxiosError } from "axios"
-
-import { SpecResponse, TestConnectionResponse } from "@/common/types"
+import { SUBMIT_TIMEOUT_MS } from "@/common/constants"
+import {
+	OperationAccepted,
+	SpecResponse,
+	TestConnectionResponse,
+} from "@/common/types"
+import { runOperation } from "@/common/utils"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
 import { api } from "@/core/api"
@@ -10,6 +14,7 @@ import {
 	EntityTestRequest,
 } from "@/modules/ingestion/common/types"
 import {
+	describeConnectionFailure,
 	getConnectorInLowerCase,
 	normalizeConnectorType,
 } from "@/modules/ingestion/common/utils"
@@ -104,32 +109,32 @@ export const destinationService = {
 		source_version: string = "",
 	) => {
 		try {
-			const response = await api.post<TestConnectionResponse>(
-				`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
-				{
-					type: getConnectorInLowerCase(destination.type),
-					version: destination.version,
-					config: destination.config,
-					source_type: source_type,
-					source_version: source_version,
-				},
-				//timeout is 0 as test connection takes more time as it needs to connect to the destination
-				{ timeout: 0, disableErrorNotification: true },
-			)
-			trackTestConnection(false, destination, response.data, existing)
+			// The POST only starts the check; the verdict arrives by polling, so the
+			// request is not held open for the connector container.
+			const data = await runOperation<TestConnectionResponse>(async () => {
+				const response = await api.post<OperationAccepted>(
+					`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
+					{
+						type: getConnectorInLowerCase(destination.type),
+						version: destination.version,
+						config: destination.config,
+						source_type: source_type,
+						source_version: source_version,
+					},
+					{ timeout: SUBMIT_TIMEOUT_MS, disableErrorNotification: true },
+				)
+				return response.data
+			})
+			trackTestConnection(false, destination, data, existing)
 
 			return {
 				success: true,
 				message: "success",
-				data: response.data,
+				data,
 			}
 		} catch (error) {
 			console.error("Error testing destination connection:", error)
-			const errorMessage =
-				error instanceof AxiosError
-					? (error.response?.data?.message ??
-						"Network error - please check your connection")
-					: "Unknown error occurred"
+			const errorMessage = describeConnectionFailure(error)
 			return {
 				success: false,
 				message: errorMessage,
@@ -164,18 +169,23 @@ export const destinationService = {
 	) => {
 		try {
 			const normalizedType = normalizeConnectorType(type)
-			const response = await api.post<SpecResponse>(
-				`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
-				{
-					type: normalizedType,
-					version: version,
-					source_type: source_type,
-					source_version: source_version,
-				},
-				//timeout is 300000 as spec takes more time as it needs to fetch the spec from the destination
-				{ timeout: 300000, signal, disableErrorNotification: true },
-			)
-			return response.data
+			return await runOperation<SpecResponse>(async () => {
+				const response = await api.post<OperationAccepted>(
+					`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
+					{
+						type: normalizedType,
+						version: version,
+						source_type: source_type,
+						source_version: source_version,
+					},
+					{
+						timeout: SUBMIT_TIMEOUT_MS,
+						signal,
+						disableErrorNotification: true,
+					},
+				)
+				return response.data
+			}, signal)
 		} catch (error: any) {
 			console.error("Error getting destination spec:", error)
 			const serverMessage = error?.response?.data?.message

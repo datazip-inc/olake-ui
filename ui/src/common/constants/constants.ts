@@ -75,3 +75,15 @@ export const SOURCE_ONBOARDING_DISMISSED_SESSION_KEY =
 
 export const COMMUNITY_BANNER_DISMISSED_SESSION_KEY =
 	"community_help_banner_dismissed"
+
+// Async operations (submit → poll → result)
+
+// For calls that only hand work to the server and get an operation ID back.
+export const SUBMIT_TIMEOUT_MS = 30_000
+// Long-poll hold requested from the server; it caps this at 10s.
+export const POLL_WAIT_SECONDS = 10
+// Headroom over the server-side hold.
+export const POLL_REQUEST_TIMEOUT_MS = 30_000
+// Payload transfers are untimed: bytes flow the whole time, which proxies don't cut, and a
+// large catalog legitimately takes minutes on a slow link.
+export const PAYLOAD_TRANSFER_TIMEOUT_MS = 0
