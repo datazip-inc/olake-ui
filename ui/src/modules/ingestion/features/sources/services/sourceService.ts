@@ -97,6 +97,7 @@ export const sourceService = {
 	testSourceConnection: async (
 		source: EntityTestRequest,
 		existing: boolean = false,
+		signal?: AbortSignal,
 	) => {
 		try {
 			const response = await api.post<TestConnectionResponse>(
@@ -106,7 +107,7 @@ export const sourceService = {
 					version: source.version,
 					config: source.config,
 				},
-				{ timeout: 0, disableErrorNotification: true }, // Disable timeout for this request since it can take longer
+				{ timeout: 0, signal, disableErrorNotification: true }, // Disable timeout for this request since it can take longer
 			)
 
 			trackTestConnection(true, source, response.data, existing)
@@ -116,6 +117,8 @@ export const sourceService = {
 				data: response.data,
 			}
 		} catch (error) {
+			// a cancelled test is not a failed connection; let the caller see the abort
+			if (signal?.aborted) throw error
 			console.error("Error testing source connection:", error)
 			const errorMessage =
 				error instanceof AxiosError
@@ -128,7 +131,7 @@ export const sourceService = {
 				data: {
 					connection_result: {
 						message: errorMessage,
-						status: "FAILED",
+						status: "FAILED" as const,
 					},
 					logs: [
 						{

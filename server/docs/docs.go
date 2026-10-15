@@ -2973,7 +2973,7 @@ const docTemplate = `{
                     "example": 50
                 },
                 "target_query_engines": {
-                    "description": "TargetQueryEngines are the engines expected to read the destination tables. OLake\nkeeps them nowhere, so they are stored here and resent on every discover; changing\nthem requires regenerating the catalog to recompute available_update_types.",
+                    "description": "TargetQueryEngines are stored here because OLake keeps none; changing them needs the catalog regenerated.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -3022,6 +3022,25 @@ const docTemplate = `{
                 "running": {
                     "type": "boolean",
                     "example": false
+                }
+            }
+        },
+        "dto.ConnectionResult": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "prerequisites": {
+                    "description": "Prerequisites are the CDC setup checks; only source drivers with CDC report them.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.PrerequisiteCheck"
+                    }
+                },
+                "status": {
+                    "type": "string",
+                    "example": "SUCCEEDED"
                 }
             }
         },
@@ -3525,6 +3544,38 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.PrerequisiteCheck": {
+            "type": "object",
+            "properties": {
+                "current_value": {
+                    "type": "string",
+                    "example": "MINIMAL"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "error": {
+                    "description": "Error is why the check could not be evaluated; empty when it ran.",
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "binlog_row_image"
+                },
+                "passed": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "recommended_value": {
+                    "type": "string",
+                    "example": "FULL"
+                },
+                "required": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "dto.ProjectSettingsResponse": {
             "type": "object",
             "properties": {
@@ -3676,7 +3727,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "available_query_engines": {
-                    "description": "AvailableQueryEngines swaps the connector UI spec for the query engines the connector\nsupports and the delete formats each can read. The response carries a null spec on\nconnector versions that predate the feature.",
+                    "description": "AvailableQueryEngines swaps the UI spec for the engine matrix; the spec is null on older connectors.",
                     "type": "boolean",
                     "example": false
                 },
@@ -3758,7 +3809,7 @@ const docTemplate = `{
                     "example": "my-postgres-source"
                 },
                 "target_query_engines": {
-                    "description": "TargetQueryEngines are the engines expected to read the destination tables. OLake\nturns them into each stream's available_update_types; it stores nothing else, so the\nselection must be sent on every discover to stay applied.",
+                    "description": "TargetQueryEngines become each stream's available_update_types; OLake stores none, so resend every discover.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -3822,7 +3873,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "connection_result": {
-                    "type": "object"
+                    "$ref": "#/definitions/dto.ConnectionResult"
                 },
                 "logs": {
                     "type": "array",
