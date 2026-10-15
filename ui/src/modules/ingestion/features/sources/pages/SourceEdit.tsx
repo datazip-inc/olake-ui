@@ -59,7 +59,7 @@ import {
 } from "../hooks"
 import { useSourceStore } from "../stores"
 import { SourceJob } from "../types"
-import { getConnectorLabel } from "../utils"
+import { getConnectorLabel, lockPreserveToastValues } from "../utils"
 
 const SourceEdit: React.FC = () => {
 	// Local component state.
@@ -87,6 +87,9 @@ const SourceEdit: React.FC = () => {
 
 	// Derived constants from current state.
 	const normalizedSourceConnector = getConnectorInLowerCase(connector)
+	const isPostgres = normalizedSourceConnector === "postgres"
+	// saved preserve_toast_values, put back on every change since edit can't change it
+	const savedPreserveToast = useRef<boolean | undefined>(undefined)
 
 	// Data fetching and mutation hooks.
 	const queryClient = useQueryClient()
@@ -119,11 +122,12 @@ const SourceEdit: React.FC = () => {
 			const normalizedType = getConnectorLabel(source.type)
 			setConnector(normalizedType)
 			setSelectedVersion(source.version)
-			setFormData(
+			const config =
 				typeof source.config === "string"
 					? JSON.parse(source.config)
-					: source.config,
-			)
+					: source.config
+			savedPreserveToast.current = config?.update_method?.preserve_toast_values
+			setFormData(config)
 		}
 	}, [source, sourceId])
 
@@ -137,9 +141,19 @@ const SourceEdit: React.FC = () => {
 
 	useEffect(() => {
 		if (specData) {
-			handleSpecResponse(specData, setSchema, setUiSchema, "source")
+			handleSpecResponse(
+				specData,
+				setSchema,
+				ui =>
+					setUiSchema(
+						isPostgres
+							? lockPreserveToastValues(ui, specData.spec?.jsonschema)
+							: ui,
+					),
+				"source",
+			)
 		}
-	}, [specData])
+	}, [specData, isPostgres])
 
 	useEffect(() => {
 		if (specQueryError) {
@@ -501,6 +515,18 @@ const SourceEdit: React.FC = () => {
 													formData={formData}
 													onChange={e => {
 														const trimmedData = trimFormDataStrings(e.formData)
+														const updateMethod = trimmedData?.update_method
+														// rjsf resets the flag on CDC/Standalone switches; spec
+														// versions without the field get no key
+														if (
+															isPostgres &&
+															updateMethod?.type === "CDC" &&
+															(savedPreserveToast.current !== undefined ||
+																"preserve_toast_values" in updateMethod)
+														) {
+															updateMethod.preserve_toast_values =
+																savedPreserveToast.current ?? false
+														}
 														setFormData(trimmedData)
 													}}
 													transformErrors={transformErrors}
