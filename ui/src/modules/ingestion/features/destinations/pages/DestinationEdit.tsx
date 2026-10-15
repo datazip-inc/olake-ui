@@ -594,10 +594,13 @@ const DestinationEdit: React.FC = () => {
 						<ArrowLeftIcon className="size-5" />
 					</Link>
 					<div className="text-lg font-bold">{destinationName}</div>
-					<OpenDocsButton
-						docUrl={docUrl}
-						className="ml-auto"
-					/>
+					{/* the collapsed docs panel shows its own open-in-new-tab icon */}
+					{!docsMinimized && (
+						<OpenDocsButton
+							docUrl={docUrl}
+							className="ml-auto"
+						/>
+					)}
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">

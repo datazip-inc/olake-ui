@@ -529,10 +529,13 @@ const CreateDestination: React.FC = () => {
 					>
 						Create destination
 					</div>
-					<OpenDocsButton
-						docUrl={docUrl}
-						className="ml-auto"
-					/>
+					{/* the collapsed docs panel shows its own open-in-new-tab icon */}
+					{!docsMinimized && (
+						<OpenDocsButton
+							docUrl={docUrl}
+							className="ml-auto"
+						/>
+					)}
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
