@@ -77,7 +77,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
 	}
 
-	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
 		return nil, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
@@ -210,7 +210,7 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		{Name: "config.json", Data: config},
 	}
 
-	if err := SetupConfigFiles(Check, workflowID, configs); err != nil {
+	if err := SetupConfigFiles(ctx, Check, workflowID, configs); err != nil {
 		return nil, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
@@ -259,10 +259,15 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		return nil, fmt.Errorf("connection status not found")
 	}
 
-	return map[string]interface{}{
+	response := map[string]interface{}{
 		"message": message,
 		"status":  status,
-	}, nil
+	}
+	// prerequisites is optional: only source drivers with CDC checks report it
+	if prerequisites, ok := connectionStatus["prerequisites"].([]interface{}); ok {
+		response["prerequisites"] = prerequisites
+	}
+	return response, nil
 }
 
 func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, streamsConfig string) error {
@@ -275,7 +280,7 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	}
 
 	// update schedule to use clear-destination request
-	clearReq, err := buildExecutionReqForClearDestination(job, workflowID, streamsConfig)
+	clearReq, err := buildExecutionReqForClearDestination(ctx, job, workflowID, streamsConfig)
 	if err != nil {
 		return fmt.Errorf("failed to build execution request for clear-destination: %s", err)
 	}
@@ -305,7 +310,7 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		{Name: "new_streams.json", Data: newConfig},
 	}
 
-	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
 		return nil, fmt.Errorf("failed to setup config files: %s", err)
 	}
 

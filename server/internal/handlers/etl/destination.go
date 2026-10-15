@@ -226,7 +226,7 @@ func (h *Handler) TestDestinationConnection(c *gin.Context) {
 		return
 	}
 	utils.SuccessResponse(c, fmt.Sprintf("destination %s connection tested successfully", req.Type), dto.TestConnectionResponse{
-		ConnectionResult: result,
+		ConnectionResult: dto.NewConnectionResult(result),
 		Logs:             logs,
 	})
 }
