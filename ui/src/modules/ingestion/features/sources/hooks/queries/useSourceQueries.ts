@@ -36,6 +36,7 @@ export const useAvailableQueryEngines = (type: string, version: string) => {
 		queryFn: ({ signal }) =>
 			sourceService.getSourceSpec(type, version, signal, true),
 		enabled: !!type && !!version,
+		retry: false,
 		staleTime: Infinity,
 		gcTime: 24 * 60 * 60 * 1000, // 24 hours
 		select: response => response?.spec?.query_engines?.engines ?? [],
@@ -48,6 +49,7 @@ export const useSourceSpec = (type: string, version: string) => {
 		queryKey: sourceKeys.spec(type, version),
 		queryFn: ({ signal }) => sourceService.getSourceSpec(type, version, signal),
 		enabled: !!type && !!version,
+		retry: false,
 		staleTime: Infinity,
 		gcTime: 24 * 60 * 60 * 1000, // 24 hours
 	})

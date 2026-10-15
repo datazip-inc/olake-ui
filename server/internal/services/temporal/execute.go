@@ -10,7 +10,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 	"go.temporal.io/sdk/client"
@@ -67,9 +66,11 @@ const (
 //
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
 
-// DiscoverStreams runs a workflow to discover catalog data
-func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (map[string]interface{}, error) {
-	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
+func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (string, error) {
+	workflowID, err := NewOperationID(OperationDiscoverCatalog, projectID)
+	if err != nil {
+		return "", err
+	}
 
 	configs := []JobConfig{
 		{Name: "config.json", Data: config},
@@ -78,7 +79,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	}
 
 	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
-		return nil, fmt.Errorf("failed to setup config files: %s", err)
+		return "", fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	cmdArgs := []string{
@@ -130,27 +131,25 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		TaskQueue: t.taskQueue,
 	}
 
-	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute discover workflow: %s", err)
+	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
+		return "", fmt.Errorf("failed to execute discover workflow: %s", err)
 	}
 
-	result, err := ExtractWorkflowResponse(ctx, run)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
-	}
-
-	return result, nil
+	return workflowID, nil
 }
 
-// FetchSpec runs a workflow to fetch driver specifications
-func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceType, version string, availableQueryEngines bool) (dto.SpecOutput, error) {
+// StartDriverSpecs returns an empty operation ID when no workflow was needed, in which
+// case there is nothing to poll and the caller answers immediately.
+func (t *Temporal) StartDriverSpecs(ctx context.Context, projectID, destinationType, sourceType, version string, availableQueryEngines bool) (string, error) {
 	// An older image rejects the flag and fails the workflow, so report the feature as absent instead.
 	if availableQueryEngines && !supportsQueryEngines(version) {
-		return dto.SpecOutput{}, nil
+		return "", nil
 	}
 
-	workflowID := fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix())
+	workflowID, err := NewOperationID(OperationSpec, projectID)
+	if err != nil {
+		return "", err
+	}
 
 	// spec version >= DefaultSpecVersion is required
 	if semver.Compare(version, constants.DefaultSpecVersion) < 0 && utils.GetCustomDriverVersion() == "" {
@@ -184,19 +183,11 @@ func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceTy
 		TaskQueue: t.taskQueue,
 	}
 
-	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
-	if err != nil {
-		return dto.SpecOutput{}, fmt.Errorf("failed to execute fetch spec workflow: %s", err)
+	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
+		return "", fmt.Errorf("failed to execute fetch spec workflow: %s", err)
 	}
 
-	result, err := ExtractWorkflowResponse(ctx, run)
-	if err != nil {
-		return dto.SpecOutput{}, fmt.Errorf("failed to extract workflow response: %v", err)
-	}
-
-	return dto.SpecOutput{
-		Spec: result,
-	}, nil
+	return workflowID, nil
 }
 
 // supportsQueryEngines reports whether the version takes the engine flags; custom builds are assumed current.
@@ -204,14 +195,18 @@ func supportsQueryEngines(version string) bool {
 	return utils.GetCustomDriverVersion() != "" || semver.Compare(version, constants.DefaultQueryEnginesVersion) >= 0
 }
 
-// TestConnection runs a workflow to test connection
-func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag, sourceType, version, config string) (map[string]interface{}, error) {
+func (t *Temporal) StartVerifyDriverCredentials(ctx context.Context, projectID, flag, sourceType, version, config string) (string, error) {
+	workflowID, err := NewOperationID(OperationTestConnection, projectID)
+	if err != nil {
+		return "", err
+	}
+
 	configs := []JobConfig{
 		{Name: "config.json", Data: config},
 	}
 
 	if err := SetupConfigFiles(ctx, Check, workflowID, configs); err != nil {
-		return nil, fmt.Errorf("failed to setup config files: %s", err)
+		return "", fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	cmdArgs := []string{
@@ -238,16 +233,15 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		TaskQueue: t.taskQueue,
 	}
 
-	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute test connection workflow: %s", err)
+	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
+		return "", fmt.Errorf("failed to execute test connection workflow: %s", err)
 	}
 
-	result, err := ExtractWorkflowResponse(ctx, run)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
-	}
+	return workflowID, nil
+}
 
+// DecodeConnectionStatus reshapes the check workflow's raw output into {message, status}.
+func DecodeConnectionStatus(result map[string]interface{}) (map[string]interface{}, error) {
 	connectionStatus, ok := result["connectionStatus"].(map[string]interface{})
 	if !ok || connectionStatus == nil {
 		return nil, fmt.Errorf("connection status not found")
@@ -259,10 +253,15 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		return nil, fmt.Errorf("connection status not found")
 	}
 
-	return map[string]interface{}{
+	response := map[string]interface{}{
 		"message": message,
 		"status":  status,
-	}, nil
+	}
+	// prerequisites is optional: only source drivers with CDC checks report it
+	if prerequisites, ok := connectionStatus["prerequisites"].([]interface{}); ok {
+		response["prerequisites"] = prerequisites
+	}
+	return response, nil
 }
 
 func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, streamsConfig string) error {
@@ -296,9 +295,11 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	return nil
 }
 
-// GetStreamDifference compares old and new stream configs and returns the difference
-func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, oldConfig, newConfig string) (map[string]interface{}, error) {
-	workflowID := fmt.Sprintf("difference-%s-%d-%d", job.ProjectID, job.ID, time.Now().Unix())
+func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, oldConfig, newConfig string) (string, error) {
+	workflowID, err := NewOperationID(OperationStreamDifference, job.ProjectID)
+	if err != nil {
+		return "", err
+	}
 
 	configs := []JobConfig{
 		{Name: "old_streams.json", Data: oldConfig},
@@ -306,7 +307,7 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 	}
 
 	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
-		return nil, fmt.Errorf("failed to setup config files: %s", err)
+		return "", fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	cmdArgs := []string{
@@ -335,15 +336,9 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		TaskQueue: t.taskQueue,
 	}
 
-	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute stream difference workflow: %s", err)
+	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
+		return "", fmt.Errorf("failed to execute stream difference workflow: %s", err)
 	}
 
-	result, err := ExtractWorkflowResponse(ctx, run)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
-	}
-
-	return result, nil
+	return workflowID, nil
 }
