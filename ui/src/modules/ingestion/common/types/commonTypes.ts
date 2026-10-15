@@ -1,4 +1,7 @@
-import { EntityJob } from "@/modules/ingestion/common/types/entityTypes"
+import {
+	EntityJob,
+	EntityType,
+} from "@/modules/ingestion/common/types/entityTypes"
 
 export type UnknownObject = {
 	[key: string]: unknown | UnknownObject
@@ -26,6 +29,10 @@ export interface TabsFilterProps {
 	onChange: (key: string) => void
 }
 
+export interface OpenDocsButtonProps {
+	docUrl: string
+	className?: string
+}
 export interface DocumentationPanelProps {
 	docUrl: string
 	isMinimized?: boolean
@@ -59,4 +66,11 @@ export interface JobConnectionProps {
 	jobName: string
 	remainingJobs?: number
 	jobs: EntityJob[]
+}
+
+export interface AssociatedJobsProps {
+	jobs?: EntityJob[] | null
+	entityType: EntityType
+	// connector of the source/destination the row belongs to
+	connectorType: string
 }

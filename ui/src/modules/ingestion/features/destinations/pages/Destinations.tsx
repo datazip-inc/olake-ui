@@ -1,6 +1,5 @@
 import { PathIcon, PlusIcon } from "@phosphor-icons/react"
-import { Button, Tabs, Empty, Spin } from "antd"
-import { useState } from "react"
+import { Button, Spin } from "antd"
 import { useNavigate } from "react-router-dom"
 
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
@@ -8,11 +7,9 @@ import { Entity } from "@/modules/ingestion/common/types"
 
 import DestinationEmptyState from "../components/DestinationEmptyState"
 import DestinationTable from "../components/DestinationTable"
-import { destinationTabs } from "../constants"
 import { useDestinations, useDeleteDestination } from "../hooks"
 
 const Destinations: React.FC = () => {
-	const [activeTab, setActiveTab] = useState("active")
 	const navigate = useNavigate()
 
 	const {
@@ -34,26 +31,6 @@ const Destinations: React.FC = () => {
 
 	const handleDeleteDestination = (destination: Entity) => {
 		deleteDestinationMutation.mutate(String(destination.id))
-	}
-
-	const filteredDestinations = (): Entity[] => {
-		// a destination is active if it has jobs and at least one job is active
-		if (activeTab === "active") {
-			return destinations.filter(
-				destination =>
-					destination?.jobs &&
-					destination.jobs.length > 0 &&
-					destination.jobs.some(job => job.activate === true),
-			)
-		} else if (activeTab === "inactive") {
-			return destinations.filter(
-				destination =>
-					!destination?.jobs ||
-					destination.jobs.length === 0 ||
-					destination.jobs.every(job => job.activate === false),
-			)
-		}
-		return []
 	}
 
 	const showEmpty = !isLoadingDestinations && destinations.length === 0
@@ -93,40 +70,25 @@ const Destinations: React.FC = () => {
 
 			<p className="mb-6 text-gray-600">A list of all your destinations</p>
 
-			<Tabs
-				activeKey={activeTab}
-				onChange={setActiveTab}
-				className="mb-4"
-				items={destinationTabs.map(tab => ({
-					key: tab.key,
-					label: tab.label,
-					children: isLoadingDestinations ? (
-						<div className="flex items-center justify-center py-16">
-							<Spin
-								size="large"
-								tip="Loading destinations..."
-							/>
-						</div>
-					) : tab.key === "active" && showEmpty ? (
-						<DestinationEmptyState
-							handleCreateDestination={handleCreateDestination}
-						/>
-					) : filteredDestinations().length === 0 ? (
-						<Empty
-							image={Empty.PRESENTED_IMAGE_SIMPLE}
-							description="No destinations configured"
-							className="flex flex-col items-center"
-						/>
-					) : (
-						<DestinationTable
-							destinations={filteredDestinations()}
-							loading={isLoadingDestinations}
-							onEdit={handleEditDestination}
-							onDelete={handleDeleteDestination}
-						/>
-					),
-				}))}
-			/>
+			{isLoadingDestinations ? (
+				<div className="flex items-center justify-center py-16">
+					<Spin
+						size="large"
+						tip="Loading destinations..."
+					/>
+				</div>
+			) : showEmpty ? (
+				<DestinationEmptyState
+					handleCreateDestination={handleCreateDestination}
+				/>
+			) : (
+				<DestinationTable
+					destinations={destinations}
+					loading={isLoadingDestinations}
+					onEdit={handleEditDestination}
+					onDelete={handleDeleteDestination}
+				/>
+			)}
 		</div>
 	)
 }

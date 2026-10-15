@@ -1,4 +1,9 @@
-import { InfoIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react"
+import {
+	ArrowSquareOutIcon,
+	InfoIcon,
+	PlusIcon,
+	TrashIcon,
+} from "@phosphor-icons/react"
 import { FieldTemplateProps } from "@rjsf/utils"
 import { Tooltip, Button } from "antd"
 import { useState, useEffect } from "react"
@@ -107,6 +112,7 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 		formData,
 		onChange,
 		rawErrors,
+		registry,
 	} = props
 
 	// --- Derived Variables ---
@@ -125,6 +131,8 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 			(isArrayField && !!objectTitle) ||
 			(displayLabel && !!label))
 	const labelText = objectTitle ?? label
+	// Forms can pass { fieldDocLinks: { [fieldId]: url } } as rjsf formContext
+	const docLink: string | undefined = registry.formContext?.fieldDocLinks?.[id]
 	const [newKey, setNewKey] = useState("")
 	const [newValue, setNewValue] = useState("")
 	const [currentTempKey, setCurrentTempKey] = useState<string | null>(null)
@@ -221,23 +229,40 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 			{shouldShowLabel && (
 				<label
 					htmlFor={id}
-					className="mb-2 mt-1 flex items-center gap-1 text-sm font-medium text-gray-700"
+					className="mb-2 mt-1 block text-sm font-medium text-gray-700"
 				>
 					{labelText}
-					{required && <span className="text-red-500">*</span>}
-					{hasDescription && (
-						<Tooltip
-							title={description || rawDescription}
-							placement="right"
-						>
-							<InfoIcon className="ml-1 text-gray-500 hover:text-gray-600" />
-						</Tooltip>
-					)}
+					{/* Inline, not flex, so when the label wraps the marker and icons follow
+					its last word instead of sitting beside the whole block. The word joiner
+					keeps them on the last word's line. */}
+					<span className="whitespace-nowrap">
+						{"⁠"}
+						{required && <span className="ml-1 text-red-500">*</span>}
+						{hasDescription && (
+							<Tooltip
+								title={description || rawDescription}
+								placement="right"
+							>
+								<InfoIcon className="ml-2 inline align-middle text-gray-500 hover:text-gray-600" />
+							</Tooltip>
+						)}
+						{docLink && (
+							<a
+								href={docLink}
+								target="_blank"
+								rel="noopener noreferrer"
+								aria-label={`Open ${labelText} docs`}
+								className="ml-1 inline-flex align-middle text-text-tertiary hover:text-primary"
+							>
+								<ArrowSquareOutIcon size={14} />
+							</a>
+						)}
+					</span>
 				</label>
 			)}
 
 			{isDynamicObject ? (
-				<div className="space-y-3">
+				<div className={`space-y-3 ${inputErrorWrapperClass}`}>
 					{/* Existing key-value pairs */}
 					{formData &&
 						Object.entries(formData)

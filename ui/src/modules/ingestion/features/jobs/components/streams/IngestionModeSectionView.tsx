@@ -1,4 +1,8 @@
-import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
+import {
+	ArrowSquareOutIcon,
+	InfoIcon,
+	WarningIcon,
+} from "@phosphor-icons/react"
 import { Radio, Tooltip } from "antd"
 import clsx from "clsx"
 
@@ -94,7 +98,16 @@ const IngestionModeSectionView = ({
 			<div className="mb-3">
 				<div className="flex items-center gap-1">
 					{isDirty && <WarningIcon className="size-4 text-orange-500" />}
-					<label className="block w-full">Ingestion Mode:</label>
+					<label>Ingestion Mode:</label>
+					<a
+						href="https://olake.io/docs/understanding/terminologies/olake/#7-modes-to-ingest-data-upsert-vs-append"
+						target="_blank"
+						rel="noopener noreferrer"
+						aria-label="Open ingestion modes docs"
+						className="inline-flex text-text-tertiary hover:text-primary"
+					>
+						<ArrowSquareOutIcon size={14} />
+					</a>
 				</div>
 				<div
 					className={clsx(

@@ -6,7 +6,6 @@ import {
 	NotebookIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
-import validator from "@rjsf/validator-ajv8"
 import { Input, message, Select, Spin } from "antd"
 import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
@@ -14,6 +13,10 @@ import { Link } from "react-router-dom"
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import {
+	formValidator,
+	notifyFirstFormError,
+} from "@/common/components/form/validation"
 import { widgets } from "@/common/components/form/widgets"
 import {
 	ErrorLogsModal,
@@ -31,6 +34,7 @@ import { trimFormDataStrings, handleSpecResponse } from "@/common/utils"
 import {
 	EntitySavedModal,
 	EntityCancelModal,
+	OpenDocsButton,
 } from "@/modules/ingestion/common/components"
 import { destinationConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
@@ -472,6 +476,7 @@ const CreateDestination: React.FC = () => {
 								ref={formRef}
 								schema={schema}
 								transformErrors={transformErrors}
+								onError={notifyFirstFormError}
 								templates={{
 									ObjectFieldTemplate,
 									FieldTemplate: CustomFieldTemplate,
@@ -491,7 +496,7 @@ const CreateDestination: React.FC = () => {
 								}}
 								onSubmit={handleCreate}
 								uiSchema={uiSchema}
-								validator={validator}
+								validator={formValidator}
 								showErrorList={false}
 								omitExtraData
 								liveOmit
@@ -505,6 +510,8 @@ const CreateDestination: React.FC = () => {
 	const handleToggleDocPanel = () => {
 		setDocsMinimized(prev => !prev)
 	}
+
+	const docUrl = `https://olake.io/docs/writers/${getConnectorDocumentationPath(connector, catalog, authType)}`
 
 	return (
 		<div className="flex h-full">
@@ -522,6 +529,13 @@ const CreateDestination: React.FC = () => {
 					>
 						Create destination
 					</div>
+					{/* the collapsed docs panel shows its own open-in-new-tab icon */}
+					{!docsMinimized && (
+						<OpenDocsButton
+							docUrl={docUrl}
+							className="ml-auto"
+						/>
+					)}
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
@@ -565,7 +579,7 @@ const CreateDestination: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector, catalog, authType)}`}
+						docUrl={docUrl}
 						showResizer={true}
 						isMinimized={docsMinimized}
 						onToggle={handleToggleDocPanel}

@@ -6,7 +6,6 @@ import {
 	NotebookIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
-import validator from "@rjsf/validator-ajv8"
 import { message, Select, Spin, Tooltip } from "antd"
 import { useState, useEffect, useRef, useMemo } from "react"
 import { Link } from "react-router-dom"
@@ -19,6 +18,10 @@ import {
 } from "@/common/components/form/cdc"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import {
+	formValidator,
+	notifyFirstFormError,
+} from "@/common/components/form/validation"
 import { sourceFields, widgets } from "@/common/components/form/widgets"
 import {
 	ErrorLogsModal,
@@ -33,6 +36,7 @@ import { trimFormDataStrings, handleSpecResponse } from "@/common/utils"
 import {
 	EntitySavedModal,
 	EntityCancelModal,
+	OpenDocsButton,
 } from "@/modules/ingestion/common/components"
 import { sourceConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
@@ -42,6 +46,7 @@ import { SetupTypeSelector } from "@/modules/ingestion/common/components/SetupTy
 import {
 	CONNECTOR_TYPES,
 	ENTITY_TYPES,
+	FIELD_DOC_LINKS,
 	SETUP_TYPES,
 } from "@/modules/ingestion/common/constants"
 import { validationService } from "@/modules/ingestion/common/services/validationService"
@@ -68,7 +73,7 @@ const CreateSource: React.FC = () => {
 	const [formData, setFormData] = useState<any>({})
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
-	const formUiSchema = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
+	const uiSchemaWithCdc = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
 	const [filteredSources, setFilteredSources] = useState<Source[]>([])
 	const [sourceNameError, setSourceNameError] = useState<string | null>(null)
 	const [existingSource, setExistingSource] = useState<string | null>(null)
@@ -429,8 +434,12 @@ const CreateSource: React.FC = () => {
 									setFormData(trimmedData)
 								}}
 								transformErrors={transformErrors}
-								uiSchema={formUiSchema}
-								validator={validator}
+								onError={notifyFirstFormError}
+								formContext={{
+									fieldDocLinks: FIELD_DOC_LINKS[normalizedConnector],
+								}}
+								uiSchema={uiSchemaWithCdc}
+								validator={formValidator}
 								omitExtraData
 								liveOmit
 								showErrorList={false} // adding this will not show error list
@@ -441,6 +450,8 @@ const CreateSource: React.FC = () => {
 				)}
 			</>
 		)
+
+	const docUrl = `https://olake.io/docs/connectors/${normalizedConnector}`
 
 	return (
 		<div className={`flex h-full`}>
@@ -458,6 +469,13 @@ const CreateSource: React.FC = () => {
 					>
 						Create source
 					</div>
+					{/* the collapsed docs panel shows its own open-in-new-tab icon */}
+					{!docsMinimized && (
+						<OpenDocsButton
+							docUrl={docUrl}
+							className="ml-auto"
+						/>
+					)}
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
@@ -504,7 +522,7 @@ const CreateSource: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${normalizedConnector}`}
+						docUrl={docUrl}
 						isMinimized={docsMinimized}
 						onToggle={handleToggleDocPanel}
 						showResizer={true}
