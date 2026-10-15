@@ -253,10 +253,15 @@ func DecodeConnectionStatus(result map[string]interface{}) (map[string]interface
 		return nil, fmt.Errorf("connection status not found")
 	}
 
-	return map[string]interface{}{
+	response := map[string]interface{}{
 		"message": message,
 		"status":  status,
-	}, nil
+	}
+	// prerequisites is optional: only source drivers with CDC checks report it
+	if prerequisites, ok := connectionStatus["prerequisites"].([]interface{}); ok {
+		response["prerequisites"] = prerequisites
+	}
+	return response, nil
 }
 
 func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, streamsConfig string) error {

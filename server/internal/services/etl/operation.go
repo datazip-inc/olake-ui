@@ -117,7 +117,7 @@ func decodeOperationOutput(ctx context.Context, kind temporal.OperationKind, ope
 		if err != nil {
 			return nil, fmt.Errorf("failed to read logs for operation %s: %s", operationID, err)
 		}
-		return dto.TestConnectionResponse{ConnectionResult: result, Logs: logs.Logs}, nil
+		return dto.TestConnectionResponse{ConnectionResult: dto.NewConnectionResult(result), Logs: logs.Logs}, nil
 
 	case temporal.OperationDiscoverCatalog:
 		return output, nil

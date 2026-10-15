@@ -102,10 +102,10 @@ export const sourceService = {
 	testSourceConnection: async (
 		source: EntityTestRequest,
 		existing: boolean = false,
+		signal?: AbortSignal,
 	) => {
 		try {
-			// The check runs a connector container. The POST only starts it; the result
-			// arrives by polling, so no request is held open for the container run.
+			// The POST only starts the check; the result arrives by polling.
 			const data = await runOperation<TestConnectionResponse>(async () => {
 				const response = await api.post<OperationAccepted>(
 					`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
@@ -114,10 +114,14 @@ export const sourceService = {
 						version: source.version,
 						config: source.config,
 					},
-					{ timeout: SUBMIT_TIMEOUT_MS, disableErrorNotification: true },
+					{
+						timeout: SUBMIT_TIMEOUT_MS,
+						signal,
+						disableErrorNotification: true,
+					},
 				)
 				return response.data
-			})
+			}, signal)
 
 			trackTestConnection(true, source, data, existing)
 			return {
@@ -126,6 +130,8 @@ export const sourceService = {
 				data,
 			}
 		} catch (error) {
+			// a cancelled test is not a failed connection; let the caller see the abort
+			if (signal?.aborted) throw error
 			console.error("Error testing source connection:", error)
 			const errorMessage = describeConnectionFailure(error)
 			return {
@@ -134,7 +140,7 @@ export const sourceService = {
 				data: {
 					connection_result: {
 						message: errorMessage,
-						status: "FAILED",
+						status: "FAILED" as const,
 					},
 					logs: [
 						{

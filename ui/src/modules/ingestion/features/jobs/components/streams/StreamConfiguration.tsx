@@ -42,6 +42,7 @@ const StreamConfiguration = ({
 			{activeTab === "config" && (
 				<ConfigTab
 					sourceType={sourceType}
+					sourceVersion={sourceVersion}
 					destinationType={destinationType}
 				/>
 			)}
