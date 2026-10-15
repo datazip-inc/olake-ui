@@ -37,15 +37,15 @@ func resolveOperation(projectID, operationID string) (temporal.OperationKind, er
 	return kind, nil
 }
 
-func (s Service) describeOperation(ctx context.Context, operationID string, wait time.Duration) (*temporal.OperationState, error) {
-	state, err := s.temporal.DescribeOperation(ctx, operationID, wait)
+func (s Service) describeOperation(ctx context.Context, operationID string, wait time.Duration) (temporal.OperationStatus, error) {
+	status, err := s.temporal.DescribeOperation(ctx, operationID, wait)
 	if err != nil {
 		if temporal.IsOperationNotFound(err) {
-			return nil, fmt.Errorf("%w: %s", ErrOperationNotFound, operationID)
+			return "", fmt.Errorf("%w: %s", ErrOperationNotFound, operationID)
 		}
-		return nil, fmt.Errorf("failed to describe operation: %s", err)
+		return "", fmt.Errorf("failed to describe operation: %s", err)
 	}
-	return state, nil
+	return status, nil
 }
 
 func (s Service) GetOperationStatus(ctx context.Context, projectID, operationID string, wait time.Duration) (*dto.OperationStatusResponse, error) {
@@ -56,13 +56,13 @@ func (s Service) GetOperationStatus(ctx context.Context, projectID, operationID 
 		return nil, err
 	}
 
-	state, err := s.describeOperation(ctx, operationID, min(wait, operationMaxWait))
+	status, err := s.describeOperation(ctx, operationID, min(wait, operationMaxWait))
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &dto.OperationStatusResponse{Status: string(state.Status)}
-	if state.Status == temporal.OperationFailed {
+	resp := &dto.OperationStatusResponse{Status: string(status)}
+	if status == temporal.OperationFailed {
 		resp.Error = s.temporal.OperationFailureMessage(ctx, operationID)
 	}
 	return resp, nil
@@ -79,12 +79,12 @@ func (s Service) GetOperationResult(ctx context.Context, projectID, operationID 
 		return nil, err
 	}
 
-	state, err := s.describeOperation(ctx, operationID, 0)
+	status, err := s.describeOperation(ctx, operationID, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	switch state.Status {
+	switch status {
 	case temporal.OperationRunning:
 		return nil, ErrOperationNotDone
 	case temporal.OperationFailed:

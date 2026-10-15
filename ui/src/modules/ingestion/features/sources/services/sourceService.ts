@@ -234,7 +234,7 @@ export const sourceService = {
 						target_query_engines,
 					},
 					{
-						timeout: 0,
+						timeout: SUBMIT_TIMEOUT_MS,
 						signal,
 						disableErrorNotification: true,
 					},

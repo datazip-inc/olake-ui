@@ -46,11 +46,6 @@ const (
 
 const operationIDSuffixLen = 32
 
-type OperationState struct {
-	ID     string
-	Status OperationStatus
-}
-
 // NewOperationID builds "<kind>-<projectID>-<random hex>". The random suffix makes IDs
 // unguessable across projects and collision-free; the project ID lets pollers be
 // authorized without a database lookup.
@@ -109,20 +104,17 @@ func IsOperationNotFound(err error) bool {
 
 // DescribeOperation returns the operation's state. When wait is positive it first
 // long-polls Temporal for up to wait, returning as soon as the workflow closes.
-func (t *Temporal) DescribeOperation(ctx context.Context, operationID string, wait time.Duration) (*OperationState, error) {
+func (t *Temporal) DescribeOperation(ctx context.Context, operationID string, wait time.Duration) (OperationStatus, error) {
 	if wait > 0 {
 		t.awaitClose(ctx, operationID, wait)
 	}
 
 	desc, err := t.Client.DescribeWorkflowExecution(ctx, operationID, "")
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return &OperationState{
-		ID:     operationID,
-		Status: operationStatusFor(desc.GetWorkflowExecutionInfo().GetStatus()),
-	}, nil
+	return operationStatusFor(desc.GetWorkflowExecutionInfo().GetStatus()), nil
 }
 
 func (t *Temporal) awaitClose(ctx context.Context, operationID string, wait time.Duration) {
