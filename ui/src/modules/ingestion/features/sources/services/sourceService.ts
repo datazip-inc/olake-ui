@@ -5,10 +5,10 @@ import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
 import { api } from "@/core/api"
 import {
+	DiscoverResponse,
 	Entity,
 	EntityBase,
 	EntityTestRequest,
-	StreamsDataStructure,
 } from "@/modules/ingestion/common/types"
 
 export const sourceService = {
@@ -73,7 +73,8 @@ export const sourceService = {
 							? source.config
 							: JSON.stringify(source.config),
 				},
-				{ showNotification: true },
+				// 60s: a version upgrade converts every legacy job of the source in this request
+				{ timeout: 60000, showNotification: true },
 			)
 			return response.data
 		} catch (error) {
@@ -197,7 +198,7 @@ export const sourceService = {
 		signal?: AbortSignal,
 	) => {
 		try {
-			const response = await api.post<StreamsDataStructure>(
+			const response = await api.post<DiscoverResponse>(
 				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
 				{
 					name,
