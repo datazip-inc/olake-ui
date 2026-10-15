@@ -73,8 +73,8 @@ export const sourceService = {
 							? source.config
 							: JSON.stringify(source.config),
 				},
-				// No timeout because a version upgrade might converts every legacy job of the source in this request
-				{ timeout: 0, showNotification: true },
+				// 60s: a version upgrade converts every legacy job of the source in this request
+				{ timeout: 60000, showNotification: true },
 			)
 			return response.data
 		} catch (error) {

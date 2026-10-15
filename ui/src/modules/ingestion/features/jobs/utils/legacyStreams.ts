@@ -12,7 +12,15 @@ export const fromLegacyCatalog = ({
 	selected_streams,
 }: StreamsDataStructure): StreamsV2Catalog => ({
 	available_streams: { streams },
-	selected_streams: selected_streams ?? {},
+	selected_streams: Object.fromEntries(
+		Object.entries(selected_streams ?? {}).map(([namespace, entries]) => [
+			namespace,
+			entries.map(entry => ({
+				...entry,
+				append_mode: entry.append_mode ?? false,
+			})),
+		]),
+	),
 })
 
 // Legacy drivers read sync_mode, cursor_field and destination_database from
