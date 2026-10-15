@@ -48,18 +48,20 @@ export const formValidator: ValidatorType = {
 }
 
 // rjsf ids fields as root_<path>: ".writer.catalog_name" -> "root_writer_catalog_name"
-const getFieldId = (error: RJSFValidationError) =>
-	`root${(error.property ?? "").replace(/\./g, "_")}`
+const getFieldId = (property = "") => `root${property.replace(/\./g, "_")}`
 
 const getFieldElement = (error: RJSFValidationError) =>
-	document.getElementById(getFieldId(error))
+	document.getElementById(getFieldId(error.property))
 
 // Reads the label CustomFieldTemplate rendered for the field, so the toast names
 // it as the user sees it (catalog types override spec titles, e.g. "S3 Path" is
 // shown as "Lakekeeper Warehouse"). Falls back to the property name.
+// Array items are addressed by index (".hosts.1", named "hosts-1" by rjsf), which
+// means nothing to the user, so they are named by their array's label ("Hosts").
 const getFieldLabel = (error: RJSFValidationError) => {
+	const property = (error.property ?? "").replace(/(\.\d+)+$/, "")
 	const label = document.querySelector(
-		`label[for="${CSS.escape(getFieldId(error))}"]`,
+		`label[for="${CSS.escape(getFieldId(property))}"]`,
 	)
 	const labelText = Array.from(label?.childNodes ?? [])
 		.filter(node => node.nodeType === Node.TEXT_NODE)
@@ -68,8 +70,8 @@ const getFieldLabel = (error: RJSFValidationError) => {
 		.trim()
 	if (labelText) return labelText
 
-	const property = error.property?.split(".").pop() ?? ""
-	return toSentenceCase(property.replace(/_/g, " ")) || "This field"
+	const name = property.split(".").pop() ?? ""
+	return toSentenceCase(name.replace(/_/g, " ")) || "This field"
 }
 
 const getFormErrorMessage = (error: RJSFValidationError) => {

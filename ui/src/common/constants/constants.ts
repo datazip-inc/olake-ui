@@ -57,6 +57,8 @@ export const FORM_ERROR_MESSAGES: Record<string, string> = {
 	enum: "Select a valid option for {label}",
 	"type.integer": "{label} must be a whole number",
 	"type.number": "{label} must be a number",
+	// text inputs only produce strings; an empty array item is left undefined
+	"type.string": "{label} can't be empty",
 }
 
 // Spec patterns explained in words, since "invalid format" alone does not tell
