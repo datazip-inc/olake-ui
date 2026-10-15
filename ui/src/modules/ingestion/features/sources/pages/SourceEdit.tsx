@@ -84,7 +84,7 @@ const SourceEdit: React.FC = () => {
 	const [showEditModal, setShowEditModal] = useState(false)
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
-	const formUiSchema = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
+	const uiSchemaWithCdc = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
 	const [specError, setSpecError] = useState<string | null>(null)
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [testConnectionError, setTestConnectionError] =
@@ -526,7 +526,7 @@ const SourceEdit: React.FC = () => {
 															FIELD_DOC_LINKS[normalizedSourceConnector],
 													}}
 													onSubmit={() => handleSave()}
-													uiSchema={formUiSchema}
+													uiSchema={uiSchemaWithCdc}
 													validator={formValidator}
 													showErrorList={false}
 													omitExtraData

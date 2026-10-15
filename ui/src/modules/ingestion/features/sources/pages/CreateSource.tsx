@@ -73,7 +73,7 @@ const CreateSource: React.FC = () => {
 	const [formData, setFormData] = useState<any>({})
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
-	const formUiSchema = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
+	const uiSchemaWithCdc = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
 	const [filteredSources, setFilteredSources] = useState<Source[]>([])
 	const [sourceNameError, setSourceNameError] = useState<string | null>(null)
 	const [existingSource, setExistingSource] = useState<string | null>(null)
@@ -438,7 +438,7 @@ const CreateSource: React.FC = () => {
 								formContext={{
 									fieldDocLinks: FIELD_DOC_LINKS[normalizedConnector],
 								}}
-								uiSchema={formUiSchema}
+								uiSchema={uiSchemaWithCdc}
 								validator={formValidator}
 								omitExtraData
 								liveOmit
