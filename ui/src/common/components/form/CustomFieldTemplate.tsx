@@ -224,29 +224,35 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 			{shouldShowLabel && (
 				<label
 					htmlFor={id}
-					className="mb-2 mt-1 flex items-center gap-1 text-sm font-medium text-gray-700"
+					className="mb-2 mt-1 block text-sm font-medium text-gray-700"
 				>
 					{labelText}
-					{required && <span className="text-red-500">*</span>}
-					{hasDescription && (
-						<Tooltip
-							title={description || rawDescription}
-							placement="right"
-						>
-							<InfoIcon className="ml-1 text-gray-500 hover:text-gray-600" />
-						</Tooltip>
-					)}
-					{docLink && (
-						<a
-							href={docLink}
-							target="_blank"
-							rel="noopener noreferrer"
-							aria-label={`Open ${labelText} docs`}
-							className="inline-flex text-text-tertiary hover:text-primary"
-						>
-							<ArrowSquareOutIcon size={14} />
-						</a>
-					)}
+					{/* Inline, not flex, so when the label wraps the marker and icons follow
+					its last word instead of sitting beside the whole block. The word joiner
+					keeps them on the last word's line. */}
+					<span className="whitespace-nowrap">
+						{"⁠"}
+						{required && <span className="ml-1 text-red-500">*</span>}
+						{hasDescription && (
+							<Tooltip
+								title={description || rawDescription}
+								placement="right"
+							>
+								<InfoIcon className="ml-2 inline align-middle text-gray-500 hover:text-gray-600" />
+							</Tooltip>
+						)}
+						{docLink && (
+							<a
+								href={docLink}
+								target="_blank"
+								rel="noopener noreferrer"
+								aria-label={`Open ${labelText} docs`}
+								className="ml-1 inline-flex align-middle text-text-tertiary hover:text-primary"
+							>
+								<ArrowSquareOutIcon size={14} />
+							</a>
+						)}
+					</span>
 				</label>
 			)}
 
