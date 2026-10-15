@@ -1,3 +1,5 @@
+import { isKafkaSource } from "@/modules/ingestion/common/utils"
+
 import IngestionModeSectionView from "./IngestionModeSectionView"
 import { IngestionMode } from "../../enums"
 import {
@@ -6,14 +8,17 @@ import {
 	selectIsStreamEnabled,
 	useStreamSelectionStore,
 } from "../../stores"
+import { getDedupKeyOptions } from "../../utils/streams"
 
 interface IngestionModeSectionSingleProps {
 	sourceType?: string
+	sourceVersion?: string
 	destinationType?: string
 }
 
 const IngestionModeSectionSingle = ({
 	sourceType,
+	sourceVersion,
 	destinationType,
 }: IngestionModeSectionSingleProps) => {
 	const updateIngestionMode = useStreamSelectionStore(
@@ -29,12 +34,20 @@ const IngestionModeSectionSingle = ({
 
 	if (!storeStream || !storeSelectedStream) return null
 
+	const isKafka = isKafkaSource(sourceType)
+
 	return (
 		<IngestionModeSectionView
 			sourceType={sourceType}
+			sourceVersion={sourceVersion}
 			destinationType={destinationType}
 			isSelected={storeIsSelected}
 			appendMode={!!storeSelectedStream.append_mode}
+			dedupKeyCount={
+				isKafka
+					? getDedupKeyOptions(storeStream, storeSelectedStream).length
+					: undefined
+			}
 			onChange={ingestionMode =>
 				updateIngestionMode(
 					{

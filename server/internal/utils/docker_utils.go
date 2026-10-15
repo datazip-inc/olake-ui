@@ -231,7 +231,7 @@ const (
 )
 
 // detectRegistryType classifies the registry base. Empty and the Docker Hub hosts
-// map to Docker Hub (preserving the shipped default registry-1.docker.io), so existing
+// map to Docker Hub (preserving the shipped default docker.io), so existing
 // deployments are unaffected. Classification is based on the registry host only, so
 // look-alike hosts (e.g. Azure's *.azurecr.io, which contains the substring "ecr")
 // are not misrouted to the AWS ECR path.
