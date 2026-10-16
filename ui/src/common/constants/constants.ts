@@ -89,15 +89,6 @@ export const ERROR_MESSAGES = {
 
 export const OLAKE_LATEST_VERSION_URL = "https://olake.io/docs/release/overview"
 
-// Postgres CDC setup guide sections for creating the slot and publication that
-// a CDC source config refers to
-export const POSTGRES_CDC_DOCS = {
-	REPLICATION_SLOT:
-		"https://olake.io/docs/connectors/postgres/setup/generic/#8-create-logical-replication-slot",
-	PUBLICATION:
-		"https://olake.io/docs/connectors/postgres/setup/generic/#7-create-publication",
-} as const
-
 export const OLAKE_COMMUNITY_SLACK_URL = "https://olake.io/slack/"
 
 export const LOCALSTORAGE_TOKEN_KEY = "token"
