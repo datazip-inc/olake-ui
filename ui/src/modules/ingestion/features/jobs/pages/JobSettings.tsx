@@ -1,5 +1,6 @@
 import {
 	ArrowLeftIcon,
+	ArrowRightIcon,
 	ArrowSquareOutIcon,
 	InfoIcon,
 } from "@phosphor-icons/react"
@@ -16,6 +17,7 @@ import {
 	ClearDestinationModal,
 	StreamEditDisabledModal,
 	AdvancedSettingsCard,
+	QueryEngineWarningModal,
 } from "../components"
 import { DAYS, FREQUENCY_OPTIONS } from "../constants"
 import {
@@ -24,7 +26,9 @@ import {
 	useUpdateJob,
 } from "../hooks"
 import { useJobConfigurationStore, useJobStore } from "../stores"
+import { UnsavedJobSettings } from "../types"
 import {
+	queryEnginesChanged,
 	parseCronExpression,
 	validateCronExpression,
 	isValidCronExpression,
@@ -61,7 +65,15 @@ const JobSettings: React.FC = () => {
 		setShowClearDestinationModal,
 		setShowStreamEditDisabledModal,
 	} = useJobStore()
-	const { advancedSettings, setAdvancedSettings } = useJobConfigurationStore()
+	const {
+		advancedSettings,
+		setAdvancedSettings,
+		savedAdvancedSettings,
+		setSavedAdvancedSettings,
+		setIsEditMode,
+		reset: resetJobConfig,
+	} = useJobConfigurationStore()
+	const [showQueryEngineWarning, setShowQueryEngineWarning] = useState(false)
 
 	// Keep job data permanently fresh to prevent refetches (e.g., on tab focus) that could overwrite in-progress edits.
 	// The query will still update when job mutations succeed because they invalidate the job queries.
@@ -90,9 +102,12 @@ const JobSettings: React.FC = () => {
 		}
 	}, [clearDestStatus?.running])
 
-	// reset modal state on unmount
+	// reset modal state and job configuration store on unmount
 	useEffect(() => {
-		return () => setShowStreamEditDisabledModal(false)
+		return () => {
+			setShowStreamEditDisabledModal(false)
+			resetJobConfig()
+		}
 	}, [])
 
 	// Navigate on error
@@ -146,6 +161,8 @@ const JobSettings: React.FC = () => {
 		if (job) {
 			setJobName(job.name)
 			setAdvancedSettings(job.advanced_settings ?? null)
+			setSavedAdvancedSettings(job.advanced_settings ?? null)
+			setIsEditMode(true)
 		}
 	}, [job])
 
@@ -280,6 +297,34 @@ const JobSettings: React.FC = () => {
 		} catch (error) {
 			console.error("Error saving job settings:", error)
 		}
+	}
+
+	// Engines only reach the catalog through a discover, so a changed selection
+	// is passed to the job edit page, which re-discovers streams before saving.
+	const hasUndiscoveredQueryEngines = queryEnginesChanged(
+		advancedSettings,
+		savedAdvancedSettings,
+	)
+
+	const handleNext = () => {
+		if (!validateCronExpression(cronExpression)) {
+			return
+		}
+		setShowQueryEngineWarning(true)
+	}
+
+	const handleProceedToStreams = () => {
+		setShowQueryEngineWarning(false)
+		if (!jobId || !job) {
+			message.error("Job details not found.")
+			return
+		}
+
+		const unsavedSettings: UnsavedJobSettings = {
+			advancedSettings,
+			cronExpression,
+		}
+		navigate(`/jobs/${jobId}/edit`, { state: unsavedSettings })
 	}
 
 	if (isJobLoading || isClearDestinationStatusLoading) {
@@ -453,7 +498,6 @@ const JobSettings: React.FC = () => {
 								<AdvancedSettingsCard
 									sourceType={job?.source.type}
 									sourceVersion={job?.source.version}
-									queryEnginesDisabled
 								/>
 							</div>
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white px-6 pb-2">
@@ -522,13 +566,21 @@ const JobSettings: React.FC = () => {
 				<div className="flex justify-end border-t border-gray-200 bg-white p-4 shadow-sm">
 					<Button
 						type="primary"
-						onClick={handleSaveSettings}
+						onClick={
+							hasUndiscoveredQueryEngines ? handleNext : handleSaveSettings
+						}
 						className="flex items-center gap-1 bg-primary hover:bg-primary-600"
 					>
-						Save
+						{hasUndiscoveredQueryEngines ? "Next" : "Save"}
+						{hasUndiscoveredQueryEngines && <ArrowRightIcon size={16} />}
 					</Button>
 				</div>
 			</div>
+			<QueryEngineWarningModal
+				open={showQueryEngineWarning}
+				onConfirm={handleProceedToStreams}
+				onCancel={() => setShowQueryEngineWarning(false)}
+			/>
 			<ClearDestinationModal />
 			<StreamEditDisabledModal from="jobSettings" />
 		</>
