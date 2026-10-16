@@ -36,7 +36,7 @@ func (db *Database) decryptJobConfig(job *models.Job) error {
 	if job.Source != nil {
 		decryptedConfig, err := utils.Decrypt(job.Source.Config)
 		if err != nil {
-			return fmt.Errorf("failed to decrypt source config job_id[%d] source_id[%d]: %s", job.ID, job.Source.ID, err)
+			return fmt.Errorf("%w: source config job_id[%d] source_id[%d]: %s", constants.ErrConfigDecrypt, job.ID, job.Source.ID, err)
 		}
 		job.Source.Config = decryptedConfig
 	}
@@ -45,7 +45,7 @@ func (db *Database) decryptJobConfig(job *models.Job) error {
 	if job.Destination != nil {
 		decryptedConfig, err := utils.Decrypt(job.Destination.Config)
 		if err != nil {
-			return fmt.Errorf("failed to decrypt destination config job_id[%d] dest_id[%d]: %s", job.ID, job.Destination.ID, err)
+			return fmt.Errorf("%w: destination config job_id[%d] dest_id[%d]: %s", constants.ErrConfigDecrypt, job.ID, job.Destination.ID, err)
 		}
 		job.Destination.Config = decryptedConfig
 	}

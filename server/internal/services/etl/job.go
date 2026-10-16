@@ -8,8 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -379,31 +377,26 @@ func (s Service) ClearDestination(ctx context.Context, projectID string, jobID i
 	return nil
 }
 
-func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
+func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (string, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
-		return nil, fmt.Errorf("job not found: %s", err)
+		return "", fmt.Errorf("job not found: %s", err)
 	}
 
 	if job.Source == nil {
-		return nil, fmt.Errorf("job source details not found")
+		return "", fmt.Errorf("job source details not found")
 	}
 	if err := CheckClearDestinationCompatibility(job.Source.Version); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	diffCatalog, err := s.temporal.GetStreamDifference(ctx, job, job.StreamsConfig, req.UpdatedStreamsConfig)
+	operationID, err := s.temporal.StartStreamDifference(ctx, job, job.StreamsConfig, req.UpdatedStreamsConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get stream difference: %s", err)
+		return "", fmt.Errorf("failed to get stream difference: %s", err)
 	}
 
-	diffCatalogJSON, err := json.Marshal(diffCatalog)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal stream difference: %s", err)
-	}
-
-	logger.Infof("stream difference retrieved successfully for job %d\n%s", job.ID, string(diffCatalogJSON))
-	return diffCatalog, nil
+	logger.Infof("stream difference started for job %d operation_id[%s]", job.ID, operationID)
+	return operationID, nil
 }
 
 func (s Service) GetClearDestinationStatus(ctx context.Context, projectID string, jobID int) (bool, error) {
@@ -483,7 +476,7 @@ func (s Service) GetJobTasks(ctx context.Context, projectID string, jobID int) (
 	return tasks, nil
 }
 
-func (s Service) GetTaskLogs(_ context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
+func (s Service) GetTaskLogs(ctx context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		if errors.Is(err, constants.ErrJobNotFound) {
@@ -493,12 +486,12 @@ func (s Service) GetTaskLogs(_ context.Context, jobID int, filePath string, curs
 	}
 
 	// Get and validate base directory from file path
-	mainSyncDir, err := utils.GetAndValidateLogBaseDir(filePath)
+	mainSyncDir, err := utils.GetAndValidateLogBaseDir(ctx, filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	logs, err := utils.ReadLogs(mainSyncDir, cursor, limit, direction)
+	logs, err := utils.ReadLogs(ctx, mainSyncDir, cursor, limit, direction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read logs: %s", err)
 	}
@@ -645,14 +638,22 @@ func (s Service) upsertDestination(ctx context.Context, config *dto.DriverConfig
 }
 
 // worker service
-func (s Service) UpdateSyncTelemetry(ctx context.Context, req dto.UpdateSyncTelemetryRequest) error {
+func (s Service) UpdateSyncTelemetry(_ context.Context, req dto.UpdateSyncTelemetryRequest) error {
+	info := telemetry.SyncEventInfo{
+		JobID:                req.JobID,
+		WorkflowID:           req.WorkflowID,
+		ExecutionEnvironment: req.Environment,
+		Properties:           req.Properties,
+	}
 	switch strings.ToLower(req.Event) {
 	case "started":
-		telemetry.TrackSyncStart(ctx, req.JobID, req.WorkflowID, req.Environment)
+		telemetry.TrackSyncEvent(info, telemetry.EventSyncStarted)
 	case "completed":
-		telemetry.TrackSyncCompleted(req.JobID, req.WorkflowID, req.Environment)
+		telemetry.TrackSyncEvent(info, telemetry.EventSyncCompleted)
 	case "failed":
-		telemetry.TrackSyncFailed(req.JobID, req.WorkflowID, req.Environment)
+		telemetry.TrackSyncEvent(info, telemetry.EventSyncFailed)
+	case "cancelled":
+		telemetry.TrackSyncEvent(info, telemetry.EventSyncCancelled)
 	}
 
 	return nil
@@ -703,14 +704,14 @@ func (s Service) RecoverFromClearDestination(ctx context.Context, projectID stri
 	return nil
 }
 
-// StreamLogArchive creates and streams a tar.gz archive of job logs to the provided writer
-func (s Service) StreamLogArchive(jobID int, taskLogFilePath string, writer io.Writer) error {
-	baseDir, err := utils.GetAndValidateLogBaseDir(taskLogFilePath)
+// StreamLogArchive creates and streams a tar.gz archive of job logs to the provided writer.
+func (s Service) StreamLogArchive(ctx context.Context, jobID int, taskLogFilePath string, writer io.Writer) error {
+	baseDir, err := utils.GetAndValidateLogBaseDir(ctx, taskLogFilePath)
 	if err != nil {
 		return err
 	}
 
-	logsDir, _, err := utils.GetAndValidateSyncDir(baseDir)
+	_, err = utils.GetAndValidateSyncFolder(ctx, baseDir)
 	if err != nil {
 		return err
 	}
@@ -724,29 +725,9 @@ func (s Service) StreamLogArchive(jobID int, taskLogFilePath string, writer io.W
 	tarWriter := tar.NewWriter(gzipWriter)
 	defer tarWriter.Close()
 
-	stateFile := filepath.Join(baseDir, "state.json")
-	if err := utils.AddFileToArchive(tarWriter, stateFile, "state.json"); err != nil {
-		logger.Warnf("failed to add state.json to archive: %s", err)
-		// Continue anyway - state.json might not exist
-	}
-
-	logger.Debugf("Adding files from %s to archive", logsDir)
-	err = filepath.Walk(logsDir, func(path string, info os.FileInfo, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-
-		// Only include files, skip directories
-		if info.IsDir() {
-			return nil
-		}
-
-		archivePath := filepath.Join("logs", filepath.Base(path))
-		return utils.AddFileToArchive(tarWriter, path, archivePath)
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to add files from logs directory %s: %s", logsDir, err)
+	logger.Debugf("Adding files from %s to archive", baseDir)
+	if err := utils.AddFilesToArchive(ctx, baseDir, tarWriter); err != nil {
+		return err
 	}
 
 	logger.Infof("Successfully created log archive for job_id[%d]", jobID)

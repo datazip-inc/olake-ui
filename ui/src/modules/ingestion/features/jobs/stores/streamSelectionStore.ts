@@ -9,16 +9,20 @@ import {
 	StreamIdentifier,
 	SyncMode,
 	FilterConfig,
+	UpsertType,
 } from "@/modules/ingestion/common/types"
 import { IngestionMode } from "@/modules/ingestion/features/jobs/enums"
 
 import { STREAM_DEFAULTS } from "../constants"
 import { extractNamespaceFromDestination } from "../utils"
+import { getDefaultUpsertTypeFor } from "../utils/streams"
 
 export interface BulkStreamConfig {
 	syncMode?: SyncMode
 	cursorField?: string
 	appendMode?: boolean
+	dedupKeys?: string[]
+	upsertType?: UpsertType
 	normalization?: boolean
 	partitionRegex?: string
 	filterValue?: string
@@ -88,6 +92,11 @@ interface StreamSelectionState {
 
 	updateIngestionMode: (stream: StreamIdentifier, appendMode: boolean) => void
 
+	updateDedupKeys: (stream: StreamIdentifier, keys: string[]) => void
+
+	// Only meaningful for streams in upsert mode (append_mode falsy).
+	updateUpsertType: (stream: StreamIdentifier, upsertType: UpsertType) => void
+
 	bulkUpdateStreams: (
 		streamsToUpdate: StreamIdentifier[],
 		config: BulkStreamConfig,
@@ -118,6 +127,34 @@ const initialState = {
 	streamFilterStates: {} as Record<string, boolean>,
 	useFilterConfig: false,
 	bulkApplyVersion: 0,
+}
+
+// update_type and dedup_keys are only carried by streams running in upsert mode.
+// Mutates and returns the same object so callers can use it inline.
+const withUpsertTypeSynced = (
+	stream: SelectedStream,
+	defaultUpsertType?: UpsertType,
+): SelectedStream => {
+	if (stream.append_mode) {
+		delete stream.update_type
+		delete stream.dedup_keys
+	} else if (!stream.update_type && defaultUpsertType) {
+		stream.update_type = defaultUpsertType
+	}
+	return stream
+}
+
+const withDedupKeys = (
+	stream: SelectedStream,
+	keys: string[],
+): SelectedStream => {
+	const next = { ...stream }
+	if (keys.length > 0) {
+		next.dedup_keys = [...keys].sort()
+	} else {
+		delete next.dedup_keys
+	}
+	return next
 }
 
 export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
@@ -162,6 +199,9 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 							stream_name: streamName,
 							disabled: false,
 							append_mode: ingestionMode === IngestionMode.APPEND,
+							...(ingestionMode !== IngestionMode.APPEND && {
+								update_type: getDefaultUpsertTypeFor(prev.streams, stream),
+							}),
 						},
 					]
 					changed = true
@@ -388,8 +428,61 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 						...prev.selected_streams,
 						[namespace]: prev.selected_streams[namespace].map(s =>
 							s.stream_name === streamName
-								? { ...s, append_mode: appendMode }
+								? withUpsertTypeSynced(
+										{ ...s, append_mode: appendMode },
+										getDefaultUpsertTypeFor(prev.streams, stream),
+									)
 								: s,
+						),
+					},
+				},
+			}
+		}),
+
+	updateUpsertType: (stream, upsertType) =>
+		set(state => {
+			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
+
+			const prev = state.streamsData
+			const streamExists = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+			if (!streamExists) return state
+
+			return {
+				streamsData: {
+					...prev,
+					selected_streams: {
+						...prev.selected_streams,
+						[namespace]: prev.selected_streams[namespace].map(s =>
+							s.stream_name === streamName && !s.append_mode
+								? { ...s, update_type: upsertType }
+								: s,
+						),
+					},
+				},
+			}
+		}),
+
+	updateDedupKeys: (stream, keys) =>
+		set(state => {
+			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
+
+			const prev = state.streamsData
+			const streamExists = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+			if (!streamExists) return state
+
+			return {
+				streamsData: {
+					...prev,
+					selected_streams: {
+						...prev.selected_streams,
+						[namespace]: prev.selected_streams[namespace].map(s =>
+							s.stream_name === streamName ? withDedupKeys(s, keys) : s,
 						),
 					},
 				},
@@ -441,10 +534,27 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 				)
 
 				if (streamIndex !== -1) {
-					const newStream = { ...streamList[streamIndex] }
+					let newStream = { ...streamList[streamIndex] }
 
-					if (config.appendMode !== undefined)
+					if (config.appendMode !== undefined) {
 						newStream.append_mode = config.appendMode
+					}
+					if (config.dedupKeys !== undefined) {
+						newStream = withDedupKeys(newStream, config.dedupKeys)
+					}
+					if (config.upsertType !== undefined)
+						newStream.update_type = config.upsertType
+					if (
+						config.appendMode !== undefined ||
+						config.upsertType !== undefined
+					)
+						withUpsertTypeSynced(
+							newStream,
+							getDefaultUpsertTypeFor(updatedStreams, {
+								streamName,
+								namespace,
+							}),
+						)
 					if (config.normalization !== undefined)
 						newStream.normalization = config.normalization
 					if (config.partitionRegex !== undefined)
@@ -504,7 +614,15 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			const updatedSelected = Object.fromEntries(
 				Object.entries(prev.selected_streams).map(([ns, streams]) => [
 					ns,
-					streams.map(s => ({ ...s, append_mode: appendMode })),
+					streams.map(s =>
+						withUpsertTypeSynced(
+							{ ...s, append_mode: appendMode },
+							getDefaultUpsertTypeFor(prev.streams, {
+								streamName: s.stream_name,
+								namespace: ns,
+							}),
+						),
+					),
 				]),
 			)
 
@@ -616,6 +734,12 @@ export const selectStreamsData = (state: StreamSelectionState) =>
 	state.streamsData
 export const selectIsDiscovering = (state: StreamSelectionState) =>
 	state.isDiscovering
+// Delete formats the catalog's target query engines can read. Discover computes
+// this once and writes the identical list to every stream, so reading it off any
+// one stream is enough — no need to scan or intersect the rest.
+// Undefined on catalogs discovered before target query engines existed.
+export const selectAvailableUpdateTypes = (state: StreamSelectionState) =>
+	state.streamsData?.streams?.[0]?.stream.available_update_types
 export const selectInitialStreamsSnapshot = (state: StreamSelectionState) =>
 	state.initialStreamsSnapshot
 export const selectActiveStreamKey = (state: StreamSelectionState) =>

@@ -2,6 +2,7 @@ import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
 	DownloadSimpleIcon,
+	SpinnerIcon,
 } from "@phosphor-icons/react"
 import { message } from "antd"
 import { useState, useEffect } from "react"
@@ -9,6 +10,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom"
 import { v4 as uuidv4 } from "uuid"
 
 import {
+	SourceTestConnectionModal,
 	TestConnectionFailureModal,
 	TestConnectionModal,
 	TestConnectionSuccessModal,
@@ -26,7 +28,7 @@ import {
 	useDestinations,
 } from "@/modules/ingestion/features/destinations/hooks"
 import {
-	useTestSourceConnection,
+	useSourceConnectionTest,
 	useSources,
 } from "@/modules/ingestion/features/sources/hooks"
 
@@ -35,6 +37,7 @@ import {
 	StepIndicator as StepProgress,
 	SchemaConfiguration,
 	ResetStreamsModal,
+	IndexBuildWarningModal,
 } from "../components"
 import { JOB_CREATION_STEPS, JOB_STEP_NUMBERS } from "../constants"
 import { useCreateJob } from "../hooks"
@@ -50,6 +53,8 @@ import {
 	validateCronExpression,
 	formatSelectedStreamsPayload,
 	validateStreams,
+	willBuildIndex,
+	withIndexRequired,
 } from "../utils"
 
 // Internal imports from components
@@ -63,6 +68,7 @@ const JobCreation: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
 		JOB_CREATION_STEPS.CONFIG as JobCreationSteps,
 	)
+	const [showIndexBuildWarning, setShowIndexBuildWarning] = useState(false)
 
 	// Config step states
 	const {
@@ -84,6 +90,9 @@ const JobCreation: React.FC = () => {
 
 	// Initialize the store exactly once using initialData if navigating
 	useEffect(() => {
+		// JobSettings writes to this store without resetting it, so a new job
+		// would otherwise inherit the last viewed job's advanced settings.
+		resetJobConfig()
 		if (initialData.jobName) setJobName(initialData.jobName)
 		if (initialData.cronExpression)
 			setCronExpression(initialData.cronExpression)
@@ -123,13 +132,12 @@ const JobCreation: React.FC = () => {
 	const { setShowResetStreamsModal } = useJobStore()
 	const isDiscovering = useStreamSelectionStore(state => state.isDiscovering)
 
-	const [showTestingModal, setShowTestingModal] = useState(false)
 	const [showSuccessModal, setShowSuccessModal] = useState(false)
 	const [showFailureModal, setShowFailureModal] = useState(false)
 	const [showEntitySavedModal, setShowEntitySavedModal] = useState(false)
 	const [showCancelModal, setShowCancelModal] = useState(false)
-	const { mutateAsync: addJob } = useCreateJob()
-	const testSourceMutation = useTestSourceConnection()
+	const { mutateAsync: addJob, isPending: isCreatingJob } = useCreateJob()
+	const sourceConnectionTest = useSourceConnectionTest()
 	const testDestinationMutation = useTestDestinationConnection()
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
@@ -162,28 +170,32 @@ const JobCreation: React.FC = () => {
 		if (isSource && !selectedSource) return false
 		if (!isSource && !selectedDestination) return false
 		setConnectionTestType(isSource ? "source" : "destination")
-		setShowTestingModal(true)
+		if (isSource) {
+			const result = await sourceConnectionTest.run(
+				{
+					type: sourceConnectorPayload.type,
+					version: sourceConnectorPayload.version,
+					config: sourceConnectorPayload.config,
+				},
+				true,
+			)
+			if (result.outcome === "connection_failed") {
+				setTestConnectionError(result.error)
+				setShowFailureModal(true)
+			}
+			return result.outcome === "passed"
+		}
 		try {
-			const testResult = isSource
-				? await testSourceMutation.mutateAsync({
-						source: {
-							type: sourceConnectorPayload.type,
-							version: sourceConnectorPayload.version,
-							config: sourceConnectorPayload.config,
-						},
-						existing: true,
-					})
-				: await testDestinationMutation.mutateAsync({
-						destination: {
-							type: destinationConnectorPayload.type,
-							version: destinationConnectorPayload.version,
-							config: destinationConnectorPayload.config,
-						},
-						existing: true,
-						sourceType: sourceConnectorPayload.type,
-						sourceVersion: sourceConnectorPayload.version,
-					})
-			setShowTestingModal(false)
+			const testResult = await testDestinationMutation.mutateAsync({
+				destination: {
+					type: destinationConnectorPayload.type,
+					version: destinationConnectorPayload.version,
+					config: destinationConnectorPayload.config,
+				},
+				existing: true,
+				sourceType: sourceConnectorPayload.type,
+				sourceVersion: sourceConnectorPayload.version,
+			})
 			if (
 				testResult.data?.connection_result.status ===
 				TEST_CONNECTION_STATUS.SUCCEEDED
@@ -200,12 +212,7 @@ const JobCreation: React.FC = () => {
 			setShowFailureModal(true)
 			return false
 		} catch {
-			setShowTestingModal(false)
-			message.error(
-				isSource
-					? "Source connection test failed"
-					: "Destination connection test failed",
-			)
+			message.error("Destination connection test failed")
 			return false
 		}
 	}
@@ -234,7 +241,7 @@ const JobCreation: React.FC = () => {
 				selected_streams: formatSelectedStreamsPayload(streamsData),
 			}),
 			frequency: cronExpression,
-			advanced_settings: advancedSettings,
+			advanced_settings: withIndexRequired(advancedSettings, streamsData),
 		}
 
 		try {
@@ -272,9 +279,14 @@ const JobCreation: React.FC = () => {
 			}
 			case JOB_CREATION_STEPS.STREAMS: {
 				if (!streamsData) return
-				const error = validateStreams(streamsData)
+				const error = validateStreams(streamsData, sourceConnectorPayload.type)
 				if (error) {
 					message.error(error)
+					return
+				}
+				// Positional deletes need a destination index built on the first sync.
+				if (willBuildIndex(streamsData)) {
+					setShowIndexBuildWarning(true)
 					return
 				}
 				await handleJobCreation()
@@ -384,14 +396,16 @@ const JobCreation: React.FC = () => {
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<div className="flex space-x-4">
 					<button
-						className="rounded-md border border-danger px-4 py-1 text-danger hover:bg-danger hover:text-white"
+						className="rounded-md border border-danger px-4 py-1 text-danger hover:bg-danger hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 						onClick={handleCancel}
+						disabled={isCreatingJob}
 					>
 						Cancel
 					</button>
 					<button
 						onClick={handleSaveJob}
-						className="flex items-center justify-center gap-2 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
+						className="flex items-center justify-center gap-2 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb] disabled:cursor-not-allowed disabled:opacity-50"
+						disabled={isCreatingJob}
 					>
 						<DownloadSimpleIcon className="size-4" />
 						Save Job
@@ -403,7 +417,8 @@ const JobCreation: React.FC = () => {
 							onClick={handleBack}
 							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb] disabled:cursor-not-allowed disabled:opacity-50"
 							disabled={
-								currentStep === JOB_CREATION_STEPS.STREAMS && isDiscovering
+								(currentStep === JOB_CREATION_STEPS.STREAMS && isDiscovering) ||
+								isCreatingJob
 							}
 						>
 							Back
@@ -412,18 +427,26 @@ const JobCreation: React.FC = () => {
 					<button
 						type="button"
 						data-testid="create-job-wizard-submit"
-						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
+						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
 						onClick={handleNext}
+						disabled={isCreatingJob}
 					>
 						{currentStep === JOB_CREATION_STEPS.STREAMS ? "Create Job" : "Next"}
-						<ArrowRightIcon className="size-4 text-white" />
+						{isCreatingJob ? (
+							<SpinnerIcon className="size-4 animate-spin text-white" />
+						) : (
+							<ArrowRightIcon className="size-4 text-white" />
+						)}
 					</button>
 					<TestConnectionModal
-						open={showTestingModal}
+						open={
+							testDestinationMutation.isPending || sourceConnectionTest.testing
+						}
 						connectionType={connectionTestType}
 					/>
+					<SourceTestConnectionModal {...sourceConnectionTest.modalProps} />
 					<TestConnectionSuccessModal
-						open={showSuccessModal}
+						open={showSuccessModal || sourceConnectionTest.showSuccess}
 						connectionType={connectionTestType}
 					/>
 					<EntitySavedModal
@@ -449,6 +472,15 @@ const JobCreation: React.FC = () => {
 				</div>
 			</div>
 			<ResetStreamsModal onConfirm={handleConfirmResetStreams} />
+
+			<IndexBuildWarningModal
+				open={showIndexBuildWarning}
+				onConfirm={async () => {
+					setShowIndexBuildWarning(false)
+					await handleJobCreation()
+				}}
+				onCancel={() => setShowIndexBuildWarning(false)}
+			/>
 		</div>
 	)
 }

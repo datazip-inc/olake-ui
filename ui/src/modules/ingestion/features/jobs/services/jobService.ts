@@ -1,3 +1,5 @@
+import { OperationAccepted } from "@/common/types"
+import { runOperation } from "@/common/utils"
 import { API_CONFIG } from "@/config/apiConfig"
 import { api } from "@/core/api"
 import { StreamsDataStructure } from "@/modules/ingestion/common/types"
@@ -39,6 +41,7 @@ export const jobService = {
 		try {
 			const response = await api.get<Job>(
 				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
+				{ timeout: 300000 },
 			)
 
 			const job = {
@@ -61,6 +64,7 @@ export const jobService = {
 			const response = await api.post<Job>(
 				API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID),
 				job,
+				{ timeout: 300000 },
 			)
 			return response.data
 		} catch (error) {
@@ -74,7 +78,7 @@ export const jobService = {
 			const response = await api.put<Job>(
 				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
 				job,
-				{ timeout: 30000, showNotification: true },
+				{ timeout: 300000, showNotification: true },
 			)
 			return response.data
 		} catch (error) {
@@ -212,14 +216,21 @@ export const jobService = {
 		streamsConfig: string,
 	): Promise<{ difference_streams: StreamsDataStructure }> => {
 		try {
-			const response = await api.post<{
+			// Runs a connector container, so the POST only starts it and the diff is
+			// collected by polling.
+			return await runOperation<{
 				difference_streams: StreamsDataStructure
-			}>(
-				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/stream-difference`,
-				{ updated_streams_config: streamsConfig },
-				{ timeout: 30000 },
-			)
-			return response.data
+			}>(async () => {
+				const response = await api.post<OperationAccepted>(
+					`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/stream-difference`,
+					{ updated_streams_config: streamsConfig },
+					// Untimed: unlike the other submits, this body *is* the streams
+					// catalog and has been seen near 10 MB. Uploading that on a slow link
+					// takes well over a minute, and the upload is never idle.
+					{ timeout: 0 },
+				)
+				return response.data
+			})
 		} catch (error) {
 			console.error("Error getting stream difference:", error)
 			throw error

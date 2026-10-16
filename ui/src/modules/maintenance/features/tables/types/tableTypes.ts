@@ -66,6 +66,7 @@ export interface TableDetailsApiResponse {
 export interface TableMetricsApiResponse {
 	result: {
 		list: Array<{
+			commitTime?: number
 			filesSummaryForChart?: {
 				"data-files"?: string
 				"delete-files"?: string
@@ -158,6 +159,7 @@ export type TableDetailsViewModel = TableDetailsApiModel & TableCronFormModel
 export interface TableMetricsFileSummary {
 	"data-files": number
 	"delete-files": number
+	commitTime?: number
 }
 
 export interface TableMetricsModalData {

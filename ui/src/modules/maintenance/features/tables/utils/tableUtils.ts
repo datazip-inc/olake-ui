@@ -361,14 +361,16 @@ export const mapTableDetailsResponseToTableDetailsViewModel = (
 	}
 }
 
-// Maps the snapshots/metrics payload to only data-files and delete-files.
+// Maps the snapshots/metrics payload to only data-files, delete-files and commit time.
 export const mapTableMetricsResponseToFileSummary = (
 	data: TableMetricsApiResponse,
 ): TableMetricsFileSummary => {
-	const filesSummary = data.result?.list?.[0]?.filesSummaryForChart
+	const latestSnapshot = data.result?.list?.[0]
+	const filesSummary = latestSnapshot?.filesSummaryForChart
 	return {
 		"data-files": Number(filesSummary?.["data-files"] ?? 0),
 		"delete-files": Number(filesSummary?.["delete-files"] ?? 0),
+		commitTime: latestSnapshot?.commitTime,
 	}
 }
 
@@ -387,7 +389,7 @@ export const buildTableMetricsModalData = (
 	return {
 		fileCount: details?.fileCount ?? fallbackFileCount,
 		averageFileSize: details?.averageFileSize,
-		lastCommitTime: details?.lastCommitTime,
+		lastCommitTime: metrics?.commitTime,
 		totalSize: details?.totalSize,
 		dataFiles,
 		deleteFiles,

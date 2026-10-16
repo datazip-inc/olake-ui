@@ -9,4 +9,6 @@ export const sourceKeys = {
 	// Separate root — not nested under sourceKeys.all() so source mutations never invalidate it
 	spec: (type: string, version: string) =>
 		["spec", "sources", type, version] as const,
+	queryEngines: (type: string, version: string) =>
+		["spec", "sources", type, version, "query-engines"] as const,
 }

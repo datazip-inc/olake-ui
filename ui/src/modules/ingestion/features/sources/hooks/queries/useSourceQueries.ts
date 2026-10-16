@@ -28,12 +28,28 @@ export const useSourceVersions = (type: string) => {
 	})
 }
 
+/**
+ * Query engines the connector can target. */
+export const useAvailableQueryEngines = (type: string, version: string) => {
+	return useQuery({
+		queryKey: sourceKeys.queryEngines(type, version),
+		queryFn: ({ signal }) =>
+			sourceService.getSourceSpec(type, version, signal, true),
+		enabled: !!type && !!version,
+		retry: false,
+		staleTime: Infinity,
+		gcTime: 24 * 60 * 60 * 1000, // 24 hours
+		select: response => response?.spec?.query_engines?.engines ?? [],
+	})
+}
+
 /** Cached per (type, version) forever in-memory; evicted from cache after 24h of non-use */
 export const useSourceSpec = (type: string, version: string) => {
 	return useQuery({
 		queryKey: sourceKeys.spec(type, version),
 		queryFn: ({ signal }) => sourceService.getSourceSpec(type, version, signal),
 		enabled: !!type && !!version,
+		retry: false,
 		staleTime: Infinity,
 		gcTime: 24 * 60 * 60 * 1000, // 24 hours
 	})

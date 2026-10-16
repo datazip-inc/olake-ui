@@ -14,6 +14,7 @@ var (
 	ErrSourceNotFound      = errors.New("source not found")
 	ErrDestinationNotFound = errors.New("destination not found")
 	ErrJobNotFound         = errors.New("job not found")
+	ErrConfigDecrypt       = errors.New("failed to decrypt config")
 )
 
 // Validation messages
