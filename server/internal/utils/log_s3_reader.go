@@ -71,7 +71,7 @@ func GetAndValidateS3SyncDir(ctx context.Context, workflowDir string) (string, e
 	return syncFolders[0], nil
 }
 
-// listS3LogChunks lists the S3 log chunks for a workflow.
+// listS3LogChunks lists the numbered log chunks named <prefix>-NNNNNN-… in logDir.
 func listS3LogChunks(ctx context.Context, logDir, prefix string) ([]logChunkFile, error) {
 	names, err := storage.ListObjectNames(ctx, logDir)
 	if err != nil {
@@ -96,7 +96,7 @@ func listS3LogChunks(ctx context.Context, logDir, prefix string) ([]logChunkFile
 // parseNumberedLogChunkName parses names like connector-000001-<timestamp>.log.
 func parseNumberedLogChunkName(name, prefix string) (int, bool) {
 	body := strings.TrimSuffix(name, ".log")
-	if len(body) <= len(prefix)+1 {
+	if !strings.HasPrefix(body, prefix+"-") {
 		return 0, false
 	}
 	remainder := body[len(prefix)+1:]

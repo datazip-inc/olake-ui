@@ -107,8 +107,9 @@ var (
 	ConnectorLogPrefix = "connector"
 	WorkerLogPrefix    = "worker"
 
-	// WorkerLogS3Dir holds the worker's log chunks inside a run's logs folder in S3 mode.
-	WorkerLogS3Dir = "worker"
+	// WorkerLogRelDir is where the worker writes its log chunks in S3 mode,
+	// relative to a run's folder (the worker's constants.WorkerLogRelDir).
+	WorkerLogRelDir = "logs/worker"
 
 	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.

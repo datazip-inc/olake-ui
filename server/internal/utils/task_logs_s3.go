@@ -13,14 +13,12 @@ import (
 // openS3TaskLogs opens the chunk series for a source, in merge order (sync
 // first): the connector's chunks in logs/sync_*/ and the worker's in logs/worker/.
 func openS3TaskLogs(ctx context.Context, workflowDir, source string) ([]logFile, error) {
-	logsDir := path.Join(workflowDir, "logs")
-
 	var files []logFile
 	if source == LogSourceAll || source == LogSourceSync {
 		syncFolder, err := GetAndValidateS3SyncDir(ctx, workflowDir)
 		switch {
 		case err == nil:
-			f, err := openS3LogSeries(ctx, LogSourceSync, path.Join(logsDir, syncFolder), constants.ConnectorLogPrefix)
+			f, err := openS3LogSeries(ctx, LogSourceSync, path.Join(workflowDir, "logs", syncFolder), constants.ConnectorLogPrefix)
 			if err != nil {
 				return nil, err
 			}
@@ -31,7 +29,7 @@ func openS3TaskLogs(ctx context.Context, workflowDir, source string) ([]logFile,
 		}
 	}
 	if source == LogSourceAll || source == LogSourceWorker {
-		f, err := openS3LogSeries(ctx, LogSourceWorker, path.Join(logsDir, constants.WorkerLogS3Dir), constants.WorkerLogPrefix)
+		f, err := openS3LogSeries(ctx, LogSourceWorker, path.Join(workflowDir, constants.WorkerLogRelDir), constants.WorkerLogPrefix)
 		if err != nil {
 			return nil, err
 		}
@@ -42,13 +40,12 @@ func openS3TaskLogs(ctx context.Context, workflowDir, source string) ([]logFile,
 
 // s3LogSeries reads one source's numbered log chunks as a single log.
 // A line's position is its chunk number in the high 32 bits and its line
-// number within the chunk in the low 32 bits. Chunks are downloaded on
-// demand and kept for the request.
+// number within the chunk in the low 32 bits. Chunks are written once, so a
+// position stays valid while new chunks are added.
 type s3LogSeries struct {
 	ctx    context.Context
 	dir    string
 	chunks []logChunkFile // ascending by chunk number
-	lines  map[int][]string
 }
 
 func s3LinePos(chunk, line int) int64 {
@@ -60,32 +57,23 @@ func openS3LogSeries(ctx context.Context, source, dir, prefix string) (logFile, 
 	if err != nil {
 		return logFile{}, err
 	}
-	s := &s3LogSeries{ctx: ctx, dir: dir, chunks: chunks, lines: map[int][]string{}}
+	s := &s3LogSeries{ctx: ctx, dir: dir, chunks: chunks}
 
+	// the end is the start of the next chunk, so no chunk is downloaded here
 	var size int64
 	if len(chunks) > 0 {
-		last := chunks[len(chunks)-1]
-		lines, err := s.chunkLines(last)
-		if err != nil {
-			return logFile{}, err
-		}
-		size = s3LinePos(last.index, len(lines))
+		size = s3LinePos(chunks[len(chunks)-1].index+1, 0)
 	}
 	return logFile{source: source, size: size, readOlder: s.readOlder, readNewer: s.readNewer}, nil
 }
 
 func (s *s3LogSeries) chunkLines(chunk logChunkFile) ([]string, error) {
-	if lines, ok := s.lines[chunk.index]; ok {
-		return lines, nil
-	}
 	chunkPath := path.Join(s.dir, chunk.name)
 	content, _, err := storage.ReadFileFromS3(s.ctx, "", chunkPath, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read log chunk %s: %s", chunkPath, err)
 	}
-	lines := strings.Split(strings.TrimRight(content, "\n"), "\n")
-	s.lines[chunk.index] = lines
-	return lines, nil
+	return strings.Split(strings.TrimRight(content, "\n"), "\n"), nil
 }
 
 func (s *s3LogSeries) readOlder(start int64, limit int) ([]LineWithPos, error) {

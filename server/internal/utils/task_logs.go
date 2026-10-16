@@ -26,7 +26,7 @@ const (
 // logFile is one log source taking part in a task logs read (a file on NFS,
 // a series of chunks on S3), with its paging state for the current request.
 // Positions are opaque to the merge: byte offsets on NFS, chunk and line
-// numbers on S3. size is the position just after the last line.
+// numbers on S3. size is the end position: no line starts at or after it.
 type logFile struct {
 	source string
 	size   int64
@@ -37,7 +37,7 @@ type logFile struct {
 	readNewer func(start int64, limit int) ([]LineWithPos, error)
 	close     func()
 
-	start      int64 // where this read starts in the file
+	start      int64 // where this read starts in the source
 	next       int64 // where the following read continues
 	exhausted  bool  // fewer lines than asked: nothing further in this direction
 	unreturned int   // lines read but cut by the limit
@@ -45,9 +45,8 @@ type logFile struct {
 
 // taskLogLine is a parsed line plus where it came from, used while merging.
 type taskLogLine struct {
-	entry LogEntry
-	file  int // index into files; also the tie-break order (sync first)
-	pos   LineWithPos
+	file int // index into files; also the tie-break order (sync first)
+	line LineWithPos
 }
 
 // NormalizeLogSource returns a known log source, defaulting to "all".
@@ -122,7 +121,7 @@ func mergeTaskLogs(files []logFile, cursor taskLogCursor, limit int, older bool)
 		f := &files[i]
 		offset, ok := cursor[f.source]
 		if !ok {
-			// no cursor: tail from the end. A file missing from a non-empty
+			// no cursor: tail from the end. A source missing from a non-empty
 			// cursor was created after it was issued, so all of it is newer.
 			offset = f.size
 			if len(cursor) > 0 {
@@ -142,7 +141,7 @@ func mergeTaskLogs(files []logFile, cursor taskLogCursor, limit int, older bool)
 		}
 		f.exhausted = len(lines) < limit
 		for _, line := range lines {
-			candidates = append(candidates, taskLogLine{entry: line.content, file: i, pos: line})
+			candidates = append(candidates, taskLogLine{file: i, line: line})
 			f.unreturned++
 		}
 	}
@@ -150,8 +149,8 @@ func mergeTaskLogs(files []logFile, cursor taskLogCursor, limit int, older bool)
 	// each file is already in order; a stable sort merges them by time
 	sort.SliceStable(candidates, func(i, j int) bool {
 		a, b := candidates[i], candidates[j]
-		if !a.entry.Time.Equal(b.entry.Time) {
-			return a.entry.Time.Before(b.entry.Time)
+		if !a.line.content.Time.Equal(b.line.content.Time) {
+			return a.line.content.Time.Before(b.line.content.Time)
 		}
 		return a.file < b.file
 	})
@@ -166,18 +165,18 @@ func mergeTaskLogs(files []logFile, cursor taskLogCursor, limit int, older bool)
 		}
 	}
 
-	// the next offset of a file is set by the furthest line returned from it
+	// the next position of a source is set by the furthest line returned from it
 	response := &dto.JobTaskLogsResponse{Logs: make([]map[string]interface{}, 0, len(selected))}
 	for i := range selected {
-		line := &selected[i]
-		f := &files[line.file]
+		l := &selected[i]
+		f := &files[l.file]
 		f.unreturned--
 		if older {
-			f.next = min(f.next, line.pos.startPos)
+			f.next = min(f.next, l.line.startPos)
 		} else {
-			f.next = max(f.next, line.pos.endPos)
+			f.next = max(f.next, l.line.endPos)
 		}
-		response.Logs = append(response.Logs, line.toMap(f.source))
+		response.Logs = append(response.Logs, l.toMap(f.source))
 	}
 
 	start, next := taskLogCursor{}, taskLogCursor{}
@@ -265,13 +264,14 @@ func closeLogFiles(files []logFile) {
 }
 
 func (l *taskLogLine) toMap(source string) map[string]interface{} {
+	entry := &l.line.content
 	out := map[string]interface{}{
-		"level":   l.entry.Level,
-		"time":    l.entry.Time.UTC().Format(time.RFC3339),
-		"message": logMessageString(l.entry.Message),
+		"level":   entry.Level,
+		"time":    entry.Time.UTC().Format(time.RFC3339),
+		"message": logMessageString(entry.Message),
 		"source":  source,
 	}
-	if l.entry.Tip {
+	if entry.Tip {
 		out["tip"] = true
 	}
 	return out

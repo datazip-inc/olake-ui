@@ -895,7 +895,7 @@ http://localhost:8080
 
 - **Endpoint**: `/api/v1/project/:projectid/jobs/:jobid/tasks/:taskid/logs`
 - **Method**: POST
-- **Description**: Fetch logs for a specific job task with cursor-based pagination supporting both older and newer directions. Sync logs come from the connector (`olake.log`); worker logs come from the worker that ran the job (`worker.log`). With `source=all` both are merged by time.
+- **Description**: Fetch logs for a specific job task with cursor-based pagination supporting both older and newer directions. Sync logs come from the connector (`olake.log`, or `connector-*` chunks in S3 storage mode); worker logs come from the worker that ran the job (`worker.log`, or `logs/worker/worker-*` chunks in S3 mode). With `source=all` both are merged by time.
 - **Headers**: `Authorization: Bearer <token>`
 - **Query Params**:
   - `source` _(optional, string)_: `"all"` (default), `"sync"` or `"worker"`.
