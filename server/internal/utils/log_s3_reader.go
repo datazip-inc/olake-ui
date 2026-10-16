@@ -35,7 +35,7 @@ func readLogsFromS3(ctx context.Context, workflowDir string, cursor int64, direc
 	}
 
 	syncLogDir := path.Join(workflowDir, "logs", syncFolder)
-	chunks, err := listS3LogChunks(ctx, syncLogDir)
+	chunks, err := listS3LogChunks(ctx, syncLogDir, constants.ConnectorLogPrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -71,16 +71,16 @@ func GetAndValidateS3SyncDir(ctx context.Context, workflowDir string) (string, e
 	return syncFolders[0], nil
 }
 
-// listS3LogChunks lists the S3 log chunks for a workflow.
-func listS3LogChunks(ctx context.Context, syncLogDir string) ([]logChunkFile, error) {
-	names, err := storage.ListObjectNames(ctx, syncLogDir)
+// listS3LogChunks lists the numbered log chunks named <prefix>-NNNNNN-… in logDir.
+func listS3LogChunks(ctx context.Context, logDir, prefix string) ([]logChunkFile, error) {
+	names, err := storage.ListObjectNames(ctx, logDir)
 	if err != nil {
 		return nil, err
 	}
 
 	chunks := make([]logChunkFile, 0, len(names))
 	for _, name := range names {
-		index, ok := parseNumberedLogChunkName(name, constants.ConnectorLogPrefix)
+		index, ok := parseNumberedLogChunkName(name, prefix)
 		if !ok {
 			continue
 		}
@@ -96,7 +96,7 @@ func listS3LogChunks(ctx context.Context, syncLogDir string) ([]logChunkFile, er
 // parseNumberedLogChunkName parses names like connector-000001-<timestamp>.log.
 func parseNumberedLogChunkName(name, prefix string) (int, bool) {
 	body := strings.TrimSuffix(name, ".log")
-	if len(body) <= len(prefix)+1 {
+	if !strings.HasPrefix(body, prefix+"-") {
 		return 0, false
 	}
 	remainder := body[len(prefix)+1:]

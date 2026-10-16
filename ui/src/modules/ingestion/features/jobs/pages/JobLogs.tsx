@@ -3,8 +3,9 @@ import {
 	ArrowRightIcon,
 	ArrowsClockwiseIcon,
 	DownloadIcon,
+	LightbulbIcon,
 } from "@phosphor-icons/react"
-import { Input, Spin, Button, Tooltip, message } from "antd"
+import { Input, Spin, Button, Segmented, Tooltip, message } from "antd"
 import clsx from "clsx"
 import {
 	useEffect,
@@ -20,11 +21,11 @@ import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 import { getLogLevelClass, getLogTextColor } from "@/common/utils"
 import { getConnectorImage } from "@/modules/ingestion/common/utils"
 
-import { LOGS_CONFIG } from "../constants"
+import { LOG_SOURCE_STYLES, LOG_SOURCE_TABS, LOGS_CONFIG } from "../constants"
 import { useJobDetails } from "../hooks"
 import { jobService } from "../services"
 import { useTaskStore } from "../stores"
-import { TaskLogEntry } from "../types"
+import { TaskLogEntry, TaskLogSource } from "../types"
 
 const INITIAL_SCROLL_TIMEOUT = 100 // Timeout in ms for initial scroll to bottom
 
@@ -53,6 +54,8 @@ const JobLogs: React.FC = () => {
 
 	const {
 		taskLogs,
+		taskLogsSource,
+		resetTaskLogsSource,
 		isLoadingTaskLogs,
 		isLoadingOlderLogs,
 		isLoadingNewerLogs,
@@ -81,9 +84,11 @@ const JobLogs: React.FC = () => {
 				lowerMessage.includes(search) || lowerLevel.includes(search)
 
 			if (showOnlyErrors) {
+				// a tip is written right after a failure; keep it with its error
 				return (
 					matchesSearch &&
-					(lowerMessage.includes("error") ||
+					(log.tip ||
+						lowerMessage.includes("error") ||
 						lowerLevel.includes("error") ||
 						lowerLevel.includes("fatal"))
 				)
@@ -103,6 +108,11 @@ const JobLogs: React.FC = () => {
 		jobService.downloadTaskLogs(jobId, filePath)
 		message.success("Downloading logs...")
 	}
+
+	// Every run opens on the merged view
+	useEffect(() => {
+		resetTaskLogsSource()
+	}, [filePath, resetTaskLogsSource])
 
 	// Fetch initial batch of task logs (or refetch after filters are cleared),
 	useEffect(() => {
@@ -217,12 +227,24 @@ const JobLogs: React.FC = () => {
 		fetchNewerTaskLogs,
 	])
 
+	const resetScrollState = () => {
+		hasPerformedInitialScroll.current = false
+		isFetchingOlderRef.current = false
+		previousLogCountRef.current = 0
+		setFirstItemIndex(LOGS_CONFIG.VIRTUAL_LIST_START_INDEX)
+	}
+
 	const handleRefresh = () => {
 		if (isTaskLog && filePath && jobId) {
-			hasPerformedInitialScroll.current = false
-			setFirstItemIndex(LOGS_CONFIG.VIRTUAL_LIST_START_INDEX)
+			resetScrollState()
 			fetchInitialTaskLogs(jobId, historyId || "1", filePath)
 		}
+	}
+
+	const handleSourceChange = (source: TaskLogSource) => {
+		if (!isTaskLog || !filePath || !jobId || source === taskLogsSource) return
+		resetScrollState()
+		fetchInitialTaskLogs(jobId, historyId || "1", filePath, source)
 	}
 
 	if (taskLogsError) {
@@ -281,7 +303,21 @@ const JobLogs: React.FC = () => {
 			</div>
 
 			<div className="flex flex-1 flex-col overflow-hidden border-t border-gray-200 p-6">
-				<h2 className="mb-4 text-xl font-bold">Logs</h2>
+				<h2 className="mb-1 text-xl font-bold">Logs</h2>
+				<p className="mb-4 text-sm text-gray-500">
+					Sync logs come from the connector run. Worker logs come from the
+					machine that scheduled and ran the job.
+				</p>
+
+				<Segmented<TaskLogSource>
+					className="mb-4 self-start"
+					value={taskLogsSource}
+					onChange={handleSourceChange}
+					options={LOG_SOURCE_TABS.map(tab => ({
+						value: tab.value,
+						label: <span className="px-2">{tab.label}</span>,
+					}))}
+				/>
 
 				<div className="mb-4 flex items-center gap-3">
 					<Search
@@ -371,33 +407,74 @@ const JobLogs: React.FC = () => {
 	)
 }
 
-const JobLogRow: React.FC<{ log: TaskLogEntry }> = ({ log }) => (
-	<div className="grid grid-cols-[8rem_6rem_6rem_minmax(0,1fr)] border-b border-gray-100">
-		<div className="px-4 py-3 font-mono text-xs font-medium text-gray-500">
-			{log.date}
-		</div>
-		<div className="px-4 py-3 font-mono text-xs font-medium text-gray-500">
-			{log.time}
-		</div>
-		<div className="px-4 py-3 font-sans text-xs font-medium leading-5">
-			<span
-				className={clsx(
-					"rounded-md px-2 py-[5px] text-xs capitalize",
-					getLogLevelClass(log.level),
-				)}
-			>
-				{log.level}
-			</span>
-		</div>
+const JobLogRow: React.FC<{ log: TaskLogEntry }> = ({ log }) => {
+	const { label, Icon, badgeClass, accentClass, rowClass } =
+		LOG_SOURCE_STYLES[log.source]
+	return (
 		<div
 			className={clsx(
-				"px-4 py-3 font-mono text-xs font-medium",
-				getLogTextColor(log.level),
+				"relative grid grid-cols-[8rem_6rem_7rem_6rem_minmax(0,1fr)] border-b border-gray-100",
+				rowClass,
 			)}
 		>
-			{log.message}
+			{/* short source accent, vertically centred in the row */}
+			<span
+				className={clsx(
+					"absolute left-1 top-1/2 h-8 w-1 -translate-y-1/2 rounded-full",
+					accentClass,
+				)}
+			/>
+			<div className="px-4 py-3 font-mono text-xs font-medium text-gray-500">
+				{log.date}
+			</div>
+			<div className="px-4 py-3 font-mono text-xs font-medium text-gray-500">
+				{log.time}
+			</div>
+			<div className="min-w-0 px-2 py-3 leading-5">
+				<span
+					className={clsx(
+						"inline-flex items-center gap-1 rounded-md border px-2 py-[3px] text-xs font-semibold uppercase",
+						badgeClass,
+					)}
+				>
+					<Icon
+						size={12}
+						className="shrink-0"
+					/>
+					{label}
+				</span>
+			</div>
+			<div className="px-4 py-3 font-sans text-xs font-medium leading-5">
+				<span
+					className={clsx(
+						"rounded-md px-2 py-[5px] text-xs capitalize",
+						getLogLevelClass(log.level),
+					)}
+				>
+					{log.level}
+				</span>
+			</div>
+			{log.tip ? (
+				<div className="m-1 flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 font-mono text-xs font-medium text-emerald-800">
+					<LightbulbIcon
+						size={14}
+						weight="fill"
+						className="mt-px shrink-0"
+					/>
+					{log.message}
+				</div>
+			) : (
+				<div
+					className={clsx(
+						"px-4 py-3 font-mono text-xs font-medium",
+						getLogTextColor(log.level),
+					)}
+				>
+					{log.message}
+				</div>
+			)}
 		</div>
-	</div>
-)
+	)
+}
 
 export default JobLogs
