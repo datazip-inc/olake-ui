@@ -14,7 +14,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/storage"
 	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
@@ -72,15 +71,18 @@ const (
 // files to the correct directory, avoiding large payloads in Temporal.
 //
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
-// DiscoverStreams runs discover with the job's stored catalog as input; with an empty catalog,
-// discover runs fresh.
-
 // ErrWorkflowStart means Temporal did not start the workflow (for example, it is unreachable), so
 // the command never ran. Unlike a workflow that ran and failed, a retry can succeed.
 var ErrWorkflowStart = errors.New("failed to start workflow")
 
-func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config string, stored types.StreamsCatalog, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (types.StreamsCatalog, error) {
-	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().UnixNano())
+// StartDiscoverStreams starts discover with the job's stored catalog as input and returns the
+// operation ID; with an empty catalog, discover runs fresh. The result is read with
+// ReadDiscoverOutput once the operation has succeeded.
+func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceType, version, config string, stored types.StreamsCatalog, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (string, error) {
+	workflowID, err := NewOperationID(OperationDiscoverCatalog, projectID)
+	if err != nil {
+		return "", err
+	}
 
 	configs := []JobConfig{
 		{Name: "config.json", Data: config},
@@ -120,28 +122,57 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 			"--selected-streams", "/mnt/config/"+constants.SelectedStreamsFile,
 		)
 	case stored.Streams != "":
-		configs = append(configs, JobConfig{Name: constants.StreamsFile, Data: stored.Streams})
+		// The result is read in a later request that does not know the job, so record here that
+		// the job is legacy: it keeps streams_config even when the driver also writes the split files.
+		configs = append(configs,
+			JobConfig{Name: constants.StreamsFile, Data: stored.Streams},
+			JobConfig{Name: constants.LegacyJobMarkerFile, Data: "true"},
+		)
 		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/"+constants.StreamsFile)
 	}
 
 	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
-		return types.StreamsCatalog{}, fmt.Errorf("failed to setup config files: %s", err)
+		return "", fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 
-	// every driver writes streams.json, so it is the file the workflow waits for
-	if err := t.discoverWorkflow(ctx, sourceType, version, workflowID, cmdArgs, constants.StreamsFile); err != nil {
-		return types.StreamsCatalog{}, err
+	// every driver writes streams.json, so it is the file the workflow reports
+	if _, err := t.startDiscoverWorkflow(ctx, sourceType, version, workflowID, cmdArgs, constants.StreamsFile); err != nil {
+		return "", err
 	}
-	return readDiscoveredCatalog(ctx, workflowID)
+	return workflowID, nil
+}
+
+// ReadDiscoverOutput reads the catalog a succeeded discover operation wrote, and whether the
+// operation was started for a legacy job.
+func ReadDiscoverOutput(ctx context.Context, operationID string) (types.StreamsCatalog, bool, error) {
+	catalog, err := readDiscoveredCatalog(ctx, operationID)
+	if err != nil {
+		return types.StreamsCatalog{}, false, err
+	}
+	// every driver writes streams.json, so a discover without it did not finish its output
+	if catalog.Streams == "" {
+		return types.StreamsCatalog{}, false, fmt.Errorf("discover wrote no %s", constants.StreamsFile)
+	}
+	_, err = storage.ReadFile(ctx, path.Join(operationID, constants.LegacyJobMarkerFile))
+	switch {
+	case err == nil:
+		return catalog, true, nil
+	case errors.Is(err, fs.ErrNotExist):
+		return catalog, false, nil
+	default:
+		return types.StreamsCatalog{}, false, fmt.Errorf("failed to read %s: %s", constants.LegacyJobMarkerFile, err)
+	}
 }
 
 // ConvertStreams converts a legacy streams.json into the split format with the CLI's offline
 // conversion (discover --convert-streams), which reads the catalog the way every command reads a
 // --streams input and never connects to the source. It returns the split catalog it wrote.
+// It runs synchronously and its workflow ID is not an operation ID, so it cannot be polled
+// through the operations API.
 func (t *Temporal) ConvertStreams(ctx context.Context, jobID int, sourceType, version, streamsConfig string) (types.StreamsCatalog, error) {
 	workflowID := fmt.Sprintf("convert-streams-%s-%d-%d", sourceType, jobID, time.Now().UnixNano())
 
@@ -151,8 +182,12 @@ func (t *Temporal) ConvertStreams(ctx context.Context, jobID int, sourceType, ve
 	}
 
 	args := []string{"discover", "--streams", "/mnt/config/" + constants.StreamsFile, "--convert-streams"}
-	if err := t.discoverWorkflow(ctx, sourceType, version, workflowID, args, constants.SelectedStreamsFile); err != nil {
+	run, err := t.startDiscoverWorkflow(ctx, sourceType, version, workflowID, args, constants.SelectedStreamsFile)
+	if err != nil {
 		return types.StreamsCatalog{}, err
+	}
+	if _, err := ExtractWorkflowResponse(ctx, run); err != nil {
+		return types.StreamsCatalog{}, fmt.Errorf("failed to extract workflow response: %v", err)
 	}
 	catalog, err := readDiscoveredCatalog(ctx, workflowID)
 	if err != nil {
@@ -164,8 +199,8 @@ func (t *Temporal) ConvertStreams(ctx context.Context, jobID int, sourceType, ve
 	return catalog, nil
 }
 
-// discoverWorkflow runs a discover workflow and waits for it to write outputFile.
-func (t *Temporal) discoverWorkflow(ctx context.Context, sourceType, version, workflowID string, args []string, outputFile string) error {
+// startDiscoverWorkflow starts a discover workflow that writes outputFile, without waiting for it.
+func (t *Temporal) startDiscoverWorkflow(ctx context.Context, sourceType, version, workflowID string, args []string, outputFile string) (client.WorkflowRun, error) {
 	req := &ExecutionRequest{
 		Command:       Discover,
 		ConnectorType: sourceType,
@@ -177,12 +212,9 @@ func (t *Temporal) discoverWorkflow(ctx context.Context, sourceType, version, wo
 	}
 	run, err := t.Client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{ID: workflowID, TaskQueue: t.taskQueue}, ExecuteWorkflow, req)
 	if err != nil {
-		return fmt.Errorf("%w: discover: %s", ErrWorkflowStart, err)
+		return nil, fmt.Errorf("%w: discover: %s", ErrWorkflowStart, err)
 	}
-	if _, err := ExtractWorkflowResponse(ctx, run); err != nil {
-		return fmt.Errorf("failed to extract workflow response: %v", err)
-	}
-	return nil
+	return run, nil
 }
 
 // readDiscoveredCatalog reads the catalog files that a discover or convert workflow wrote.
@@ -219,14 +251,18 @@ func readDiscoveredCatalog(ctx context.Context, workflowID string) (types.Stream
 	return catalog, nil
 }
 
-// FetchSpec runs a workflow to fetch driver specifications
-func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceType, version string, availableQueryEngines bool) (dto.SpecOutput, error) {
+// StartDriverSpecs returns an empty operation ID when no workflow was needed, in which
+// case there is nothing to poll and the caller answers immediately.
+func (t *Temporal) StartDriverSpecs(ctx context.Context, projectID, destinationType, sourceType, version string, availableQueryEngines bool) (string, error) {
 	// An older image rejects the flag and fails the workflow, so report the feature as absent instead.
 	if availableQueryEngines && !supportsQueryEngines(version) {
-		return dto.SpecOutput{}, nil
+		return "", nil
 	}
 
-	workflowID := fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix())
+	workflowID, err := NewOperationID(OperationSpec, projectID)
+	if err != nil {
+		return "", err
+	}
 
 	version = utils.ResolveSpecVersion(version)
 
@@ -257,19 +293,11 @@ func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceTy
 		TaskQueue: t.taskQueue,
 	}
 
-	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
-	if err != nil {
-		return dto.SpecOutput{}, fmt.Errorf("failed to execute fetch spec workflow: %s", err)
+	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
+		return "", fmt.Errorf("failed to execute fetch spec workflow: %s", err)
 	}
 
-	result, err := ExtractWorkflowResponse(ctx, run)
-	if err != nil {
-		return dto.SpecOutput{}, fmt.Errorf("failed to extract workflow response: %v", err)
-	}
-
-	return dto.SpecOutput{
-		Spec: result,
-	}, nil
+	return workflowID, nil
 }
 
 // supportsQueryEngines reports whether the version takes the engine flags; custom builds are assumed current.
@@ -277,14 +305,18 @@ func supportsQueryEngines(version string) bool {
 	return utils.GetCustomDriverVersion() != "" || semver.Compare(version, constants.DefaultQueryEnginesVersion) >= 0
 }
 
-// TestConnection runs a workflow to test connection
-func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag, sourceType, version, config string) (map[string]interface{}, error) {
+func (t *Temporal) StartVerifyDriverCredentials(ctx context.Context, projectID, flag, sourceType, version, config string) (string, error) {
+	workflowID, err := NewOperationID(OperationTestConnection, projectID)
+	if err != nil {
+		return "", err
+	}
+
 	configs := []JobConfig{
 		{Name: "config.json", Data: config},
 	}
 
 	if err := SetupConfigFiles(ctx, Check, workflowID, configs); err != nil {
-		return nil, fmt.Errorf("failed to setup config files: %s", err)
+		return "", fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	cmdArgs := []string{
@@ -311,16 +343,15 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		TaskQueue: t.taskQueue,
 	}
 
-	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: test connection: %s", ErrWorkflowStart, err)
+	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
+		return "", fmt.Errorf("%w: test connection: %s", ErrWorkflowStart, err)
 	}
 
-	result, err := ExtractWorkflowResponse(ctx, run)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
-	}
+	return workflowID, nil
+}
 
+// DecodeConnectionStatus reshapes the check workflow's raw output into {message, status}.
+func DecodeConnectionStatus(result map[string]interface{}) (map[string]interface{}, error) {
 	connectionStatus, ok := result["connectionStatus"].(map[string]interface{})
 	if !ok || connectionStatus == nil {
 		return nil, fmt.Errorf("connection status not found")
@@ -332,10 +363,15 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		return nil, fmt.Errorf("connection status not found")
 	}
 
-	return map[string]interface{}{
+	response := map[string]interface{}{
 		"message": message,
 		"status":  status,
-	}, nil
+	}
+	// prerequisites is optional: only source drivers with CDC checks report it
+	if prerequisites, ok := connectionStatus["prerequisites"].([]interface{}); ok {
+		response["prerequisites"] = prerequisites
+	}
+	return response, nil
 }
 
 func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, diff types.StreamsCatalog) error {
@@ -369,11 +405,15 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, diff t
 	return nil
 }
 
-// GetStreamDifference compares the job's stored catalog with an edited one and returns the
-// difference. Each catalog is passed in its own format. For a split new catalog OLake writes
-// difference_available_streams.json and difference_selected_streams.json; only the selected one is returned.
-func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, oldCatalog, newCatalog types.StreamsCatalog) (map[string]interface{}, error) {
-	workflowID := fmt.Sprintf("difference-%s-%d-%d", job.ProjectID, job.ID, time.Now().UnixNano())
+// StartStreamDifference starts a comparison of the job's stored catalog with an edited one and
+// returns the operation ID. Each catalog is passed in its own format. For a split new catalog OLake
+// writes difference_available_streams.json and difference_selected_streams.json; the operation
+// reports only the selected one.
+func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, oldCatalog, newCatalog types.StreamsCatalog) (string, error) {
+	workflowID, err := NewOperationID(OperationStreamDifference, job.ProjectID)
+	if err != nil {
+		return "", err
+	}
 
 	// A split new catalog always passes its available_streams: a newly discovered stream is selectable
 	// only if it is in the new streams[], and default changes are read from there.
@@ -387,7 +427,7 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 	}
 
 	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
-		return nil, fmt.Errorf("failed to setup config files: %s", err)
+		return "", fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
@@ -411,17 +451,11 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		TaskQueue: t.taskQueue,
 	}
 
-	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: stream difference: %s", ErrWorkflowStart, err)
+	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
+		return "", fmt.Errorf("%w: stream difference: %s", ErrWorkflowStart, err)
 	}
 
-	result, err := ExtractWorkflowResponse(ctx, run)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
-	}
-
-	return result, nil
+	return workflowID, nil
 }
 
 // stageCatalog returns the config files of a catalog, named with prefix, and the discover flags that

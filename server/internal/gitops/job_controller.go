@@ -249,10 +249,10 @@ func (r *JobReconciler) reconcileHash(ctx context.Context, res *ResourceData) st
 }
 
 func (r *JobReconciler) testConnectors(ctx context.Context, source *models.Source, dest *models.Destination) error {
-	if err := testSourceConnection(ctx, r.ETL, source.Type, source.Version, dto.JSONConfig(source.Config)); err != nil {
+	if err := testSourceConnection(ctx, r.ETL, source.ProjectID, source.Type, source.Version, dto.JSONConfig(source.Config)); err != nil {
 		return err
 	}
-	return testDestinationConnection(ctx, r.ETL, dest.DestType, dest.Version, dto.JSONConfig(dest.Config), source.Type, source.Version)
+	return testDestinationConnection(ctx, r.ETL, dest.ProjectID, dest.DestType, dest.Version, dto.JSONConfig(dest.Config), source.Type, source.Version)
 }
 
 // streamsSettled: skip job reconcile when streams do not need another apply. Like skipReconcile,
@@ -276,8 +276,9 @@ func (r *JobReconciler) streamsSettled(ctx context.Context, job *ResourceData) (
 
 // catalogService is the part of the ETL service that discovers and diffs job catalogs.
 type catalogService interface {
-	DiscoverWithCatalog(ctx context.Context, req *dto.StreamsRequest, stored types.StreamsCatalog) (types.StreamsCatalog, error)
-	GetStreamDifference(ctx context.Context, projectID string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error)
+	DiscoverWithCatalog(ctx context.Context, projectID string, req *dto.StreamsRequest, stored types.StreamsCatalog) (types.StreamsCatalog, error)
+	GetStreamDifference(ctx context.Context, projectID string, jobID int, req dto.StreamDifferenceRequest) (string, error)
+	AwaitOperationOutput(ctx context.Context, operationID string) (map[string]interface{}, error)
 }
 
 // resolveCatalog returns the catalog to store for the job. It starts from the Streams CM when the
@@ -318,7 +319,7 @@ func resolveCatalog(ctx context.Context, svc catalogService, source *models.Sour
 	if base.Streams == "" && base.Available == "" {
 		base.Available = stored.Available // reuse the stored available streams
 		if base.Available == "" {         // new job or legacy job: discover available streams from scratch
-			fresh, err := svc.DiscoverWithCatalog(ctx, req, types.StreamsCatalog{})
+			fresh, err := svc.DiscoverWithCatalog(ctx, source.ProjectID, req, types.StreamsCatalog{})
 			if err != nil {
 				return types.StreamsCatalog{}, err
 			}
@@ -332,7 +333,7 @@ func resolveCatalog(ctx context.Context, svc catalogService, source *models.Sour
 	}
 
 	if needsDiscover { // discover merges base with the source and writes the merged catalog
-		discovered, err := svc.DiscoverWithCatalog(ctx, req, base)
+		discovered, err := svc.DiscoverWithCatalog(ctx, source.ProjectID, req, base)
 		if err != nil {
 			return types.StreamsCatalog{}, err
 		}
@@ -354,13 +355,17 @@ func streamDifferenceJSON(ctx context.Context, svc catalogService, job *models.J
 	if stored := job.StreamsCatalog(); stored.Streams == "" && !stored.IsSplit() {
 		return "", nil
 	}
-	diffCatalog, err := svc.GetStreamDifference(ctx, job.ProjectID, job.ID, dto.StreamDifferenceRequest{
+	operationID, err := svc.GetStreamDifference(ctx, job.ProjectID, job.ID, dto.StreamDifferenceRequest{
 		UpdatedStreamsConfig:          catalog.Streams,
 		UpdatedAvailableStreamsConfig: catalog.Available,
 		UpdatedSelectedStreamsConfig:  catalog.Selected,
 	})
 	if err != nil {
 		return "", err
+	}
+	diffCatalog, err := svc.AwaitOperationOutput(ctx, operationID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get stream difference: %w", err)
 	}
 	diffBytes, err := json.Marshal(diffCatalog)
 	if err != nil {

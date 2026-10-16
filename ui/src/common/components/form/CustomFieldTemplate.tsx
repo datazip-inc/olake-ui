@@ -3,6 +3,8 @@ import { FieldTemplateProps } from "@rjsf/utils"
 import { Tooltip, Button } from "antd"
 import { useState, useEffect } from "react"
 
+import { CDC_TOGGLE_FIELD } from "./cdc"
+
 // --- KeyValueRow: Renders a single key-value pair with edit/delete ---
 function KeyValueRow({
 	keyName,
@@ -115,10 +117,13 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 			? (schema.title as string)
 			: undefined
 	const isArrayField = schema.type === "array"
+	// the CDC toggle draws its own "Enable CDC" label
+	const isCdcToggle = props.uiSchema?.["ui:field"] === CDC_TOGGLE_FIELD
 	const shouldShowLabel =
-		(isDynamicObject && !!objectTitle) ||
-		(isArrayField && !!objectTitle) ||
-		(displayLabel && !!label)
+		!isCdcToggle &&
+		((isDynamicObject && !!objectTitle) ||
+			(isArrayField && !!objectTitle) ||
+			(displayLabel && !!label))
 	const labelText = objectTitle ?? label
 	const [newKey, setNewKey] = useState("")
 	const [newValue, setNewValue] = useState("")
