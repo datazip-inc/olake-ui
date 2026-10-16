@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
@@ -244,62 +244,46 @@ func (s Service) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceRes
 	return &dto.DeleteSourceResponse{Name: src.Name}, nil
 }
 
-func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s Service) TestSourceConnection(ctx context.Context, projectID string, req *dto.SourceTestConnectionRequest) (string, error) {
 	if s.temporal == nil {
-		return nil, nil, fmt.Errorf("temporal client not available")
+		return "", fmt.Errorf("temporal client not available")
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
-	}
-	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
-	result, err := s.temporal.VerifyDriverCredentials(ctx, workflowID, "config", req.Type, req.Version, encryptedConfig)
-	// TODO: handle from frontend
-	if result == nil {
-		result = map[string]interface{}{
-			"message": err.Error(),
-			"status":  "failed",
-		}
+		return "", fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}
 
-	if err != nil {
-		return result, nil, fmt.Errorf("connection test failed: %s", err)
-	}
-	homeDir := constants.DefaultConfigDir
-	mainLogDir := filepath.Join(homeDir, workflowID)
-	// Fetch the latest batch of logs by tailing from the end with default limit in the "older" direction.
-	logs, err := utils.ReadLogs(ctx, mainLogDir, -1, -1, "older")
-	if err != nil {
-		return result, nil, fmt.Errorf("failed to read logs source_type[%s] source_version[%s]: %s",
-			req.Type, req.Version, err)
-	}
-
-	return result, logs.Logs, nil
+	return s.temporal.StartVerifyDriverCredentials(ctx, projectID, "config", req.Type, req.Version, encryptedConfig)
 }
 
-// DiscoverCatalog runs discover and returns the catalog in one format: available_streams +
-// selected_streams when the driver wrote the split catalog, otherwise streams_config. An existing job
-// discovers from its stored catalog; a legacy job gets streams_config even from a driver that also
-// wrote the split files, because it keeps its format until it is converted.
-func (s Service) DiscoverCatalog(ctx context.Context, req *dto.StreamsRequest) (*dto.DiscoverCatalogResponse, error) {
+// DiscoverCatalog starts discover and returns the operation ID. An existing job discovers from its
+// stored catalog. The result is read with discoverCatalogResult once the operation has succeeded.
+func (s Service) DiscoverCatalog(ctx context.Context, projectID string, req *dto.StreamsRequest) (string, error) {
 	var stored types.StreamsCatalog
-	legacyJob := false
 	if req.JobID >= 0 {
 		job, err := s.db.GetJobByID(req.JobID, true)
 		if err != nil {
-			return nil, fmt.Errorf("failed to find job for catalog: %s", err)
+			return "", fmt.Errorf("failed to find job for catalog: %s", err)
 		}
 		stored = job.StreamsCatalog()
-		legacyJob = !stored.IsSplit()
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt config for catalog: %s", err)
+		return "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
-	catalog, err := s.temporal.DiscoverStreams(ctx, req.Type, req.Version, encryptedConfig, stored,
+
+	return s.temporal.StartDiscoverStreams(ctx, projectID, req.Type, req.Version, encryptedConfig, stored,
 		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines)
+}
+
+// discoverCatalogResult returns a succeeded discover operation's catalog in one format:
+// available_streams + selected_streams when the driver wrote the split catalog, otherwise
+// streams_config. A legacy job gets streams_config even from a driver that also wrote the split
+// files, because it keeps its format until it is converted.
+func discoverCatalogResult(ctx context.Context, operationID string) (*dto.DiscoverCatalogResponse, error) {
+	catalog, legacyJob, err := temporal.ReadDiscoverOutput(ctx, operationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get catalog: %s", err)
 	}
@@ -321,15 +305,6 @@ func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.
 }
 
 // TODO: cache spec in db for each version
-func (s Service) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
-	specOut, err := s.temporal.GetDriverSpecs(ctx, "", req.Type, req.Version, req.AvailableQueryEngines)
-	if err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)
-	}
-
-	return dto.SpecResponse{
-		Version: req.Version,
-		Type:    req.Type,
-		Spec:    specOut.Spec,
-	}, nil
+func (s Service) GetSourceSpec(ctx context.Context, projectID string, req *dto.SpecRequest) (string, error) {
+	return s.temporal.StartDriverSpecs(ctx, projectID, "", req.Type, req.Version, req.AvailableQueryEngines)
 }

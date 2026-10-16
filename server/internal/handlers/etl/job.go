@@ -389,11 +389,12 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 // @Tags Jobs
 // @Description Compares the job's stored catalog against a submitted edit.
 // @Description Send updated_streams_config, or updated_available_streams_config + updated_selected_streams_config.
-// @Description An invalid catalog format returns 400.
+// @Description An invalid catalog format returns 400 before any operation starts.
+// @Description Poll the returned operation; its result (GET /operations/{operationid}/result) is a dto.StreamDifferenceResponse.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   id            path    int     true    "job id"
 // @Param   body          body    dto.StreamDifferenceRequest true "stream difference data"
-// @Success 200 {object} dto.JSONResponse{data=dto.StreamDifferenceResponse}
+// @Success 202 {object} dto.JSONResponse{data=dto.OperationAcceptedResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 404 {object} dto.Error404Response "job not found"
@@ -417,7 +418,7 @@ func (h *Handler) GetStreamDifference(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Get stream difference initiated project_id[%s] job_id[%d]", projectID, id)
-	diffStreams, err := h.etl.GetStreamDifference(c.Request.Context(), projectID, id, req)
+	operationID, err := h.etl.GetStreamDifference(c.Request.Context(), projectID, id, req)
 	if err != nil {
 		status := http.StatusInternalServerError
 		switch {
@@ -429,9 +430,7 @@ func (h *Handler) GetStreamDifference(c *gin.Context) {
 		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get stream difference: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(c, fmt.Sprintf("stream difference retrieved successfully for job_id[%d]", id), dto.StreamDifferenceResponse{
-		DifferenceStreams: diffStreams,
-	})
+	utils.AcceptedResponse(c, fmt.Sprintf("stream difference started for job_id[%d]", id), dto.OperationAcceptedResponse{OperationID: operationID})
 }
 
 // @Summary Get clear destination status

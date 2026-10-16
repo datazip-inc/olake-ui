@@ -6,6 +6,7 @@ const REST_CATALOG_SLUGS: Record<string, string> = {
 	unity: "unity",
 	polaris: "polaris",
 	biglake: "biglake",
+	horizon: "horizon",
 }
 
 const AUTH_TYPE_SLUGS: Record<string, Record<string, string>> = {
@@ -17,6 +18,11 @@ const AUTH_TYPE_SLUGS: Record<string, Record<string, string>> = {
 		"OAuth2 M2M": "oauth2-m2m",
 		"OAuth2 U2M": "oauth2-u2m",
 		"Token Federation": "token-federation",
+	},
+	horizon: {
+		"Programmatic Access Token (PAT)": "programmatic-access-token-pat",
+		"Key-Pair Authentication": "key-pair-authentication",
+		"External OAuth": "external-oauth",
 	},
 }
 
