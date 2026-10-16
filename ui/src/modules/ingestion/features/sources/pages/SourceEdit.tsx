@@ -45,10 +45,7 @@ import {
 import { sourceConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
 import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
-import {
-	DISPLAYED_JOBS_COUNT,
-	FIELD_DOC_LINKS,
-} from "@/modules/ingestion/common/constants"
+import { DISPLAYED_JOBS_COUNT } from "@/modules/ingestion/common/constants"
 import {
 	getConnectorImage,
 	getConnectorInLowerCase,
@@ -521,10 +518,6 @@ const SourceEdit: React.FC = () => {
 													}}
 													transformErrors={transformErrors}
 													onError={notifyFirstFormError}
-													formContext={{
-														fieldDocLinks:
-															FIELD_DOC_LINKS[normalizedSourceConnector],
-													}}
 													onSubmit={() => handleSave()}
 													uiSchema={uiSchemaWithCdc}
 													validator={formValidator}

@@ -112,7 +112,6 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 		formData,
 		onChange,
 		rawErrors,
-		registry,
 	} = props
 
 	// --- Derived Variables ---
@@ -131,8 +130,8 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 			(isArrayField && !!objectTitle) ||
 			(displayLabel && !!label))
 	const labelText = objectTitle ?? label
-	// Forms can pass { fieldDocLinks: { [fieldId]: url } } as rjsf formContext
-	const docLink: string | undefined = registry.formContext?.fieldDocLinks?.[id]
+	// Driver uischema sets a field's docs link with "ui:docLink"
+	const docLink: string | undefined = props.uiSchema?.["ui:docLink"]
 	const [newKey, setNewKey] = useState("")
 	const [newValue, setNewValue] = useState("")
 	const [currentTempKey, setCurrentTempKey] = useState<string | null>(null)
