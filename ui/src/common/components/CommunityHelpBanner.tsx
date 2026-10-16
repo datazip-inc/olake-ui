@@ -43,10 +43,9 @@ export const CommunityHelpBanner: React.FC<{
 	// Dismissal is per browser session and per variant, shared across pages, so
 	// dismissing the help nudge does not hide a later sync-failure banner.
 	const storageKey = `${COMMUNITY_BANNER_DISMISSED_SESSION_KEY}_${variantKey}`
-	const [dismissedVariants, setDismissedVariants] = useState<string[]>([])
-	const dismissed =
-		dismissedVariants.includes(variantKey) ||
-		sessionStorage.getItem(storageKey) === "true"
+	const [dismissed, setDismissed] = useState(
+		() => sessionStorage.getItem(storageKey) === "true",
+	)
 
 	if (dismissed) return null
 
@@ -58,7 +57,7 @@ export const CommunityHelpBanner: React.FC<{
 
 	const handleDismiss = () => {
 		sessionStorage.setItem(storageKey, "true")
-		setDismissedVariants(prev => [...prev, variantKey])
+		setDismissed(true)
 	}
 
 	return (
