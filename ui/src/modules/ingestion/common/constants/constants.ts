@@ -20,27 +20,6 @@ export const SETUP_TYPES = {
 	EXISTING: "existing",
 } as const
 
-export const STATUS = {
-	ACTIVE: "active",
-	INACTIVE: "inactive",
-	PENDING: "pending",
-	FAILED: "failed",
-	RUNNING: "running",
-	SUCCESS: "success",
-	COMPLETED: "completed",
-	CANCELLED: "cancelled",
-}
-
-export const STATUS_LABELS = {
-	ACTIVE: "Active",
-	INACTIVE: "Inactive",
-	PENDING: "Pending",
-	FAILED: "Failed",
-	RUNNING: "Running",
-	SUCCESS: "Success",
-	COMPLETED: "Completed",
-	CANCELLED: "Cancelled",
-}
 export const ENTITY_TYPES = {
 	SOURCE: "source",
 	DESTINATION: "destination",
