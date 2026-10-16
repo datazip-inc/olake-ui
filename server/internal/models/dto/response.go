@@ -51,8 +51,8 @@ type Error500Response struct {
 }
 
 type SpecResponse struct {
-	Version string      `json:"version" example:"v0.2.7"`
-	Type    string      `json:"type" example:"postgres"`
+	Version string      `json:"version,omitempty" example:"v0.2.7"`
+	Type    string      `json:"type,omitempty" example:"postgres"`
 	Spec    interface{} `json:"spec" orm:"type(jsonb)" swaggertype:"object"`
 }
 type SpecOutput struct {
@@ -78,8 +78,37 @@ type CheckUniqueJobNameResponse struct {
 
 // TestConnectionResponse
 type TestConnectionResponse struct {
-	ConnectionResult map[string]interface{}   `json:"connection_result" swaggertype:"object"`
+	ConnectionResult ConnectionResult         `json:"connection_result"`
 	Logs             []map[string]interface{} `json:"logs" swaggertype:"array,object"`
+}
+
+// ConnectionResult is the outcome of a test connection reported by the driver's check command.
+type ConnectionResult struct {
+	Status  string `json:"status" example:"SUCCEEDED"`
+	Message string `json:"message"`
+	// Prerequisites are the CDC setup checks; only source drivers with CDC report them.
+	Prerequisites []PrerequisiteCheck `json:"prerequisites,omitempty"`
+}
+
+// PrerequisiteCheck is one CDC setup check evaluated during a source test connection.
+type PrerequisiteCheck struct {
+	Name             string `json:"name" example:"binlog_row_image"`
+	Required         bool   `json:"required" example:"true"`
+	Passed           bool   `json:"passed" example:"false"`
+	CurrentValue     string `json:"current_value" example:"MINIMAL"`
+	RecommendedValue string `json:"recommended_value" example:"FULL"`
+	Description      string `json:"description"`
+	// Error is why the check could not be evaluated; empty when it ran.
+	Error string `json:"error,omitempty"`
+}
+
+// NewConnectionResult reads the connection status the temporal service returns as a map.
+func NewConnectionResult(result map[string]interface{}) ConnectionResult {
+	var cr ConnectionResult
+	if raw, err := json.Marshal(result); err == nil {
+		_ = json.Unmarshal(raw, &cr)
+	}
+	return cr
 }
 
 type StreamDifferenceResponse struct {
@@ -88,6 +117,15 @@ type StreamDifferenceResponse struct {
 
 type ClearDestinationStatusResponse struct {
 	Running bool `json:"running" example:"false"`
+}
+
+type OperationAcceptedResponse struct {
+	OperationID string `json:"operation_id" example:"discover-catalog-123-8f14e45fceea167a5a36dedd4bea2543"`
+}
+
+type OperationStatusResponse struct {
+	Status string `json:"status" example:"running"`
+	Error  string `json:"error,omitempty"`
 }
 
 type VersionsResponse struct {

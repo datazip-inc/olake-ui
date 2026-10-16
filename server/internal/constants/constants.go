@@ -76,6 +76,10 @@ var (
 	EnvAppEnvironment    = "APP_ENV"
 	EnvCustomDriverImage = "CUSTOM_DRIVER_VERSION"
 
+	// job config storage
+	StorageModeS3  = "s3"
+	StorageModeNFS = "nfs"
+
 	// App environment supported values: production/development
 	AppEnvProduction  = "production"
 	AppEnvDevelopment = "development"
@@ -99,6 +103,12 @@ var (
 
 	// DefaultLogsDirection is the fallback pagination direction ("older" or "newer").
 	DefaultLogsDirection = "older"
+
+	ConnectorLogPrefix = "connector"
+	WorkerLogPrefix    = "worker"
+
+	// WorkerLogS3Dir holds the worker's log chunks inside a run's logs folder in S3 mode.
+	WorkerLogS3Dir = "worker"
 
 	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.

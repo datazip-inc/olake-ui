@@ -78,3 +78,15 @@ export const MIN_JSON_FILTER_VERSION = "v0.6.0"
 
 // Minimum source version that supports the source naming convention (use_source_column_names).
 export const MIN_SOURCE_NAMING_CONVENTION_VERSION = "v0.7.7"
+
+// Minimum Kafka source version that supports Upsert.
+export const MIN_KAFKA_UPSERT_SOURCE_VERSION = "v0.12.1"
+
+export const KAFKA_KEY_COLUMN = "_kafka_key"
+
+export const KAFKA_META_COLUMNS = new Set([
+	KAFKA_KEY_COLUMN,
+	"_kafka_offset",
+	"_kafka_partition",
+	"_kafka_timestamp",
+])
