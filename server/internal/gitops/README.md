@@ -4,7 +4,7 @@ Manage OLake sources, destinations, jobs, and stream selections as labelled **Co
 
 ## Prerequisites
 
-- Kubernetes: OLake UI deployed **inside** the cluster (in-cluster kubeconfig).
+- Kubernetes: OLake UI deployed **inside** the cluster (in-cluster kubeconfig), or Docker Compose with file-based manifests mounted at `/etc/olake/gitops`.
 - `GITOPS_ENABLED=true` on the `olake-ui` Deployment (Helm `gitops.enabled: true`).
 - GitOps RBAC: namespace `Role` on `configmaps` and `secrets` (get/list/watch/update/patch each), and `events` (create/patch). **No `pods` permission on olake-ui.**
 
@@ -22,6 +22,19 @@ gitops:
 ```
 
 See [olake-helm/docs/gitops.md](https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/docs/gitops.md).
+
+**Docker Compose:**
+
+```yaml
+environment:
+  GITOPS_ENABLED: "true"
+volumes:
+  - ./olake-gitops:/etc/olake/gitops
+```
+
+olake-ui reads manifests from `/etc/olake/gitops`. Set `GITOPS_FILE_DIR` only to read them from another path (for example when running the server outside Docker).
+
+File mode has no annotations, so status (phase, message, entity ID, observed hash) is kept in `.olake-gitops-state.json` in the manifest directory and written to the olake-ui log on each change. The file plays the role of the annotations: it keeps a restart from re-applying every job, which would cancel running syncs. Keep it on persistent storage, and add it to `.gitignore` if the directory is a git checkout. If the directory is read-only (for example a git-sync mount), set `GITOPS_STATE_FILE` to a writable path. olake-ui fails at startup if it cannot write the file. Deleting the file, or a manifest, makes the next start reconcile those resources from scratch.
 
 ### 2. Apply sample manifests
 
@@ -115,6 +128,8 @@ For both shapes:
 ### Credentials via Secrets (Source and Destination only)
 
 A Source or Destination can be defined directly as a **Secret** instead of a ConfigMap when the connector config holds credentials that shouldn't be plaintext in git. There is no separate reference field — the Secret itself carries the same `data` shape (`projectId`, `userId`, `config`) and the same `olake.io/managed`/`olake.io/kind` labels as the ConfigMap form. Pick exactly one object type per Source/Destination name; if both exist for the same name, the ConfigMap wins.
+
+**Docker Compose (file mode):** no Secret API in file mode — Source/Destination manifests there must be plain ConfigMaps with inline `data.config`.
 
 Example: `source-secret-smoke.yaml` in olake-helm.
 
