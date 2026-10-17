@@ -6,7 +6,7 @@ import {
 import { Input, Button, message, Select, Radio, Tooltip, Spin } from "antd"
 import { Cron } from "croner"
 import { useState, useEffect } from "react"
-import { useParams, Link, useNavigate } from "react-router-dom"
+import { useParams, Link, useNavigate } from "react-router"
 
 import { getConnectorImage } from "@/modules/ingestion/common/utils"
 
