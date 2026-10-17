@@ -141,8 +141,9 @@ func (t *Temporal) awaitClose(ctx context.Context, operationID string, wait time
 	<-timedCtx.Done()
 }
 
-// FetchOperationOutput must only be called once the operation has closed; run.Get then
-// returns immediately instead of blocking.
+// FetchOperationOutput returns the operation's reported output. On a closed operation run.Get
+// returns immediately; on a running one it blocks until the workflow closes, which is how
+// callers outside a request (GitOps) wait for it.
 func (t *Temporal) FetchOperationOutput(ctx context.Context, operationID string) (map[string]interface{}, error) {
 	return ExtractWorkflowResponse(ctx, t.Client.GetWorkflow(ctx, operationID, ""))
 }

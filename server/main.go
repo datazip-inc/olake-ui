@@ -34,6 +34,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
+	"github.com/datazip-inc/olake-ui/server/internal/gitops"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
 	"github.com/datazip-inc/olake-ui/server/internal/httpserver"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
@@ -88,6 +89,10 @@ func main() {
 			logger.Errorf("failed to migrate legacy jobs to streams v2: %s", err)
 		}
 	}()
+
+	if err := gitops.InitGitOps(ctx, cfg.GitOpsEnabled, appSvc); err != nil {
+		logger.Fatalf("gitops initialization failed: %s", err)
+	}
 
 	api := handlers.NewHandler(appSvc, &cfg, db)
 	server := httpserver.New(&cfg, api)
