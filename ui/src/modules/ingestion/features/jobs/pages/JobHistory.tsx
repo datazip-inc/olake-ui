@@ -7,7 +7,7 @@ import {
 import { Table, Button, Input, Spin, Pagination, Tooltip } from "antd"
 import clsx from "clsx"
 import { useState, useRef, useEffect } from "react"
-import { useParams, useNavigate, useLocation, Link } from "react-router-dom"
+import { useParams, useNavigate, useLocation, Link } from "react-router"
 
 import { CommunityHelpBanner } from "@/common/components"
 import {
