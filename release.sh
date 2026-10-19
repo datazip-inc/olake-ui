@@ -125,7 +125,7 @@ else
     echo "✅ Flexible versioning allowed for development: $VERSION"
 fi
 
-# Setup buildx and QEMU
+# Setup buildx
 setup_buildx
 
 build_frontend
