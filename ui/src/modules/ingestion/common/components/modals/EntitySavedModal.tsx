@@ -5,7 +5,7 @@ import {
 	LinktreeLogoIcon,
 } from "@phosphor-icons/react"
 import { Button, Modal, Tooltip } from "antd"
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router"
 
 import { EntitySavedModalProps } from "@/modules/ingestion/common/types"
 

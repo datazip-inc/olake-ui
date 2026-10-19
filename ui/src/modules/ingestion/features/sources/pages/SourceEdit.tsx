@@ -12,7 +12,7 @@ import { Input, Button, Select, Switch, Table, Spin, Tooltip } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { formatDistanceToNow } from "date-fns"
 import { useState, useEffect, useRef, useMemo } from "react"
-import { useParams, useNavigate, Link } from "react-router-dom"
+import { useParams, useNavigate, Link } from "react-router"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import { withCdcToggle } from "@/common/components/form/cdc"
