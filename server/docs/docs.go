@@ -3792,6 +3792,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "{\"host\":\"localhost\",\"port\":5432}"
                 },
+                "destination_config": {
+                    "description": "DestinationConfig narrows available_update_types to what the destination catalog can apply.",
+                    "type": "string",
+                    "example": "{\"type\":\"ICEBERG\",\"writer\":{\"catalog_type\":\"glue\"}}"
+                },
                 "job_id": {
                     "type": "integer",
                     "example": 1

@@ -257,6 +257,11 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) 
 		return nil, fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 
+	encryptedDestinationConfig, err := utils.Encrypt(req.DestinationConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt destination config for catalog: %s", err)
+	}
+
 	newStreams, err := s.temporal.DiscoverStreams(
 		ctx,
 		req.Type,
@@ -266,6 +271,7 @@ func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) 
 		req.JobName,
 		req.MaxDiscoverThreads,
 		req.TargetQueryEngines,
+		encryptedDestinationConfig,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get catalog: %s", err)

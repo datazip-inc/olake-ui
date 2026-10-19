@@ -8,7 +8,7 @@ import {
 	useStreamSelectionStore,
 } from "../../stores"
 import {
-	getKafkaUpsertNotSupportedMessage,
+	getUpsertNotSupportedMessage,
 	isSourceIngestionModeSupported,
 	isDestinationIngestionModeSupported,
 } from "../../utils/streams"
@@ -52,7 +52,7 @@ const IngestionModeSectionView = ({
 		destinationType,
 	)
 
-	const kafkaUpsertNotSupportedMessage = getKafkaUpsertNotSupportedMessage(
+	const upsertNotSupportedMessage = getUpsertNotSupportedMessage(
 		sourceType,
 		sourceVersion,
 		availableUpdateTypes,
@@ -63,7 +63,7 @@ const IngestionModeSectionView = ({
 			: undefined
 
 	const upsertDisabledMessage =
-		kafkaUpsertNotSupportedMessage || noCommonDedupMessage
+		upsertNotSupportedMessage || noCommonDedupMessage
 	const isUpsertDisabled = !isSourceUpsertSupported || !!upsertDisabledMessage
 
 	// Don't render if destination doesn't support upsert mode

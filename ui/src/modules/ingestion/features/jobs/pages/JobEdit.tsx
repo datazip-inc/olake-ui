@@ -509,8 +509,10 @@ const JobEdit: React.FC = () => {
 											? getConnectorInLowerCase(destinationSnapshot.type)
 											: ""
 									}
+									destinationConfig={destinationSnapshot?.config}
 									jobName={jobName}
 									advancedSettings={advancedSettings}
+									onChangeQueryEngines={handleConfirmResetStreams}
 								/>
 							</div>
 						)}

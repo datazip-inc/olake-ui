@@ -31,7 +31,7 @@ import {
 import {
 	buildBulkStreamsData,
 	getDedupKeyOptions,
-	getKafkaUpsertNotSupportedMessage,
+	getUpsertNotSupportedMessage,
 	isUseSourceColumnNamesSupported,
 } from "../../utils/streams"
 import BulkStreamSelectorList from "../streams/BulkStreamSelectorList"
@@ -128,7 +128,7 @@ const BulkConfigureStreamsModal = ({
 	const availableUpdateTypes = useStreamSelectionStore(
 		selectAvailableUpdateTypes,
 	)
-	const kafkaUpsertBlocked = !!getKafkaUpsertNotSupportedMessage(
+	const upsertBlocked = !!getUpsertNotSupportedMessage(
 		sourceType,
 		sourceVersion,
 		availableUpdateTypes,
@@ -297,7 +297,7 @@ const BulkConfigureStreamsModal = ({
 
 	const missingUpsertDedupKeys =
 		isKafka &&
-		!kafkaUpsertBlocked &&
+		!upsertBlocked &&
 		!bulkConfig.appendMode &&
 		(dirtyFields[BulkDirtyFieldKey.AppendMode] ||
 			dirtyFields[BulkDirtyFieldKey.DedupKeys]) &&
@@ -550,7 +550,7 @@ const BulkConfigureStreamsModal = ({
 														/>
 													)}
 													{isKafka &&
-														!kafkaUpsertBlocked &&
+														!upsertBlocked &&
 														dirtyFields[BulkDirtyFieldKey.DedupKeys] &&
 														!bulkConfig.appendMode && (
 															<DedupKeysSelectionBulk
@@ -815,7 +815,7 @@ const BulkConfigureStreamsModal = ({
 																	}}
 																/>
 																{isKafka &&
-																	!kafkaUpsertBlocked &&
+																	!upsertBlocked &&
 																	!bulkConfig.appendMode && (
 																		<DedupKeysSelectionBulk
 																			isDirty={

@@ -16,7 +16,7 @@ import {
 import { GroupedStreamsCollapsibleListProps } from "../../types"
 import {
 	getIngestionMode,
-	getKafkaUpsertNotSupportedMessage,
+	getUpsertNotSupportedMessage,
 	hasGroupedStreamsStructureChanged,
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
@@ -289,7 +289,7 @@ const StreamsCollapsibleList = ({
 		destinationType,
 	)
 
-	const kafkaUpsertNotSupportedMessage = getKafkaUpsertNotSupportedMessage(
+	const upsertNotSupportedMessage = getUpsertNotSupportedMessage(
 		sourceType,
 		sourceVersion,
 		availableUpdateTypes,
@@ -298,13 +298,13 @@ const StreamsCollapsibleList = ({
 	const allUpsertSupported =
 		isSourceUpsertModeSupported &&
 		isDestUpsertModeSupported &&
-		!kafkaUpsertNotSupportedMessage
+		!upsertNotSupportedMessage
 
 	useEffect(() => {
-		if (!kafkaUpsertNotSupportedMessage) return
+		if (!upsertNotSupportedMessage) return
 		setIngestionMode(IngestionMode.APPEND)
 		updateAllIngestionMode(true)
-	}, [kafkaUpsertNotSupportedMessage])
+	}, [upsertNotSupportedMessage])
 
 	return (
 		<>
