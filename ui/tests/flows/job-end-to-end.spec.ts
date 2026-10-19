@@ -51,6 +51,17 @@ test.describe("Job End-to-End User Journey", () => {
 		})
 
 		await createSourcePage.fillSourceForm(sourceConfig)
+		// New sources start with CDC on, which needs replication slot and publication. This flow
+		// runs a full-refresh job, so turn CDC off: the Enable CDC switch on drivers with the new
+		// form layout, the Standalone radio on older drivers.
+		const cdcSwitch = page.getByRole("switch", { name: "Enable CDC" })
+		if (await cdcSwitch.isVisible()) {
+			if ((await cdcSwitch.getAttribute("aria-checked")) === "true") {
+				await cdcSwitch.click()
+			}
+		} else {
+			await page.getByRole("radio", { name: "Standalone" }).check()
+		}
 		await createSourcePage.clickCreate()
 		await verifyEntityCreationSuccessModal(createSourcePage)
 		await sourcesPage.expectSourcesPageVisible()

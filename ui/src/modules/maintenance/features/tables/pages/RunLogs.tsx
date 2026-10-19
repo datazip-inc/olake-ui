@@ -1,7 +1,7 @@
 import { useIsFetching } from "@tanstack/react-query"
 import { Spin } from "antd"
 import { useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router"
 
 import { RunLogSidebar, RunLogsPanel } from "../components"
 import { DRIVER_SOURCE_KEY } from "../constants"

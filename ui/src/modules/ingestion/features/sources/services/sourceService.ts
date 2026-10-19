@@ -1,6 +1,10 @@
-import { AxiosError } from "axios"
-
-import { SpecResponse, TestConnectionResponse } from "@/common/types"
+import { SUBMIT_TIMEOUT_MS } from "@/common/constants"
+import {
+	OperationAccepted,
+	SpecResponse,
+	TestConnectionResponse,
+} from "@/common/types"
+import { awaitOperation, runOperation } from "@/common/utils"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
 import { api } from "@/core/api"
@@ -10,6 +14,7 @@ import {
 	EntityBase,
 	EntityTestRequest,
 } from "@/modules/ingestion/common/types"
+import { describeConnectionFailure } from "@/modules/ingestion/common/utils"
 
 export const sourceService = {
 	getSources: async (): Promise<Entity[]> => {
@@ -98,38 +103,45 @@ export const sourceService = {
 	testSourceConnection: async (
 		source: EntityTestRequest,
 		existing: boolean = false,
+		signal?: AbortSignal,
 	) => {
 		try {
-			const response = await api.post<TestConnectionResponse>(
-				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
-				{
-					type: source.type.toLowerCase(),
-					version: source.version,
-					config: source.config,
-				},
-				{ timeout: 0, disableErrorNotification: true }, // Disable timeout for this request since it can take longer
-			)
+			// The POST only starts the check; the result arrives by polling.
+			const data = await runOperation<TestConnectionResponse>(async () => {
+				const response = await api.post<OperationAccepted>(
+					`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
+					{
+						type: source.type.toLowerCase(),
+						version: source.version,
+						config: source.config,
+					},
+					{
+						timeout: SUBMIT_TIMEOUT_MS,
+						signal,
+						disableErrorNotification: true,
+					},
+				)
+				return response.data
+			}, signal)
 
-			trackTestConnection(true, source, response.data, existing)
+			trackTestConnection(true, source, data, existing)
 			return {
 				success: true,
 				message: "success",
-				data: response.data,
+				data,
 			}
 		} catch (error) {
+			// a cancelled test is not a failed connection; let the caller see the abort
+			if (signal?.aborted) throw error
 			console.error("Error testing source connection:", error)
-			const errorMessage =
-				error instanceof AxiosError
-					? (error.response?.data?.message ??
-						"Network error - please check your connection")
-					: "Unknown error occurred"
+			const errorMessage = describeConnectionFailure(error)
 			return {
 				success: false,
 				message: errorMessage,
 				data: {
 					connection_result: {
 						message: errorMessage,
-						status: "FAILED",
+						status: "FAILED" as const,
 					},
 					logs: [
 						{
@@ -149,7 +161,9 @@ export const sourceService = {
 				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/versions`,
 				{
 					params: { type },
-					timeout: 0, // Disable timeout for this request since it can take longer
+					// Untimed: does a container-registry lookup server-side, which has no
+					// deadline of its own and falls back to locally cached images.
+					timeout: 0,
 				},
 			)
 			return response.data
@@ -166,16 +180,30 @@ export const sourceService = {
 		available_query_engines = false,
 	) => {
 		try {
-			const response = await api.post<SpecResponse>(
+			// The POST only starts the spec fetch; the result arrives by polling. The one
+			// exception is a query-engine request against an image too old to support it:
+			// there is nothing to run, so the server answers 200 with the final (empty)
+			// spec straight away.
+			const response = await api.post<OperationAccepted | SpecResponse>(
 				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/spec`,
 				{
 					type: type.toLowerCase(),
 					version,
 					available_query_engines,
 				},
-				{ timeout: 300000, signal, disableErrorNotification: true }, //timeout is 300000 as spec takes more time as it needs to fetch the spec from olake
+				{
+					timeout: SUBMIT_TIMEOUT_MS,
+					signal,
+					disableErrorNotification: true,
+				},
 			)
-			return response.data
+			if (response.status !== 202) {
+				return response.data as SpecResponse
+			}
+			return await awaitOperation<SpecResponse>(
+				(response.data as OperationAccepted).operation_id,
+				signal,
+			)
 		} catch (error: any) {
 			console.error("Error getting source spec:", error)
 			const serverMessage = error?.response?.data?.message
@@ -198,21 +226,28 @@ export const sourceService = {
 		signal?: AbortSignal,
 	) => {
 		try {
-			const response = await api.post<DiscoverResponse>(
-				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
-				{
-					name,
-					type,
-					job_name,
-					job_id: job_id ? job_id : -1,
-					version,
-					config,
-					max_discover_threads,
-					target_query_engines,
-				},
-				{ timeout: 0, signal, disableErrorNotification: true },
-			)
-			return response.data
+			// The POST only starts discovery; the catalog arrives by polling.
+			return await runOperation<DiscoverResponse>(async () => {
+				const response = await api.post<OperationAccepted>(
+					`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
+					{
+						name,
+						type,
+						job_name,
+						job_id: job_id ? job_id : -1,
+						version,
+						config,
+						max_discover_threads,
+						target_query_engines,
+					},
+					{
+						timeout: SUBMIT_TIMEOUT_MS,
+						signal,
+						disableErrorNotification: true,
+					},
+				)
+				return response.data
+			}, signal)
 		} catch (error: any) {
 			console.error("Error getting source streams:", error)
 			const serverMessage = error?.response?.data?.message

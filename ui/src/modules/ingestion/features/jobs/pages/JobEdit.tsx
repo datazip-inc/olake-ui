@@ -2,7 +2,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
 import { Button, message } from "antd"
 import clsx from "clsx"
 import { useState, useEffect, useRef } from "react"
-import { useNavigate, Link, useParams } from "react-router-dom"
+import { useNavigate, Link, useParams } from "react-router"
 
 import {
 	SelectedStreams,

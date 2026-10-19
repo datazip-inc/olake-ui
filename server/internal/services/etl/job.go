@@ -404,39 +404,35 @@ func (s Service) ClearDestination(ctx context.Context, projectID string, jobID i
 	return nil
 }
 
-// GetStreamDifference diffs the job's stored catalog against the edited one, sent as
+// GetStreamDifference starts a diff of the job's stored catalog against the edited one, sent as
 // updated_streams_config or updated_available_streams_config + updated_selected_streams_config, in
-// the job's format.
-func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
+// the job's format, and returns the operation ID. A catalog in the wrong format is rejected before
+// any workflow starts.
+func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (string, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
-		return nil, fmt.Errorf("job not found: %s", err)
+		return "", fmt.Errorf("job not found: %s", err)
 	}
 	if job.Source == nil {
-		return nil, fmt.Errorf("job source details not found")
+		return "", fmt.Errorf("job source details not found")
 	}
 	if err := utils.CheckClearDestinationCompatibility(job.Source.Version); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	newAvailable, newSelected := req.UpdatedAvailableStreamsConfig, req.UpdatedSelectedStreamsConfig
 	if err := validateStreamsFormat(req.UpdatedStreamsConfig, newAvailable, newSelected, job.Source.Version, job); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	edited := types.StreamsCatalog{Streams: req.UpdatedStreamsConfig, Available: newAvailable, Selected: newSelected}
-	diffCatalog, err := s.temporal.GetStreamDifference(ctx, job, job.StreamsCatalog(), edited)
+	operationID, err := s.temporal.StartStreamDifference(ctx, job, job.StreamsCatalog(), edited)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get stream difference: %s", err)
+		return "", fmt.Errorf("failed to get stream difference: %s", err)
 	}
 
-	diffCatalogJSON, err := json.Marshal(diffCatalog)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal stream difference: %s", err)
-	}
-
-	logger.Infof("stream difference retrieved successfully for job %d\n%s", job.ID, string(diffCatalogJSON))
-	return diffCatalog, nil
+	logger.Infof("stream difference started for job %d operation_id[%s]", job.ID, operationID)
+	return operationID, nil
 }
 
 // validateStreamsFormat requires the catalog in the job's format: streams_config for a legacy (v1)
