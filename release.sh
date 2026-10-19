@@ -41,12 +41,11 @@ function build_frontend() {
 }
 
 function setup_buildx() {
-    echo "Setting up Docker buildx and QEMU..."
+    echo "Setting up Docker buildx"
     docker buildx version >/dev/null 2>&1 || fail "Docker buildx is not installed. Please install it."
-    docker run --rm --privileged multiarch/qemu-user-static --reset -p yes || fail "Failed to set up QEMU"
     docker buildx create --use --name multiarch-builder || echo "Buildx builder already exists, using it."
     docker buildx inspect --bootstrap || fail "Failed to bootstrap buildx builder"
-    echo "✅ Buildx and QEMU setup complete"
+    echo "✅ Buildx setup complete"
 }
 
 # Function to release just the frontend
