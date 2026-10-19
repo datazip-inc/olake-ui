@@ -51,8 +51,8 @@ type Error500Response struct {
 }
 
 type SpecResponse struct {
-	Version string      `json:"version" example:"v0.2.7"`
-	Type    string      `json:"type" example:"postgres"`
+	Version string      `json:"version,omitempty" example:"v0.2.7"`
+	Type    string      `json:"type,omitempty" example:"postgres"`
 	Spec    interface{} `json:"spec" orm:"type(jsonb)" swaggertype:"object"`
 }
 type SpecOutput struct {
@@ -117,6 +117,15 @@ type StreamDifferenceResponse struct {
 
 type ClearDestinationStatusResponse struct {
 	Running bool `json:"running" example:"false"`
+}
+
+type OperationAcceptedResponse struct {
+	OperationID string `json:"operation_id" example:"discover-catalog-123-8f14e45fceea167a5a36dedd4bea2543"`
+}
+
+type OperationStatusResponse struct {
+	Status string `json:"status" example:"running"`
+	Error  string `json:"error,omitempty"`
 }
 
 type VersionsResponse struct {

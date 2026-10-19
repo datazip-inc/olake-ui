@@ -6,7 +6,7 @@ import {
 } from "@phosphor-icons/react"
 import { message } from "antd"
 import { useState, useEffect } from "react"
-import { useNavigate, Link, useLocation } from "react-router-dom"
+import { useNavigate, Link, useLocation } from "react-router"
 import { v4 as uuidv4 } from "uuid"
 
 import {

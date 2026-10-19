@@ -197,13 +197,18 @@ func (h *Handler) DeleteSource(c *gin.Context) {
 // @Description Validate the connection to a source using the provided configuration details.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.SourceTestConnectionRequest true "test connection data"
-// @Success 200 {object} dto.JSONResponse{data=dto.TestConnectionResponse}
+// @Success 202 {object} dto.JSONResponse{data=dto.OperationAcceptedResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to test connection"
 // @Router /api/v1/project/{projectid}/sources/test [post]
 func (h *Handler) TestSourceConnection(c *gin.Context) {
+	projectID, err := utils.GetProjectID(c)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
 	var req dto.SourceTestConnectionRequest
 	if err := utils.BindAndValidate(c, &req); err != nil {
 		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
@@ -214,15 +219,12 @@ func (h *Handler) TestSourceConnection(c *gin.Context) {
 		return
 	}
 	logger.Infof("Test source connection initiated source_type[%s] source_version[%s]", req.Type, req.Version)
-	result, logs, err := h.etl.TestSourceConnection(c.Request.Context(), &req)
+	operationID, err := h.etl.TestSourceConnection(c.Request.Context(), projectID, &req)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to verify credentials: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(c, fmt.Sprintf("source %s connection tested successfully", req.Type), dto.TestConnectionResponse{
-		ConnectionResult: dto.NewConnectionResult(result),
-		Logs:             logs,
-	})
+	utils.AcceptedResponse(c, fmt.Sprintf("source %s connection test started", req.Type), dto.OperationAcceptedResponse{OperationID: operationID})
 }
 
 // @Summary Get source stream catalog
@@ -230,13 +232,18 @@ func (h *Handler) TestSourceConnection(c *gin.Context) {
 // @Description Discover and list available data streams from a source.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.StreamsRequest true "streams request data"
-// @Success 200 {object} dto.JSONResponse{data=object}
+// @Success 202 {object} dto.JSONResponse{data=dto.OperationAcceptedResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to get source catalog"
 // @Router /api/v1/project/{projectid}/sources/streams [post]
 func (h *Handler) GetSourceCatalog(c *gin.Context) {
+	projectID, err := utils.GetProjectID(c)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
 	var req dto.StreamsRequest
 	if err := utils.BindAndValidate(c, &req); err != nil {
 		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
@@ -247,12 +254,12 @@ func (h *Handler) GetSourceCatalog(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Get source catalog initiated source_type[%s] source_version[%s] job_id[%d]", req.Type, req.Version, req.JobID)
-	catalog, err := h.etl.GetSourceCatalog(c.Request.Context(), &req)
+	operationID, err := h.etl.GetSourceCatalog(c.Request.Context(), projectID, &req)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source streams: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(c, fmt.Sprintf("source %s catalog fetched successfully", req.Type), catalog)
+	utils.AcceptedResponse(c, fmt.Sprintf("source %s catalog discovery started", req.Type), dto.OperationAcceptedResponse{OperationID: operationID})
 }
 
 // @Summary Get available source versions
@@ -290,7 +297,8 @@ func (h *Handler) GetSourceVersions(c *gin.Context) {
 // @Description Retrieve the UI spec for a specific source type/version, or the supported query engines when available_query_engines is set.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.SpecRequest true "spec request data"
-// @Success 200 {object} dto.JSONResponse{data=dto.SpecResponse}
+// @Success 202 {object} dto.JSONResponse{data=dto.OperationAcceptedResponse}
+// @Success 200 {object} dto.JSONResponse{data=dto.SpecResponse} "no workflow needed: query engines requested on an image that does not support them"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 413 {object} dto.Error413Response "payload too large"
@@ -312,10 +320,20 @@ func (h *Handler) GetSourceSpec(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Get source spec initiated project_id[%s] source_type[%s] source_version[%s]", projectID, req.Type, req.Version)
-	resp, err := h.etl.GetSourceSpec(c.Request.Context(), &req)
+	operationID, err := h.etl.GetSourceSpec(c.Request.Context(), projectID, &req)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source spec: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(c, fmt.Sprintf("source %s spec fetched successfully", req.Type), resp)
+	// No workflow was needed — a query-engine request against an image too old for the
+	// flag. There is nothing to poll, so answer now with the empty spec that reports the
+	// feature as absent.
+	if operationID == "" {
+		utils.SuccessResponse(c, fmt.Sprintf("source %s spec fetched successfully", req.Type), dto.SpecResponse{
+			Version: req.Version,
+			Type:    req.Type,
+		})
+		return
+	}
+	utils.AcceptedResponse(c, fmt.Sprintf("source %s spec fetch started", req.Type), dto.OperationAcceptedResponse{OperationID: operationID})
 }

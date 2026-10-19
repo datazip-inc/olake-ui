@@ -24,3 +24,12 @@ export interface QueryEngineSpec {
 	label: string
 	supports: string[]
 }
+
+export interface OperationAccepted {
+	operation_id: string
+}
+
+export interface OperationStatus {
+	status: "running" | "succeeded" | "failed"
+	error?: string
+}
