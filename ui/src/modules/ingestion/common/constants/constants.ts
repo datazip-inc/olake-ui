@@ -69,3 +69,10 @@ export const KAFKA_META_COLUMNS = new Set([
 	"_kafka_partition",
 	"_kafka_timestamp",
 ])
+
+// Source docs page headings that each source form section ("ui:sections" id) scrolls the docs panel to
+export const SOURCE_SECTION_DOC_ANCHORS: Record<string, string> = {
+	cdc: "change-data-capture-cdc",
+	connection: "connection-details",
+	additional: "additional-configuration",
+}

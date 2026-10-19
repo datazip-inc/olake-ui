@@ -101,6 +101,11 @@ export const getConnectorInLowerCase = (connector?: string | null) => {
 	}
 }
 
+// The trailing slash skips olake.io's redirect, so a later #anchor change scrolls the page without
+// reloading it. config-type keeps the "OLake UI" tab open, which holds the form section headings.
+export const getSourceDocUrl = (connector?: string | null) =>
+	`https://olake.io/docs/connectors/${getConnectorInLowerCase(connector)}/?config-type=olake-ui`
+
 // Polling failures arrive as plain Errors, not AxiosErrors, so both carry the message.
 export const describeConnectionFailure = (error: unknown): string => {
 	if (error instanceof AxiosError) {

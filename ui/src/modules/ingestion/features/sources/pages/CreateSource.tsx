@@ -50,7 +50,10 @@ import {
 } from "@/modules/ingestion/common/constants"
 import { validationService } from "@/modules/ingestion/common/services/validationService"
 import { SetupType } from "@/modules/ingestion/common/types"
-import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
+import {
+	getConnectorInLowerCase,
+	getSourceDocUrl,
+} from "@/modules/ingestion/common/utils"
 
 import {
 	useSources,
@@ -58,6 +61,7 @@ import {
 	useSourceSpec,
 	useCreateSource,
 	useSourceConnectionTest,
+	useSourceDocSections,
 } from "../hooks"
 import { Source } from "../types"
 import { getConnectorLabel } from "../utils"
@@ -95,6 +99,7 @@ const CreateSource: React.FC = () => {
 	const versions = versionsData?.version ?? []
 	const createSourceMutation = useCreateSource()
 	const sourceConnectionTest = useSourceConnectionTest()
+	const { docsPanelRef, formContext } = useSourceDocSections()
 
 	useEffect(() => {
 		if (setupType === SETUP_TYPES.EXISTING) {
@@ -434,6 +439,7 @@ const CreateSource: React.FC = () => {
 								}}
 								transformErrors={transformErrors}
 								onError={notifyFirstFormError}
+								formContext={formContext}
 								uiSchema={uiSchemaWithCdc}
 								validator={formValidator}
 								omitExtraData
@@ -447,7 +453,7 @@ const CreateSource: React.FC = () => {
 			</>
 		)
 
-	const docUrl = `https://olake.io/docs/connectors/${normalizedConnector}`
+	const docUrl = getSourceDocUrl(connector)
 
 	return (
 		<div className={`flex h-full`}>
@@ -518,6 +524,7 @@ const CreateSource: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
+						ref={docsPanelRef}
 						docUrl={docUrl}
 						isMinimized={docsMinimized}
 						onToggle={handleToggleDocPanel}

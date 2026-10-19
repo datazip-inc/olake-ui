@@ -49,6 +49,7 @@ import { DISPLAYED_JOBS_COUNT } from "@/modules/ingestion/common/constants"
 import {
 	getConnectorImage,
 	getConnectorInLowerCase,
+	getSourceDocUrl,
 } from "@/modules/ingestion/common/utils"
 import { useActivateJob } from "@/modules/ingestion/features/jobs/hooks"
 
@@ -60,6 +61,7 @@ import {
 	useUpdateSource,
 	useDeleteSource,
 	useSourceConnectionTest,
+	useSourceDocSections,
 } from "../hooks"
 import { useSourceStore } from "../stores"
 import { SourceJob } from "../types"
@@ -108,6 +110,7 @@ const SourceEdit: React.FC = () => {
 	const updateSourceMutation = useUpdateSource(sourceId ?? "")
 	const deleteSourceMutation = useDeleteSource()
 	const sourceConnectionTest = useSourceConnectionTest()
+	const { docsPanelRef, formContext } = useSourceDocSections()
 	const { mutate: activateJob } = useActivateJob()
 
 	useEffect(() => {
@@ -348,7 +351,7 @@ const SourceEdit: React.FC = () => {
 		)
 	}
 
-	const docUrl = `https://olake.io/docs/connectors/${getConnectorInLowerCase(connector)}`
+	const docUrl = getSourceDocUrl(connector || source?.type)
 
 	return (
 		<div className="flex h-full">
@@ -518,6 +521,7 @@ const SourceEdit: React.FC = () => {
 													}}
 													transformErrors={transformErrors}
 													onError={notifyFirstFormError}
+													formContext={formContext}
 													onSubmit={() => handleSave()}
 													uiSchema={uiSchemaWithCdc}
 													validator={formValidator}
@@ -585,6 +589,7 @@ const SourceEdit: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
+						ref={docsPanelRef}
 						docUrl={docUrl}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}

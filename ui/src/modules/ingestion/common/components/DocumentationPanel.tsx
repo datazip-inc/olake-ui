@@ -6,23 +6,51 @@ import {
 } from "@phosphor-icons/react"
 import { Button, Tooltip } from "antd"
 import clsx from "clsx"
-import { useState, useRef, useEffect } from "react"
+import {
+	forwardRef,
+	useEffect,
+	useImperativeHandle,
+	useRef,
+	useState,
+} from "react"
 
-import { DocumentationPanelProps } from "@/modules/ingestion/common/types"
+import {
+	DocumentationPanelHandle,
+	DocumentationPanelProps,
+} from "@/modules/ingestion/common/types"
 
-const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
-	docUrl,
-	isMinimized = false,
-	onToggle,
-	showResizer = true,
-	initialWidth = 40,
-}) => {
+const DocumentationPanel = forwardRef<
+	DocumentationPanelHandle,
+	DocumentationPanelProps
+>(function DocumentationPanel(
+	{
+		docUrl,
+		isMinimized = false,
+		onToggle,
+		showResizer = true,
+		initialWidth = 40,
+	},
+	ref,
+) {
 	const [isDocPanelCollapsed, setIsDocPanelCollapsed] = useState(isMinimized)
 	const [isLoading, setIsLoading] = useState(true)
 	const [isReady, setIsReady] = useState(false)
 
 	const iframeRef = useRef<HTMLIFrameElement>(null)
 	const panelRef = useRef<HTMLDivElement>(null)
+
+	useImperativeHandle(
+		ref,
+		() => ({
+			// Only the hash changes, so the docs page scrolls without reloading; an anchor already at
+			// the top does not move. replace() keeps these jumps out of the browser history.
+			showAnchor: anchor =>
+				iframeRef.current?.contentWindow?.location.replace(
+					`${docUrl}#${anchor}`,
+				),
+		}),
+		[docUrl],
+	)
 
 	// Sync collapsed state with isMinimized prop
 	useEffect(() => {
@@ -33,9 +61,6 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 	useEffect(() => {
 		setIsLoading(true)
 		setIsReady(false)
-		if (iframeRef.current) {
-			iframeRef.current.src = docUrl
-		}
 	}, [docUrl])
 
 	// Handle iframe load event
@@ -187,6 +212,6 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 			`}</style>
 		</>
 	)
-}
+})
 
 export default DocumentationPanel
