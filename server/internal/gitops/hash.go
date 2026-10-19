@@ -3,21 +3,14 @@ package gitops
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
-	"sort"
+	"encoding/json"
 )
 
-// ContentHash returns a stable SHA256 hex of the string map (keys sorted).
-// Used for all four ConfigMap kinds (Source, Destination, Job, Streams).
+// ContentHash returns a stable SHA256 hex of the string map.
+// encoding/json sorts map keys and escapes values, so distinct maps never
+// serialise to the same bytes.
 func ContentHash(data map[string]string) string {
-	keys := make([]string, 0, len(data))
-	for k := range data {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	h := sha256.New()
-	for _, k := range keys {
-		fmt.Fprintf(h, "%s=%s\n", k, data[k])
-	}
-	return hex.EncodeToString(h.Sum(nil))
+	b, _ := json.Marshal(data)
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
 }

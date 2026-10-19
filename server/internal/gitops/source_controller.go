@@ -49,8 +49,8 @@ func (r *SourceReconciler) get(ctx context.Context, projectID, name string) (*re
 	return &resourceSpec{ID: src.ID, Name: src.Name, Type: src.Type, Version: src.Version, Config: dto.JSONConfig(src.Config)}, nil
 }
 
-func (r *SourceReconciler) test(ctx context.Context, spec *resourceSpec) error {
-	return testSourceConnection(ctx, r.ETL, spec.Type, spec.Version, spec.Config)
+func (r *SourceReconciler) test(ctx context.Context, projectID string, spec *resourceSpec) error {
+	return testSourceConnection(ctx, r.ETL, projectID, spec.Type, spec.Version, spec.Config)
 }
 
 func (r *SourceReconciler) create(ctx context.Context, spec *resourceSpec, projectID string, userID *int) error {

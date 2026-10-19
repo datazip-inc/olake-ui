@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
@@ -46,6 +47,12 @@ func BindAndValidate(c *gin.Context, target interface{}) error {
 	return c.ShouldBindJSON(target)
 }
 
+// ValidateStruct applies the same `binding` tag rules as BindAndValidate to input
+// that was not read from an HTTP request (e.g. GitOps ConfigMaps).
+func ValidateStruct(target interface{}) error {
+	return binding.Validator.ValidateStruct(target)
+}
+
 func StatusFromBindError(err error) int {
 	var mbe *http.MaxBytesError
 	if errors.As(err, &mbe) {
@@ -60,6 +67,14 @@ func StatusFromBindError(err error) int {
 
 func SuccessResponse(c *gin.Context, message string, data interface{}) {
 	c.JSON(http.StatusOK, dto.JSONResponse{
+		Success: true,
+		Message: message,
+		Data:    data,
+	})
+}
+
+func AcceptedResponse(c *gin.Context, message string, data interface{}) {
+	c.JSON(http.StatusAccepted, dto.JSONResponse{
 		Success: true,
 		Message: message,
 		Data:    data,

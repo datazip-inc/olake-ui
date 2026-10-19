@@ -2,7 +2,7 @@ import { ArrowsClockwiseIcon, CaretLeftIcon } from "@phosphor-icons/react"
 import { Button } from "antd"
 import clsx from "clsx"
 import { useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router"
 
 import { DataTable } from "@/common/components"
 import type { ColumnDef } from "@/common/components"

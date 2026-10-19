@@ -89,8 +89,7 @@ func (r *ResourceData) EntityID() int {
 
 // StatusSink writes phase and failure indicators.
 type StatusSink interface {
-	SpawnIndicator(ctx context.Context, r *ResourceData, errMsg string) error
-	DeleteIndicator(ctx context.Context, r *ResourceData) error
+	Indicator(ctx context.Context, r *ResourceData, action, errMsg string)
 	SetPhase(ctx context.Context, r *ResourceData, phase, message, entityID, observedHash string) error
 }
 
@@ -279,7 +278,7 @@ type resource interface {
 	notFoundErr() error
 	parse(config string) (*resourceSpec, error)
 	get(ctx context.Context, projectID, name string) (*resourceSpec, error)
-	test(ctx context.Context, spec *resourceSpec) error
+	test(ctx context.Context, projectID string, spec *resourceSpec) error
 	create(ctx context.Context, spec *resourceSpec, projectID string, userID *int) error
 	update(ctx context.Context, id int, spec *resourceSpec, projectID string, userID *int) error
 }
@@ -316,7 +315,7 @@ func reconcileResource(ctx context.Context, sink StatusSink, r resource, res *Re
 
 	changed := existing != nil && !resourceMatches(existing, spec)
 	if existing == nil || changed {
-		if err := r.test(ctx, spec); err != nil {
+		if err := r.test(ctx, res.ProjectID(), spec); err != nil {
 			logger.Error(err, r.kind()+" connection test failed")
 			if !errors.Is(err, ErrNonRetryable) {
 				return requeueTransient(ctx, sink, res, err, observedHash)

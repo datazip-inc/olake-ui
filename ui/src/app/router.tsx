@@ -4,7 +4,7 @@ import {
 	Navigate,
 	Outlet,
 	useLocation,
-} from "react-router-dom"
+} from "react-router"
 
 import { ErrorBoundary } from "@/common/components"
 import { useAuthStore } from "@/core/auth/stores/authStore"

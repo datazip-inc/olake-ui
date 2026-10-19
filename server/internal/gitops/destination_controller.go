@@ -49,8 +49,8 @@ func (r *DestinationReconciler) get(ctx context.Context, projectID, name string)
 	return &resourceSpec{ID: dest.ID, Name: dest.Name, Type: dest.DestType, Version: dest.Version, Config: dto.JSONConfig(dest.Config)}, nil
 }
 
-func (r *DestinationReconciler) test(ctx context.Context, spec *resourceSpec) error {
-	return testDestinationConnection(ctx, r.ETL, spec.Type, spec.Version, spec.Config, "", "")
+func (r *DestinationReconciler) test(ctx context.Context, projectID string, spec *resourceSpec) error {
+	return testDestinationConnection(ctx, r.ETL, projectID, spec.Type, spec.Version, spec.Config, "", "")
 }
 
 func (r *DestinationReconciler) create(ctx context.Context, spec *resourceSpec, projectID string, userID *int) error {

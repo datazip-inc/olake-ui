@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -17,15 +18,11 @@ func (f *JSONConfig) UnmarshalJSON(data []byte) error {
 	}
 
 	if len(data) > 0 && data[0] == '{' {
-		var obj map[string]interface{}
-		if err := json.Unmarshal(data, &obj); err != nil {
+		var buf bytes.Buffer
+		if err := json.Compact(&buf, data); err != nil {
 			return fmt.Errorf("config: invalid JSON object: %w", err)
 		}
-		compact, err := json.Marshal(obj)
-		if err != nil {
-			return fmt.Errorf("config: cannot re-marshal object: %w", err)
-		}
-		*f = JSONConfig(compact)
+		*f = JSONConfig(buf.String())
 		return nil
 	}
 

@@ -41,6 +41,9 @@ var (
 	StreamsFile          = "streams.json"
 	AvailableStreamsFile = "available_streams.json"
 	SelectedStreamsFile  = "selected_streams.json"
+	// LegacyJobMarkerFile marks a discover operation started for a legacy job, so its result keeps
+	// streams_config even when the driver also writes the split files
+	LegacyJobMarkerFile = "legacy_job.txt"
 
 	// DefaultQueryEnginesVersion is the first release with the query engine flags; older images reject them.
 	DefaultQueryEnginesVersion = "v0.11.0"
