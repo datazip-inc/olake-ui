@@ -7,37 +7,25 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
-func spawnIndicator(ctx context.Context, t *temporal.Temporal, r *ResourceData, errMsg string) error {
-	if t == nil {
-		return nil
+const (
+	indicatorSpawn  = "spawn"
+	indicatorDelete = "delete"
+)
+
+// Indicator asks Temporal to spawn or delete the failure indicator for r.
+func (s *K8sSink) Indicator(ctx context.Context, r *ResourceData, action, errMsg string) {
+	if s.temporal == nil {
+		return
 	}
 	req := temporal.IndicatorRequest{
-		Action:       "spawn",
+		Action:       action,
 		Name:         indicatorName(r.Name, r.Kind),
 		Namespace:    r.Namespace,
 		Kind:         r.Kind,
 		ResourceName: r.Name,
 		Message:      truncate(errMsg, terminationLogMax),
 	}
-	if err := t.StartIndicator(ctx, &req); err != nil {
-		logger.Errorf("start indicator workflow spawn %s/%s: %s", r.Namespace, r.Name, err)
+	if err := s.temporal.StartIndicator(ctx, &req); err != nil {
+		logger.Errorf("start indicator workflow %s %s/%s: %s", action, r.Namespace, r.Name, err)
 	}
-	return nil
-}
-
-func deleteIndicator(ctx context.Context, t *temporal.Temporal, r *ResourceData) error {
-	if t == nil {
-		return nil
-	}
-	req := temporal.IndicatorRequest{
-		Action:       "delete",
-		Name:         indicatorName(r.Name, r.Kind),
-		Namespace:    r.Namespace,
-		Kind:         r.Kind,
-		ResourceName: r.Name,
-	}
-	if err := t.StartIndicator(ctx, &req); err != nil {
-		logger.Errorf("start indicator workflow delete %s/%s: %s", r.Namespace, r.Name, err)
-	}
-	return nil
 }

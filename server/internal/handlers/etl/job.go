@@ -96,7 +96,8 @@ func (h *Handler) CreateJob(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	var req dto.CreateJobRequest
+	// a job is active unless the request sets "activate": false
+	req := dto.CreateJobRequest{JobMetadata: dto.JobMetadata{Activate: true}}
 	if err := utils.BindAndValidate(c, &req); err != nil {
 		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return

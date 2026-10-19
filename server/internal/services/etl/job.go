@@ -136,7 +136,7 @@ func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, proje
 		DestID:                 dest.ID,
 		Source:                 source,
 		Destination:            dest,
-		Active:                 true,
+		Active:                 req.Activate,
 		Frequency:              req.Frequency,
 		StreamsConfig:          utils.StringPtr(req.StreamsConfig),
 		AvailableStreamsConfig: utils.StringPtr(req.AvailableStreamsConfig),

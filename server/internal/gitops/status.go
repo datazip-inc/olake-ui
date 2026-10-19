@@ -47,7 +47,7 @@ func failResource(ctx context.Context, sink StatusSink, r *ResourceData, err err
 	msg := err.Error()
 	hash := observedHashForResource(r, observedHash)
 	_ = sink.SetPhase(ctx, r, PhaseFailed, msg, r.Annotations[AnnotationEntityID], hash)
-	_ = sink.SpawnIndicator(ctx, r, msg)
+	sink.Indicator(ctx, r, indicatorSpawn, msg)
 	return ctrl.Result{}, nil
 }
 
@@ -78,7 +78,7 @@ func requeueTransient(ctx context.Context, sink StatusSink, r *ResourceData, err
 
 func successResource(ctx context.Context, sink StatusSink, r *ResourceData, entityID int, observedHash string) error {
 	retryMap.Delete(r.key())
-	_ = sink.DeleteIndicator(ctx, r)
+	sink.Indicator(ctx, r, indicatorDelete, "")
 	hash := observedHashForResource(r, observedHash)
 	return sink.SetPhase(ctx, r, PhaseReady, "", strconvEntityID(entityID), hash)
 }

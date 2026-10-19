@@ -60,14 +60,7 @@ func (s Service) GetDestination(ctx context.Context, projectID string, destinati
 
 // GetDestinationByName returns a destination model by name within a project.
 func (s Service) GetDestinationByName(_ context.Context, projectID, name string) (*models.Destination, error) {
-	dest, err := s.db.GetDestinationByName(projectID, name)
-	if err != nil {
-		if errors.Is(err, constants.ErrDestinationNotFound) {
-			return nil, fmt.Errorf("%w: %v", constants.ErrDestinationNotFound, err)
-		}
-		return nil, err
-	}
-	return dest, nil
+	return s.db.GetDestinationByName(projectID, name)
 }
 
 // GetDestinationByID returns a destination model by ID within a project.

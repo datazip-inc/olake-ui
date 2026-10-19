@@ -29,14 +29,6 @@ func NewK8sSink(c client.Client, recorder k8srecord.EventRecorder, t *temporal.T
 	return &K8sSink{client: c, recorder: recorder, temporal: t}
 }
 
-func (s *K8sSink) SpawnIndicator(ctx context.Context, r *ResourceData, errMsg string) error {
-	return spawnIndicator(ctx, s.temporal, r, errMsg)
-}
-
-func (s *K8sSink) DeleteIndicator(ctx context.Context, r *ResourceData) error {
-	return deleteIndicator(ctx, s.temporal, r)
-}
-
 func (s *K8sSink) SetPhase(ctx context.Context, r *ResourceData, phase, message, entityID, observedHash string) error {
 	dataHash := observedHashForResource(r, observedHash)
 	key := client.ObjectKey{Name: r.Name, Namespace: r.Namespace}
@@ -44,8 +36,9 @@ func (s *K8sSink) SetPhase(ctx context.Context, r *ResourceData, phase, message,
 	// Patch annotations only; does not touch data. A concurrent Argo sync that
 	// replaces the whole object can still drop these keys before we read —
 	// next reconcile will rewrite them, or skipReconcile may miss if hash is gone.
+	var obj client.Object
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		obj := newManagedObject(r.ObjectKind)
+		obj = newManagedObject(r.ObjectKind)
 		if err := s.client.Get(ctx, key, obj); err != nil {
 			return err
 		}
@@ -75,9 +68,6 @@ func (s *K8sSink) SetPhase(ctx context.Context, r *ResourceData, phase, message,
 	}
 
 	if s.recorder != nil {
-		evObj := newManagedObject(r.ObjectKind)
-		evObj.SetName(r.Name)
-		evObj.SetNamespace(r.Namespace)
 		eventType := corev1.EventTypeNormal
 		reason, eventMsg := "Pending", message
 		switch phase {
@@ -87,7 +77,7 @@ func (s *K8sSink) SetPhase(ctx context.Context, r *ResourceData, phase, message,
 			eventType = corev1.EventTypeWarning
 			reason, eventMsg = "SyncFailed", message
 		}
-		s.recorder.Event(evObj, eventType, reason, eventMsg)
+		s.recorder.Event(obj, eventType, reason, eventMsg)
 	}
 	return nil
 }
