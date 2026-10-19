@@ -1,5 +1,5 @@
 import { lazy } from "react"
-import { RouteObject } from "react-router-dom"
+import { RouteObject } from "react-router"
 
 const lazyComponents = {
 	Jobs: lazy(() => import("./features/jobs/pages/Jobs")),
