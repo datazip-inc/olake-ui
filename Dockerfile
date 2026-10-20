@@ -17,7 +17,7 @@ COPY server/ ./server/
 ARG TARGETARCH
 # Build backend (assuming main package is at the root of 'server/' content)
 # Using -ldflags to create smaller binaries
-RUN cd server && GOARCH=${TARGETARCH} go build -ldflags="-w -s" -o /app/olake-server .
+RUN cd server && CGO_ENABLED=0 GOARCH=${TARGETARCH} go build -ldflags="-w -s" -o /app/olake-server .
 
 # Stage 2: Frontend Builder
 FROM --platform=$BUILDPLATFORM node:22-alpine AS node-builder
