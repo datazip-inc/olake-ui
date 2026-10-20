@@ -495,7 +495,7 @@ func (s Service) GetTaskLogs(ctx context.Context, jobID int, filePath, source, c
 
 	logs, err := utils.ReadTaskLogs(ctx, mainSyncDir, source, cursor, limit, direction)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read logs: %s", err)
+		return nil, fmt.Errorf("failed to read logs: %w", err)
 	}
 	return logs, nil
 }

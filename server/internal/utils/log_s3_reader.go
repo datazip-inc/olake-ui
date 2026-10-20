@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"slices"
@@ -28,7 +29,7 @@ func readLogsFromS3(ctx context.Context, workflowDir string, cursor int64, direc
 	if err != nil {
 		// Connector chunks are not uploaded until the first log flush. Polling
 		// at job start would otherwise 500 before any sync_* prefix exists.
-		if strings.Contains(err.Error(), "no sync folder found") {
+		if errors.Is(err, constants.ErrSyncFolderNotFound) {
 			return &dto.TaskLogsResponse{Logs: []map[string]interface{}{}}, nil
 		}
 		return nil, err
@@ -65,7 +66,7 @@ func GetAndValidateS3SyncDir(ctx context.Context, workflowDir string) (string, e
 		return "", err
 	}
 	if len(syncFolders) == 0 {
-		return "", fmt.Errorf("no sync folder found in: %s/logs", workflowDir)
+		return "", fmt.Errorf("%w in: %s/logs", constants.ErrSyncFolderNotFound, workflowDir)
 	}
 
 	return syncFolders[0], nil

@@ -271,7 +271,7 @@ func GetAndValidateFilesystemSyncDir(baseDir string) (string, string, error) {
 		}
 	}
 
-	return "", "", fmt.Errorf("no sync folder found in: %s", logsDir)
+	return "", "", fmt.Errorf("%w in: %s", constants.ErrSyncFolderNotFound, logsDir)
 }
 
 // readLogsFromFilesystem reads logs from the given mainLogDir and returns structured log entries.

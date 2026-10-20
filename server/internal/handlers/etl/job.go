@@ -535,6 +535,8 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
+		} else if errors.Is(err, constants.ErrInvalidLogCursor) {
+			status = http.StatusBadRequest
 		}
 		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get task logs: %s", err), err)
 		return

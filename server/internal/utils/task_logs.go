@@ -71,11 +71,11 @@ func decodeTaskLogCursor(raw string) (taskLogCursor, error) {
 	}
 	data, err := base64.RawURLEncoding.DecodeString(raw)
 	if err != nil {
-		return nil, fmt.Errorf("invalid log cursor: %s", err)
+		return nil, fmt.Errorf("%w: %s", constants.ErrInvalidLogCursor, err)
 	}
 	var cursor taskLogCursor
 	if err := json.Unmarshal(data, &cursor); err != nil {
-		return nil, fmt.Errorf("invalid log cursor: %s", err)
+		return nil, fmt.Errorf("%w: %s", constants.ErrInvalidLogCursor, err)
 	}
 	return cursor, nil
 }

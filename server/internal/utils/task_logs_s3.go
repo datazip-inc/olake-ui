@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -24,7 +25,7 @@ func openS3TaskLogs(ctx context.Context, workflowDir, source string) ([]logFile,
 			}
 			files = append(files, f)
 		// connector chunks are not uploaded until the first log flush
-		case !strings.Contains(err.Error(), "no sync folder found"):
+		case !errors.Is(err, constants.ErrSyncFolderNotFound):
 			return nil, err
 		}
 	}
