@@ -2,7 +2,7 @@ import { QuestionIcon } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 import { Button, message, Modal, Select, Spin, Tooltip } from "antd"
 import { useEffect, useRef, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"

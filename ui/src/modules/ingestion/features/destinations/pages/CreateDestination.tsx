@@ -8,7 +8,7 @@ import {
 import Form from "@rjsf/antd"
 import { Input, message, Select, Spin } from "antd"
 import { useState, useEffect, useRef } from "react"
-import { Link } from "react-router-dom"
+import { Link } from "react-router"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"

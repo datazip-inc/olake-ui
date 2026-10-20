@@ -10,7 +10,7 @@ import { Input, Button, Select, Switch, Spin, Table, Tooltip } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { formatDistanceToNow } from "date-fns"
 import React, { useState, useEffect, useRef } from "react"
-import { useParams, Link, useNavigate } from "react-router-dom"
+import { useParams, Link, useNavigate } from "react-router"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
