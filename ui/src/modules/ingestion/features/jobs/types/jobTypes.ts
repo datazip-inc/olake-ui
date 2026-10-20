@@ -64,7 +64,6 @@ export type TaskLogSource = "all" | "sync" | "worker"
 
 export interface TaskLogApiEntry extends LogEntry {
 	source?: Exclude<TaskLogSource, "all">
-	category?: string
 	tip?: boolean
 }
 
