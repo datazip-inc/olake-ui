@@ -3,6 +3,10 @@
 package destinations
 
 // Destination describes how to start a destination inside the DinD box and how Spark reads what it wrote.
+//
+// The harness checks every destination through Spark Connect on box port 15002. So the compose
+// file in ComposeDir must start a Spark Connect server published on 15002, with a catalog that
+// resolves the names Table returns (the jdbc compose file has the spark-iceberg service for this).
 type Destination struct {
 	Name       string   // shown in logs
 	ComposeDir string   // folder with docker-compose.yml, relative to server/tests

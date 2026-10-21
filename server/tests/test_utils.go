@@ -64,6 +64,10 @@ const (
     `
 )
 
+// sparkConnectPort is the box port VerifyDestination reaches Spark Connect on. Every
+// destination's compose file must run Spark Connect there; see destinations.Destination.
+const sparkConnectPort = "15002/tcp"
+
 // Workflow is one integration run: the source and destination to start, the Playwright spec
 // that creates and syncs the job through the UI, and the checks run on the destination afterwards.
 type Workflow struct {
@@ -99,7 +103,7 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 	}
 	t.Logf("Project root identified at: %s", projectRoot)
 
-	exposedPorts := []string{"8000/tcp", "2375/tcp", "15002/tcp"}
+	exposedPorts := []string{"8000/tcp", "2375/tcp", sparkConnectPort}
 	if w.Source.Port != "" {
 		exposedPorts = append(exposedPorts, w.Source.Port)
 	}
@@ -179,8 +183,8 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 		sourcePort = mapped.Port()
 	}
 
-	// iceberg-spark port
-	sparkPort, err := ctr.MappedPort(ctx, "15002/tcp")
+	// Spark Connect port
+	sparkPort, err := ctr.MappedPort(ctx, sparkConnectPort)
 	if err != nil {
 		return fmt.Errorf("failed to get spark port: %w", err)
 	}
