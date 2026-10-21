@@ -49,14 +49,6 @@ const (
         done
     `
 
-	// Network setup
-	networkSetupCmd = `
-        docker network create olake-network || true &&
-        docker network connect olake-network olake-ui || true &&
-        docker network connect olake-network postgres || true &&
-        docker network connect olake-network olake_postgres-test || true
-    `
-
 	// Install Playwright and dependencies. --frozen-lockfile installs the Playwright version
 	// pinned in pnpm-lock.yaml instead of resolving the latest release.
 	installPlaywrightCmd = `
@@ -209,24 +201,18 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 		return fmt.Errorf("OLake startup failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 6: Setup networks
-	t.Log("Setting up Docker networks...")
-	if code, out, err := ExecCommand(ctx, ctr, networkSetupCmd); err != nil || code != 0 {
-		t.Logf("Warning: Network setup failed (%d): %s\n%s", code, err, out)
-	}
-
-	// Step 7: Seed the source
+	// Step 6: Seed the source
 	w.Source.Seed(ctx, t, host, sourcePort.Port())
 
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
 
-	// Step 8: Install Playwright
+	// Step 7: Install Playwright
 	t.Log("Installing Playwright and dependencies...")
 	if code, out, err := ExecCommand(ctx, ctr, installPlaywrightCmd); err != nil || code != 0 {
 		return fmt.Errorf("playwright installation failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 9: Run Playwright tests
+	// Step 8: Run Playwright tests
 	t.Log("Executing Playwright tests...")
 	if code, out, err := ExecCommandWithStreaming(ctx, t, ctr, fmt.Sprintf(runPlaywrightCmd, w.Spec)); err != nil || code != 0 {
 		return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
@@ -237,7 +223,7 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 	t.Log("Waiting for 60 seconds before verifying destination data...")
 	time.Sleep(60 * time.Second)
 
-	// Step 10: Verify the destination
+	// Step 9: Verify the destination
 	t.Logf("Starting %s data verification...", w.Destination.Name)
 	VerifyDestination(ctx, t, host, sparkPort.Port(), w)
 	return nil
