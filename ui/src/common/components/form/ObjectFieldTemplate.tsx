@@ -163,11 +163,11 @@ export default function ObjectFieldTemplate<
 				.map(name => properties.find(p => p.name === name))
 				.filter((e): e is ObjectFieldTemplatePropertyType => !!e && !e.hidden)
 
-			let content
-			if (
+			const cdcNotSupported =
 				section.cdc === "not_supported" ||
 				(section.cdc === "toggle" && elements.length === 0)
-			) {
+			let content
+			if (cdcNotSupported) {
 				content = <CdcCard state="not_supported" />
 			} else if (elements.length === 0) {
 				return null
@@ -190,10 +190,20 @@ export default function ObjectFieldTemplate<
 				)
 			}
 
+			// Tells the form which section the user clicked or tabbed into (formContext.onSectionFocus).
+			// Focus counts only when it moves from another element, not when the window regains it.
+			const onSectionFocus = cdcNotSupported
+				? undefined
+				: () => formContext?.onSectionFocus?.(section.id)
+
 			return (
 				<div
 					key={section.id}
 					className="mb-4 rounded-xl border border-olake-border-secondary bg-olake-surface-subtle p-5"
+					onClickCapture={onSectionFocus}
+					onFocusCapture={e => {
+						if (e.relatedTarget) onSectionFocus?.()
+					}}
 				>
 					<p className="mb-4 text-sm font-medium text-olake-text">
 						{section.title}
