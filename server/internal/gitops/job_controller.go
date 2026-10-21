@@ -156,7 +156,7 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res *ResourceData) (ct
 
 	switch {
 	case existingJob == nil:
-		req := jobCfg.createRequest(source.ID, dest.ID, catalog)
+		req := jobCfg.createRequest(source.ID, source.Version, dest.ID, catalog)
 		if err := r.ETL.CreateJob(ctx, req, projectID, &userID); err != nil {
 			logger.Error(err, "create job failed")
 			return r.failJob(ctx, res, streamsRes, NonRetryableError(err), observed)
@@ -178,7 +178,7 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res *ResourceData) (ct
 				return r.failJob(ctx, res, streamsRes, err, observed)
 			}
 		}
-		req := jobCfg.updateRequest(source.ID, dest.ID, existingJob.Active, catalog, diffStreams)
+		req := jobCfg.updateRequest(source.ID, source.Version, dest.ID, existingJob.Active, catalog, diffStreams)
 		if err := r.ETL.UpdateJob(ctx, req, projectID, existingJob.ID, &userID); err != nil {
 			// clear-destination ends on its own; retry the update after it instead of failing for this hash
 			if errors.Is(err, constants.ErrClearDestinationRunning) {
@@ -498,20 +498,20 @@ func diffJob(existing *models.Job, cfg *JobConfig, sourceID, destID int) jobDrif
 	}
 }
 
-func (cfg *JobConfig) createRequest(sourceID, destID int, catalog types.StreamsCatalog) *dto.CreateJobRequest {
+func (cfg *JobConfig) createRequest(sourceID int, sourceVersion string, destID int, catalog types.StreamsCatalog) *dto.CreateJobRequest {
 	return &dto.CreateJobRequest{
 		JobMetadata:            cfg.JobMetadata,
 		StreamsConfig:          catalog.Streams,
 		AvailableStreamsConfig: catalog.Available,
 		SelectedStreamsConfig:  catalog.Selected,
-		Source:                 &dto.DriverConfig{ID: &sourceID},
+		Source:                 &dto.DriverConfig{ID: &sourceID, Version: sourceVersion},
 		Destination:            &dto.DriverConfig{ID: &destID},
 	}
 }
 
 // updateRequest keeps the job's current activation (active): UpdateJob stores it without pausing or
 // resuming the schedule, so the reconciler changes activation through ActivateJob.
-func (cfg *JobConfig) updateRequest(sourceID, destID int, active bool, catalog types.StreamsCatalog, differenceStreams string) *dto.UpdateJobRequest {
+func (cfg *JobConfig) updateRequest(sourceID int, sourceVersion string, destID int, active bool, catalog types.StreamsCatalog, differenceStreams string) *dto.UpdateJobRequest {
 	metadata := cfg.JobMetadata
 	metadata.Activate = active
 	return &dto.UpdateJobRequest{
@@ -520,7 +520,7 @@ func (cfg *JobConfig) updateRequest(sourceID, destID int, active bool, catalog t
 		AvailableStreamsConfig: catalog.Available,
 		SelectedStreamsConfig:  catalog.Selected,
 		DifferenceStreams:      differenceStreams,
-		Source:                 &dto.DriverConfig{ID: &sourceID},
+		Source:                 &dto.DriverConfig{ID: &sourceID, Version: sourceVersion},
 		Destination:            &dto.DriverConfig{ID: &destID},
 	}
 }
