@@ -99,6 +99,11 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 	}
 	t.Logf("Project root identified at: %s", projectRoot)
 
+	exposedPorts := []string{"8000/tcp", "2375/tcp", "15002/tcp"}
+	if w.Source.Port != "" {
+		exposedPorts = append(exposedPorts, w.Source.Port)
+	}
+
 	req := testcontainers.ContainerRequest{
 		Image: "ubuntu:22.04",
 		Env: map[string]string{
@@ -126,7 +131,7 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 		ConfigModifier: func(config *container.Config) {
 			config.WorkingDir = "/mnt"
 		},
-		ExposedPorts: []string{"8000/tcp", "2375/tcp", w.Source.Port, "15002/tcp"},
+		ExposedPorts: exposedPorts,
 		Cmd: []string{
 			"/bin/sh", "-c",
 			`set -e
@@ -164,10 +169,14 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 		return fmt.Errorf("failed to get host: %w", err)
 	}
 
-	// source port
-	sourcePort, err := ctr.MappedPort(ctx, w.Source.Port)
-	if err != nil {
-		return fmt.Errorf("failed to get %s port: %w", w.Source.Name, err)
+	// source port, if the source publishes one
+	var sourcePort string
+	if w.Source.Port != "" {
+		mapped, err := ctr.MappedPort(ctx, w.Source.Port)
+		if err != nil {
+			return fmt.Errorf("failed to get %s port: %w", w.Source.Name, err)
+		}
+		sourcePort = mapped.Port()
 	}
 
 	// iceberg-spark port
@@ -208,7 +217,7 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 	}
 
 	// Step 6: Seed the source
-	w.Source.Seed(ctx, t, host, sourcePort.Port())
+	w.Source.Seed(ctx, t, host, sourcePort)
 
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
 

@@ -11,9 +11,10 @@ import (
 type Source struct {
 	Name       string // shown in logs
 	ComposeDir string // folder with docker-compose.yml, relative to server/tests
-	Port       string // port the box exposes so the test can reach the source, e.g. "5433/tcp"
+	Port       string // port the box exposes so the test can reach the source, e.g. "5433/tcp"; empty exposes none
 	ReadyCmd   string // run in the box after compose up, in a subshell; exit 0 once ready, non-zero if it never is; empty skips
 
-	// Seed creates the tables and rows the workflow syncs. host and port reach the source from the test.
+	// Seed creates the tables and rows the workflow syncs. host and port reach the source from the
+	// test; port is empty when Port is.
 	Seed func(ctx context.Context, t *testing.T, host, port string)
 }
