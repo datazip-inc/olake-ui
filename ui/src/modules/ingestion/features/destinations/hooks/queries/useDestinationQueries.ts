@@ -46,6 +46,8 @@ export const useDestinationSpec = (
 				signal,
 			),
 		enabled: !!type && !!version,
+		// Starting a spec fetch runs a container; never retry it automatically.
+		retry: false,
 		staleTime: Infinity,
 		gcTime: 24 * 60 * 60 * 1000, // 24 hours
 	})
