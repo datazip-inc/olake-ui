@@ -26,8 +26,9 @@ import (
 
 type JobReconciler struct {
 	client.Client
-	ETL  *etl.Service
-	Sink StatusSink
+	ETL         *etl.Service
+	Sink        StatusSink
+	findStreams func(ctx context.Context, job *ResourceData, projectID string, entityID int) (*ResourceData, error)
 }
 
 func (r *JobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -408,7 +409,7 @@ func (r *JobReconciler) resolveDestination(ctx context.Context, projectID, ref s
 	return r.ETL.GetDestinationByName(ctx, projectID, ref)
 }
 
-func (r *JobReconciler) findStreams(ctx context.Context, job *ResourceData, projectID string, entityID int) (*ResourceData, error) {
+func (r *JobReconciler) findStreamsInCluster(ctx context.Context, job *ResourceData, projectID string, entityID int) (*ResourceData, error) {
 	var list corev1.ConfigMapList
 	if err := r.List(ctx, &list, client.InNamespace(job.Namespace), client.MatchingLabels(managedLabels(KindStreams))); err != nil {
 		return nil, err
@@ -540,6 +541,7 @@ func advancedSettingsEqual(stored *string, cfg *dto.AdvancedSettings) bool {
 }
 
 func (r *JobReconciler) Setup(mgr ctrl.Manager) error {
+	r.findStreams = r.findStreamsInCluster
 	dataChanged := predicate.ResourceVersionChangedPredicate{}
 	forSource := handler.EnqueueRequestsFromMapFunc(r.enqueueJobsFor(func(cfg *JobConfig) string { return cfg.Source }))
 	forDestination := handler.EnqueueRequestsFromMapFunc(r.enqueueJobsFor(func(cfg *JobConfig) string { return cfg.Destination }))

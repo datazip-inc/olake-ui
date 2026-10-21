@@ -14,7 +14,11 @@ const (
 
 // Indicator asks Temporal to spawn or delete the failure indicator for r.
 func (s *K8sSink) Indicator(ctx context.Context, r *ResourceData, action, errMsg string) {
-	if s.temporal == nil {
+	startIndicator(ctx, s.temporal, r, action, errMsg)
+}
+
+func startIndicator(ctx context.Context, t *temporal.Temporal, r *ResourceData, action, errMsg string) {
+	if t == nil {
 		return
 	}
 	req := temporal.IndicatorRequest{
@@ -25,7 +29,7 @@ func (s *K8sSink) Indicator(ctx context.Context, r *ResourceData, action, errMsg
 		ResourceName: r.Name,
 		Message:      truncate(errMsg, terminationLogMax),
 	}
-	if err := s.temporal.StartIndicator(ctx, &req); err != nil {
+	if err := t.StartIndicator(ctx, &req); err != nil {
 		logger.Errorf("start indicator workflow %s %s/%s: %s", action, r.Namespace, r.Name, err)
 	}
 }
