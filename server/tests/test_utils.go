@@ -49,8 +49,8 @@ const (
         done
     `
 
-	// Install Playwright and dependencies. --frozen-lockfile installs the Playwright version
-	// pinned in pnpm-lock.yaml instead of resolving the latest release.
+	// Install Playwright and dependencies. --frozen-lockfile installs exactly what pnpm-lock.yaml
+	// pins, leaves package.json and the lockfile in the checkout unchanged, and fails if they disagree.
 	installPlaywrightCmd = `
         cd /mnt/ui &&
         pnpm install --frozen-lockfile &&
