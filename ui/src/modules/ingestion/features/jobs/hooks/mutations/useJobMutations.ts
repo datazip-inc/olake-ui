@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query"
 
 import { jobsKeys } from "../../constants"
 import { jobService } from "../../services"
-import { JobBase } from "../../types"
+import { JobBase, StreamDifferenceRequest } from "../../types"
 
 // mutationKey: jobsKeys.all() tells the global MutationCache (in App.tsx) to
 // invalidate all job-related queries after this mutation succeeds.
@@ -64,11 +64,11 @@ export const useStreamDifference = () => {
 	return useMutation({
 		mutationFn: ({
 			jobId,
-			streamsConfig,
+			request,
 		}: {
 			jobId: string
-			streamsConfig: string
-		}) => jobService.getStreamDifference(jobId, streamsConfig),
+			request: StreamDifferenceRequest
+		}) => jobService.getStreamDifference(jobId, request),
 	})
 }
 
