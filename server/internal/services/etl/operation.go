@@ -108,6 +108,16 @@ func (s Service) GetOperationResult(ctx context.Context, projectID, operationID 
 	return decodeOperationOutput(ctx, kind, operationID, output)
 }
 
+// AwaitOperationOutput blocks until the operation's workflow closes and returns the output it
+// reported. It is for callers outside a request (GitOps), which need the result and can wait;
+// API clients poll GetOperationStatus instead.
+func (s Service) AwaitOperationOutput(ctx context.Context, operationID string) (map[string]interface{}, error) {
+	if s.temporal == nil {
+		return nil, fmt.Errorf("temporal client not available")
+	}
+	return s.temporal.FetchOperationOutput(ctx, operationID)
+}
+
 func decodeOperationOutput(ctx context.Context, kind temporal.OperationKind, operationID string, output map[string]interface{}) (interface{}, error) {
 	switch kind {
 	case temporal.OperationSpec:

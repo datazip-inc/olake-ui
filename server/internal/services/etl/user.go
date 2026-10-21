@@ -65,5 +65,3 @@ func (s Service) DeleteUser(_ context.Context, id int) error {
 	}
 	return nil
 }
-
-// removed: duplicate of auth.GetUserByID

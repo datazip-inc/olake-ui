@@ -71,6 +71,10 @@ const (
 // files to the correct directory, avoiding large payloads in Temporal.
 //
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
+// ErrWorkflowStart means Temporal did not start the workflow (for example, it is unreachable), so
+// the command never ran. Unlike a workflow that ran and failed, a retry can succeed.
+var ErrWorkflowStart = errors.New("failed to start workflow")
+
 // StartDiscoverStreams starts discover with the job's stored catalog as input and returns the
 // operation ID; with an empty catalog, discover runs fresh. The result is read with
 // ReadDiscoverOutput once the operation has succeeded.
@@ -208,7 +212,7 @@ func (t *Temporal) startDiscoverWorkflow(ctx context.Context, sourceType, versio
 	}
 	run, err := t.Client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{ID: workflowID, TaskQueue: t.taskQueue}, ExecuteWorkflow, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute discover workflow: %s", err)
+		return nil, fmt.Errorf("%w: discover: %s", ErrWorkflowStart, err)
 	}
 	return run, nil
 }
@@ -340,7 +344,7 @@ func (t *Temporal) StartVerifyDriverCredentials(ctx context.Context, projectID, 
 	}
 
 	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
-		return "", fmt.Errorf("failed to execute test connection workflow: %s", err)
+		return "", fmt.Errorf("%w: test connection: %s", ErrWorkflowStart, err)
 	}
 
 	return workflowID, nil
@@ -448,7 +452,7 @@ func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, o
 	}
 
 	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
-		return "", fmt.Errorf("failed to execute stream difference workflow: %s", err)
+		return "", fmt.Errorf("%w: stream difference: %s", ErrWorkflowStart, err)
 	}
 
 	return workflowID, nil
