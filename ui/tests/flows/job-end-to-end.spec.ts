@@ -35,7 +35,7 @@ test.describe("Job End-to-End User Journey", () => {
 		)
 		// The Go integration test passes the job name, so it knows which destination database to check.
 		const jobName =
-			process.env.E2E_JOB_NAME ??
+			process.env.E2E_JOB_NAME ||
 			TestDataBuilder.getUniqueJobName(
 				SOURCE_CONNECTOR,
 				DEST_CONNECTOR,
