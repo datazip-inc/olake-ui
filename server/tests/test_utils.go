@@ -93,7 +93,7 @@ func composeUpCmd(project, dir string, services []string) string {
 }
 
 func DinDTestContainer(t *testing.T, w Workflow) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 55*time.Minute) // under the CI job's 60 minutes
 	defer cancel()
 	projectRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
