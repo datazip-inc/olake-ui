@@ -12,7 +12,7 @@ import {
 import { Table, Input, Button, Dropdown, Pagination, Tooltip } from "antd"
 import { formatDistanceToNow } from "date-fns"
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router"
 
 import { getStatusClass, getStatusLabel } from "@/common/utils"
 import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"

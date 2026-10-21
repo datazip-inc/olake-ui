@@ -6,18 +6,21 @@ import {
 	ArrowSquareOutIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
-import validator from "@rjsf/validator-ajv8"
 import { useQueryClient } from "@tanstack/react-query"
 import { Input, Button, Select, Switch, Table, Spin, Tooltip } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { formatDistanceToNow } from "date-fns"
 import { useState, useEffect, useRef, useMemo } from "react"
-import { useParams, useNavigate, Link } from "react-router-dom"
+import { useParams, useNavigate, Link } from "react-router"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import { withCdcToggle } from "@/common/components/form/cdc"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import {
+	formValidator,
+	notifyFirstFormError,
+} from "@/common/components/form/validation"
 import { sourceFields, widgets } from "@/common/components/form/widgets"
 import {
 	ErrorLogsModal,
@@ -37,14 +40,19 @@ import {
 import {
 	DeleteModal,
 	EntityEditModal,
+	OpenDocsButton,
 } from "@/modules/ingestion/common/components"
 import { sourceConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
 import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
-import { DISPLAYED_JOBS_COUNT } from "@/modules/ingestion/common/constants"
+import {
+	DISPLAYED_JOBS_COUNT,
+	SOURCE_SECTION_DOC_ANCHORS,
+} from "@/modules/ingestion/common/constants"
 import {
 	getConnectorImage,
 	getConnectorInLowerCase,
+	getSourceDocUrl,
 } from "@/modules/ingestion/common/utils"
 import { useActivateJob } from "@/modules/ingestion/features/jobs/hooks"
 
@@ -77,7 +85,7 @@ const SourceEdit: React.FC = () => {
 	const [showEditModal, setShowEditModal] = useState(false)
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
-	const formUiSchema = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
+	const uiSchemaWithCdc = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
 	const [specError, setSpecError] = useState<string | null>(null)
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [testConnectionError, setTestConnectionError] =
@@ -104,6 +112,7 @@ const SourceEdit: React.FC = () => {
 	const updateSourceMutation = useUpdateSource(sourceId ?? "")
 	const deleteSourceMutation = useDeleteSource()
 	const sourceConnectionTest = useSourceConnectionTest()
+	const [docAnchor, setDocAnchor] = useState<string>()
 	const { mutate: activateJob } = useActivateJob()
 
 	useEffect(() => {
@@ -344,6 +353,8 @@ const SourceEdit: React.FC = () => {
 		)
 	}
 
+	const docUrl = getSourceDocUrl(connector || source?.type)
+
 	return (
 		<div className="flex h-full">
 			<div className="flex flex-1 flex-col">
@@ -355,6 +366,13 @@ const SourceEdit: React.FC = () => {
 						<ArrowLeftIcon className="size-5" />
 					</Link>
 					<div className="text-lg font-bold">{sourceName}</div>
+					{/* the collapsed docs panel shows its own open-in-new-tab icon */}
+					{!docsMinimized && (
+						<OpenDocsButton
+							docUrl={docUrl}
+							className="ml-auto"
+						/>
+					)}
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
@@ -504,9 +522,16 @@ const SourceEdit: React.FC = () => {
 														setFormData(trimmedData)
 													}}
 													transformErrors={transformErrors}
+													onError={notifyFirstFormError}
+													formContext={{
+														onSectionFocus: (sectionId: string) =>
+															setDocAnchor(
+																SOURCE_SECTION_DOC_ANCHORS[sectionId],
+															),
+													}}
 													onSubmit={() => handleSave()}
-													uiSchema={formUiSchema}
-													validator={validator}
+													uiSchema={uiSchemaWithCdc}
+													validator={formValidator}
 													showErrorList={false}
 													omitExtraData
 													liveOmit
@@ -571,7 +596,8 @@ const SourceEdit: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${getConnectorInLowerCase(connector)}`}
+						docUrl={docUrl}
+						anchor={docAnchor}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}

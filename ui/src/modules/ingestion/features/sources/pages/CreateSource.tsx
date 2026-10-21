@@ -6,10 +6,9 @@ import {
 	NotebookIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
-import validator from "@rjsf/validator-ajv8"
 import { message, Select, Spin, Tooltip } from "antd"
 import { useState, useEffect, useRef, useMemo } from "react"
-import { Link } from "react-router-dom"
+import { Link } from "react-router"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import {
@@ -19,6 +18,10 @@ import {
 } from "@/common/components/form/cdc"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import {
+	formValidator,
+	notifyFirstFormError,
+} from "@/common/components/form/validation"
 import { sourceFields, widgets } from "@/common/components/form/widgets"
 import {
 	ErrorLogsModal,
@@ -33,6 +36,7 @@ import { trimFormDataStrings, handleSpecResponse } from "@/common/utils"
 import {
 	EntitySavedModal,
 	EntityCancelModal,
+	OpenDocsButton,
 } from "@/modules/ingestion/common/components"
 import { sourceConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
@@ -43,10 +47,14 @@ import {
 	CONNECTOR_TYPES,
 	ENTITY_TYPES,
 	SETUP_TYPES,
+	SOURCE_SECTION_DOC_ANCHORS,
 } from "@/modules/ingestion/common/constants"
 import { validationService } from "@/modules/ingestion/common/services/validationService"
 import { SetupType } from "@/modules/ingestion/common/types"
-import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
+import {
+	getConnectorInLowerCase,
+	getSourceDocUrl,
+} from "@/modules/ingestion/common/utils"
 
 import {
 	useSources,
@@ -68,7 +76,7 @@ const CreateSource: React.FC = () => {
 	const [formData, setFormData] = useState<any>({})
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
-	const formUiSchema = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
+	const uiSchemaWithCdc = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
 	const [filteredSources, setFilteredSources] = useState<Source[]>([])
 	const [sourceNameError, setSourceNameError] = useState<string | null>(null)
 	const [existingSource, setExistingSource] = useState<string | null>(null)
@@ -91,6 +99,7 @@ const CreateSource: React.FC = () => {
 	const versions = versionsData?.version ?? []
 	const createSourceMutation = useCreateSource()
 	const sourceConnectionTest = useSourceConnectionTest()
+	const [docAnchor, setDocAnchor] = useState<string>()
 
 	useEffect(() => {
 		if (setupType === SETUP_TYPES.EXISTING) {
@@ -231,6 +240,7 @@ const CreateSource: React.FC = () => {
 
 	const handleConnectorChange = (value: string) => {
 		setConnector(value)
+		setDocAnchor(undefined)
 		if (setupType === SETUP_TYPES.EXISTING) {
 			setExistingSource(null)
 			setSourceName("")
@@ -249,6 +259,7 @@ const CreateSource: React.FC = () => {
 			setFormData({})
 			setSchema(null)
 			setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
+			setDocAnchor(undefined)
 			setExistingSource(null)
 		}
 	}
@@ -429,8 +440,13 @@ const CreateSource: React.FC = () => {
 									setFormData(trimmedData)
 								}}
 								transformErrors={transformErrors}
-								uiSchema={formUiSchema}
-								validator={validator}
+								onError={notifyFirstFormError}
+								formContext={{
+									onSectionFocus: (sectionId: string) =>
+										setDocAnchor(SOURCE_SECTION_DOC_ANCHORS[sectionId]),
+								}}
+								uiSchema={uiSchemaWithCdc}
+								validator={formValidator}
 								omitExtraData
 								liveOmit
 								showErrorList={false} // adding this will not show error list
@@ -441,6 +457,8 @@ const CreateSource: React.FC = () => {
 				)}
 			</>
 		)
+
+	const docUrl = getSourceDocUrl(connector)
 
 	return (
 		<div className={`flex h-full`}>
@@ -458,6 +476,13 @@ const CreateSource: React.FC = () => {
 					>
 						Create source
 					</div>
+					{/* the collapsed docs panel shows its own open-in-new-tab icon */}
+					{!docsMinimized && (
+						<OpenDocsButton
+							docUrl={docUrl}
+							className="ml-auto"
+						/>
+					)}
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
@@ -504,7 +529,8 @@ const CreateSource: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${normalizedConnector}`}
+						docUrl={docUrl}
+						anchor={docAnchor}
 						isMinimized={docsMinimized}
 						onToggle={handleToggleDocPanel}
 						showResizer={true}

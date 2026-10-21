@@ -18,27 +18,6 @@ export const SETUP_TYPES = {
 	EXISTING: "existing",
 } as const
 
-export const STATUS = {
-	ACTIVE: "active",
-	INACTIVE: "inactive",
-	PENDING: "pending",
-	FAILED: "failed",
-	RUNNING: "running",
-	SUCCESS: "success",
-	COMPLETED: "completed",
-	CANCELLED: "cancelled",
-}
-
-export const STATUS_LABELS = {
-	ACTIVE: "Active",
-	INACTIVE: "Inactive",
-	PENDING: "Pending",
-	FAILED: "Failed",
-	RUNNING: "Running",
-	SUCCESS: "Success",
-	COMPLETED: "Completed",
-	CANCELLED: "Cancelled",
-}
 export const ENTITY_TYPES = {
 	SOURCE: "source",
 	DESTINATION: "destination",
@@ -90,3 +69,10 @@ export const KAFKA_META_COLUMNS = new Set([
 	"_kafka_partition",
 	"_kafka_timestamp",
 ])
+
+// Source docs page headings that each source form section ("ui:sections" id) scrolls the docs panel to
+export const SOURCE_SECTION_DOC_ANCHORS: Record<string, string> = {
+	cdc: "change-data-capture-cdc",
+	connection: "connection-details",
+	additional: "additional-configuration",
+}
