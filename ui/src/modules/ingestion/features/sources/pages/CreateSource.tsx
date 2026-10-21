@@ -47,6 +47,7 @@ import {
 	CONNECTOR_TYPES,
 	ENTITY_TYPES,
 	SETUP_TYPES,
+	SOURCE_SECTION_DOC_ANCHORS,
 } from "@/modules/ingestion/common/constants"
 import { validationService } from "@/modules/ingestion/common/services/validationService"
 import { SetupType } from "@/modules/ingestion/common/types"
@@ -61,7 +62,6 @@ import {
 	useSourceSpec,
 	useCreateSource,
 	useSourceConnectionTest,
-	useSourceDocSections,
 } from "../hooks"
 import { Source } from "../types"
 import { getConnectorLabel } from "../utils"
@@ -99,7 +99,7 @@ const CreateSource: React.FC = () => {
 	const versions = versionsData?.version ?? []
 	const createSourceMutation = useCreateSource()
 	const sourceConnectionTest = useSourceConnectionTest()
-	const { docsPanelRef, formContext } = useSourceDocSections()
+	const [docAnchor, setDocAnchor] = useState<string>()
 
 	useEffect(() => {
 		if (setupType === SETUP_TYPES.EXISTING) {
@@ -439,7 +439,10 @@ const CreateSource: React.FC = () => {
 								}}
 								transformErrors={transformErrors}
 								onError={notifyFirstFormError}
-								formContext={formContext}
+								formContext={{
+									onSectionFocus: (sectionId: string) =>
+										setDocAnchor(SOURCE_SECTION_DOC_ANCHORS[sectionId]),
+								}}
 								uiSchema={uiSchemaWithCdc}
 								validator={formValidator}
 								omitExtraData
@@ -524,8 +527,8 @@ const CreateSource: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						ref={docsPanelRef}
 						docUrl={docUrl}
+						anchor={docAnchor}
 						isMinimized={docsMinimized}
 						onToggle={handleToggleDocPanel}
 						showResizer={true}

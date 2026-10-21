@@ -6,32 +6,18 @@ import {
 } from "@phosphor-icons/react"
 import { Button, Tooltip } from "antd"
 import clsx from "clsx"
-import {
-	forwardRef,
-	useEffect,
-	useImperativeHandle,
-	useRef,
-	useState,
-} from "react"
+import { useEffect, useRef, useState } from "react"
 
-import {
-	DocumentationPanelHandle,
-	DocumentationPanelProps,
-} from "@/modules/ingestion/common/types"
+import { DocumentationPanelProps } from "@/modules/ingestion/common/types"
 
-const DocumentationPanel = forwardRef<
-	DocumentationPanelHandle,
-	DocumentationPanelProps
->(function DocumentationPanel(
-	{
-		docUrl,
-		isMinimized = false,
-		onToggle,
-		showResizer = true,
-		initialWidth = 40,
-	},
-	ref,
-) {
+const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
+	docUrl,
+	anchor,
+	isMinimized = false,
+	onToggle,
+	showResizer = true,
+	initialWidth = 40,
+}) => {
 	const [isDocPanelCollapsed, setIsDocPanelCollapsed] = useState(isMinimized)
 	const [isLoading, setIsLoading] = useState(true)
 	const [isReady, setIsReady] = useState(false)
@@ -39,18 +25,14 @@ const DocumentationPanel = forwardRef<
 	const iframeRef = useRef<HTMLIFrameElement>(null)
 	const panelRef = useRef<HTMLDivElement>(null)
 
-	useImperativeHandle(
-		ref,
-		() => ({
-			// Only the hash changes, so the docs page scrolls without reloading; an anchor already at
-			// the top does not move. replace() keeps these jumps out of the browser history.
-			showAnchor: anchor =>
-				iframeRef.current?.contentWindow?.location.replace(
-					`${docUrl}#${anchor}`,
-				),
-		}),
-		[docUrl],
-	)
+	// Only the hash changes, so the docs page scrolls without reloading. Runs only when the
+	// anchor changes, so clicks inside the same section do not jump back to its heading.
+	// replace() keeps these jumps out of the browser history.
+	useEffect(() => {
+		if (anchor) {
+			iframeRef.current?.contentWindow?.location.replace(`${docUrl}#${anchor}`)
+		}
+	}, [anchor, docUrl])
 
 	// Sync collapsed state with isMinimized prop
 	useEffect(() => {
@@ -212,6 +194,6 @@ const DocumentationPanel = forwardRef<
 			`}</style>
 		</>
 	)
-})
+}
 
 export default DocumentationPanel

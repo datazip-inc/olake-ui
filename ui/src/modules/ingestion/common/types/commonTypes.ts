@@ -33,12 +33,10 @@ export interface OpenDocsButtonProps {
 	docUrl: string
 	className?: string
 }
-export interface DocumentationPanelHandle {
-	// Scrolls the docs to a heading anchor on the current docs page
-	showAnchor: (anchor: string) => void
-}
 export interface DocumentationPanelProps {
 	docUrl: string
+	// Heading anchor on the docs page to scroll to
+	anchor?: string
 	isMinimized?: boolean
 	onToggle?: () => void
 	showResizer?: boolean

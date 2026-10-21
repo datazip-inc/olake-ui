@@ -45,7 +45,10 @@ import {
 import { sourceConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
 import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
-import { DISPLAYED_JOBS_COUNT } from "@/modules/ingestion/common/constants"
+import {
+	DISPLAYED_JOBS_COUNT,
+	SOURCE_SECTION_DOC_ANCHORS,
+} from "@/modules/ingestion/common/constants"
 import {
 	getConnectorImage,
 	getConnectorInLowerCase,
@@ -61,7 +64,6 @@ import {
 	useUpdateSource,
 	useDeleteSource,
 	useSourceConnectionTest,
-	useSourceDocSections,
 } from "../hooks"
 import { useSourceStore } from "../stores"
 import { SourceJob } from "../types"
@@ -110,7 +112,7 @@ const SourceEdit: React.FC = () => {
 	const updateSourceMutation = useUpdateSource(sourceId ?? "")
 	const deleteSourceMutation = useDeleteSource()
 	const sourceConnectionTest = useSourceConnectionTest()
-	const { docsPanelRef, formContext } = useSourceDocSections()
+	const [docAnchor, setDocAnchor] = useState<string>()
 	const { mutate: activateJob } = useActivateJob()
 
 	useEffect(() => {
@@ -521,7 +523,12 @@ const SourceEdit: React.FC = () => {
 													}}
 													transformErrors={transformErrors}
 													onError={notifyFirstFormError}
-													formContext={formContext}
+													formContext={{
+														onSectionFocus: (sectionId: string) =>
+															setDocAnchor(
+																SOURCE_SECTION_DOC_ANCHORS[sectionId],
+															),
+													}}
 													onSubmit={() => handleSave()}
 													uiSchema={uiSchemaWithCdc}
 													validator={formValidator}
@@ -589,8 +596,8 @@ const SourceEdit: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						ref={docsPanelRef}
 						docUrl={docUrl}
+						anchor={docAnchor}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}
