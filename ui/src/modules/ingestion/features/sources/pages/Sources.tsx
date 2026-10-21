@@ -1,6 +1,6 @@
 import { LinktreeLogoIcon, PlusIcon } from "@phosphor-icons/react"
 import { Button, Spin } from "antd"
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router"
 
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import { Entity } from "@/modules/ingestion/common/types"
