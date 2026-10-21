@@ -7,6 +7,7 @@ type Destination struct {
 	Name       string   // shown in logs
 	ComposeDir string   // folder with docker-compose.yml, relative to server/tests
 	Services   []string // compose services to start; empty starts all
+	ReadyCmd   string   // run in the box after compose up, in a subshell; exit 0 once ready, non-zero if it never is; empty skips
 
 	// Table returns the name Spark reads a synced table from, given the destination database
 	// (or folder) and the source table.
