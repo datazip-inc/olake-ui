@@ -21,16 +21,21 @@ var Source = sources.Source{
 	Name:       "postgres",
 	ComposeDir: "sources/postgres",
 	Port:       "5433/tcp",
+	// Ready once olake_slot exists: the compose command creates it after Postgres accepts
+	// connections, so a plain "SELECT 1" can pass before the slot is there.
 	ReadyCmd: `
-        for i in $(seq 1 30); do
-            if docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1" 2>/dev/null; then
-                echo "PostgreSQL ready."
-                break
+        for i in $(seq 1 60); do
+            slots=$(docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -tAc \
+                "SELECT count(*) FROM pg_replication_slots WHERE slot_name = 'olake_slot'" 2>/dev/null)
+            if [ "$slots" = "1" ]; then
+                echo "PostgreSQL ready, olake_slot exists."
+                exit 0
             fi
             sleep 2
-        done &&
-        docker exec olake_postgres-test psql -U postgres -d postgres -c \
-            "SELECT slot_name, plugin, slot_type, active FROM pg_replication_slots WHERE slot_name = 'olake_slot';"
+        done
+        echo "PostgreSQL or olake_slot not ready after 120s" >&2
+        docker logs --tail 50 olake_postgres-test >&2
+        exit 1
     `,
 	Seed: func(ctx context.Context, t *testing.T, host, port string) {
 		ExecuteQuery(ctx, t, "create", host, port)
