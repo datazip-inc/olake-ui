@@ -429,8 +429,6 @@ services:
         condition: service_completed_successfully
     networks:
       - olake-network
-    environment:
-      AMORO_LOG_DIR: *amoroLogPersistencePath
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - kind-kubeconfig:/output
@@ -441,21 +439,20 @@ services:
       - |
         set -e
 
-        LOG_DIR="$${AMORO_LOG_DIR}"
-        echo "==> Log directory: $$LOG_DIR"
-
-        echo "==> Generating kind cluster config..."
-        sed "s|AMORO_LOG_PLACEHOLDER|$$LOG_DIR|g" /fusion-config/kind-config.yaml > /tmp/kind-config-gen.yaml
         echo "==> Installing kind..."
         apk add --no-cache curl >/dev/null 2>&1
-        curl -sLo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+        case "$$(uname -m)" in
+          aarch64|arm64) KIND_ARCH=arm64 ;;
+          *) KIND_ARCH=amd64 ;;
+        esac
+        curl -sLo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-$$KIND_ARCH
         chmod +x /usr/local/bin/kind
 
         echo "==> Creating Kind cluster (fusion-cluster)..."
         if kind get clusters 2>/dev/null | grep -q '^fusion-cluster$$'; then
           echo "   Cluster already exists, skipping creation."
         else
-          kind create cluster --config /tmp/kind-config-gen.yaml --wait 120s
+          kind create cluster --config /fusion-config/kind-config.yaml --wait 120s
         fi
 
         echo "==> Connecting Kind nodes to olake-network..."
