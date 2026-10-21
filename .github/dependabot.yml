@@ -62,13 +62,11 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
-  # Images in compose files (postgres, temporal, elasticsearch, ...).
-  # `latest` tags are skipped by Dependabot automatically.
+  # Images in the test compose files (postgres, temporal, elasticsearch, ...).
+  # Root and /server compose files are not tracked: they are unmaintained, and
+  # docker-compose-v1.yml uses ${VAR:-default}/image refs Dependabot can't parse.
   - package-ecosystem: "docker-compose"
-    directories:
-      - "/"
-      - "/server"
-      - "/server/tests"
+    directory: "/server/tests"
     target-branch: "staging"
     schedule:
       interval: "weekly"
