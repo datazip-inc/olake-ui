@@ -158,10 +158,15 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 		ContainerRequest: req,
 		Started:          true,
 	})
-	// Ryuk is disabled, so nothing else removes the box. CleanupContainer terminates it when the
-	// test ends, even after a failed step. It is nil-safe and comes before the error check because
-	// GenericContainer can return a started container together with an error.
-	testcontainers.CleanupContainer(t, ctr)
+	// Ryuk is disabled, so nothing else removes the box. Terminate it when the test ends, even
+	// after a failed step. TerminateContainer is nil-safe, and this comes before the error check
+	// because GenericContainer can return a started container together with an error. A failed
+	// terminate is only logged, as before.
+	t.Cleanup(func() {
+		if err := testcontainers.TerminateContainer(ctr); err != nil {
+			t.Logf("Warning: failed to terminate container: %v", err)
+		}
+	})
 	if err != nil {
 		return fmt.Errorf("failed to start DinD container: %w", err)
 	}
