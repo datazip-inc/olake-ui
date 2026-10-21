@@ -112,6 +112,7 @@ var (
 	ConfOptimizationUsername = "USERNAME"
 	ConfOptimizationPassword = "PASSWORD"
 	ConfOptimizationGroup    = "OPTIMIZATION_GROUP"
+
 	// api paths
 	OptPathCatalogs                 = "/api/ams/v1/catalogs"
 	OptPathCatalogDetail            = "/api/ams/v1/catalogs/%s"
@@ -120,6 +121,8 @@ var (
 	OptPathTableOptimizingProcesses = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes"
 	OptPathTerminalExecute          = "/api/ams/v1/terminal/catalogs/%s/execute"
 	OptPathTerminalLogs             = "/api/ams/v1/terminal/%s/logs"
+	OptPathTelemetryInstallID       = "/api/ams/v1/telemetry/install-id"
+
 	// others
 	OptMaxTimeout         = 10 * time.Minute
 	OptSessionTimeout     = 5 * time.Minute // used for fusion poll (terminal query execution)

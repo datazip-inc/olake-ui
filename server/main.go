@@ -54,16 +54,16 @@ func main() {
 		return
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	// Initialize unified AppService
-	appSvc, err := services.InitAppService(db)
+	appSvc, err := services.InitAppService(ctx, db)
 	if err != nil {
 		logger.Fatalf("Failed to initialize services: %s", err)
 		return
 	}
 	logger.Info("Application services initialized successfully")
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	if err := storage.InitStorage(ctx); err != nil {
 		logger.Fatalf("Failed to initialize storage: %s", err)
