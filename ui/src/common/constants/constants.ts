@@ -43,6 +43,31 @@ export const transformErrors = (errors: RJSFValidationError[]) => {
 	)
 }
 
+// Toast text for spec-driven form errors, keyed by AJV keyword ("type" errors
+// by "type.<expected type>"). {label} is the field label shown on screen and
+// {limit} the keyword's limit.
+export const FORM_ERROR_MESSAGES: Record<string, string> = {
+	required: "{label} can't be empty",
+	// specs only use minLength: 1, i.e. non-empty
+	minLength: "{label} can't be empty",
+	pattern: "{label} has an invalid format",
+	minimum: "{label} must be at least {limit}",
+	maximum: "{label} must be at most {limit}",
+	exclusiveMinimum: "{label} must be greater than {limit}",
+	enum: "Select a valid option for {label}",
+	"type.integer": "{label} must be a whole number",
+	"type.number": "{label} must be a number",
+	// text inputs only produce strings; an empty array item is left undefined
+	"type.string": "{label} can't be empty",
+}
+
+// Spec patterns explained in words, since "invalid format" alone does not tell
+// the user what to change
+export const PATTERN_ERROR_MESSAGES: Record<string, string> = {
+	"^[a-z_]+$":
+		"{label} can only contain lowercase letters (a-z) and underscores (_)",
+}
+
 export const TEST_CONNECTION_STATUS: Record<TestConnectionStatus, string> = {
 	SUCCEEDED: "SUCCEEDED",
 	FAILED: "FAILED",
