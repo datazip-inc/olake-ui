@@ -33,11 +33,14 @@ test.describe("Job End-to-End User Journey", () => {
 			DEST_CONNECTOR,
 			CATALOG_TYPE,
 		)
-		const jobName = TestDataBuilder.getUniqueJobName(
-			SOURCE_CONNECTOR,
-			DEST_CONNECTOR,
-			CATALOG_TYPE,
-		)
+		// The Go integration test passes the job name, so it knows which destination database to check.
+		const jobName =
+			process.env.E2E_JOB_NAME ??
+			TestDataBuilder.getUniqueJobName(
+				SOURCE_CONNECTOR,
+				DEST_CONNECTOR,
+				CATALOG_TYPE,
+			)
 
 		// Step 1: Create PostgreSQL Source
 		await sourcesPage.navigateToSources()

@@ -15,7 +15,7 @@ func TestPostgres(t *testing.T) {
 		Source:      postgres.Source,
 		Destination: jdbc.Destination,
 		Spec:        "tests/flows/job-end-to-end.spec.ts",
-		Database:    "postgres_iceberg_jdbc_job_postgres_public",
+		Job:         "postgres_iceberg_jdbc_job",
 		Checks:      []Check{CountDistinct(postgres.TestTable, 5)},
 	})
 	if err != nil {

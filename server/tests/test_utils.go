@@ -60,7 +60,7 @@ const (
 	// Run a Playwright spec, relative to ui/
 	runPlaywrightCmd = `
         cd /mnt/ui &&
-        PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test %s
+        E2E_JOB_NAME='%s' PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test %s
     `
 )
 
@@ -74,8 +74,13 @@ type Workflow struct {
 	Source      sources.Source
 	Destination destinations.Destination
 	Spec        string  // Playwright spec relative to ui/
-	Database    string  // destination database the job writes to
+	Job         string  // name of the job the spec creates; passed to it as E2E_JOB_NAME
 	Checks      []Check // run on the destination after the spec has passed
+}
+
+// database is the destination database OLake writes the job to: <job>_<source namespace>, lowercased.
+func (w Workflow) database() string {
+	return strings.ToLower(w.Job + "_" + w.Source.Namespace)
 }
 
 // Check verifies the destination through Spark. table turns a source table name into the
@@ -233,7 +238,7 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 
 	// Step 8: Run Playwright tests
 	t.Log("Executing Playwright tests...")
-	if code, out, err := ExecCommandWithStreaming(ctx, t, ctr, fmt.Sprintf(runPlaywrightCmd, w.Spec)); err != nil || code != 0 {
+	if code, out, err := ExecCommandWithStreaming(ctx, t, ctr, fmt.Sprintf(runPlaywrightCmd, w.Job, w.Spec)); err != nil || code != 0 {
 		return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
 	}
 	t.Log("Playwright tests passed successfully.")
@@ -314,7 +319,7 @@ func VerifyDestination(ctx context.Context, t *testing.T, host, port string, w W
 			t.Errorf("Failed to stop Spark session: %v", stopErr)
 		}
 	}()
-	table := func(name string) string { return w.Destination.Table(w.Database, name) }
+	table := func(name string) string { return w.Destination.Table(w.database(), name) }
 	for _, check := range w.Checks {
 		check(ctx, t, spark, table)
 	}
