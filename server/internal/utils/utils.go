@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -36,6 +35,21 @@ func ULID() string {
 	}
 
 	return newUlid.String()
+}
+
+func StringPtr(s string) *string {
+	trimmed := strings.TrimSpace(s)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func StringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return strings.TrimSpace(*s)
 }
 
 func Ternary(cond bool, a, b any) any {
@@ -164,17 +178,4 @@ func ConvertMBToBytes(sizeMB int64) string {
 	const bytesPerMB = 1024 * 1024
 	sizeBytes := sizeMB * bytesPerMB
 	return strconv.FormatInt(sizeBytes, 10)
-}
-
-// ReadJSONFile reads a file and unmarshals its JSON content into a map.
-func ReadJSONFile(filePath string) (map[string]interface{}, error) {
-	fileOutput, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %v", err)
-	}
-	var result map[string]interface{}
-	if err := json.Unmarshal(fileOutput, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal file: %v", err)
-	}
-	return result, nil
 }
