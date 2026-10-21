@@ -297,6 +297,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 											placement="top"
 										>
 											<PencilSimpleIcon
+												data-testid="edit-destination-database"
 												className="size-4 cursor-pointer text-gray-600 transition-colors hover:text-primary"
 												onClick={() => setShowDestinationDatabaseModal(true)}
 											/>

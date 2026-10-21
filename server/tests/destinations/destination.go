@@ -11,4 +11,8 @@ type Destination struct {
 	// Table returns the name Spark reads a synced table from, given the destination database
 	// (or folder) and the source table.
 	Table func(database, table string) string
+
+	// SparkInit holds statements run on the Spark session before the checks, for example the
+	// s3a settings that parquet files need.
+	SparkInit []string
 }

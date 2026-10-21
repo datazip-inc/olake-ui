@@ -1,0 +1,14 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: olake_mongodb-test
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: test_db
+    ports:
+      - "27017:27017"
+    volumes:
+      # seeds the collections the spec syncs, on first start
+      - ./init.js:/docker-entrypoint-initdb.d/init.js:ro

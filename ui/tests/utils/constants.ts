@@ -6,6 +6,10 @@
  * that are used across multiple test files.
  */
 
+// Address the OLake containers use to reach the source and destination. The DinD box is 172.17.0.2;
+// set E2E_HOST (for example host.docker.internal) to run the specs against a local setup.
+export const E2E_HOST = process.env.E2E_HOST ?? "172.17.0.2"
+
 // Job Configurations
 export const JOB_CONFIG = {
 	streamName: "postgres_test_table_olake",

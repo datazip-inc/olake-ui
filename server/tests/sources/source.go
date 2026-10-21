@@ -14,6 +14,6 @@ type Source struct {
 	Port       string // port the box exposes so the test can reach the source, e.g. "5433/tcp"
 	ReadyCmd   string // run in the box after compose up; must exit 0 once the source is ready
 
-	// Seed creates the tables and rows the workflow syncs. host and port reach the source from the test.
+	// Seed creates the tables and rows the workflow syncs. Nil when the compose file seeds the source itself. host and port reach the source from the test.
 	Seed func(ctx context.Context, t *testing.T, host, port string)
 }

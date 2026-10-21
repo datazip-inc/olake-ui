@@ -26,16 +26,8 @@ tests/
 ├── types/              # TypeScript type definitions
 │   └── PageConfig.types.ts      # Form configs and test data interfaces
 ├── flows/              # Test scenarios organized by user flows
-│   ├── login.spec.ts                # Login flow tests
-│   ├── create-source.spec.ts        # Source creation tests
-│   ├── edit-source.spec.ts          # Source editing tests
-│   ├── create-destination.spec.ts   # Destination creation tests
-│   ├── edit-destination.spec.ts     # Destination editing tests
-│   ├── destination-end-to-end.spec.ts # Destination user journey
-│   ├── create-job.spec.ts           # Job creation tests
-│   ├── job-sync.spec.ts             # Job sync and execution tests
-│   ├── job-end-to-end.spec.ts       # Complete job workflow tests
-│   └── end-to-end.spec.ts           # Complete user journey tests
+│   ├── postgres-jdbc.spec.ts            # Postgres to Iceberg JDBC workflow: stream rules, job, syncs, clear destination, webhook, failed job
+│   └── mongodb-parquet.spec.ts          # MongoDB to S3 parquet workflow
 ├── utils/              # Test utilities and helpers
 │   ├── constants.ts                    # Shared constants and test data
 │   ├── source-connector-configs.ts     # Source connector configurations
@@ -181,7 +173,7 @@ import { test, expect } from "../fixtures/base.fixture"
 npx playwright test
 
 # Run specific test file
-npx playwright test tests/flows/login.spec.ts
+npx playwright test tests/flows/postgres-jdbc.spec.ts
 
 # Run tests in headed mode
 npx playwright test --headed

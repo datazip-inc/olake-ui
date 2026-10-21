@@ -76,13 +76,21 @@ const (
 )
 
 // Workflow is one integration run: the source and destination to start, the Playwright spec
-// that creates and syncs the job through the UI, and the checks run on the destination afterwards.
+// that drives the journey through the UI, and the phases the spec runs in, each followed by checks.
 type Workflow struct {
 	Source      sources.Source
 	Destination destinations.Destination
-	Spec        string  // Playwright spec relative to ui/
-	Database    string  // destination database the job writes to
-	Checks      []Check // run on the destination after the spec has passed
+	Spec        string // Playwright spec relative to ui/
+	Database    string // destination database the jobs write to
+	Phases      []Phase
+}
+
+// Phase is one run of the spec, limited to the tests whose title matches Grep (all of them when
+// empty), and the checks that must hold on the destination once it has finished. Splitting a
+// spec lets the checks look at the destination between two steps, such as before and after a clear.
+type Phase struct {
+	Grep   string
+	Checks []Check
 }
 
 // Check verifies the destination through Spark. table turns a source table name into the
@@ -209,7 +217,9 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 	}
 
 	// Step 7: Seed the source
-	w.Source.Seed(ctx, t, host, sourcePort.Port())
+	if w.Source.Seed != nil {
+		w.Source.Seed(ctx, t, host, sourcePort.Port())
+	}
 
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
 
@@ -219,20 +229,37 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 		return fmt.Errorf("playwright installation failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 9: Run Playwright tests
-	t.Log("Executing Playwright tests...")
-	if code, out, err := ExecCommandWithStreaming(ctx, t, ctr, fmt.Sprintf(runPlaywrightCmd, w.Spec)); err != nil || code != 0 {
-		return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
+	// Step 9: Run each phase of the spec, then verify the destination
+	cleanupRegistered := false
+	for i, p := range w.Phases {
+		spec := w.Spec
+		if p.Grep != "" {
+			spec += fmt.Sprintf(" --grep '%s'", p.Grep)
+		}
+		t.Logf("Executing Playwright phase %d: %s", i+1, spec)
+		if code, out, err := ExecCommandWithStreaming(ctx, t, ctr, fmt.Sprintf(runPlaywrightCmd, spec)); err != nil || code != 0 {
+			return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
+		}
+		t.Log("Playwright tests passed successfully.")
+
+		if len(p.Checks) == 0 {
+			continue
+		}
+		// wait before verifying destination data
+		t.Log("Waiting for 60 seconds before verifying destination data...")
+		time.Sleep(60 * time.Second)
+
+		// like a failed Playwright run, keep the box up until a verification has started
+		if !cleanupRegistered {
+			defer cleanup(ctx, t, ctr)
+			cleanupRegistered = true
+		}
+		t.Logf("Starting %s data verification...", w.Destination.Name)
+		VerifyDestination(ctx, t, host, sparkPort.Port(), w, p.Checks)
 	}
-	t.Log("Playwright tests passed successfully.")
-
-	// wait before verifying destination data
-	t.Log("Waiting for 60 seconds before verifying destination data...")
-	time.Sleep(60 * time.Second)
-
-	// Step 10: Verify the destination
-	t.Logf("Starting %s data verification...", w.Destination.Name)
-	VerifyDestination(ctx, t, ctr, host, sparkPort.Port(), w)
+	if !cleanupRegistered {
+		cleanup(ctx, t, ctr)
+	}
 	return nil
 }
 
@@ -292,8 +319,8 @@ func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Co
 	return nil
 }
 
-// VerifyDestination connects to Spark and runs every check of the workflow.
-func VerifyDestination(ctx context.Context, t *testing.T, ctr testcontainers.Container, host, port string, w Workflow) {
+// VerifyDestination connects to Spark and runs the checks of one phase.
+func VerifyDestination(ctx context.Context, t *testing.T, host, port string, w Workflow, checks []Check) {
 	sparkConnectAddress := fmt.Sprintf("sc://%s:%s", host, port)
 	spark, err := sql.NewSessionBuilder().Remote(sparkConnectAddress).Build(ctx)
 	require.NoError(t, err, "Failed to connect to Spark Connect server")
@@ -301,21 +328,25 @@ func VerifyDestination(ctx context.Context, t *testing.T, ctr testcontainers.Con
 		if stopErr := spark.Stop(); stopErr != nil {
 			t.Errorf("Failed to stop Spark session: %v", stopErr)
 		}
-		if ctr != nil {
-			t.Log("Running cleanup...")
-			// Stop docker-compose services
-			_, _, _ = ExecCommand(ctx, ctr, "cd /mnt && docker-compose down -v --remove-orphans")
-			// Terminate the DinD container
-			if err := ctr.Terminate(ctx); err != nil {
-				t.Logf("Warning: failed to terminate container: %v", err)
-			}
-			t.Log("Cleanup complete")
-		}
 	}()
+	for _, statement := range w.Destination.SparkInit {
+		_, err := spark.Sql(ctx, statement)
+		require.NoError(t, err, "Failed to run Spark statement: %s", statement)
+	}
 	table := func(name string) string { return w.Destination.Table(w.Database, name) }
-	for _, check := range w.Checks {
+	for _, check := range checks {
 		check(ctx, t, spark, table)
 	}
+}
+
+// cleanup stops the compose services and terminates the DinD box.
+func cleanup(ctx context.Context, t *testing.T, ctr testcontainers.Container) {
+	t.Log("Running cleanup...")
+	_, _, _ = ExecCommand(ctx, ctr, "cd /mnt && docker-compose down -v --remove-orphans")
+	if err := ctr.Terminate(ctx); err != nil {
+		t.Logf("Warning: failed to terminate container: %v", err)
+	}
+	t.Log("Cleanup complete")
 }
 
 // Helper function to execute container commands

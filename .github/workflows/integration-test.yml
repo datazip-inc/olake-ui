@@ -9,8 +9,16 @@ on:
 
 jobs:
   integration-tests:
+    name: ${{ matrix.test }}
     runs-on: 32gb-runner
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # each test starts its own Docker-in-Docker box, so they run on separate runners
+        test:
+          - TestPostgres
+          - TestMongoDB
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,4 +34,4 @@ jobs:
 
       - name: Run Docker In Docker Container Tests
         working-directory: ./server
-        run: go test -v ./tests -timeout 0 -run '^TestPostgres$'
+        run: go test -v ./tests -timeout 0 -run '^${{ matrix.test }}$'

@@ -5,6 +5,7 @@
  * All destination fields are under the 'writer' prefix in RJSF.
  */
 
+import { E2E_HOST } from "./constants"
 import { CatalogType, DestinationConnector } from "../enums"
 import { DestinationFormConfig } from "../types/PageConfig.types"
 
@@ -191,12 +192,14 @@ export const createIcebergRestConfig = (data: {
  */
 
 // S3 Destination Config
+// MinIO of server/tests/destinations/s3; the path has to match s3.Path there.
 export const S3_DESTINATION_CONFIG = {
-	bucketName: "test-bucket",
-	region: "us-east-1",
-	path: "s3://test-bucket/data",
-	accessKey: "admin",
-	secretKey: "password",
+	s3_bucket: "warehouse",
+	s3_region: "us-east-1",
+	s3_path: "e2e",
+	s3_endpoint: `http://${E2E_HOST}:9000`,
+	s3_access_key: "admin",
+	s3_secret_key: "password",
 } as const
 
 // Iceberg Destination Configs - All 4 Catalog Types
@@ -207,17 +210,17 @@ export const ICEBERG_GLUE_CONFIG = {
 	iceberg_s3_path: "s3a://warehouse",
 	aws_access_key: "admin",
 	aws_secret_key: "password",
-	s3_endpoint: "http://172.17.0.2:9000",
+	s3_endpoint: `http://${E2E_HOST}:9000`,
 } as const
 
 // 2. Iceberg with JDBC Catalog
 export const ICEBERG_JDBC_CONFIG = {
-	jdbc_url: "jdbc:postgresql://172.17.0.2:5432/iceberg",
+	jdbc_url: `jdbc:postgresql://${E2E_HOST}:5432/iceberg`,
 	jdbc_username: "iceberg",
 	jdbc_password: "password",
 	iceberg_s3_path: "s3a://warehouse",
 	aws_region: "us-east-1",
-	s3_endpoint: "http://172.17.0.2:9000",
+	s3_endpoint: `http://${E2E_HOST}:9000`,
 	aws_access_key: "admin",
 	aws_secret_key: "password",
 	s3_use_ssl: false,

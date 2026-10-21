@@ -8,6 +8,7 @@
  * @module SourceConnectorConfigs
  */
 
+import { E2E_HOST } from "./constants"
 import { SourceConnector } from "../enums"
 import { SourceFormConfig } from "../types/PageConfig.types"
 
@@ -195,7 +196,7 @@ export const createGenericSourceConfig = (
  * Test data configurations for E2E tests
  */
 export const POSTGRES_SOURCE_CONFIG = {
-	host: "172.17.0.2",
+	host: E2E_HOST,
 	database: "postgres",
 	username: "postgres",
 	password: "secret1234",
@@ -203,7 +204,7 @@ export const POSTGRES_SOURCE_CONFIG = {
 } as const
 
 export const MONGODB_SOURCE_CONFIG = {
-	host: "172.17.0.2",
+	host: E2E_HOST,
 	database: "test_db",
 	username: "admin",
 	password: "password",

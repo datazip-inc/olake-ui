@@ -20,14 +20,16 @@ services:
         # Install wal2json
         apt-get update && apt-get install -y postgresql-15-wal2json
         
-        # Start PostgreSQL with basic config in background
+        # Start PostgreSQL with basic config in background. Newer 15.x minors only let libraries
+        # listed in output_plugin_libraries act as output plugins, so wal2json is listed there.
         docker-entrypoint.sh postgres \
           -c hba_file=/etc/postgresql/pg_hba.conf \
           -c listen_addresses='*' \
           -c wal_level=logical \
           -c max_wal_senders=10 \
           -c max_replication_slots=10 \
-          -c shared_preload_libraries=wal2json &
+          -c shared_preload_libraries=wal2json \
+          -c output_plugin_libraries=wal2json &
         
         # Wait for PostgreSQL to be ready
         while ! pg_isready -U postgres -h localhost -p 5432; do
