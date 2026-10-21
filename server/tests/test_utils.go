@@ -78,7 +78,8 @@ type Workflow struct {
 // fully qualified name Spark reads it from.
 type Check func(ctx context.Context, t *testing.T, spark sql.SparkSession, table func(name string) string)
 
-// composeUpCmd starts the compose file in dir (relative to server/tests) as its own project.
+// composeUpCmd starts the compose file in dir (relative to server/tests) as project olake-<project>-test.
+// project is "source" or "destination", so the two never share a project whatever their names.
 func composeUpCmd(project, dir string, services []string) string {
 	return fmt.Sprintf("cd /mnt/server/tests/%s && docker compose -p olake-%s-test up -d %s",
 		dir, project, strings.Join(services, " "))
@@ -179,13 +180,13 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 
 	// Step 2: Start the source
 	t.Logf("Starting %s source...", w.Source.Name)
-	if code, out, err := ExecCommand(ctx, ctr, composeUpCmd(w.Source.Name, w.Source.ComposeDir, nil)+" && "+w.Source.ReadyCmd); err != nil || code != 0 {
+	if code, out, err := ExecCommand(ctx, ctr, composeUpCmd("source", w.Source.ComposeDir, nil)+" && "+w.Source.ReadyCmd); err != nil || code != 0 {
 		return fmt.Errorf("%s startup failed (%d): %s\n%s", w.Source.Name, code, err, out)
 	}
 
 	// Step 3: Start the destination
 	t.Logf("Starting %s destination...", w.Destination.Name)
-	if code, out, err := ExecCommand(ctx, ctr, composeUpCmd(w.Destination.Name, w.Destination.ComposeDir, w.Destination.Services)+" && sleep 5"); err != nil || code != 0 {
+	if code, out, err := ExecCommand(ctx, ctr, composeUpCmd("destination", w.Destination.ComposeDir, w.Destination.Services)+" && sleep 5"); err != nil || code != 0 {
 		return fmt.Errorf("destination services startup failed (%d): %s\n%s", code, err, out)
 	}
 

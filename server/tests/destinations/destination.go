@@ -4,7 +4,7 @@ package destinations
 
 // Destination describes how to start a destination inside the DinD box and how Spark reads what it wrote.
 type Destination struct {
-	Name       string   // compose project suffix
+	Name       string   // shown in logs
 	ComposeDir string   // folder with docker-compose.yml, relative to server/tests
 	Services   []string // compose services to start; empty starts all
 

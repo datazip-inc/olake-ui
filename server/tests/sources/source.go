@@ -9,7 +9,7 @@ import (
 
 // Source describes how to start a source inside the DinD box and how to seed it.
 type Source struct {
-	Name       string // compose project suffix
+	Name       string // shown in logs
 	ComposeDir string // folder with docker-compose.yml, relative to server/tests
 	Port       string // port the box exposes so the test can reach the source, e.g. "5433/tcp"
 	ReadyCmd   string // run in the box after compose up; must exit 0 once the source is ready
