@@ -155,6 +155,8 @@ func (h *Handler) UpdateSource(c *gin.Context) {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			status = http.StatusNotFound
+		} else if errors.Is(err, constants.ErrPreserveToastValuesLocked) {
+			status = http.StatusBadRequest
 		}
 		utils.ErrorResponse(c, status, fmt.Sprintf("failed to update source: %s", err), err)
 		return
