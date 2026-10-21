@@ -11,11 +11,13 @@ import (
 	"time"
 
 	"github.com/apache/spark-connect-go/v35/spark/sql"
-	"github.com/jmoiron/sqlx"
 	"github.com/moby/moby/api/types/container"
 	"github.com/stretchr/testify/require"
 	testcontainers "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/datazip-inc/olake-ui/server/tests/destinations"
+	"github.com/datazip-inc/olake-ui/server/tests/sources"
 )
 
 const (
@@ -31,29 +33,6 @@ const (
         apt-get update &&
         apt-get install -y docker-compose-plugin &&
         update-ca-certificates
-    `
-
-	// Start postgres test infrastructure
-	startPostgresCmd = `
-        cd /mnt/server/tests &&
-        docker compose -p olake-source-test up -d &&
-        for i in $(seq 1 30); do
-            if docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1" 2>/dev/null; then
-                echo "PostgreSQL ready."
-                break
-            fi
-            sleep 2
-        done &&
-        docker exec olake_postgres-test psql -U postgres -d postgres -c \
-            "SELECT slot_name, plugin, slot_type, active FROM pg_replication_slots WHERE slot_name = 'olake_slot';"
-    `
-
-	// Start destination services (iceberg stack)
-	startDestinationCmd = `
-        cd /mnt/server/tests &&
-        docker compose -p olake-destination-test -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg &&
-        sleep 5 &&
-        docker compose -p olake-destination-test -f docker-compose.destination.yml ps
     `
 
 	// Start OLake application
@@ -78,25 +57,45 @@ const (
         docker network connect olake-network olake_postgres-test || true
     `
 
-	// Install Playwright and dependencies
+	// Install Playwright and dependencies. They go into a copy of ui/ inside the box, not into the
+	// mounted checkout: a checkout that was used for development holds node_modules from the
+	// host's pnpm, which the box cannot use and must not overwrite.
 	installPlaywrightCmd = `
-        cd /mnt/ui &&
+        mkdir -p /opt/ui &&
+        cd /mnt/ui && tar --exclude=node_modules -cf - . | tar -xf - -C /opt/ui &&
+        cd /opt/ui &&
         pnpm add -D @playwright/test &&
         pnpm exec playwright install --with-deps chromium
     `
 
-	// Run Playwright tests
+	// Run a Playwright spec, relative to ui/
 	runPlaywrightCmd = `
-        cd /mnt/ui &&
-        PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test tests/flows/job-end-to-end.spec.ts
+        cd /opt/ui &&
+        PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test %s
     `
-
-	icebergDB        = "postgres_iceberg_jdbc_job_postgres_public"
-	icebergCatalog   = "olake_iceberg"
-	currentTestTable = "postgres_test_table_olake"
 )
 
-func DinDTestContainer(t *testing.T) error {
+// Workflow is one integration run: the source and destination to start, the Playwright spec
+// that creates and syncs the job through the UI, and the checks run on the destination afterwards.
+type Workflow struct {
+	Source      sources.Source
+	Destination destinations.Destination
+	Spec        string  // Playwright spec relative to ui/
+	Database    string  // destination database the job writes to
+	Checks      []Check // run on the destination after the spec has passed
+}
+
+// Check verifies the destination through Spark. table turns a source table name into the
+// fully qualified name Spark reads it from.
+type Check func(ctx context.Context, t *testing.T, spark sql.SparkSession, table func(name string) string)
+
+// composeUpCmd starts the compose file in dir (relative to server/tests) as its own project.
+func composeUpCmd(project, dir string, services []string) string {
+	return fmt.Sprintf("cd /mnt/server/tests/%s && docker compose -p olake-%s-test up -d %s",
+		dir, project, strings.Join(services, " "))
+}
+
+func DinDTestContainer(t *testing.T, w Workflow) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 	projectRoot, err := filepath.Abs(filepath.Join("..", ".."))
@@ -132,7 +131,7 @@ func DinDTestContainer(t *testing.T) error {
 		ConfigModifier: func(config *container.Config) {
 			config.WorkingDir = "/mnt"
 		},
-		ExposedPorts: []string{"8000/tcp", "2375/tcp", "5433/tcp", "15002/tcp"},
+		ExposedPorts: []string{"8000/tcp", "2375/tcp", w.Source.Port, "15002/tcp"},
 		Cmd: []string{
 			"/bin/sh", "-c",
 			`set -e
@@ -160,10 +159,10 @@ func DinDTestContainer(t *testing.T) error {
 		return fmt.Errorf("failed to get host: %w", err)
 	}
 
-	// postgres port
-	postgresPort, err := ctr.MappedPort(ctx, "5433/tcp")
+	// source port
+	sourcePort, err := ctr.MappedPort(ctx, w.Source.Port)
 	if err != nil {
-		return fmt.Errorf("failed to get postgres port: %w", err)
+		return fmt.Errorf("failed to get %s port: %w", w.Source.Name, err)
 	}
 
 	// iceberg-spark port
@@ -179,15 +178,15 @@ func DinDTestContainer(t *testing.T) error {
 		return fmt.Errorf("tools installation failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 2: Start PostgreSQL test infrastructure
-	t.Log("Starting PostgreSQL test infrastructure...")
-	if code, out, err := ExecCommand(ctx, ctr, startPostgresCmd); err != nil || code != 0 {
-		return fmt.Errorf("postgres startup failed (%d): %s\n%s", code, err, out)
+	// Step 2: Start the source
+	t.Logf("Starting %s source...", w.Source.Name)
+	if code, out, err := ExecCommand(ctx, ctr, composeUpCmd(w.Source.Name, w.Source.ComposeDir, nil)+" && "+w.Source.ReadyCmd); err != nil || code != 0 {
+		return fmt.Errorf("%s startup failed (%d): %s\n%s", w.Source.Name, code, err, out)
 	}
 
-	// Step 3: Start destination services (Iceberg stack)
-	t.Log("Starting destination services...")
-	if code, out, err := ExecCommand(ctx, ctr, startDestinationCmd); err != nil || code != 0 {
+	// Step 3: Start the destination
+	t.Logf("Starting %s destination...", w.Destination.Name)
+	if code, out, err := ExecCommand(ctx, ctr, composeUpCmd(w.Destination.Name, w.Destination.ComposeDir, w.Destination.Services)+" && sleep 5"); err != nil || code != 0 {
 		return fmt.Errorf("destination services startup failed (%d): %s\n%s", code, err, out)
 	}
 
@@ -209,10 +208,8 @@ func DinDTestContainer(t *testing.T) error {
 		t.Logf("Warning: Network setup failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 7: Query the postgres source
-	ExecuteQuery(ctx, t, "create", host, postgresPort.Port())
-	ExecuteQuery(ctx, t, "clean", host, postgresPort.Port())
-	ExecuteQuery(ctx, t, "add", host, postgresPort.Port())
+	// Step 7: Seed the source
+	w.Source.Seed(ctx, t, host, sourcePort.Port())
 
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
 
@@ -224,18 +221,18 @@ func DinDTestContainer(t *testing.T) error {
 
 	// Step 9: Run Playwright tests
 	t.Log("Executing Playwright tests...")
-	if code, out, err := ExecCommandWithStreaming(ctx, t, ctr, runPlaywrightCmd); err != nil || code != 0 {
+	if code, out, err := ExecCommandWithStreaming(ctx, t, ctr, fmt.Sprintf(runPlaywrightCmd, w.Spec)); err != nil || code != 0 {
 		return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
 	}
 	t.Log("Playwright tests passed successfully.")
 
-	// wait before verifying iceberg data
-	t.Log("Waiting for 60 seconds before verifying iceberg data...")
+	// wait before verifying destination data
+	t.Log("Waiting for 60 seconds before verifying destination data...")
 	time.Sleep(60 * time.Second)
 
-	// Step 10: Verify in iceberg
-	t.Logf("Starting Iceberg data verification...")
-	VerifyIcebergTest(ctx, t, ctr, host, sparkPort.Port())
+	// Step 10: Verify the destination
+	t.Logf("Starting %s data verification...", w.Destination.Name)
+	VerifyDestination(ctx, t, ctr, host, sparkPort.Port(), w)
 	return nil
 }
 
@@ -295,7 +292,8 @@ func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Co
 	return nil
 }
 
-func VerifyIcebergTest(ctx context.Context, t *testing.T, ctr testcontainers.Container, host, port string) {
+// VerifyDestination connects to Spark and runs every check of the workflow.
+func VerifyDestination(ctx context.Context, t *testing.T, ctr testcontainers.Container, host, port string, w Workflow) {
 	sparkConnectAddress := fmt.Sprintf("sc://%s:%s", host, port)
 	spark, err := sql.NewSessionBuilder().Remote(sparkConnectAddress).Build(ctx)
 	require.NoError(t, err, "Failed to connect to Spark Connect server")
@@ -314,165 +312,9 @@ func VerifyIcebergTest(ctx context.Context, t *testing.T, ctr testcontainers.Con
 			t.Log("Cleanup complete")
 		}
 	}()
-	countQuery := fmt.Sprintf(
-		"SELECT COUNT(DISTINCT _olake_id) as unique_count FROM %s.%s.%s",
-		icebergCatalog, icebergDB, currentTestTable,
-	)
-	t.Logf("Executing query: %s", countQuery)
-
-	countQueryDf, err := spark.Sql(ctx, countQuery)
-	require.NoError(t, err, "Failed to execute query on the table")
-
-	rows, err := countQueryDf.Collect(ctx)
-	require.NoError(t, err, "Failed to collect data rows from Iceberg")
-	require.NotEmpty(t, rows, "No rows returned for _op_type = 'r'")
-
-	// check count and verify
-	countValue := rows[0].Value("unique_count").(int64)
-	require.Equal(t, int64(5), countValue, "Expected count to be 5")
-	t.Logf("✅ Test passed: count value %v matches expected value 5", countValue)
-}
-
-func ExecuteQuery(ctx context.Context, t *testing.T, operation, host, port string) {
-	t.Helper()
-	connStr := fmt.Sprintf("postgres://postgres@%s:%s/postgres?sslmode=disable", host, port)
-	db, ok := sqlx.ConnectContext(ctx, "postgres", connStr)
-	require.NoError(t, ok, "failed to connect to postgres")
-	defer func() {
-		require.NoError(t, db.Close(), "failed to close postgres connection")
-	}()
-
-	// integration test uses only one stream for testing
-	integrationTestTable := currentTestTable
-	var query string
-
-	switch operation {
-	case "create":
-		query = fmt.Sprintf(`
-			CREATE TABLE IF NOT EXISTS %s (
-				col_bigint BIGINT,
-				col_bigserial BIGSERIAL PRIMARY KEY,
-				col_bool BOOLEAN,
-				col_char CHAR(1),
-				col_character CHAR(10),
-				col_character_varying VARCHAR(50),
-				col_date DATE,
-				col_decimal NUMERIC,
-				col_double_precision DOUBLE PRECISION,
-				col_float4 REAL,
-				col_int INT,
-				col_int2 SMALLINT,
-				col_integer INTEGER,
-				col_interval INTERVAL,
-				col_json JSON,
-				col_jsonb JSONB,
-				col_name NAME,
-				col_numeric NUMERIC,
-				col_real REAL,
-				col_text TEXT,
-				col_timestamp TIMESTAMP,
-				col_timestamptz TIMESTAMPTZ,
-				col_uuid UUID,
-				col_varbit VARBIT(20),
-				col_xml XML,
-				CONSTRAINT unique_custom_key UNIQUE (col_bigserial)
-			)`, integrationTestTable)
-
-	case "drop":
-		query = fmt.Sprintf("DROP TABLE IF EXISTS %s", integrationTestTable)
-
-	case "clean":
-		query = fmt.Sprintf("TRUNCATE TABLE %s", integrationTestTable)
-
-	case "add":
-		insertTestData(ctx, t, db, integrationTestTable)
-		return // Early return since we handle all inserts in the helper function
-
-	case "insert":
-		query = fmt.Sprintf(`
-			INSERT INTO %s (
-				col_bigint, col_bool, col_char, col_character,
-				col_character_varying, col_date, col_decimal,
-				col_double_precision, col_float4, col_int, col_int2,
-				col_integer, col_interval, col_json, col_jsonb,
-				col_name, col_numeric, col_real, col_text,
-				col_timestamp, col_timestamptz, col_uuid, col_varbit, col_xml
-			) VALUES (
-				123456789012345, TRUE, 'c', 'char_val',
-				'varchar_val', '2023-01-01', 123.45,
-				123.456789, 123.45, 123, 123, 12345,
-				'1 hour', '{"key": "value"}', '{"key": "value"}',
-				'test_name', 123.45, 123.45, 'sample text',
-				'2023-01-01 12:00:00', '2023-01-01 12:00:00+00',
-				'123e4567-e89b-12d3-a456-426614174000', B'101010',
-				'<tag>value</tag>'
-			)`, integrationTestTable)
-
-	case "update":
-		query = fmt.Sprintf(`
-			UPDATE %s SET
-				col_bigint = 123456789012340,
-				col_bool = FALSE,
-				col_char = 'd',
-				col_character = 'updated__',
-				col_character_varying = 'updated val',
-				col_date = '2024-07-01',
-				col_decimal = 543.21,
-				col_double_precision = 987.654321,
-				col_float4 = 543.21,
-				col_int = 321,
-				col_int2 = 321,
-				col_integer = 54321,
-				col_interval = '2 hours',
-				col_json = '{"new": "json"}',
-				col_jsonb = '{"new": "jsonb"}',
-				col_name = 'updated_name',
-				col_numeric = 321.00,
-				col_real = 321.00,
-				col_text = 'updated text',
-				col_timestamp = '2024-07-01 15:30:00',
-				col_timestamptz = '2024-07-01 15:30:00+00',
-				col_uuid = '00000000-0000-0000-0000-000000000000',
-				col_varbit = B'111000',
-				col_xml = '<updated>value</updated>'
-			WHERE col_bigserial = 1`, integrationTestTable)
-
-	case "delete":
-		query = fmt.Sprintf("DELETE FROM %s WHERE col_bigserial = 1", integrationTestTable)
-
-	default:
-		t.Fatalf("Unsupported operation: %s", operation)
-	}
-	_, err := db.ExecContext(ctx, query)
-	require.NoError(t, err, "Failed to execute %s operation", operation)
-}
-
-// insertTestData inserts test data into the specified table
-func insertTestData(ctx context.Context, t *testing.T, db *sqlx.DB, tableName string) {
-	t.Helper()
-
-	for i := 1; i <= 5; i++ {
-		query := fmt.Sprintf(`
-		INSERT INTO %s (
-			col_bigint, col_bigserial, col_bool, col_char, col_character,
-			col_character_varying, col_date, col_decimal,
-			col_double_precision, col_float4, col_int, col_int2, col_integer,
-			col_interval, col_json, col_jsonb, col_name, col_numeric,
-			col_real, col_text, col_timestamp, col_timestamptz,
-			col_uuid, col_varbit, col_xml
-		) VALUES (
-			123456789012345, DEFAULT, TRUE, 'c', 'char_val',
-			'varchar_val', '2023-01-01', 123.45,
-			123.456789, 123.45, 123, 123, 12345, '1 hour', '{"key": "value"}',
-			'{"key": "value"}', 'test_name', 123.45, 123.45,
-			'sample text', '2023-01-01 12:00:00',
-			'2023-01-01 12:00:00+00',
-			'123e4567-e89b-12d3-a456-426614174000', B'101010',
-			'<tag>value</tag>'
-		)`, tableName)
-
-		_, err := db.ExecContext(ctx, query)
-		require.NoError(t, err, "Failed to insert test data")
+	table := func(name string) string { return w.Destination.Table(w.Database, name) }
+	for _, check := range w.Checks {
+		check(ctx, t, spark, table)
 	}
 }
 
