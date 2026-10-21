@@ -100,7 +100,7 @@ func composeStartCmd(project, dir string, services []string, ready string) strin
 }
 
 func DinDTestContainer(t *testing.T, w Workflow) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 55*time.Minute) // under the CI job's 60 minutes
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Minute) // leaves the CI job's 60 minutes room for checkout and setup
 	defer cancel()
 	projectRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
