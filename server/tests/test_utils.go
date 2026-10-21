@@ -149,6 +149,16 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 	if err != nil {
 		return fmt.Errorf("failed to start DinD container: %w", err)
 	}
+	// Ryuk is disabled, so nothing else removes the box. t.Cleanup runs even when a step
+	// returns early or a require fails. Its own context: ctx may have expired by then.
+	t.Cleanup(func() {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cleanupCancel()
+		t.Log("Terminating the DinD container...")
+		if err := ctr.Terminate(cleanupCtx); err != nil {
+			t.Logf("Warning: failed to terminate container: %v", err)
+		}
+	})
 
 	// container host
 	host, err := ctr.Host(ctx)
@@ -229,7 +239,7 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 
 	// Step 10: Verify the destination
 	t.Logf("Starting %s data verification...", w.Destination.Name)
-	VerifyDestination(ctx, t, ctr, host, sparkPort.Port(), w)
+	VerifyDestination(ctx, t, host, sparkPort.Port(), w)
 	return nil
 }
 
@@ -290,23 +300,13 @@ func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Co
 }
 
 // VerifyDestination connects to Spark and runs every check of the workflow.
-func VerifyDestination(ctx context.Context, t *testing.T, ctr testcontainers.Container, host, port string, w Workflow) {
+func VerifyDestination(ctx context.Context, t *testing.T, host, port string, w Workflow) {
 	sparkConnectAddress := fmt.Sprintf("sc://%s:%s", host, port)
 	spark, err := sql.NewSessionBuilder().Remote(sparkConnectAddress).Build(ctx)
 	require.NoError(t, err, "Failed to connect to Spark Connect server")
 	defer func() {
 		if stopErr := spark.Stop(); stopErr != nil {
 			t.Errorf("Failed to stop Spark session: %v", stopErr)
-		}
-		if ctr != nil {
-			t.Log("Running cleanup...")
-			// Stop docker-compose services
-			_, _, _ = ExecCommand(ctx, ctr, "cd /mnt && docker-compose down -v --remove-orphans")
-			// Terminate the DinD container
-			if err := ctr.Terminate(ctx); err != nil {
-				t.Logf("Warning: failed to terminate container: %v", err)
-			}
-			t.Log("Cleanup complete")
 		}
 	}()
 	table := func(name string) string { return w.Destination.Table(w.Database, name) }
