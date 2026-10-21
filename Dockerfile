@@ -1,5 +1,5 @@
 # Stage 1: Go Builder (Backend)
-FROM --platform=$BUILDPLATFORM golang:1.26.10-alpine AS go-builder
+FROM --platform=$BUILDPLATFORM golang:1.27.2-alpine AS go-builder
 
 
 # Install git, as it might be needed by go mod download or go build
@@ -39,7 +39,7 @@ COPY ui/ ./
 RUN pnpm build
 
 # Stage 3: Final Runtime Image
-FROM alpine:3.18
+FROM alpine:3.24
 
 # Accept build argument for version
 ARG APP_VERSION=unknown
