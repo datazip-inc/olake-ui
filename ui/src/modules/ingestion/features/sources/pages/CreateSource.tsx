@@ -240,6 +240,7 @@ const CreateSource: React.FC = () => {
 
 	const handleConnectorChange = (value: string) => {
 		setConnector(value)
+		setDocAnchor(undefined)
 		if (setupType === SETUP_TYPES.EXISTING) {
 			setExistingSource(null)
 			setSourceName("")
@@ -258,6 +259,7 @@ const CreateSource: React.FC = () => {
 			setFormData({})
 			setSchema(null)
 			setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
+			setDocAnchor(undefined)
 			setExistingSource(null)
 		}
 	}
