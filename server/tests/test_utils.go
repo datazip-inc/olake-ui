@@ -57,20 +57,17 @@ const (
         docker network connect olake-network olake_postgres-test || true
     `
 
-	// Install Playwright and dependencies. They go into a copy of ui/ inside the box, not into the
-	// mounted checkout: a checkout that was used for development holds node_modules from the
-	// host's pnpm, which the box cannot use and must not overwrite.
+	// Install Playwright and dependencies. --frozen-lockfile installs the Playwright version
+	// pinned in pnpm-lock.yaml instead of resolving the latest release.
 	installPlaywrightCmd = `
-        mkdir -p /opt/ui &&
-        cd /mnt/ui && tar --exclude=node_modules -cf - . | tar -xf - -C /opt/ui &&
-        cd /opt/ui &&
-        pnpm add -D @playwright/test &&
+        cd /mnt/ui &&
+        pnpm install --frozen-lockfile &&
         pnpm exec playwright install --with-deps chromium
     `
 
 	// Run a Playwright spec, relative to ui/
 	runPlaywrightCmd = `
-        cd /opt/ui &&
+        cd /mnt/ui &&
         PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test %s
     `
 )
