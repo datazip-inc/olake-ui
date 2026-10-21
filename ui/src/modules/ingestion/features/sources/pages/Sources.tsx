@@ -1,6 +1,5 @@
 import { LinktreeLogoIcon, PlusIcon } from "@phosphor-icons/react"
-import { Button, Tabs, Empty, Spin } from "antd"
-import { useState } from "react"
+import { Button, Spin } from "antd"
 import { useNavigate } from "react-router"
 
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
@@ -8,11 +7,9 @@ import { Entity } from "@/modules/ingestion/common/types"
 
 import SourceEmptyState from "../components/SourceEmptyState"
 import SourceTable from "../components/SourceTable"
-import { sourceTabs } from "../constants"
 import { useSources, useDeleteSource } from "../hooks"
 
 const Sources: React.FC = () => {
-	const [activeTab, setActiveTab] = useState("active")
 	const navigate = useNavigate()
 
 	const {
@@ -34,25 +31,6 @@ const Sources: React.FC = () => {
 
 	const handleDeleteSource = (source: Entity) => {
 		deleteSourceMutation.mutate(String(source.id))
-	}
-
-	const filteredSources = (): Entity[] => {
-		if (activeTab === "active") {
-			return sources.filter(
-				source =>
-					source?.jobs &&
-					source.jobs.length > 0 &&
-					source.jobs.some(job => job.activate === true),
-			)
-		} else if (activeTab === "inactive") {
-			return sources.filter(
-				source =>
-					!source?.jobs ||
-					source.jobs.length === 0 ||
-					source.jobs.every(job => job.activate === false),
-			)
-		}
-		return []
 	}
 
 	const showEmpty = !isLoadingSources && sources.length === 0
@@ -96,38 +74,23 @@ const Sources: React.FC = () => {
 
 			<p className="mb-6 text-gray-600">A list of all your sources</p>
 
-			<Tabs
-				activeKey={activeTab}
-				onChange={setActiveTab}
-				className="mb-4"
-				items={sourceTabs.map(tab => ({
-					key: tab.key,
-					label: tab.label,
-					children: isLoadingSources ? (
-						<div className="flex items-center justify-center py-16">
-							<Spin
-								size="large"
-								tip="Loading sources..."
-							/>
-						</div>
-					) : tab.key === "active" && showEmpty ? (
-						<SourceEmptyState handleCreateSource={handleCreateSource} />
-					) : filteredSources().length === 0 ? (
-						<Empty
-							image={Empty.PRESENTED_IMAGE_SIMPLE}
-							description="No sources configured"
-							className="flex flex-col items-center"
-						/>
-					) : (
-						<SourceTable
-							sources={filteredSources()}
-							loading={isLoadingSources}
-							onEdit={handleEditSource}
-							onDelete={handleDeleteSource}
-						/>
-					),
-				}))}
-			/>
+			{isLoadingSources ? (
+				<div className="flex items-center justify-center py-16">
+					<Spin
+						size="large"
+						tip="Loading sources..."
+					/>
+				</div>
+			) : showEmpty ? (
+				<SourceEmptyState handleCreateSource={handleCreateSource} />
+			) : (
+				<SourceTable
+					sources={sources}
+					loading={isLoadingSources}
+					onEdit={handleEditSource}
+					onDelete={handleDeleteSource}
+				/>
+			)}
 		</div>
 	)
 }

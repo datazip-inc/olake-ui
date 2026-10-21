@@ -6,31 +6,16 @@ import {
 import { Table, Input, Button, Dropdown, Pagination, Tooltip } from "antd"
 import React, { useState } from "react"
 
-import { DeleteModal } from "@/modules/ingestion/common/components"
-import JobConnection from "@/modules/ingestion/common/components/JobConnection"
+import {
+	AssociatedJobs,
+	DeleteModal,
+} from "@/modules/ingestion/common/components"
 import { PAGE_SIZE } from "@/modules/ingestion/common/constants"
 import { Entity } from "@/modules/ingestion/common/types"
 import { getConnectorImage } from "@/modules/ingestion/common/utils"
 
 import { SourceTableProps } from "../types"
 import { getConnectorLabel } from "../utils"
-
-const renderJobConnection = (record: Entity) => {
-	const jobs = record.jobs as any[]
-	if (jobs.length === 0) {
-		return <div className="text-gray-500">No associated jobs</div>
-	}
-
-	return (
-		<JobConnection
-			sourceType={record.type}
-			destinationType={jobs[0].destination_type || ""}
-			jobName={jobs[0].name}
-			remainingJobs={jobs.length - 1}
-			jobs={jobs}
-		/>
-	)
-}
 
 const SourceTable: React.FC<SourceTableProps> = ({
 	sources,
@@ -114,7 +99,13 @@ const SourceTable: React.FC<SourceTableProps> = ({
 			title: () => <span className="font-medium">Associated jobs</span>,
 			key: "jobs",
 			dataIndex: "jobs",
-			render: (_: unknown, record: Entity) => renderJobConnection(record),
+			render: (_: unknown, record: Entity) => (
+				<AssociatedJobs
+					jobs={record.jobs}
+					entityType="source"
+					connectorType={record.type}
+				/>
+			),
 		},
 	]
 

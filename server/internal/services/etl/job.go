@@ -476,7 +476,9 @@ func (s Service) GetJobTasks(ctx context.Context, projectID string, jobID int) (
 	return tasks, nil
 }
 
-func (s Service) GetTaskLogs(ctx context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
+// GetTaskLogs returns a page of a run's logs: the connector's sync logs, the
+// worker's logs, or both merged by time (source "all").
+func (s Service) GetTaskLogs(ctx context.Context, jobID int, filePath, source, cursor string, limit int, direction string) (*dto.JobTaskLogsResponse, error) {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		if errors.Is(err, constants.ErrJobNotFound) {
@@ -491,11 +493,10 @@ func (s Service) GetTaskLogs(ctx context.Context, jobID int, filePath string, cu
 		return nil, err
 	}
 
-	logs, err := utils.ReadLogs(ctx, mainSyncDir, cursor, limit, direction)
+	logs, err := utils.ReadTaskLogs(ctx, mainSyncDir, source, cursor, limit, direction)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read logs: %s", err)
+		return nil, fmt.Errorf("failed to read logs: %w", err)
 	}
-	// TODO: need to add activity logs as well with sync logs
 	return logs, nil
 }
 

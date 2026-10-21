@@ -6,8 +6,10 @@ import {
 import { Table, Input, Button, Dropdown, Pagination, Tooltip } from "antd"
 import { useState } from "react"
 
-import { DeleteModal } from "@/modules/ingestion/common/components"
-import JobConnection from "@/modules/ingestion/common/components/JobConnection"
+import {
+	AssociatedJobs,
+	DeleteModal,
+} from "@/modules/ingestion/common/components"
 import {
 	CONNECTOR_TYPES,
 	PAGE_SIZE,
@@ -104,22 +106,13 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			title: () => <span className="font-medium">Associated jobs</span>,
 			key: "jobs",
 			dataIndex: "jobs",
-			render: (_: any, record: Entity) => {
-				const jobs = record.jobs as any[]
-				if (jobs.length === 0) {
-					return <div className="text-gray-500">No associated jobs</div>
-				}
-
-				return (
-					<JobConnection
-						sourceType={jobs[0].source_type || ""}
-						destinationType={record.type}
-						jobName={jobs[0].name}
-						remainingJobs={jobs.length - 1}
-						jobs={jobs}
-					/>
-				)
-			},
+			render: (_: any, record: Entity) => (
+				<AssociatedJobs
+					jobs={record.jobs}
+					entityType="destination"
+					connectorType={record.type}
+				/>
+			),
 		},
 	]
 

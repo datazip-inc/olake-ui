@@ -15,6 +15,10 @@ var (
 	ErrDestinationNotFound = errors.New("destination not found")
 	ErrJobNotFound         = errors.New("job not found")
 	ErrConfigDecrypt       = errors.New("failed to decrypt config")
+
+	// Log related errors
+	ErrInvalidLogCursor   = errors.New("invalid log cursor")
+	ErrSyncFolderNotFound = errors.New("no sync folder found")
 )
 
 // Validation messages
