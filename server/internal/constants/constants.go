@@ -91,14 +91,25 @@ var (
 	// DefaultLogsLimit is the number of log entries returned if no limit is provided.
 	DefaultLogsLimit = 1000
 
-	// DefaultLogsCursor indicates tailing from the end of the file (cursor < 0).
-	DefaultLogsCursor int64 = -1
+	// MaxLogsLimit caps the log entries one request may ask for, so a large
+	// limit cannot make the server hold huge pages in memory.
+	MaxLogsLimit = 5000
+
+	// SyncLogFileName is the connector's log inside a run's logs/sync_* folder.
+	SyncLogFileName = "olake.log"
+
+	// WorkerLogFileName is written by the olake worker in a run's logs folder.
+	WorkerLogFileName = "worker.log"
 
 	// DefaultLogsDirection is the fallback pagination direction ("older" or "newer").
 	DefaultLogsDirection = "older"
 
 	ConnectorLogPrefix = "connector"
 	WorkerLogPrefix    = "worker"
+
+	// WorkerLogRelDir is where the worker writes its log chunks in S3 mode,
+	// relative to a run's folder (the worker's constants.WorkerLogRelDir).
+	WorkerLogRelDir = "logs/worker"
 
 	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.
