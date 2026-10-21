@@ -334,12 +334,8 @@ func (fw *FileWatcher) annotationsFor(r *ResourceData) map[string]string {
 	}
 }
 
-func (fw *FileWatcher) SpawnIndicator(ctx context.Context, r *ResourceData, errMsg string) error {
-	return spawnIndicator(ctx, fw.temporalClient, r, errMsg)
-}
-
-func (fw *FileWatcher) DeleteIndicator(ctx context.Context, r *ResourceData) error {
-	return deleteIndicator(ctx, fw.temporalClient, r)
+func (fw *FileWatcher) Indicator(ctx context.Context, r *ResourceData, action, errMsg string) {
+	startIndicator(ctx, fw.temporalClient, r, action, errMsg)
 }
 
 // SetPhase records status in memory and in stateFile, and logs each change, standing in for the
