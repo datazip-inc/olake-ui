@@ -4,7 +4,11 @@ import React from "react"
 import semver from "semver"
 
 import { restrictNumericInput } from "@/common/utils"
-import { MIN_QUERY_ENGINES_VERSION } from "@/modules/ingestion/common/constants"
+import {
+	DESTINATION_INTERNAL_TYPES,
+	MIN_QUERY_ENGINES_VERSION,
+} from "@/modules/ingestion/common/constants"
+import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
 import { useAvailableQueryEngines } from "@/modules/ingestion/features/sources/hooks"
 
 import { useJobConfigurationStore } from "../stores"
@@ -12,19 +16,28 @@ import { useJobConfigurationStore } from "../stores"
 interface AdvancedSettingsCardProps {
 	sourceType?: string
 	sourceVersion?: string
+	destinationType?: string
 }
 
 const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 	sourceType,
 	sourceVersion,
+	destinationType,
 }) => {
 	const {
 		advancedSettings,
 		setAdvancedSettings,
 		selectedSource,
+		selectedDestination,
 		savedAdvancedSettings,
 		isEditMode,
 	} = useJobConfigurationStore()
+
+	const isAppendOnlyDestination =
+		getConnectorInLowerCase(destinationType ?? selectedDestination?.type) ===
+		DESTINATION_INTERNAL_TYPES.S3
+	// A job's destination can't change after creation, so an existing S3 job can never use this.
+	const hideQueryEngines = isAppendOnlyDestination && isEditMode
 
 	const version = sourceVersion ?? selectedSource?.version ?? ""
 	// An unknown or unparsable version is treated as supported.
@@ -46,6 +59,13 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 	const setQueryEngines = (target_query_engines: string[]) =>
 		setAdvancedSettings({ ...advancedSettings, target_query_engines })
 
+	const showQueryEngines =
+		!hideQueryEngines &&
+		(!isVersionSupported ||
+			isLoadingQueryEngines ||
+			isQueryEnginesError ||
+			queryEngines.length > 0)
+
 	const savedQueryEngines = savedAdvancedSettings?.target_query_engines ?? []
 	// Hidden in create mode, or when Snowflake was already in the saved selection.
 	const showSnowflakeWarning =
@@ -64,10 +84,7 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 					Advanced Settings
 				</span>
 			</div>
-			{(!isVersionSupported ||
-				isLoadingQueryEngines ||
-				isQueryEnginesError ||
-				queryEngines.length > 0) && (
+			{showQueryEngines && (
 				<div className="mb-6 border-b border-olake-border pb-6">
 					<div className="w-1/2">
 						<div className="mb-2 flex items-center gap-1">
@@ -110,6 +127,7 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 								allowClear
 								className="w-full"
 								placeholder="Select Query Engines"
+								disabled={isAppendOnlyDestination}
 								loading={isFetchingQueryEngines}
 								maxTagCount="responsive"
 								maxTagPlaceholder={omitted => `+${omitted.length} more`}

@@ -498,6 +498,7 @@ const JobSettings: React.FC = () => {
 								<AdvancedSettingsCard
 									sourceType={job?.source.type}
 									sourceVersion={job?.source.version}
+									destinationType={job?.destination.type}
 								/>
 							</div>
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white px-6 pb-2">
