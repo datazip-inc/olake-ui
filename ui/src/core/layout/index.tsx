@@ -1,6 +1,6 @@
 import { LayoutProps } from "antd"
 import { useEffect, useState } from "react"
-import { useLocation, useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router"
 
 import { useAuthStore } from "@/core/auth/stores"
 import { useActiveModuleKeys } from "@/core/modules/registry"

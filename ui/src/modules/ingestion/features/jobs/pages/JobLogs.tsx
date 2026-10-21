@@ -14,7 +14,7 @@ import {
 	useMemo,
 	useLayoutEffect,
 } from "react"
-import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
+import { useParams, useNavigate, Link, useSearchParams } from "react-router"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
 import { getLogLevelClass, getLogTextColor } from "@/common/utils"

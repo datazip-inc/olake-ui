@@ -6,10 +6,11 @@ import {
 } from "@phosphor-icons/react"
 import { message } from "antd"
 import { useState, useEffect } from "react"
-import { useNavigate, Link, useLocation } from "react-router-dom"
+import { useNavigate, Link, useLocation } from "react-router"
 import { v4 as uuidv4 } from "uuid"
 
 import {
+	SourceTestConnectionModal,
 	TestConnectionFailureModal,
 	TestConnectionModal,
 	TestConnectionSuccessModal,
@@ -27,7 +28,7 @@ import {
 	useDestinations,
 } from "@/modules/ingestion/features/destinations/hooks"
 import {
-	useTestSourceConnection,
+	useSourceConnectionTest,
 	useSources,
 } from "@/modules/ingestion/features/sources/hooks"
 
@@ -131,13 +132,12 @@ const JobCreation: React.FC = () => {
 	const { setShowResetStreamsModal } = useJobStore()
 	const isDiscovering = useStreamSelectionStore(state => state.isDiscovering)
 
-	const [showTestingModal, setShowTestingModal] = useState(false)
 	const [showSuccessModal, setShowSuccessModal] = useState(false)
 	const [showFailureModal, setShowFailureModal] = useState(false)
 	const [showEntitySavedModal, setShowEntitySavedModal] = useState(false)
 	const [showCancelModal, setShowCancelModal] = useState(false)
 	const { mutateAsync: addJob, isPending: isCreatingJob } = useCreateJob()
-	const testSourceMutation = useTestSourceConnection()
+	const sourceConnectionTest = useSourceConnectionTest()
 	const testDestinationMutation = useTestDestinationConnection()
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
@@ -170,28 +170,32 @@ const JobCreation: React.FC = () => {
 		if (isSource && !selectedSource) return false
 		if (!isSource && !selectedDestination) return false
 		setConnectionTestType(isSource ? "source" : "destination")
-		setShowTestingModal(true)
+		if (isSource) {
+			const result = await sourceConnectionTest.run(
+				{
+					type: sourceConnectorPayload.type,
+					version: sourceConnectorPayload.version,
+					config: sourceConnectorPayload.config,
+				},
+				true,
+			)
+			if (result.outcome === "connection_failed") {
+				setTestConnectionError(result.error)
+				setShowFailureModal(true)
+			}
+			return result.outcome === "passed"
+		}
 		try {
-			const testResult = isSource
-				? await testSourceMutation.mutateAsync({
-						source: {
-							type: sourceConnectorPayload.type,
-							version: sourceConnectorPayload.version,
-							config: sourceConnectorPayload.config,
-						},
-						existing: true,
-					})
-				: await testDestinationMutation.mutateAsync({
-						destination: {
-							type: destinationConnectorPayload.type,
-							version: destinationConnectorPayload.version,
-							config: destinationConnectorPayload.config,
-						},
-						existing: true,
-						sourceType: sourceConnectorPayload.type,
-						sourceVersion: sourceConnectorPayload.version,
-					})
-			setShowTestingModal(false)
+			const testResult = await testDestinationMutation.mutateAsync({
+				destination: {
+					type: destinationConnectorPayload.type,
+					version: destinationConnectorPayload.version,
+					config: destinationConnectorPayload.config,
+				},
+				existing: true,
+				sourceType: sourceConnectorPayload.type,
+				sourceVersion: sourceConnectorPayload.version,
+			})
 			if (
 				testResult.data?.connection_result.status ===
 				TEST_CONNECTION_STATUS.SUCCEEDED
@@ -208,12 +212,7 @@ const JobCreation: React.FC = () => {
 			setShowFailureModal(true)
 			return false
 		} catch {
-			setShowTestingModal(false)
-			message.error(
-				isSource
-					? "Source connection test failed"
-					: "Destination connection test failed",
-			)
+			message.error("Destination connection test failed")
 			return false
 		}
 	}
@@ -280,7 +279,7 @@ const JobCreation: React.FC = () => {
 			}
 			case JOB_CREATION_STEPS.STREAMS: {
 				if (!streamsData) return
-				const error = validateStreams(streamsData)
+				const error = validateStreams(streamsData, sourceConnectorPayload.type)
 				if (error) {
 					message.error(error)
 					return
@@ -440,11 +439,14 @@ const JobCreation: React.FC = () => {
 						)}
 					</button>
 					<TestConnectionModal
-						open={showTestingModal}
+						open={
+							testDestinationMutation.isPending || sourceConnectionTest.testing
+						}
 						connectionType={connectionTestType}
 					/>
+					<SourceTestConnectionModal {...sourceConnectionTest.modalProps} />
 					<TestConnectionSuccessModal
-						open={showSuccessModal}
+						open={showSuccessModal || sourceConnectionTest.showSuccess}
 						connectionType={connectionTestType}
 					/>
 					<EntitySavedModal

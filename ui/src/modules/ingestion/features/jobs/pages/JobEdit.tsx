@@ -2,7 +2,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
 import { Button, message } from "antd"
 import clsx from "clsx"
 import { useState, useEffect, useRef } from "react"
-import { useNavigate, Link, useParams } from "react-router-dom"
+import { useNavigate, Link, useParams } from "react-router"
 
 import {
 	StreamData,
@@ -289,7 +289,10 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		const streamValidationError = validateStreams(streamsData)
+		const streamValidationError = validateStreams(
+			streamsData,
+			sourceSnapshot.type,
+		)
 		if (streamValidationError) {
 			message.error(streamValidationError)
 			return
@@ -350,7 +353,10 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		const submitValidationError = validateStreams(streamsConfig)
+		const submitValidationError = validateStreams(
+			streamsConfig,
+			sourceSnapshot.type,
+		)
 		if (submitValidationError) {
 			message.error(submitValidationError)
 			return

@@ -18,27 +18,6 @@ export const SETUP_TYPES = {
 	EXISTING: "existing",
 } as const
 
-export const STATUS = {
-	ACTIVE: "active",
-	INACTIVE: "inactive",
-	PENDING: "pending",
-	FAILED: "failed",
-	RUNNING: "running",
-	SUCCESS: "success",
-	COMPLETED: "completed",
-	CANCELLED: "cancelled",
-}
-
-export const STATUS_LABELS = {
-	ACTIVE: "Active",
-	INACTIVE: "Inactive",
-	PENDING: "Pending",
-	FAILED: "Failed",
-	RUNNING: "Running",
-	SUCCESS: "Success",
-	COMPLETED: "Completed",
-	CANCELLED: "Cancelled",
-}
 export const ENTITY_TYPES = {
 	SOURCE: "source",
 	DESTINATION: "destination",
@@ -78,3 +57,22 @@ export const MIN_JSON_FILTER_VERSION = "v0.6.0"
 
 // Minimum source version that supports the source naming convention (use_source_column_names).
 export const MIN_SOURCE_NAMING_CONVENTION_VERSION = "v0.7.7"
+
+// Minimum Kafka source version that supports Upsert.
+export const MIN_KAFKA_UPSERT_SOURCE_VERSION = "v0.12.1"
+
+export const KAFKA_KEY_COLUMN = "_kafka_key"
+
+export const KAFKA_META_COLUMNS = new Set([
+	KAFKA_KEY_COLUMN,
+	"_kafka_offset",
+	"_kafka_partition",
+	"_kafka_timestamp",
+])
+
+// Source docs page headings that each source form section ("ui:sections" id) scrolls the docs panel to
+export const SOURCE_SECTION_DOC_ANCHORS: Record<string, string> = {
+	cdc: "change-data-capture-cdc",
+	connection: "connection-details",
+	additional: "additional-configuration",
+}
