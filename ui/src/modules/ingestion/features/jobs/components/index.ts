@@ -17,6 +17,7 @@ export { default as IndexBuildWarningModal } from "./modals/IndexBuildWarningMod
 export { default as IngestionModeChangeModal } from "./modals/IngestionModeChangeModal"
 export { default as ResetStreamsModal } from "./modals/ResetStreamsModal"
 export { default as QueryEngineWarningModal } from "./modals/QueryEngineWarningModal"
+export { default as NoCommonUpdateTypeModal } from "./modals/NoCommonUpdateTypeModal"
 export { default as StreamDifferenceModal } from "./modals/StreamDifferenceModal"
 export { default as StreamEditDisabledModal } from "./modals/StreamEditDisabledModal"
 

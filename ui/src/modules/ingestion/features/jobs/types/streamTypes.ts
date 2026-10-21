@@ -32,8 +32,10 @@ export interface SchemaConfigurationProps {
 	fromJobEditFlow?: boolean
 	jobId?: number
 	destinationType?: string
+	destinationConfig?: string
 	jobName: string
 	advancedSettings?: AdvancedSettings | null
+	onChangeQueryEngines?: () => void
 }
 
 export interface GroupedStreamsCollapsibleListProps {

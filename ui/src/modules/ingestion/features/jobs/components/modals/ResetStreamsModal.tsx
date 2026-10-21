@@ -6,10 +6,16 @@ import { useJobStore } from "@/modules/ingestion/features/jobs/stores"
 
 import { ResetStreamsModalProps } from "../../types"
 
-const ResetStreamsModal: FC<ResetStreamsModalProps> = ({ onConfirm }) => {
+const ResetStreamsModal: FC<ResetStreamsModalProps> = ({
+	onConfirm,
+	onCancel,
+}) => {
 	const { showResetStreamsModal, setShowResetStreamsModal } = useJobStore()
 
-	const handleCancel = () => setShowResetStreamsModal(false)
+	const handleCancel = () => {
+		setShowResetStreamsModal(false)
+		onCancel?.()
+	}
 
 	const handleConfirm = () => {
 		setShowResetStreamsModal(false)

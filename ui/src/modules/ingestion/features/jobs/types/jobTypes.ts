@@ -129,6 +129,13 @@ export interface AdvancedSettings {
 	target_query_engines?: string[]
 }
 
+// Unsaved edits from the job settings page, passed to the job edit page
+// through router state.
+export interface UnsavedJobSettings {
+	advancedSettings: AdvancedSettings | null
+	cronExpression: string
+}
+
 export interface JobConfigurationProps {
 	stepNumber?: number
 	stepTitle?: string

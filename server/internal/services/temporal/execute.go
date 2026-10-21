@@ -66,7 +66,7 @@ const (
 //
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
 
-func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (string, error) {
+func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int, targetQueryEngines []string, destinationConfig string) (string, error) {
 	workflowID, err := NewOperationID(OperationDiscoverCatalog, projectID)
 	if err != nil {
 		return "", err
@@ -76,6 +76,13 @@ func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceTy
 		{Name: "config.json", Data: config},
 		{Name: "streams.json", Data: streamsConfig},
 		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
+	}
+
+	// Older drivers ignore --destination on discover, so it rides the query engine gate.
+	sendDestinationConfig := destinationConfig != "" && supportsQueryEngines(version)
+
+	if sendDestinationConfig {
+		configs = append(configs, JobConfig{Name: "destination.json", Data: destinationConfig})
 	}
 
 	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
@@ -108,6 +115,10 @@ func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceTy
 	// OLake stores no engines, so an omitted flag means unconstrained rather than "reuse the last choice".
 	if len(targetQueryEngines) > 0 && supportsQueryEngines(version) {
 		cmdArgs = append(cmdArgs, constants.TargetQueryEnginesFlag, strings.Join(targetQueryEngines, ","))
+	}
+
+	if sendDestinationConfig {
+		cmdArgs = append(cmdArgs, "--destination", "/mnt/config/destination.json")
 	}
 
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
