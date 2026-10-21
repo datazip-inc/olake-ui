@@ -33,7 +33,14 @@ services:
         while ! pg_isready -U postgres -h localhost -p 5432; do
           sleep 1
         done
-        
+
+        # Postgres 15.19+ only loads output plugins listed in output_plugin_libraries, which
+        # defaults to pgoutput and test_decoding. Older versions do not know the setting and
+        # print an error here, which is fine.
+        psql -U postgres -c "ALTER SYSTEM SET output_plugin_libraries = pgoutput, test_decoding, wal2json" \
+          -c "SELECT pg_reload_conf()"
+        sleep 1
+
         # Create replication slot if it doesn't exist
         psql -v ON_ERROR_STOP=1 -U postgres <<EOF
         DO \$\$
