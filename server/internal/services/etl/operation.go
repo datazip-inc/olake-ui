@@ -94,6 +94,12 @@ func (s Service) GetOperationResult(ctx context.Context, projectID, operationID 
 		return nil, fmt.Errorf("%w: %s", ErrOperationFailed, s.temporal.OperationFailureMessage(ctx, operationID))
 	}
 
+	// Discover writes several catalog files, so its result is read from them rather than from the
+	// single file the workflow reports.
+	if kind == temporal.OperationDiscoverCatalog {
+		return discoverCatalogResult(ctx, operationID)
+	}
+
 	output, err := s.temporal.FetchOperationOutput(ctx, operationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read operation result: %s", err)
@@ -118,9 +124,6 @@ func decodeOperationOutput(ctx context.Context, kind temporal.OperationKind, ope
 			return nil, fmt.Errorf("failed to read logs for operation %s: %s", operationID, err)
 		}
 		return dto.TestConnectionResponse{ConnectionResult: dto.NewConnectionResult(result), Logs: logs.Logs}, nil
-
-	case temporal.OperationDiscoverCatalog:
-		return output, nil
 
 	case temporal.OperationStreamDifference:
 		return dto.StreamDifferenceResponse{DifferenceStreams: output}, nil

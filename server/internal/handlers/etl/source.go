@@ -153,8 +153,11 @@ func (h *Handler) UpdateSource(c *gin.Context) {
 	logger.Debugf("Update source initiated project_id[%s] source_id[%d] source_type[%s] user_id[%v]", projectID, id, req.Type, userID)
 	if err := h.etl.UpdateSource(c.Request.Context(), projectID, id, &req, userID); err != nil {
 		status := http.StatusInternalServerError
-		if errors.Is(err, constants.ErrSourceNotFound) {
+		switch {
+		case errors.Is(err, constants.ErrSourceNotFound):
 			status = http.StatusNotFound
+		case errors.Is(err, constants.ErrStreamsFormat):
+			status = http.StatusBadRequest
 		}
 		utils.ErrorResponse(c, status, fmt.Sprintf("failed to update source: %s", err), err)
 		return
@@ -229,7 +232,7 @@ func (h *Handler) TestSourceConnection(c *gin.Context) {
 
 // @Summary Get source stream catalog
 // @Tags Sources
-// @Description Discover and list available data streams from a source.
+// @Description Start discovering the data streams of a source. Poll the returned operation; its result (GET /operations/{operationid}/result) is a dto.DiscoverCatalogResponse in one format: available_streams + selected_streams for a split catalog, otherwise streams_config.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   body          body    dto.StreamsRequest true "streams request data"
 // @Success 202 {object} dto.JSONResponse{data=dto.OperationAcceptedResponse}
@@ -254,7 +257,7 @@ func (h *Handler) GetSourceCatalog(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Get source catalog initiated source_type[%s] source_version[%s] job_id[%d]", req.Type, req.Version, req.JobID)
-	operationID, err := h.etl.GetSourceCatalog(c.Request.Context(), projectID, &req)
+	operationID, err := h.etl.DiscoverCatalog(c.Request.Context(), projectID, &req)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source streams: %s", err), err)
 		return

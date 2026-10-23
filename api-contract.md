@@ -7,6 +7,30 @@
 http://localhost:8080
 ```
 
+## Async operations
+
+Spec (`sources/spec`, `destinations/spec`), test connection (`sources/test`, `destinations/test`),
+discover (`sources/streams`) and stream difference (`jobs/:id/stream-difference`) run a connector
+container. Their POST starts the work and returns `202`:
+
+```json
+{
+  "success": "boolean",
+  "message": "string",
+  "data": { "operation_id": "string" }
+}
+```
+
+The payload documented for those endpoints below is the operation result.
+
+- `GET /api/v1/project/:projectid/operations/:operationid?wait=N` — status. `wait` long-polls up to
+  N seconds (capped at 10). `data`: `{ "status": "running" | "succeeded" | "failed", "error": "string" }`.
+- `GET /api/v1/project/:projectid/operations/:operationid/result` — the result `data`. `409` while
+  running, `404` for an unknown operation or one of another project, `500` when the operation failed.
+
+Request validation (for example the catalog format of a stream difference) still fails on the
+POST, before any operation starts.
+
 ## Authentication
 
 ### Login
@@ -273,6 +297,8 @@ http://localhost:8080
 - **Method**: PUT
 - **Description**: Update an existing source
 - **Headers**: `Authorization: Bearer <token>`
+- **Version**: a version below `MinStreamsV2Version` returns `400` when any job of the source
+  stores `available_streams_config` + `selected_streams_config`.
 - **Request Body**:
   ```json
   {
@@ -557,6 +583,9 @@ http://localhost:8080
 - **Method**: POST
 - **Description**: Create a new job
 - **Headers**: `Authorization: Bearer <token>`
+- **Streams format**: send the catalog as `streams_config`, or as `available_streams_config` +
+  `selected_streams_config` (always both; source version ≥ `MinStreamsV2Version`). An invalid
+  catalog format returns `400`.
 - **Request Body**:
 
   ```json
@@ -575,7 +604,9 @@ http://localhost:8080
       "version": "string"
     },
     "frequency": "string",
-    "streams_config": "json"
+    "streams_config": "json",               // legacy jobs
+    "available_streams_config": "json",     // v2 jobs only
+    "selected_streams_config": "json"       // v2 jobs only
   }
   ```
 
@@ -657,7 +688,9 @@ http://localhost:8080
         "config": "json",
         "version": "string"
       },
-      "streams_config": "json",
+      "streams_config": "json",               // legacy jobs only
+      "available_streams_config": "json",     // v2 jobs only
+      "selected_streams_config": "json",      // v2 jobs only
       "frequency": "string",
       "last_run_time": "timestamp",
       "last_run_state": "string",
@@ -677,6 +710,10 @@ http://localhost:8080
 - **Method**: PUT
 - **Description**: Update an existing job
 - **Headers**: `Authorization: Bearer <token>`
+- **Streams format**: send the catalog as `streams_config`, or as `available_streams_config` +
+  `selected_streams_config` (always both; source version ≥ `MinStreamsV2Version`). A job that
+  stores `available_streams_config` + `selected_streams_config` cannot switch back to
+  `streams_config`. An invalid catalog format returns `400`.
 - **Request Body**:
 
   ```json
@@ -695,7 +732,9 @@ http://localhost:8080
       "version": "string"
     },
     "frequency": "string",
-    "streams_config": "json",
+    "streams_config": "json",               // legacy jobs
+    "available_streams_config": "json",     // v2 jobs only
+    "selected_streams_config": "json",      // v2 jobs only
     "difference_streams": "string",
     "activate": "boolean" // send this to activate or deactivate job
   }
@@ -751,9 +790,15 @@ http://localhost:8080
 
 ### Source Associated Streams (Discover Catalog)
 
-- **Endpoint**: `/api/v1/project/:projectid/source/streams`
-- **Method**: GET
-- **Description**: Give the streams details
+- **Endpoint**: `/api/v1/project/:projectid/sources/streams`
+- **Method**: POST
+- **Description**: Discover the source's streams.
+  - existing job (`job_id` >= 0): discovers from the job's stored catalog and returns it in the
+    fields the job stores it in.
+  - new job (`job_id` = -1): returns `available_streams` + `selected_streams` when the driver writes
+    them (version ≥ `MinStreamsV2Version`), otherwise `streams_config`.
+  - Exactly one format is set; the fields of the other format are `null`. Check
+    `available_streams` first, then fall back to `streams_config`.
 - **Headers**: `Authorization: Bearer <token>`
 - **Request Body**:
 
@@ -768,14 +813,25 @@ http://localhost:8080
   }
   ```
 
-- **Response**:
+- **Response**: `202` with `operation_id` (see [Async operations](#async-operations)). The operation
+  result is below; each field is a catalog file exactly as the CLI wrote it, so a client can send it
+  back unchanged on job create/update.
+  - `streams_config`: `streams.json` — `{ streams, selected_streams }`; `selected_streams` entries are
+    fully written out.
+  - `available_streams`: `available_streams.json` — holds `streams`.
+  - `selected_streams`: `selected_streams.json` — `{ selected_streams }`; entries are sparse
+    (`normalization`/`append_mode`/`update_type` fall back to `default_stream_properties`, absent
+    `selected_columns` means all columns, `sync_mode`/`cursor_field`/`destination_*` override the
+    stream's values).
 
   ```json
   {
     "success": "boolean",
     "message": "string",
     "data": {
-      "streams_config": "json"
+      "streams_config": "json",            // legacy; null for split
+      "available_streams": "json",         // split; null for legacy
+      "selected_streams": "json"           // split; null for legacy
     }
   }
   ```
@@ -1028,19 +1084,25 @@ http://localhost:8080
   ```
   
   ### Difference Streams
-- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/difference-streams`
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/stream-difference`
 - **Method**: POST
-- **Description**: returns the stream difference bewtween the saved and the updated streams
+- **Description**: returns the stream difference between the job's saved catalog and the updated
+  one. Send the updated catalog as `updated_streams_config` or as
+  `updated_available_streams_config` + `updated_selected_streams_config`. An invalid catalog
+  format returns `400` before any operation starts.
 - **Headers**: `Authorization: Bearer <token>`
-- - **Request Body**:
+- **Request Body**:
 
   ```json
   {
-    "updated_streams_config": "json"
+    "updated_streams_config": "json", // legacy format
+    "updated_available_streams_config": "json", // split format
+    "updated_selected_streams_config": "json" // split format
   }
   ```
 
-- **Response**: 
+- **Response**: `202` with `operation_id` (see [Async operations](#async-operations)). Operation
+  result (for a split catalog, `difference_streams` is `difference_selected_streams.json`):
 
   ```json
   {

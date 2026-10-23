@@ -20,7 +20,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/storage"
-	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
@@ -77,7 +76,7 @@ func EnsureUserID(ctx context.Context) string {
 			return hex.EncodeToString(hash.Sum(nil))[:32]
 		}
 
-		switch storagemode.Get() {
+		switch storage.Mode() {
 		case constants.StorageModeS3:
 			if idBytes, _, err := storage.ReadFileFromS3(ctx, "", relativePath, false); err == nil {
 				userID = string(idBytes)

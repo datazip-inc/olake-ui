@@ -1323,7 +1323,7 @@ const docTemplate = `{
         },
         "/api/v1/project/{projectid}/jobs/{id}/stream-difference": {
             "post": {
-                "description": "Get difference between current streams.json and existing streams.json.",
+                "description": "Compares the job's stored catalog against a submitted edit.\nSend updated_streams_config, or updated_available_streams_config + updated_selected_streams_config.\nAn invalid catalog format returns 400 before any operation starts.\nPoll the returned operation; its result (GET /operations/{operationid}/result) is a dto.StreamDifferenceResponse.",
                 "tags": [
                     "Jobs"
                 ],
@@ -2131,7 +2131,7 @@ const docTemplate = `{
         },
         "/api/v1/project/{projectid}/sources/streams": {
             "post": {
-                "description": "Discover and list available data streams from a source.",
+                "description": "Start discovering the data streams of a source. Poll the returned operation; its result (GET /operations/{operationid}/result) is a dto.DiscoverCatalogResponse in one format: available_streams + selected_streams for a split catalog, otherwise streams_config.",
                 "tags": [
                     "Sources"
                 ],
@@ -3232,8 +3232,7 @@ const docTemplate = `{
                 "destination",
                 "frequency",
                 "name",
-                "source",
-                "streams_config"
+                "source"
             ],
             "properties": {
                 "activate": {
@@ -3242,6 +3241,9 @@ const docTemplate = `{
                 },
                 "advanced_settings": {
                     "$ref": "#/definitions/dto.AdvancedSettings"
+                },
+                "available_streams_config": {
+                    "type": "string"
                 },
                 "destination": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3253,6 +3255,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "my-sync-job"
+                },
+                "selected_streams_config": {
+                    "type": "string"
                 },
                 "source": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3574,6 +3579,9 @@ const docTemplate = `{
                 "advanced_settings": {
                     "$ref": "#/definitions/dto.AdvancedSettings"
                 },
+                "available_streams_config": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string",
                     "example": "2024-01-01T00:00:00Z"
@@ -3609,6 +3617,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "my-sync-job"
+                },
+                "selected_streams_config": {
+                    "type": "string"
                 },
                 "source": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3931,10 +3942,13 @@ const docTemplate = `{
         },
         "dto.StreamDifferenceRequest": {
             "type": "object",
-            "required": [
-                "updated_streams_config"
-            ],
             "properties": {
+                "updated_available_streams_config": {
+                    "type": "string"
+                },
+                "updated_selected_streams_config": {
+                    "type": "string"
+                },
                 "updated_streams_config": {
                     "type": "string"
                 }
@@ -4038,8 +4052,7 @@ const docTemplate = `{
                 "destination",
                 "frequency",
                 "name",
-                "source",
-                "streams_config"
+                "source"
             ],
             "properties": {
                 "activate": {
@@ -4048,6 +4061,9 @@ const docTemplate = `{
                 },
                 "advanced_settings": {
                     "$ref": "#/definitions/dto.AdvancedSettings"
+                },
+                "available_streams_config": {
+                    "type": "string"
                 },
                 "destination": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -4063,6 +4079,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "my-sync-job-updated"
+                },
+                "selected_streams_config": {
+                    "type": "string"
                 },
                 "source": {
                     "$ref": "#/definitions/dto.DriverConfig"

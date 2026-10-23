@@ -13,7 +13,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
 )
 
 // Log sources shown on the task logs page.
@@ -98,7 +98,7 @@ func ReadTaskLogs(ctx context.Context, baseDir, source, rawCursor string, limit 
 	source = NormalizeLogSource(source)
 
 	var files []logFile
-	if storagemode.Get() == constants.StorageModeS3 {
+	if storage.Mode() == constants.StorageModeS3 {
 		files, err = openS3TaskLogs(ctx, baseDir, source)
 	} else {
 		files, err = openTaskLogFiles(baseDir, source)
