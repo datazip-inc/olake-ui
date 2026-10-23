@@ -2,7 +2,11 @@ package temporal
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +14,8 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/internal/storage"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 	"go.temporal.io/sdk/client"
@@ -65,8 +71,10 @@ const (
 // files to the correct directory, avoiding large payloads in Temporal.
 //
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
-
-func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (string, error) {
+// StartDiscoverStreams starts discover with the job's stored catalog as input and returns the
+// operation ID; with an empty catalog, discover runs fresh. The result is read with
+// ReadDiscoverOutput once the operation has succeeded.
+func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceType, version, config string, stored types.StreamsCatalog, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (string, error) {
 	workflowID, err := NewOperationID(OperationDiscoverCatalog, projectID)
 	if err != nil {
 		return "", err
@@ -74,26 +82,19 @@ func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceTy
 
 	configs := []JobConfig{
 		{Name: "config.json", Data: config},
-		{Name: "streams.json", Data: streamsConfig},
 		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID(ctx)},
 	}
-
-	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
-		return "", fmt.Errorf("failed to setup config files: %s", err)
-	}
-
 	cmdArgs := []string{
 		"discover",
 		"--config",
 		"/mnt/config/config.json",
 	}
 
-	if jobName != "" && (utils.GetCustomDriverVersion() != "" || semver.Compare(version, "v0.2.0") >= 0) {
+	if jobName != "" && utils.SupportsDestinationDatabasePrefix(version) {
 		cmdArgs = append(cmdArgs, "--destination-database-prefix", jobName)
 	}
 
-	// Only add max-discover-threads flag for versions >= v0.3.18
-	if semver.Compare(version, constants.DefaultMaxDiscoverThreadsVersion) >= 0 {
+	if utils.SupportsMaxDiscoverThreads(version) {
 		threads := constants.DefaultMaxDiscoverThreads
 		if maxDiscoverThreads != nil && *maxDiscoverThreads > 0 {
 			threads = *maxDiscoverThreads
@@ -101,41 +102,149 @@ func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceTy
 		cmdArgs = append(cmdArgs, constants.MaxDiscoverThreadsFlag, strconv.Itoa(threads))
 	}
 
-	if streamsConfig != "" {
-		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
-	}
-
 	// OLake stores no engines, so an omitted flag means unconstrained rather than "reuse the last choice".
 	if len(targetQueryEngines) > 0 && supportsQueryEngines(version) {
 		cmdArgs = append(cmdArgs, constants.TargetQueryEnginesFlag, strings.Join(targetQueryEngines, ","))
+	}
+
+	switch {
+	case stored.IsSplit():
+		configs = append(configs,
+			JobConfig{Name: constants.AvailableStreamsFile, Data: stored.Available},
+			JobConfig{Name: constants.SelectedStreamsFile, Data: stored.Selected},
+		)
+		cmdArgs = append(cmdArgs,
+			"--available-streams", "/mnt/config/"+constants.AvailableStreamsFile,
+			"--selected-streams", "/mnt/config/"+constants.SelectedStreamsFile,
+		)
+	case stored.Streams != "":
+		// The result is read in a later request that does not know the job, so record here that
+		// the job is legacy: it keeps streams_config even when the driver also writes the split files.
+		configs = append(configs,
+			JobConfig{Name: constants.StreamsFile, Data: stored.Streams},
+			JobConfig{Name: constants.LegacyJobMarkerFile, Data: "true"},
+		)
+		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/"+constants.StreamsFile)
+	}
+
+	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
+		return "", fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 
+	// every driver writes streams.json, so it is the file the workflow reports
+	if _, err := t.startDiscoverWorkflow(ctx, sourceType, version, workflowID, cmdArgs, constants.StreamsFile); err != nil {
+		return "", err
+	}
+	return workflowID, nil
+}
+
+// ReadDiscoverOutput reads the catalog a succeeded discover operation wrote, and whether the
+// operation was started for a legacy job.
+func ReadDiscoverOutput(ctx context.Context, operationID string) (types.StreamsCatalog, bool, error) {
+	catalog, err := readDiscoveredCatalog(ctx, operationID)
+	if err != nil {
+		return types.StreamsCatalog{}, false, err
+	}
+	// every driver writes streams.json, so a discover without it did not finish its output
+	if catalog.Streams == "" {
+		return types.StreamsCatalog{}, false, fmt.Errorf("discover wrote no %s", constants.StreamsFile)
+	}
+	_, err = storage.ReadFile(ctx, path.Join(operationID, constants.LegacyJobMarkerFile))
+	switch {
+	case err == nil:
+		return catalog, true, nil
+	case errors.Is(err, fs.ErrNotExist):
+		return catalog, false, nil
+	default:
+		return types.StreamsCatalog{}, false, fmt.Errorf("failed to read %s: %s", constants.LegacyJobMarkerFile, err)
+	}
+}
+
+// ConvertStreams converts a legacy streams.json into the split format with the CLI's offline
+// conversion (discover --convert-streams), which reads the catalog the way every command reads a
+// --streams input and never connects to the source. It returns the split catalog it wrote.
+// It runs synchronously and its workflow ID is not an operation ID, so it cannot be polled
+// through the operations API.
+func (t *Temporal) ConvertStreams(ctx context.Context, jobID int, sourceType, version, streamsConfig string) (types.StreamsCatalog, error) {
+	workflowID := fmt.Sprintf("convert-streams-%s-%d-%d", sourceType, jobID, time.Now().UnixNano())
+
+	configs := []JobConfig{{Name: constants.StreamsFile, Data: streamsConfig}}
+	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
+		return types.StreamsCatalog{}, fmt.Errorf("failed to setup config files: %s", err)
+	}
+
+	args := []string{"discover", "--streams", "/mnt/config/" + constants.StreamsFile, "--convert-streams"}
+	run, err := t.startDiscoverWorkflow(ctx, sourceType, version, workflowID, args, constants.SelectedStreamsFile)
+	if err != nil {
+		return types.StreamsCatalog{}, err
+	}
+	if _, err := ExtractWorkflowResponse(ctx, run); err != nil {
+		return types.StreamsCatalog{}, fmt.Errorf("failed to extract workflow response: %v", err)
+	}
+	catalog, err := readDiscoveredCatalog(ctx, workflowID)
+	if err != nil {
+		return types.StreamsCatalog{}, err
+	}
+	if !catalog.IsSplit() {
+		return types.StreamsCatalog{}, fmt.Errorf("conversion wrote no %s and %s", constants.AvailableStreamsFile, constants.SelectedStreamsFile)
+	}
+	return catalog, nil
+}
+
+// startDiscoverWorkflow starts a discover workflow that writes outputFile, without waiting for it.
+func (t *Temporal) startDiscoverWorkflow(ctx context.Context, sourceType, version, workflowID string, args []string, outputFile string) (client.WorkflowRun, error) {
 	req := &ExecutionRequest{
 		Command:       Discover,
 		ConnectorType: sourceType,
 		Version:       version,
-		Args:          cmdArgs,
-		Configs:       nil,
+		Args:          args,
 		WorkflowID:    workflowID,
-		JobID:         0,
 		Timeout:       GetWorkflowTimeout(Discover),
-		OutputFile:    "streams.json",
+		OutputFile:    outputFile,
+	}
+	run, err := t.Client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{ID: workflowID, TaskQueue: t.taskQueue}, ExecuteWorkflow, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute discover workflow: %s", err)
+	}
+	return run, nil
+}
+
+// readDiscoveredCatalog reads the catalog files that a discover or convert workflow wrote.
+// Drivers below MinStreamsV2Version write only streams.json, so a missing file returns "".
+func readDiscoveredCatalog(ctx context.Context, workflowID string) (types.StreamsCatalog, error) {
+	read := func(name string) (string, error) {
+		data, err := storage.ReadFile(ctx, path.Join(workflowID, name))
+		if errors.Is(err, fs.ErrNotExist) {
+			return "", nil
+		}
+		if err != nil {
+			return "", fmt.Errorf("failed to read %s: %s", name, err)
+		}
+		if !json.Valid(data) {
+			return "", fmt.Errorf("%s is not valid JSON", name)
+		}
+		return string(data), nil
 	}
 
-	workflowOptions := client.StartWorkflowOptions{
-		ID:        workflowID,
-		TaskQueue: t.taskQueue,
+	var catalog types.StreamsCatalog
+	var err error
+	if catalog.Streams, err = read(constants.StreamsFile); err != nil {
+		return types.StreamsCatalog{}, err
 	}
-
-	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
-		return "", fmt.Errorf("failed to execute discover workflow: %s", err)
+	if catalog.Available, err = read(constants.AvailableStreamsFile); err != nil {
+		return types.StreamsCatalog{}, err
 	}
-
-	return workflowID, nil
+	if catalog.Selected, err = read(constants.SelectedStreamsFile); err != nil {
+		return types.StreamsCatalog{}, err
+	}
+	if (catalog.Available == "") != (catalog.Selected == "") {
+		return types.StreamsCatalog{}, fmt.Errorf("%s and %s must be written together", constants.AvailableStreamsFile, constants.SelectedStreamsFile)
+	}
+	return catalog, nil
 }
 
 // StartDriverSpecs returns an empty operation ID when no workflow was needed, in which
@@ -151,10 +260,7 @@ func (t *Temporal) StartDriverSpecs(ctx context.Context, projectID, destinationT
 		return "", err
 	}
 
-	// spec version >= DefaultSpecVersion is required
-	if semver.Compare(version, constants.DefaultSpecVersion) < 0 && utils.GetCustomDriverVersion() == "" {
-		version = constants.DefaultSpecVersion
-	}
+	version = utils.ResolveSpecVersion(version)
 
 	cmdArgs := []string{
 		"spec",
@@ -264,7 +370,7 @@ func DecodeConnectionStatus(result map[string]interface{}) (map[string]interface
 	return response, nil
 }
 
-func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, streamsConfig string) error {
+func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, diff types.StreamsCatalog) error {
 	workflowID, scheduleID := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
 
 	// update the sync schedule to use clear-destination request
@@ -274,7 +380,7 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	}
 
 	// update schedule to use clear-destination request
-	clearReq, err := buildExecutionReqForClearDestination(ctx, job, workflowID, streamsConfig)
+	clearReq, err := buildExecutionReqForClearDestination(ctx, job, workflowID, diff)
 	if err != nil {
 		return fmt.Errorf("failed to build execution request for clear-destination: %s", err)
 	}
@@ -295,26 +401,31 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	return nil
 }
 
-func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, oldConfig, newConfig string) (string, error) {
+// StartStreamDifference starts a comparison of the job's stored catalog with an edited one and
+// returns the operation ID. Each catalog is passed in its own format. For a split new catalog OLake
+// writes difference_available_streams.json and difference_selected_streams.json; the operation
+// reports only the selected one.
+func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, oldCatalog, newCatalog types.StreamsCatalog) (string, error) {
 	workflowID, err := NewOperationID(OperationStreamDifference, job.ProjectID)
 	if err != nil {
 		return "", err
 	}
 
-	configs := []JobConfig{
-		{Name: "old_streams.json", Data: oldConfig},
-		{Name: "new_streams.json", Data: newConfig},
+	// A split new catalog always passes its available_streams: a newly discovered stream is selectable
+	// only if it is in the new streams[], and default changes are read from there.
+	configs, cmdArgs := stageCatalog(oldCatalog, "old_", "--streams", "--available-streams", "--selected-streams")
+	newConfigs, newArgs := stageCatalog(newCatalog, "new_", "--difference", "--difference-available-streams", "--difference-selected-streams")
+	configs = append(configs, newConfigs...)
+	cmdArgs = append(append([]string{"discover"}, cmdArgs...), newArgs...)
+	outputFile := "difference_streams.json"
+	if newCatalog.IsSplit() {
+		outputFile = "difference_selected_streams.json"
 	}
 
 	if err := SetupConfigFiles(ctx, Discover, workflowID, configs); err != nil {
 		return "", fmt.Errorf("failed to setup config files: %s", err)
 	}
 
-	cmdArgs := []string{
-		"discover",
-		"--streams", "/mnt/config/old_streams.json",
-		"--difference", "/mnt/config/new_streams.json",
-	}
 	if encryptionKey := appconfig.Load().EncryptionKey; encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
@@ -328,7 +439,7 @@ func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, o
 		WorkflowID:    workflowID,
 		JobID:         job.ID,
 		Timeout:       GetWorkflowTimeout(Discover),
-		OutputFile:    "difference_streams.json",
+		OutputFile:    outputFile,
 	}
 
 	workflowOptions := client.StartWorkflowOptions{
@@ -341,4 +452,20 @@ func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, o
 	}
 
 	return workflowID, nil
+}
+
+// stageCatalog returns the config files of a catalog, named with prefix, and the discover flags that
+// point at them: streamsFlag for a legacy catalog, availableFlag and selectedFlag for a split one.
+func stageCatalog(catalog types.StreamsCatalog, prefix, streamsFlag, availableFlag, selectedFlag string) ([]JobConfig, []string) {
+	if catalog.IsSplit() {
+		return []JobConfig{
+				{Name: prefix + constants.AvailableStreamsFile, Data: catalog.Available},
+				{Name: prefix + constants.SelectedStreamsFile, Data: catalog.Selected},
+			}, []string{
+				availableFlag, "/mnt/config/" + prefix + constants.AvailableStreamsFile,
+				selectedFlag, "/mnt/config/" + prefix + constants.SelectedStreamsFile,
+			}
+	}
+	return []JobConfig{{Name: prefix + constants.StreamsFile, Data: catalog.Streams}},
+		[]string{streamsFlag, "/mnt/config/" + prefix + constants.StreamsFile}
 }

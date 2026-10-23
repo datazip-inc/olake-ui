@@ -16,6 +16,9 @@ var (
 	ErrJobNotFound         = errors.New("job not found")
 	ErrConfigDecrypt       = errors.New("failed to decrypt config")
 
+	// ErrStreamsFormat rejects a catalog whose format does not fit the job or its driver
+	ErrStreamsFormat = errors.New("invalid streams format")
+
 	// Log related errors
 	ErrInvalidLogCursor   = errors.New("invalid log cursor")
 	ErrSyncFolderNotFound = errors.New("no sync folder found")

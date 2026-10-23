@@ -9,10 +9,10 @@ import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
 import { api } from "@/core/api"
 import {
+	DiscoverResponse,
 	Entity,
 	EntityBase,
 	EntityTestRequest,
-	StreamsDataStructure,
 } from "@/modules/ingestion/common/types"
 import { describeConnectionFailure } from "@/modules/ingestion/common/utils"
 
@@ -78,7 +78,8 @@ export const sourceService = {
 							? source.config
 							: JSON.stringify(source.config),
 				},
-				{ showNotification: true },
+				// 60s: a version upgrade converts every legacy job of the source in this request
+				{ timeout: 60000, showNotification: true },
 			)
 			return response.data
 		} catch (error) {
@@ -226,7 +227,7 @@ export const sourceService = {
 	) => {
 		try {
 			// The POST only starts discovery; the catalog arrives by polling.
-			return await runOperation<StreamsDataStructure>(async () => {
+			return await runOperation<DiscoverResponse>(async () => {
 				const response = await api.post<OperationAccepted>(
 					`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
 					{

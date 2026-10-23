@@ -28,7 +28,6 @@ func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*models.C
 
 func (s *Service) getCatalogInOpt(ctx context.Context, catalogName string) (*dto.CatalogRequest, error) {
 	path := fmt.Sprintf(constants.OptPathCatalogDetail, catalogName)
-
 	var result dto.CatalogRequest
 	if err := s.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &result); err != nil {
 		return nil, fmt.Errorf("failed to get catalog in optimization %s: %w", catalogName, err)

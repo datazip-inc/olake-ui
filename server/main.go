@@ -57,6 +57,12 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Storage comes first: InitAppService resolves the telemetry install id, which reads S3 in S3 mode.
+	if err := storage.InitStorage(ctx); err != nil {
+		logger.Fatalf("Failed to initialize storage: %s", err)
+		return
+	}
+
 	// Initialize unified AppService
 	appSvc, err := services.InitAppService(ctx, db)
 	if err != nil {
@@ -64,11 +70,6 @@ func main() {
 		return
 	}
 	logger.Info("Application services initialized successfully")
-
-	if err := storage.InitStorage(ctx); err != nil {
-		logger.Fatalf("Failed to initialize storage: %s", err)
-		return
-	}
 
 	telemetry.InitTelemetry(ctx, db)
 
@@ -81,6 +82,13 @@ func main() {
 	if cfg.EncryptionKey == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
+
+	// TODO: make the startup migration synchronous in a later version.
+	go func() {
+		if err := appSvc.ETL().ConvertLegacyJobs(ctx); err != nil {
+			logger.Errorf("failed to migrate legacy jobs to streams v2: %s", err)
+		}
+	}()
 
 	api := handlers.NewHandler(appSvc, &cfg, db)
 	server := httpserver.New(&cfg, api)
