@@ -6,8 +6,6 @@ export class DestinationsPage extends BasePage {
 	readonly createDestinationButton: Locator
 	readonly destinationsTitle: Locator
 	readonly destinationsLink: Locator
-	readonly activeTab: Locator
-	readonly inactiveTab: Locator
 	readonly destinationTable: Locator
 
 	constructor(page: Page) {
@@ -15,8 +13,6 @@ export class DestinationsPage extends BasePage {
 		this.createDestinationButton = page.getByTestId("create-destination-button")
 		this.destinationsTitle = page.locator("h1", { hasText: "Destinations" })
 		this.destinationsLink = page.getByRole("link", { name: "Destinations" })
-		this.activeTab = page.getByRole("tab", { name: "Active" })
-		this.inactiveTab = page.getByRole("tab", { name: "Inactive" })
 		this.destinationTable = page.locator(".ant-table-tbody")
 	}
 
@@ -56,7 +52,6 @@ export class DestinationsPage extends BasePage {
 	}
 
 	async expectDestinationExists(destinationName: string) {
-		await this.switchToInactiveTab()
 		const destinationRow = await this.getDestinationRow(destinationName)
 		await expect(destinationRow).toBeVisible()
 	}
@@ -64,13 +59,5 @@ export class DestinationsPage extends BasePage {
 	async expectDestinationNotExists(destinationName: string) {
 		const destinationRow = await this.getDestinationRow(destinationName)
 		await expect(destinationRow).not.toBeVisible()
-	}
-
-	async switchToInactiveTab() {
-		await this.inactiveTab.click()
-	}
-
-	async switchToActiveTab() {
-		await this.activeTab.click()
 	}
 }

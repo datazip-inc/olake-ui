@@ -86,7 +86,7 @@ func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceTy
 
 	configs := []JobConfig{
 		{Name: "config.json", Data: config},
-		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
+		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID(ctx)},
 	}
 	cmdArgs := []string{
 		"discover",

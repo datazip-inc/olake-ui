@@ -1,5 +1,5 @@
 # Stage 1: Go Builder (Backend)
-FROM --platform=$BUILDPLATFORM golang:1.26.9-alpine AS go-builder
+FROM --platform=$BUILDPLATFORM golang:1.26.10-alpine AS go-builder
 
 
 # Install git, as it might be needed by go mod download or go build

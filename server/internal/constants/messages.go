@@ -20,6 +20,10 @@ var (
 	ErrStreamsFormat = errors.New("invalid streams format")
 	// ErrClearDestinationRunning rejects a job update while the job's clear-destination runs
 	ErrClearDestinationRunning = errors.New("clear-destination is in progress, cannot update job")
+
+	// Log related errors
+	ErrInvalidLogCursor   = errors.New("invalid log cursor")
+	ErrSyncFolderNotFound = errors.New("no sync folder found")
 )
 
 // Validation messages
