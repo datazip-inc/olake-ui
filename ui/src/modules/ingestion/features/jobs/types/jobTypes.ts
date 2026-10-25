@@ -17,7 +17,9 @@ export interface Job {
 		version: string
 		config: string
 	}
-	streams_config: string
+	streams_config?: string
+	available_streams_config?: string
+	selected_streams_config?: string
 	frequency: string
 	last_run_type: JobType
 	last_run_state: string
@@ -46,11 +48,25 @@ export interface JobBase {
 		config: string
 	}
 	frequency: string
-	streams_config: string
+	streams_config?: string
+	available_streams_config?: string
+	selected_streams_config?: string
 	difference_streams?: string
 	activate?: boolean
 	advanced_settings?: AdvancedSettings | null
 }
+
+// Exactly one catalog format per request: legacy streams_config, or both v2 fields.
+export type StreamsCatalogPayload =
+	| { streams_config: string }
+	| { available_streams_config: string; selected_streams_config: string }
+
+export type StreamDifferenceRequest =
+	| { updated_streams_config: string }
+	| {
+			updated_available_streams_config: string
+			updated_selected_streams_config: string
+	  }
 export interface JobTask {
 	runtime: string
 	start_time: string

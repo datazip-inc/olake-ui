@@ -2,13 +2,17 @@ package etl
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 )
@@ -153,6 +157,7 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 		return fmt.Errorf("failed to get source: %s", err)
 	}
 
+	prevVersion := existing.Version
 	existing.Name = req.Name
 	existing.Config = req.Config
 	existing.Type = req.Type
@@ -167,15 +172,47 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 		return fmt.Errorf("failed to fetch jobs for source update: %s", err)
 	}
 
+	if err := validateSourceDowngrade(existing.Version, jobs); err != nil {
+		return err
+	}
+
+	// A version upgrade migrates the source's legacy jobs: if any job fails to migrate, nothing is
+	// migrated and the source is not updated.
+	var catalogs []database.ConvertedCatalog
+	if utils.SupportsStreamsV2(existing.Version) && existing.Version != prevVersion {
+		catalogs, err = s.migrateForSourceUpgrade(ctx, existing, jobs)
+		if err != nil {
+			return err
+		}
+	}
+
 	if err := cancelAllJobWorkflows(ctx, s.temporal, jobs, projectID); err != nil {
 		return fmt.Errorf("failed to cancel workflows for source update: %s", err)
 	}
 
-	if err := s.db.UpdateSource(existing); err != nil {
+	if err := s.db.UpdateSource(existing, catalogs); err != nil {
+		if len(catalogs) > 0 {
+			telemetry.TrackStreamsMigrationFailure(ctx, telemetry.MigrationTriggerSourceUpgrade, existing, len(catalogs), err)
+		}
 		return fmt.Errorf("failed to update source: %s", err)
 	}
 
 	telemetry.TrackSourcesStatus(ctx)
+	return nil
+}
+
+// validateSourceDowngrade rejects a source version that cannot run the source's split-format jobs:
+// such a job stores only the split catalog, which drivers below MinStreamsV2Version cannot read.
+func validateSourceDowngrade(version string, jobs []*models.Job) error {
+	if utils.SupportsStreamsV2(version) {
+		return nil
+	}
+	for _, job := range jobs {
+		if job.StreamsCatalog().IsSplit() {
+			return fmt.Errorf("%w: source version %s is below %s and job_id[%d] uses the split format",
+				constants.ErrStreamsFormat, version, constants.MinStreamsV2Version, job.ID)
+		}
+	}
 	return nil
 }
 
@@ -220,14 +257,16 @@ func (s Service) TestSourceConnection(ctx context.Context, projectID string, req
 	return s.temporal.StartVerifyDriverCredentials(ctx, projectID, "config", req.Type, req.Version, encryptedConfig)
 }
 
-func (s Service) GetSourceCatalog(ctx context.Context, projectID string, req *dto.StreamsRequest) (string, error) {
-	oldStreams := ""
+// DiscoverCatalog starts discover and returns the operation ID. An existing job discovers from its
+// stored catalog. The result is read with discoverCatalogResult once the operation has succeeded.
+func (s Service) DiscoverCatalog(ctx context.Context, projectID string, req *dto.StreamsRequest) (string, error) {
+	var stored types.StreamsCatalog
 	if req.JobID >= 0 {
 		job, err := s.db.GetJobByID(req.JobID, true)
 		if err != nil {
 			return "", fmt.Errorf("failed to find job for catalog: %s", err)
 		}
-		oldStreams = job.StreamsConfig
+		stored = job.StreamsCatalog()
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
@@ -235,17 +274,24 @@ func (s Service) GetSourceCatalog(ctx context.Context, projectID string, req *dt
 		return "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 
-	return s.temporal.StartDiscoverStreams(
-		ctx,
-		projectID,
-		req.Type,
-		req.Version,
-		encryptedConfig,
-		oldStreams,
-		req.JobName,
-		req.MaxDiscoverThreads,
-		req.TargetQueryEngines,
-	)
+	return s.temporal.StartDiscoverStreams(ctx, projectID, req.Type, req.Version, encryptedConfig, stored,
+		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines)
+}
+
+// discoverCatalogResult returns a succeeded discover operation's catalog in one format:
+// available_streams + selected_streams when the driver wrote the split catalog, otherwise
+// streams_config. A legacy job gets streams_config even from a driver that also wrote the split
+// files, because it keeps its format until it is converted.
+func discoverCatalogResult(ctx context.Context, operationID string) (*dto.DiscoverCatalogResponse, error) {
+	catalog, legacyJob, err := temporal.ReadDiscoverOutput(ctx, operationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get catalog: %s", err)
+	}
+
+	if catalog.IsSplit() && !legacyJob {
+		return &dto.DiscoverCatalogResponse{AvailableStreams: json.RawMessage(catalog.Available), SelectedStreams: json.RawMessage(catalog.Selected)}, nil
+	}
+	return &dto.DiscoverCatalogResponse{StreamsConfig: json.RawMessage(catalog.Streams)}, nil
 }
 
 func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {
