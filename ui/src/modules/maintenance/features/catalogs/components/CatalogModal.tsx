@@ -1,6 +1,5 @@
 import { QuestionIcon } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
-import validator from "@rjsf/validator-ajv8"
 import { Button, message, Modal, Select, Spin, Tooltip } from "antd"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
@@ -8,6 +7,10 @@ import { useNavigate } from "react-router"
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import {
+	formValidator,
+	notifyFirstFormError,
+} from "@/common/components/form/validation"
 import { widgets } from "@/common/components/form/widgets"
 import { ErrorLogsModal } from "@/common/components/modals"
 import { transformErrors } from "@/common/constants"
@@ -299,6 +302,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 									ref={formRef}
 									schema={schema}
 									transformErrors={transformErrors}
+									onError={notifyFirstFormError}
 									templates={{
 										ObjectFieldTemplate,
 										FieldTemplate: CustomFieldTemplate,
@@ -314,7 +318,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 										setFormData(trimmedData)
 									}}
 									uiSchema={uiSchema}
-									validator={validator}
+									validator={formValidator}
 									showErrorList={false}
 									omitExtraData
 									liveOmit

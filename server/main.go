@@ -55,21 +55,22 @@ func main() {
 		return
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Storage comes first: InitAppService resolves the telemetry install id, which reads S3 in S3 mode.
+	if err := storage.InitStorage(ctx); err != nil {
+		logger.Fatalf("Failed to initialize storage: %s", err)
+		return
+	}
+
 	// Initialize unified AppService
-	appSvc, err := services.InitAppService(db)
+	appSvc, err := services.InitAppService(ctx, db)
 	if err != nil {
 		logger.Fatalf("Failed to initialize services: %s", err)
 		return
 	}
 	logger.Info("Application services initialized successfully")
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	if err := storage.InitStorage(ctx); err != nil {
-		logger.Fatalf("Failed to initialize storage: %s", err)
-		return
-	}
 
 	telemetry.InitTelemetry(ctx, db)
 
