@@ -1,4 +1,7 @@
-import { StreamsDataStructure } from "@/modules/ingestion/common/types"
+import {
+	StreamDifferenceResponse,
+	StreamsDataStructure,
+} from "@/modules/ingestion/common/types"
 
 import { IngestionMode } from "../enums"
 
@@ -17,7 +20,7 @@ export interface ResetStreamsModalProps {
 }
 
 export interface StreamDifferenceModalProps {
-	streamDifference: StreamsDataStructure
+	streamDifference: StreamDifferenceResponse
 	showIndexWarning?: boolean
 	onConfirm: () => void
 }

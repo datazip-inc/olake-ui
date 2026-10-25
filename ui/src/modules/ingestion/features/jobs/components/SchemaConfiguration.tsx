@@ -41,6 +41,7 @@ import {
 	hasNoCommonUpdateType,
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
+	parseDiscoverResponse,
 	shouldUseFilterConfig,
 } from "../utils/streams"
 
@@ -135,15 +136,16 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			},
 			{
 				onSuccess: response => {
+					const parsed = parseDiscoverResponse(response)
 					const data: StreamsDataStructure =
 						getStreamsDataFromSourceStreamsResponse(
-							response,
+							parsed.response,
 							destinationType,
 							sourceConnector,
 							sourceVersion,
 						)
 
-					initializeFromDiscovery(data)
+					initializeFromDiscovery(data, parsed.format)
 
 					const isUpsertSupported =
 						isDestinationIngestionModeSupported(
@@ -155,12 +157,19 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							sourceConnector,
 						)
 					const availableUpdateTypes =
-						response.streams[0]?.stream.available_update_types
+						parsed.response.available_streams.streams[0]?.stream
+							.available_update_types
+					// v2 entries omit append_mode when it equals the driver default (e.g. Kafka: append).
+					const defaultAppendMode =
+						parsed.response.available_streams.streams[0]?.stream
+							.default_stream_properties?.append_mode
 					// In the edit flow selected_streams are the saved ones, so a job the
 					// user already kept in append mode doesn't warn again.
 					const hasUpsertStream = Object.values(
-						response.selected_streams ?? {},
-					).some(streams => streams.some(s => !s.append_mode))
+						parsed.response.selected_streams,
+					).some(streams =>
+						streams.some(s => !(s.append_mode ?? defaultAppendMode)),
+					)
 
 					// Streams were already forced to append; let the user go back and pick
 					// query engines that share an update type with the destination.

@@ -1,4 +1,5 @@
 import NormalizationSectionView from "./NormalizationSectionView"
+import { STREAM_DEFAULTS } from "../../constants"
 import {
 	selectActiveSelectedStream,
 	selectActiveStreamData,
@@ -22,7 +23,11 @@ const NormalizationSectionSingle = () => {
 
 	return (
 		<NormalizationSectionView
-			normalization={storeSelectedStream.normalization}
+			normalization={
+				storeSelectedStream.normalization ??
+				storeStream.stream.default_stream_properties?.normalization ??
+				STREAM_DEFAULTS.normalization
+			}
 			isSelected={isSelected}
 			onChange={checked =>
 				updateNormalization(

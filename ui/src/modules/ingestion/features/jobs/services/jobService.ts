@@ -2,13 +2,14 @@ import { OperationAccepted } from "@/common/types"
 import { runOperation } from "@/common/utils"
 import { API_CONFIG } from "@/config/apiConfig"
 import { api } from "@/core/api"
-import { StreamsDataStructure } from "@/modules/ingestion/common/types"
+import { StreamDifferenceResponse } from "@/modules/ingestion/common/types"
 import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
 
 import {
 	Job,
 	JobBase,
 	JobTask,
+	StreamDifferenceRequest,
 	TaskLogsDirection,
 	TaskLogsPaginationParams,
 	TaskLogsResponse,
@@ -144,15 +145,17 @@ export const jobService = {
 		taskId: string,
 		filePath: string,
 		params: TaskLogsPaginationParams = {
-			cursor: -1,
+			source: "all",
+			cursor: "",
 			limit: 1000,
 			direction: TaskLogsDirection.Older,
 		},
 	): Promise<TaskLogsResponse> => {
 		try {
-			const { cursor, limit, direction } = params
+			const { source, cursor, limit, direction } = params
 			const query = new URLSearchParams({
-				cursor: String(cursor),
+				source,
+				cursor,
 				limit: String(limit),
 				direction,
 			})
@@ -213,17 +216,17 @@ export const jobService = {
 	},
 	getStreamDifference: async (
 		jobId: string,
-		streamsConfig: string,
-	): Promise<{ difference_streams: StreamsDataStructure }> => {
+		request: StreamDifferenceRequest,
+	): Promise<{ difference_streams: StreamDifferenceResponse }> => {
 		try {
 			// Runs a connector container, so the POST only starts it and the diff is
 			// collected by polling.
 			return await runOperation<{
-				difference_streams: StreamsDataStructure
+				difference_streams: StreamDifferenceResponse
 			}>(async () => {
 				const response = await api.post<OperationAccepted>(
 					`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/stream-difference`,
-					{ updated_streams_config: streamsConfig },
+					request,
 					// Untimed: unlike the other submits, this body *is* the streams
 					// catalog and has been seen near 10 MB. Uploading that on a slow link
 					// takes well over a minute, and the upload is never idle.

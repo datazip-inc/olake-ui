@@ -10,6 +10,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -106,7 +107,11 @@ func (h *Handler) CreateJob(c *gin.Context) {
 	}
 	logger.Debugf("Create job initiated project_id[%s] user_id[%v] job_name[%s]", projectID, userID, req.Name)
 	if err := h.etl.CreateJob(c.Request.Context(), &req, projectID, userID); err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create job: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrStreamsFormat) {
+			status = http.StatusBadRequest
+		}
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to create job: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(c, fmt.Sprintf("job '%s' created successfully", req.Name), nil)
@@ -154,8 +159,11 @@ func (h *Handler) UpdateJob(c *gin.Context) {
 	logger.Debugf("Update job initiated project_id[%s] job_id[%d] user_id[%v]", projectID, jobID, userID)
 	if err := h.etl.UpdateJob(c.Request.Context(), &req, projectID, jobID, userID); err != nil {
 		status := http.StatusInternalServerError
-		if errors.Is(err, constants.ErrJobNotFound) {
+		switch {
+		case errors.Is(err, constants.ErrJobNotFound):
 			status = http.StatusNotFound
+		case errors.Is(err, constants.ErrStreamsFormat):
+			status = http.StatusBadRequest
 		}
 		utils.ErrorResponse(c, status, fmt.Sprintf("failed to update job: %s", err), err)
 		return
@@ -366,7 +374,7 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 		return
 	}
 	logger.Debugf("Clear destination initiated project_id[%s] job_id[%d]", projectID, id)
-	if err := h.etl.ClearDestination(c.Request.Context(), projectID, id, "", 0, true); err != nil {
+	if err := h.etl.ClearDestination(c.Request.Context(), projectID, id, types.StreamsCatalog{}, 0, true); err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
@@ -379,7 +387,10 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 
 // @Summary Get stream differences
 // @Tags Jobs
-// @Description Get difference between current streams.json and existing streams.json.
+// @Description Compares the job's stored catalog against a submitted edit.
+// @Description Send updated_streams_config, or updated_available_streams_config + updated_selected_streams_config.
+// @Description An invalid catalog format returns 400 before any operation starts.
+// @Description Poll the returned operation; its result (GET /operations/{operationid}/result) is a dto.StreamDifferenceResponse.
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   id            path    int     true    "job id"
 // @Param   body          body    dto.StreamDifferenceRequest true "stream difference data"
@@ -410,8 +421,11 @@ func (h *Handler) GetStreamDifference(c *gin.Context) {
 	operationID, err := h.etl.GetStreamDifference(c.Request.Context(), projectID, id, req)
 	if err != nil {
 		status := http.StatusInternalServerError
-		if errors.Is(err, constants.ErrJobNotFound) {
+		switch {
+		case errors.Is(err, constants.ErrJobNotFound):
 			status = http.StatusNotFound
+		case errors.Is(err, constants.ErrStreamsFormat):
+			status = http.StatusBadRequest
 		}
 		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get stream difference: %s", err), err)
 		return
@@ -496,10 +510,11 @@ func (h *Handler) GetJobTasks(c *gin.Context) {
 // @Param   id            path    int     true    "job id"
 // @Param   taskid        path    string  true    "task id (defaults to 1)"
 // @Param   body          body    dto.JobTaskRequest true "task log data"
-// @Param   cursor        query   int     false   "log cursor"
+// @Param   source        query   string  false   "log source: all (default), sync or worker"
+// @Param   cursor        query   string  false   "opaque log cursor from a previous response; empty tails from the end"
 // @Param   limit         query   int     false   "log limit"
 // @Param   direction     query   string  false   "log direction"
-// @Success 200 {object} dto.JSONResponse{data=dto.TaskLogsResponse}
+// @Success 200 {object} dto.JSONResponse{data=dto.JobTaskLogsResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 404 {object} dto.Error404Response "job not found"
@@ -519,25 +534,23 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 	}
 	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s]", id, req.FilePath)
 
-	cursor := constants.DefaultLogsCursor
-	if raw := c.Query("cursor"); raw != "" {
-		if parsed, err := strconv.ParseInt(raw, 10, 64); err == nil {
-			cursor = parsed
-		}
-	}
+	source := utils.NormalizeLogSource(c.Query("source"))
+	cursor := c.Query("cursor")
 	limit := constants.DefaultLogsLimit
 	if raw := c.Query("limit"); raw != "" {
-		if parsed, err := strconv.Atoi(raw); err == nil {
-			limit = parsed
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			limit = min(parsed, constants.MaxLogsLimit)
 		}
 	}
 	direction := c.DefaultQuery("direction", constants.DefaultLogsDirection)
 
-	logs, err := h.etl.GetTaskLogs(c.Request.Context(), id, req.FilePath, cursor, limit, direction)
+	logs, err := h.etl.GetTaskLogs(c.Request.Context(), id, req.FilePath, source, cursor, limit, direction)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
+		} else if errors.Is(err, constants.ErrInvalidLogCursor) {
+			status = http.StatusBadRequest
 		}
 		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get task logs: %s", err), err)
 		return

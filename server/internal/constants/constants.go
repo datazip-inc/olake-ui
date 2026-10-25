@@ -2,6 +2,7 @@ package constants
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -10,17 +11,19 @@ import (
 )
 
 var (
-	defaultPort      = 8000
-	version          = "Not Set"
-	commitsha        = "Not Set"
-	releasechannel   = "Not Set"
-	defaultBaseHost  = "localhost"
-	DefaultTimeZone  = "Asia/Kolkata"
-	DefaultUsername  = "olake"
-	DefaultPassword  = "password"
-	EncryptionKey    = "OLAKE_SECRET_KEY"
-	TableNameMap     = map[TableType]string{}
-	DefaultConfigDir = "/tmp/olake-config"
+	defaultPort                  = 8000
+	version                      = "Not Set"
+	commitsha                    = "Not Set"
+	releasechannel               = "Not Set"
+	defaultBaseHost              = "localhost"
+	DefaultTimeZone              = "Asia/Kolkata"
+	DefaultUsername              = "olake"
+	DefaultPassword              = "password"
+	EncryptionKey                = "OLAKE_SECRET_KEY"
+	TableNameMap                 = map[TableType]string{}
+	DefaultConfigDir             = "/tmp/olake-config"
+	DefaultFileMode  os.FileMode = 0o644
+	DefaultDirMode   os.FileMode = 0o755
 
 	DefaultLogRetentionPeriod   = 30
 	DefaultCancelSyncWaitTime   = 30 * time.Second
@@ -30,6 +33,17 @@ var (
 	DefaultSpecVersion               = "v0.2.0"
 	DefaultClearDestinationVersion   = "v0.3.0"
 	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
+	MinStreamsV2Version              = "v1.0.0"
+	// StreamsMigrationConcurrency bounds the conversion workflows a streams migration runs at once
+	StreamsMigrationConcurrency = 8
+
+	StreamsFile          = "streams.json"
+	AvailableStreamsFile = "available_streams.json"
+	SelectedStreamsFile  = "selected_streams.json"
+	// LegacyJobMarkerFile marks a discover operation started for a legacy job, so its result keeps
+	// streams_config even when the driver also writes the split files
+	LegacyJobMarkerFile = "legacy_job.txt"
+
 	// DefaultQueryEnginesVersion is the first release with the query engine flags; older images reject them.
 	DefaultQueryEnginesVersion = "v0.11.0"
 
@@ -91,14 +105,25 @@ var (
 	// DefaultLogsLimit is the number of log entries returned if no limit is provided.
 	DefaultLogsLimit = 1000
 
-	// DefaultLogsCursor indicates tailing from the end of the file (cursor < 0).
-	DefaultLogsCursor int64 = -1
+	// MaxLogsLimit caps the log entries one request may ask for, so a large
+	// limit cannot make the server hold huge pages in memory.
+	MaxLogsLimit = 5000
+
+	// SyncLogFileName is the connector's log inside a run's logs/sync_* folder.
+	SyncLogFileName = "olake.log"
+
+	// WorkerLogFileName is written by the olake worker in a run's logs folder.
+	WorkerLogFileName = "worker.log"
 
 	// DefaultLogsDirection is the fallback pagination direction ("older" or "newer").
 	DefaultLogsDirection = "older"
 
 	ConnectorLogPrefix = "connector"
 	WorkerLogPrefix    = "worker"
+
+	// WorkerLogRelDir is where the worker writes its log chunks in S3 mode,
+	// relative to a run's folder (the worker's constants.WorkerLogRelDir).
+	WorkerLogRelDir = "logs/worker"
 
 	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.
@@ -112,6 +137,7 @@ var (
 	ConfOptimizationUsername = "USERNAME"
 	ConfOptimizationPassword = "PASSWORD"
 	ConfOptimizationGroup    = "OPTIMIZATION_GROUP"
+
 	// api paths
 	OptPathCatalogs                 = "/api/ams/v1/catalogs"
 	OptPathCatalogDetail            = "/api/ams/v1/catalogs/%s"
@@ -120,6 +146,8 @@ var (
 	OptPathTableOptimizingProcesses = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes"
 	OptPathTerminalExecute          = "/api/ams/v1/terminal/catalogs/%s/execute"
 	OptPathTerminalLogs             = "/api/ams/v1/terminal/%s/logs"
+	OptPathTelemetryInstallID       = "/api/ams/v1/telemetry/install-id"
+
 	// others
 	OptMaxTimeout         = 10 * time.Minute
 	OptSessionTimeout     = 5 * time.Minute // used for fusion poll (terminal query execution)

@@ -82,6 +82,16 @@ type TestConnectionResponse struct {
 	Logs             []map[string]interface{} `json:"logs" swaggertype:"array,object"`
 }
 
+// DiscoverCatalogResponse carries the discovered catalog in one format, each field holding a
+// catalog file exactly as the CLI wrote it: streams_config (streams.json) for a legacy catalog, or
+// available_streams + selected_streams (available_streams.json, selected_streams.json) for a split
+// catalog. The fields of the other format are null.
+type DiscoverCatalogResponse struct {
+	StreamsConfig    json.RawMessage `json:"streams_config" swaggertype:"object"`
+	AvailableStreams json.RawMessage `json:"available_streams" swaggertype:"object"`
+	SelectedStreams  json.RawMessage `json:"selected_streams" swaggertype:"object"`
+}
+
 // ConnectionResult is the outcome of a test connection reported by the driver's check command.
 type ConnectionResult struct {
 	Status  string `json:"status" example:"SUCCEEDED"`
@@ -134,21 +144,23 @@ type VersionsResponse struct {
 
 // Job response
 type JobResponse struct {
-	ID               int               `json:"id" example:"1"`
-	Name             string            `json:"name" example:"my-sync-job"`
-	Source           DriverConfig      `json:"source"`
-	Destination      DriverConfig      `json:"destination"`
-	StreamsConfig    string            `json:"streams_config,omitempty"`
-	Frequency        string            `json:"frequency" example:"0 */6 * * *"`
-	LastRunTime      string            `json:"last_run_time,omitempty" example:"2024-01-09T12:00:00Z"`
-	LastRunState     string            `json:"last_run_state,omitempty" example:"completed"`
-	LastRunType      string            `json:"last_run_type,omitempty" example:"sync"` // "sync" | "clear-destination"
-	CreatedAt        string            `json:"created_at" example:"2024-01-01T00:00:00Z"`
-	UpdatedAt        string            `json:"updated_at" example:"2024-01-09T12:00:00Z"`
-	Activate         bool              `json:"activate" example:"true"`
-	CreatedBy        string            `json:"created_by,omitempty" example:"admin"`
-	UpdatedBy        string            `json:"updated_by,omitempty" example:"admin"`
-	AdvancedSettings *AdvancedSettings `json:"advanced_settings,omitempty"`
+	ID                     int               `json:"id" example:"1"`
+	Name                   string            `json:"name" example:"my-sync-job"`
+	Source                 DriverConfig      `json:"source"`
+	Destination            DriverConfig      `json:"destination"`
+	StreamsConfig          string            `json:"streams_config,omitempty"`
+	AvailableStreamsConfig string            `json:"available_streams_config,omitempty"`
+	SelectedStreamsConfig  string            `json:"selected_streams_config,omitempty"`
+	Frequency              string            `json:"frequency" example:"0 */6 * * *"`
+	LastRunTime            string            `json:"last_run_time,omitempty" example:"2024-01-09T12:00:00Z"`
+	LastRunState           string            `json:"last_run_state,omitempty" example:"completed"`
+	LastRunType            string            `json:"last_run_type,omitempty" example:"sync"` // "sync" | "clear-destination"
+	CreatedAt              string            `json:"created_at" example:"2024-01-01T00:00:00Z"`
+	UpdatedAt              string            `json:"updated_at" example:"2024-01-09T12:00:00Z"`
+	Activate               bool              `json:"activate" example:"true"`
+	CreatedBy              string            `json:"created_by,omitempty" example:"admin"`
+	UpdatedBy              string            `json:"updated_by,omitempty" example:"admin"`
+	AdvancedSettings       *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
 type JobTask struct {
@@ -201,6 +213,16 @@ type TaskLogsResponse struct {
 	Logs         []map[string]interface{} `json:"logs" swaggertype:"array,object"`
 	OlderCursor  int64                    `json:"older_cursor" example:"1704801600000"`
 	NewerCursor  int64                    `json:"newer_cursor" example:"1704805200000"`
+	HasMoreOlder bool                     `json:"has_more_older" example:"true"`
+	HasMoreNewer bool                     `json:"has_more_newer" example:"false"`
+}
+
+// JobTaskLogsResponse is a page of a sync run's logs. Cursors are opaque and
+// hold one position per log source; an empty cursor means "tail from the end".
+type JobTaskLogsResponse struct {
+	Logs         []map[string]interface{} `json:"logs" swaggertype:"array,object"`
+	OlderCursor  string                   `json:"older_cursor" example:"eyJzeW5jIjoxMDI0LCJ3b3JrZXIiOjUxMn0"`
+	NewerCursor  string                   `json:"newer_cursor" example:"eyJzeW5jIjoyMDQ4LCJ3b3JrZXIiOjEwMjR9"`
 	HasMoreOlder bool                     `json:"has_more_older" example:"true"`
 	HasMoreNewer bool                     `json:"has_more_newer" example:"false"`
 }
