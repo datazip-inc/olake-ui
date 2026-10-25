@@ -69,6 +69,11 @@ export const getDefaultUpsertTypeFor = (
 		),
 	)
 
+// Discover returns an empty list when no upsert type fits both the query engines and
+// the catalog; undefined means an older driver that doesn't report the list.
+export const hasNoCommonUpdateType = (available?: UpsertType[]): boolean =>
+	Array.isArray(available) && available.length === 0
+
 /**
  * Processes the raw SourceStreamsResponse into the
  * StreamsDataStructure expected by the UI.
@@ -81,10 +86,15 @@ export const getStreamsDataFromSourceStreamsResponse = (
 ): StreamsDataStructure => {
 	const mergedSelectedStreams: SelectedStreamsByNamespace = {}
 
-	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
-		IngestionMode.UPSERT,
-		destinationType,
-	)
+	// With no common update type the destination can't apply upserts, same as S3.
+	const isDestUpsertModeSupported =
+		isDestinationIngestionModeSupported(
+			IngestionMode.UPSERT,
+			destinationType,
+		) &&
+		!hasNoCommonUpdateType(
+			response.available_streams.streams[0]?.stream.available_update_types,
+		)
 
 	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(
 		IngestionMode.UPSERT,
@@ -160,10 +170,11 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				append_mode: appendMode,
 				normalization:
 					matchingSelectedStream.normalization ?? defaults.normalization,
-				// update_type only applies while the stream runs in upsert mode;
-				// older saved jobs carry no value, so fall back to the catalog default.
+				// update_type only applies while the stream runs in upsert mode. Older
+				// saved jobs carry no value, and discover blanks a saved one the query
+				// engines or catalog no longer support; both fall back to the default.
 				...(upsertMode && {
-					update_type: savedUpdateType ?? getDefaultUpsertType(stream),
+					update_type: savedUpdateType || getDefaultUpsertType(stream),
 				}),
 			})
 		} else {
@@ -457,9 +468,16 @@ export const validateStreams = (
 
 	const selectedStreams = getSelectedStreams(streamsConfig.selected_streams)
 	const isKafka = isKafkaSource(sourceType)
+	const noCommonUpdateType = hasNoCommonUpdateType(
+		streamsConfig.streams?.[0]?.stream.available_update_types,
+	)
 
 	for (const [namespace, nsStreams] of Object.entries(selectedStreams)) {
 		for (const sel of nsStreams) {
+			// Safeguard: the UI forces append here, and sync skips such a stream.
+			if (!sel.append_mode && noCommonUpdateType) {
+				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Upsert is not supported for the selected query engines and catalog; switch to Append`
+			}
 			if (sel.filter && !validateFilter(sel.filter)) {
 				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Invalid filter expression`
 			}
@@ -514,11 +532,15 @@ export const getDedupKeyOptions = (
 		: fields
 }
 
-export const getKafkaUpsertNotSupportedMessage = (
+export const getUpsertNotSupportedMessage = (
 	sourceType?: string,
 	sourceVersion?: string,
 	availableUpdateTypes?: UpsertType[],
 ): string | undefined => {
+	if (hasNoCommonUpdateType(availableUpdateTypes)) {
+		return "Upsert is not supported for the selected query engines and catalog"
+	}
+
 	if (!isKafkaSource(sourceType)) return undefined
 
 	if (

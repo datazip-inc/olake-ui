@@ -16,6 +16,7 @@ export interface DestinationDatabaseModalProps {
 
 export interface ResetStreamsModalProps {
 	onConfirm: () => void
+	onCancel?: () => void
 }
 
 export interface StreamDifferenceModalProps {

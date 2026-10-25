@@ -223,6 +223,7 @@ export const sourceService = {
 		job_id?: number,
 		max_discover_threads?: number | null,
 		target_query_engines?: string[],
+		destination_config?: string,
 		signal?: AbortSignal,
 	) => {
 		try {
@@ -239,6 +240,7 @@ export const sourceService = {
 						config,
 						max_discover_threads,
 						target_query_engines,
+						destination_config,
 					},
 					{
 						timeout: SUBMIT_TIMEOUT_MS,

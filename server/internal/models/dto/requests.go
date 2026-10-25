@@ -56,6 +56,8 @@ type StreamsRequest struct {
 	JobName            string `json:"job_name" binding:"required" example:"my-sync-job"`
 	// TargetQueryEngines become each stream's available_update_types; OLake stores none, so resend every discover.
 	TargetQueryEngines []string `json:"target_query_engines,omitempty" example:"spark,duckdb"`
+	// DestinationConfig narrows available_update_types to what the destination catalog can apply.
+	DestinationConfig string `json:"destination_config,omitempty" example:"{\"type\":\"ICEBERG\",\"writer\":{\"catalog_type\":\"glue\"}}"`
 }
 
 // TODO: frontend needs to send only version no need for source version

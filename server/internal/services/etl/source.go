@@ -274,8 +274,13 @@ func (s Service) DiscoverCatalog(ctx context.Context, projectID string, req *dto
 		return "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 
+	encryptedDestinationConfig, err := utils.Encrypt(req.DestinationConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt destination config for catalog: %s", err)
+	}
+
 	return s.temporal.StartDiscoverStreams(ctx, projectID, req.Type, req.Version, encryptedConfig, stored,
-		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines)
+		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines, encryptedDestinationConfig)
 }
 
 // discoverCatalogResult returns a succeeded discover operation's catalog in one format:
