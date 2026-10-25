@@ -5,6 +5,7 @@ Manage OLake sources, destinations, jobs, and stream selections as labelled **Co
 ## Prerequisites
 
 - Kubernetes: OLake UI deployed **inside** the cluster (in-cluster kubeconfig), or Docker Compose with file-based manifests mounted at `/etc/olake/gitops`.
+- Source drivers at **v1.0.0 or later**. A job whose source is older fails reconcile until the Source is upgraded.
 - `GITOPS_ENABLED=true` on the `olake-ui` Deployment (Helm `gitops.enabled: true`).
 - GitOps RBAC: namespace `Role` on `configmaps` and `secrets` (get/list/watch/update/patch each), and `events` (create/patch). **No `pods` permission on olake-ui.**
 
@@ -83,22 +84,9 @@ metadata:
 | job | ConfigMap only | `projectId`, `userId`, `config` | Job metadata; `config.source` / `destination` by name or numeric ID; `config.activate` defaults to `true` (set `false` to keep the job's schedule paused) |
 | streams | ConfigMap only | `projectId`, `job`, `config` | Streams catalog; `job` matches Job ConfigMap name or job entity ID |
 
-### Streams catalog formats
+### Streams catalog format
 
-Two shapes are accepted in the Streams ConfigMap `data.config` JSON, and the shape picks the catalog format the job runs in. A CM can switch shape after the job exists; the next reconcile treats it as a streams change.
-
-**Self-contained (legacy)** — full catalog in git, in the `streams.json` shape:
-
-```json
-{
-  "streams": [ ... stream metadata ... ],
-  "selected_streams": { "public": [ { "stream_name": "users", "normalization": true, ... } ] }
-}
-```
-
-The job runs in the legacy format, as a job saved from the UI does: the CM is stored as `streams_config` and every discover, sync, clear-destination and stream-difference passes it with `--catalog` / `--streams`. No discover step on create, and any driver version works. `selected_streams` keeps its legacy meaning. The operator does not convert the catalog: like any legacy job, it moves to the split format at server startup or after a source upgrade to `MinStreamsV2Version` or later. Once a job is split it stays split; a later change to a self-contained CM is merged by discover, which writes the split format from it.
-
-**Selection-only (split)** — user choices only in git:
+The Streams ConfigMap `data.config` JSON holds the user's choices only, in the `selected_streams.json` shape:
 
 ```json
 {
@@ -115,15 +103,14 @@ The job runs in the legacy format, as a job saved from the UI does: the CM is st
 }
 ```
 
-The job runs in the split format: the catalog is stored as `available_streams_config` + `selected_streams_config` (`streams_config` stays NULL) and passed with `--available-streams` / `--selected-streams`. It needs a source driver at `MinStreamsV2Version` or later; on older drivers the CM is rejected, since there `selected_streams` keeps its legacy meaning (split-format fields such as `sync_mode` are ignored, unset flags default to `false`). Use the self-contained shape or upgrade the source.
+The job runs in the split format: the catalog is stored as `available_streams_config` + `selected_streams_config` (`streams_config` stays NULL) and passed with `--available-streams` / `--selected-streams`.
 
+- A CM in the legacy `streams.json` shape (with `streams[]`) is rejected. Remove `streams[]` and keep `selected_streams`.
 - On create the operator runs discover against the source for `available_streams_config`, then discover again against it and the CM's `selected_streams`, so the stored selection comes from the CLI's merge (same as on update).
 - On update with a changed CM (or a changed source/destination), discover merges against the stored `available_streams_config` and the CM's `selected_streams`; the CLI's merge drops selections whose stream no longer exists, updates `selected_columns` when `sync_new_columns` is true, and refreshes `streams[]` when the source schema changes.
-
-For both shapes:
 - An update that does not change the CM (a Job CM edit, or a changed source/destination) starts from the job's stored catalog, not the CM's. A changed source/destination runs discover against that stored catalog.
 - `selected_streams` must be non-empty (deselect-all fails reconcile).
-- A changed CM triggers a stream difference between the stored catalog and the newly merged one, and clear-destination for the streams that differ. When the job switches format, each side of the difference is passed in its own format.
+- A changed CM triggers a stream difference between the stored catalog and the newly merged one, and clear-destination for the streams that differ.
 
 ### Credentials via Secrets (Source and Destination only)
 
