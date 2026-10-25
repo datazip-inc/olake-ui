@@ -45,7 +45,7 @@ Job reconcile rules:
 Validate / resolve:
   - Validate job spec; resolve source and destination from DB (Pending if missing).
   - Wait for the Streams ConfigMap that references this job.
-  - Classify streams CM: legacy (streams[] + selected_streams) or split (selected_streams only).
+  - The source must be at MinStreamsV2Version or later; the streams CM is selection-only.
 
 Create / update:
   - Create or connector change: test source + destination connections first.
@@ -56,7 +56,6 @@ Create / update:
 Streams persistence (see resolveCatalog):
   - The catalog comes from the CM on create or when the CM changed, else from the job.
   - Discover merges it with the source on connector or streams drift.
-  - A CM with streams[] is stored legacy, a selection-only CM split; a split job stays split.
 
 Why discover here:
   - UI: discover/merge runs first, then you edit streams.
@@ -122,8 +121,8 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res *ResourceData) (ct
 	if err != nil {
 		return r.failJob(ctx, res, streamsRes, err, observed)
 	}
-	if cmCatalog.Streams == "" && !utils.SupportsStreamsV2(source.Version) {
-		err := fmt.Errorf("selection-only streams config needs source version %s or later (source %q is on %s); add streams[] to the config or upgrade the source",
+	if !utils.SupportsStreamsV2(source.Version) {
+		err := fmt.Errorf("GitOps requires source version %s or later (source %q is on %s); upgrade the source",
 			constants.MinStreamsV2Version, source.Name, source.Version)
 		return r.failJob(ctx, res, streamsRes, NonRetryableError(err), observed)
 	}
@@ -301,10 +300,9 @@ type catalogService interface {
 	AwaitOperationOutput(ctx context.Context, operationID string) (map[string]interface{}, error)
 }
 
-// resolveCatalog returns the catalog to store for the job. It starts from the Streams CM when the
-// CM changed (or on create), otherwise from the job's stored catalog, and runs discover when the
-// job's connectors or streams changed. A CM with streams[] is stored legacy, a selection-only CM
-// split; a job that is already split stays split.
+// resolveCatalog returns the split catalog to store for the job. It starts from the Streams CM when
+// the CM changed (or on create), otherwise from the job's stored catalog, and runs discover when
+// the job's connectors or streams changed.
 func resolveCatalog(ctx context.Context, svc catalogService, source *models.Source, jobCfg *JobConfig, existingJob *models.Job, cmCatalog types.StreamsCatalog, drift jobDrift) (types.StreamsCatalog, error) {
 	req := &dto.StreamsRequest{
 		Name:    source.Name,
@@ -329,23 +327,17 @@ func resolveCatalog(ctx context.Context, svc catalogService, source *models.Sour
 	if existingJob != nil && !drift.streams {
 		base = stored
 	}
-	// store split if the base is split or selection-only, or the job is already split; legacy otherwise
-	split := base.Streams == "" || stored.IsSplit()
 
 	// re-merge with the source only when an existing job's source/destination or streams changed
 	needsDiscover := existingJob != nil && (drift.connectors || drift.streams)
 
-	// selection-only CM: it has no available streams, so take them from the job or a fresh discover
-	if base.Streams == "" && base.Available == "" {
-		base.Available = stored.Available // reuse the stored available streams
-		if base.Available == "" {         // new job or legacy job: discover available streams from scratch
+	// the CM has no available streams, so take them from the job or, for a new job, a fresh discover
+	if base.Available == "" {
+		base.Available = stored.Available
+		if base.Available == "" {
 			fresh, err := svc.DiscoverWithCatalog(ctx, source.ProjectID, req, types.StreamsCatalog{})
 			if err != nil {
 				return types.StreamsCatalog{}, err
-			}
-			// without available streams the merge below would run a fresh discover and drop the CM's selection
-			if fresh.Available == "" {
-				return types.StreamsCatalog{}, fmt.Errorf("discover wrote no available streams for source %q on %s", source.Name, source.Version)
 			}
 			base.Available = fresh.Available
 		}
@@ -359,24 +351,12 @@ func resolveCatalog(ctx context.Context, svc catalogService, source *models.Sour
 		}
 		base = discovered
 	}
-
-	if !split { // legacy catalog: store streams_config only
-		return types.StreamsCatalog{Streams: base.Streams}, nil
-	}
-	if !base.IsSplit() { // the source did not write the split format (e.g. downgraded below MinStreamsV2Version)
-		return types.StreamsCatalog{}, fmt.Errorf("job needs the split streams format, but source %q on %s did not write it", source.Name, source.Version)
-	}
 	return types.StreamsCatalog{Available: base.Available, Selected: base.Selected}, nil
 }
 
-// streamDifferenceJSON diffs the job's stored catalog against the new one. GetStreamDifference
-// accepts each side in its own format, so a legacy job can be diffed against a split catalog.
+// streamDifferenceJSON diffs the job's stored catalog against the new one.
 func streamDifferenceJSON(ctx context.Context, svc catalogService, job *models.Job, catalog types.StreamsCatalog) (string, error) {
-	if stored := job.StreamsCatalog(); stored.Streams == "" && !stored.IsSplit() {
-		return "", nil
-	}
 	operationID, err := svc.GetStreamDifference(ctx, job.ProjectID, job.ID, dto.StreamDifferenceRequest{
-		UpdatedStreamsConfig:          catalog.Streams,
 		UpdatedAvailableStreamsConfig: catalog.Available,
 		UpdatedSelectedStreamsConfig:  catalog.Selected,
 	})
@@ -501,7 +481,6 @@ func diffJob(existing *models.Job, cfg *JobConfig, sourceID, destID int) jobDrif
 func (cfg *JobConfig) createRequest(sourceID int, sourceVersion string, destID int, catalog types.StreamsCatalog) *dto.CreateJobRequest {
 	return &dto.CreateJobRequest{
 		JobMetadata:            cfg.JobMetadata,
-		StreamsConfig:          catalog.Streams,
 		AvailableStreamsConfig: catalog.Available,
 		SelectedStreamsConfig:  catalog.Selected,
 		Source:                 &dto.DriverConfig{ID: &sourceID, Version: sourceVersion},
@@ -516,7 +495,6 @@ func (cfg *JobConfig) updateRequest(sourceID int, sourceVersion string, destID i
 	metadata.Activate = active
 	return &dto.UpdateJobRequest{
 		JobMetadata:            metadata,
-		StreamsConfig:          catalog.Streams,
 		AvailableStreamsConfig: catalog.Available,
 		SelectedStreamsConfig:  catalog.Selected,
 		DifferenceStreams:      differenceStreams,

@@ -9,9 +9,9 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/types"
 )
 
-// parseStreamsCM returns the Streams ConfigMap's catalog. Its shape picks the format: a CM with
-// streams[] is a legacy streams.json (Streams); a selection-only CM is a selected_streams.json
-// (Selected), and discover fills the available streams.
+// parseStreamsCM returns the Streams ConfigMap's catalog: a selection-only CM in the
+// selected_streams.json shape (Selected); discover fills the available streams. The legacy
+// streams.json shape (streams[] + selected_streams) is rejected.
 func parseStreamsCM(config string) (types.StreamsCatalog, error) {
 	var cm struct {
 		Streams         json.RawMessage `json:"streams"`
@@ -20,13 +20,13 @@ func parseStreamsCM(config string) (types.StreamsCatalog, error) {
 	if err := json.Unmarshal([]byte(config), &cm); err != nil {
 		return types.StreamsCatalog{}, NonRetryableError(fmt.Errorf("invalid streams config: %w", err))
 	}
+	if !isEmptyJSON(cm.Streams) {
+		return types.StreamsCatalog{}, NonRetryableError(fmt.Errorf("legacy streams config (streams[]) is not supported; keep only selected_streams (streams v2)"))
+	}
 	if isEmptyJSON(cm.SelectedStreams) {
 		return types.StreamsCatalog{}, NonRetryableError(fmt.Errorf("streams config has no selected_streams"))
 	}
-	if isEmptyJSON(cm.Streams) {
-		return types.StreamsCatalog{Selected: config}, nil
-	}
-	return types.StreamsCatalog{Streams: config}, nil
+	return types.StreamsCatalog{Selected: config}, nil
 }
 
 // isEmptyJSON reports whether a JSON value is missing, null, or an empty array or object.
