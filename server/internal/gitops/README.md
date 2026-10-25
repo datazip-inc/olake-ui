@@ -33,9 +33,7 @@ volumes:
   - ./olake-gitops:/etc/olake/gitops
 ```
 
-olake-ui reads manifests from `/etc/olake/gitops`. Set `GITOPS_FILE_DIR` only to read them from another path (for example when running the server outside Docker).
-
-File mode has no annotations, so status (phase, message, entity ID, observed hash) is kept in `.olake-gitops-state.json` in the manifest directory and written to the olake-ui log on each change. The file plays the role of the annotations: it keeps a restart from re-applying every job, which would cancel running syncs. Keep it on persistent storage, and add it to `.gitignore` if the directory is a git checkout. If the directory is read-only (for example a git-sync mount), set `GITOPS_STATE_FILE` to a writable path. olake-ui fails at startup if it cannot write the file. Deleting the file, or a manifest, makes the next start reconcile those resources from scratch.
+olake-ui reads plain JSON files from `/etc/olake/gitops` — no ConfigMaps, labels or annotations. See [Docker Compose (file mode)](#docker-compose-file-mode).
 
 ### 2. Apply sample manifests
 
@@ -116,8 +114,6 @@ The job runs in the split format: the catalog is stored as `available_streams_co
 
 A Source or Destination can be defined directly as a **Secret** instead of a ConfigMap when the connector config holds credentials that shouldn't be plaintext in git. There is no separate reference field — the Secret itself carries the same `data` shape (`projectId`, `userId`, `config`) and the same `olake.io/managed`/`olake.io/kind` labels as the ConfigMap form. Pick exactly one object type per Source/Destination name; if both exist for the same name, the ConfigMap wins.
 
-**Docker Compose (file mode):** no Secret API in file mode — Source/Destination manifests there must be plain ConfigMaps with inline `data.config`.
-
 Example: `source-secret-smoke.yaml` in olake-helm.
 
 Example source as a Secret:
@@ -146,6 +142,90 @@ stringData:
 Rotating the Secret's `data.config` re-triggers reconcile the same way editing the ConfigMap would (both are watched).
 
 Do **not** put `olake.io/phase` or other status annotations in git — the operator writes them.
+
+## Docker Compose (file mode)
+
+Outside Kubernetes, olake-ui watches a directory of JSON files instead of ConfigMaps. Each file describes one entity with the same fields the OLake API takes, plus `kind`, `projectId`, `userId` and, for streams, `job`. There are no Kubernetes fields (`apiVersion`, `metadata`, labels, annotations).
+
+### Files
+
+**Source**
+
+```json
+{
+  "kind": "source",
+  "projectId": "123",
+  "userId": 1,
+  "name": "pg_prod",
+  "type": "postgres",
+  "version": "v1.0.0",
+  "config": { "host": "postgres", "port": 5432, "database": "app", "username": "olake", "password": "..." }
+}
+```
+
+**Destination**
+
+```json
+{
+  "kind": "destination",
+  "projectId": "123",
+  "userId": 1,
+  "name": "lake",
+  "type": "iceberg",
+  "version": "v1.0.0",
+  "config": { "type": "ICEBERG", "writer": { "type": "glue", "iceberg_s3_path": "s3://bucket/warehouse", "aws_region": "ap-south-1" } }
+}
+```
+
+**Job**: `source` and `destination` are the OLake name or numeric id (as a string) of the source and destination. `activate` defaults to `true`; `advanced_settings` is optional.
+
+```json
+{
+  "kind": "job",
+  "projectId": "123",
+  "userId": 1,
+  "name": "orders_sync",
+  "source": "pg_prod",
+  "destination": "lake",
+  "frequency": "0 */6 * * *",
+  "activate": true
+}
+```
+
+**Streams**: the stream selection of one job, in the `selected_streams.json` shape (see [Streams catalog format](#streams-catalog-format)). `job` is the job's OLake name or numeric id.
+
+```json
+{
+  "kind": "streams",
+  "projectId": "123",
+  "job": "orders_sync",
+  "selected_streams": {
+    "public": [
+      { "stream_name": "orders", "sync_mode": "cdc", "normalization": true }
+    ]
+  }
+}
+```
+
+### Rules
+
+- **Kind:** `kind` is `source`, `destination`, `job` or `streams`.
+- **Required fields:** `projectId` is required on every file. `userId` is required on source, destination and job files. Both may be a string or a number.
+- **Identity:** a source, destination or job is identified by `kind` + `name` (the OLake name), and streams by their `job`. The file name and directory do not matter.
+- **Files read:** every `*.json` file, at the root of the directory or in a directory under it (for example one directory per job). The directory holds only these files and the state file.
+- **Editing:** a file is reconciled 5 s after its last change.
+- **Deleting:** deleting a file drops the entity from GitOps, but the OLake entity is kept, as in Kubernetes mode.
+- **Credentials:** there is no Secret equivalent; credentials are written in the source/destination file. Keep the directory private.
+
+### Status
+
+There are no annotations, so status (phase, message, entity ID, observed hash) is kept in `.olake-gitops-state.json` in the directory and written to the olake-ui log on each change. The file plays the role of the annotations: it keeps a restart from re-applying every job, which would cancel running syncs.
+
+- Keep it on persistent storage, and add it to `.gitignore` if the directory is a git checkout.
+- If the directory is read-only (for example a git-sync mount), set `GITOPS_STATE_FILE` to a writable path. olake-ui fails at startup if it cannot write the file.
+- Deleting the state file, or a manifest, makes the next start reconcile those entities from scratch.
+
+`GITOPS_FILE_DIR` changes the directory, for example when running the server outside Docker.
 
 ## Failure indicators
 

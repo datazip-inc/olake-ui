@@ -5,16 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/yaml"
 
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
@@ -23,8 +21,8 @@ import (
 
 const (
 	fileDebounce = 5 * time.Second
-	// stateFileName is the default state file, kept in GITOPS_FILE_DIR. It is not YAML, so the
-	// watcher ignores it.
+	// stateFileName is the default state file, kept in GITOPS_FILE_DIR. It is hidden, so the
+	// watcher does not read it as a manifest.
 	stateFileName = ".olake-gitops-state.json"
 )
 
@@ -36,7 +34,7 @@ type resourceState struct {
 	EntityID string `json:"entityId,omitempty"`
 }
 
-// FileWatcher watches a directory of ConfigMap YAML files and runs the same
+// FileWatcher watches a directory of JSON manifests (file_manifest.go) and runs the same
 // reconcile path as the Kubernetes controllers.
 type FileWatcher struct {
 	Dir            string
@@ -105,15 +103,8 @@ func (fw *FileWatcher) setup() error {
 func (fw *FileWatcher) run(ctx context.Context) error {
 	defer fw.watcher.Close()
 	defer close(fw.stop)
-	entries, err := os.ReadDir(fw.Dir)
-	if err != nil {
-		return fmt.Errorf("read %s: %w", fw.Dir, err)
-	}
-	for _, e := range entries {
-		if e.IsDir() || !isYAML(e.Name()) {
-			continue
-		}
-		fw.enqueue(filepath.Join(fw.Dir, e.Name()), 0)
+	if err := fw.walk(fw.Dir, 0); err != nil {
+		return err
 	}
 
 	for {
@@ -124,12 +115,7 @@ func (fw *FileWatcher) run(ctx context.Context) error {
 			if !ok {
 				return nil
 			}
-			// remove/rename is processed too: the file is gone, so process drops it from the index
-			// (the OLake entity is kept, as in-cluster). Editors that save by rename are a remove
-			// followed by a create, which the debounce folds into one reconcile.
-			if event.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Remove|fsnotify.Rename) != 0 && isYAML(event.Name) {
-				fw.enqueue(event.Name, fileDebounce)
-			}
+			fw.handleEvent(event)
 		case err, ok := <-fw.watcher.Errors:
 			if !ok {
 				return nil
@@ -138,6 +124,41 @@ func (fw *FileWatcher) run(ctx context.Context) error {
 		case path := <-fw.reconcile:
 			fw.process(ctx, path)
 		}
+	}
+}
+
+// walk watches dir and the directories under it, and enqueues the manifests in them. Manifests sit at
+// the root or in a directory per job
+func (fw *FileWatcher) walk(dir string, delay time.Duration) error {
+	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return fw.watcher.Add(path)
+		}
+		if isManifest(path) {
+			fw.enqueue(path, delay)
+		}
+		return nil
+	})
+}
+
+// handleEvent enqueues a changed manifest. A remove/rename is processed too: the file is gone, so
+// process drops it from the index (the OLake entity is kept, as in-cluster). Editors that save by
+// rename are a remove followed by a create, which the debounce folds into one reconcile. A new
+// directory is watched and its manifests read.
+func (fw *FileWatcher) handleEvent(event fsnotify.Event) {
+	if event.Op&fsnotify.Create != 0 {
+		if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
+			if err := fw.walk(event.Name, fileDebounce); err != nil {
+				logger.Errorf("gitops file watcher: %s", err)
+			}
+			return
+		}
+	}
+	if event.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Remove|fsnotify.Rename) != 0 && isManifest(event.Name) {
+		fw.enqueue(event.Name, fileDebounce)
 	}
 }
 
@@ -166,7 +187,7 @@ func (fw *FileWatcher) process(ctx context.Context, path string) {
 		logger.Errorf("read %s: %s", path, err)
 		return
 	}
-	res, err := ParseManagedConfigMap(raw)
+	res, err := parseFileManifest(raw)
 	if err != nil {
 		logger.Errorf("parse %s: %s", path, err)
 		return
@@ -415,49 +436,4 @@ func (fw *FileWatcher) writeStateFile() error {
 		return fmt.Errorf("write gitops state %s: %w", fw.stateFile, err)
 	}
 	return nil
-}
-
-// ParseManagedConfigMap unmarshals and validates an OLake GitOps ConfigMap YAML
-// document. File mode requires every YAML file in GITOPS_FILE_DIR to be a
-// labelled ConfigMap (Secrets are not supported on the filesystem).
-func ParseManagedConfigMap(raw []byte) (*ResourceData, error) {
-	var cm corev1.ConfigMap
-	if err := yaml.Unmarshal(raw, &cm); err != nil {
-		return nil, fmt.Errorf("yaml: %w", err)
-	}
-	if cm.Kind != "ConfigMap" {
-		if cm.Kind == "" {
-			return nil, fmt.Errorf("missing kind: file mode requires kind: ConfigMap")
-		}
-		return nil, fmt.Errorf("unsupported kind %q: file mode only supports ConfigMap", cm.Kind)
-	}
-	if cm.Labels[LabelManaged] != LabelManagedValue {
-		return nil, fmt.Errorf("missing or invalid label %s=%q (required %q)", LabelManaged, cm.Labels[LabelManaged], LabelManagedValue)
-	}
-	kind := cm.Labels[LabelKind]
-	if kind == "" {
-		return nil, fmt.Errorf("missing label %q", LabelKind)
-	}
-	if !isValidManagedKind(kind) {
-		return nil, fmt.Errorf("invalid label %s=%q (want source, destination, job, or streams)", LabelKind, kind)
-	}
-	if cm.Name == "" {
-		return nil, fmt.Errorf("metadata.name is required")
-	}
-	res := resourceFromCM(&cm)
-	return &res, nil
-}
-
-func isValidManagedKind(kind string) bool {
-	switch kind {
-	case KindSource, KindDestination, KindJob, KindStreams:
-		return true
-	default:
-		return false
-	}
-}
-
-func isYAML(name string) bool {
-	ext := strings.ToLower(filepath.Ext(name))
-	return ext == ".yaml" || ext == ".yml"
 }
