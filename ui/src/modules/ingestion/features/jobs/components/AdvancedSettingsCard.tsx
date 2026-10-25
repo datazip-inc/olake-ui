@@ -1,6 +1,6 @@
 import { InfoIcon, SlidersIcon, WarningIcon } from "@phosphor-icons/react"
 import { InputNumber, Select, Spin, Tag, Tooltip } from "antd"
-import React from "react"
+import React, { useEffect } from "react"
 import semver from "semver"
 
 import { restrictNumericInput } from "@/common/utils"
@@ -30,6 +30,7 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 		selectedSource,
 		selectedDestination,
 		savedAdvancedSettings,
+		setSavedAdvancedSettings,
 		isEditMode,
 	} = useJobConfigurationStore()
 
@@ -58,6 +59,18 @@ const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
 	const targetQueryEngines = advancedSettings?.target_query_engines ?? []
 	const setQueryEngines = (target_query_engines: string[]) =>
 		setAdvancedSettings({ ...advancedSettings, target_query_engines })
+
+	// S3 is append-only: drop engines (and the saved snapshot, so edit mode sees no change).
+	useEffect(() => {
+		if (!isAppendOnlyDestination || !targetQueryEngines.length) return
+		setAdvancedSettings({ ...advancedSettings, target_query_engines: [] })
+		if (isEditMode) {
+			setSavedAdvancedSettings({
+				...savedAdvancedSettings,
+				target_query_engines: [],
+			})
+		}
+	}, [isAppendOnlyDestination, targetQueryEngines.length])
 
 	const showQueryEngines =
 		!hideQueryEngines &&
