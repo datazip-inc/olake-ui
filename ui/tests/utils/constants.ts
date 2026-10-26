@@ -11,49 +11,10 @@
 // 172.17.0.2 is the DinD box's address when it is the first container on the runner.
 export const SERVICE_HOST = process.env.E2E_SERVICE_HOST?.trim() || "172.17.0.2"
 
-// Job Configurations
-export const JOB_CONFIG = {
-	streamName: "postgres_test_table_olake",
-	frequency: "Every Week",
-} as const
-
-// Validation Messages
-export const VALIDATION_MESSAGES = {
-	username: {
-		required: "Please input your username!",
-		minLength: "Username must be at least 3 characters",
-	},
-	password: {
-		required: "Please input your password!",
-		minLength: "Password must be at least 6 characters",
-	},
-	sourceName: {
-		required: "Source name is required",
-	},
-	destinationName: {
-		required: "Destination name is required",
-	},
-	jobName: {
-		required: "Job name is required",
-	},
-} as const
-
-// URLs
-export const URLS = {
-	login: "/login",
-	jobs: "/jobs",
-	sources: "/sources",
-	destinations: "/destinations",
-} as const
-
 export const LOGIN_CREDENTIALS = {
 	admin: {
 		username: "admin",
 		password: "password",
-	},
-	invalid: {
-		username: "invalid",
-		password: "invalid",
 	},
 } as const
 
