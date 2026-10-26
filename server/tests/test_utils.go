@@ -117,7 +117,7 @@ type Workflow struct {
 }
 
 // database is the destination database OLake writes the job to: <job>_<source namespace>, lowercased.
-func (w Workflow) database() string {
+func (w *Workflow) database() string {
 	return strings.ToLower(w.Job + "_" + w.Source.Namespace)
 }
 
@@ -139,7 +139,7 @@ type Run struct {
 	t           *testing.T
 	ctx         context.Context
 	env         Env
-	w           Workflow
+	w           *Workflow
 	start       time.Time
 	ServiceHost string // what the driver, and the specs, use to reach the published ports
 
@@ -148,7 +148,7 @@ type Run struct {
 }
 
 // StartWorkflow starts the Env, the source, the destination and OLake, and seeds the source.
-func StartWorkflow(t *testing.T, w Workflow) *Run {
+func StartWorkflow(t *testing.T, w *Workflow) *Run {
 	t.Helper()
 	if !jobPattern.MatchString(w.Job) {
 		t.Fatalf("invalid job name %q", w.Job)

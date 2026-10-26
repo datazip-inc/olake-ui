@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // registers the "postgres" driver sqlx connects with
 	"github.com/stretchr/testify/require"
 
 	"github.com/datazip-inc/olake-ui/server/tests/sources"

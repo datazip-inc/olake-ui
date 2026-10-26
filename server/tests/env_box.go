@@ -68,7 +68,7 @@ func startBoxEnv(ctx context.Context, t *testing.T, ports []string) (*boxEnv, er
 				"/var/lib/docker": "size=70G",
 				"/dev/shm":        "size=10G",
 			}
-			hc.Resources.Memory = 22 * 1024 * 1024 * 1024 // 22GB
+			hc.Memory = 22 * 1024 * 1024 * 1024 // 22GB
 			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
 		},
 		ConfigModifier: func(config *container.Config) {

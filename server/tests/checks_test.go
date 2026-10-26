@@ -27,8 +27,11 @@ func TestRunChecksRetriesUntilPass(t *testing.T) {
 }
 
 func TestIsTableMissing(t *testing.T) {
-	require.True(t, isTableMissing(errors.New("[TABLE_OR_VIEW_NOT_FOUND] The table or view `olake_iceberg`.`db`.`t` cannot be found.")))
-	require.True(t, isTableMissing(errors.New("org.apache.iceberg.exceptions.NoSuchNamespaceException: Namespace does not exist: db")))
+	// Messages as Spark Connect returns them.
+	notFound := "[TABLE_OR_VIEW_NOT_FOUND] The table or view `olake_iceberg`.`db`.`t` cannot be found."
+	noNamespace := "org.apache.iceberg.exceptions.NoSuchNamespaceException: Namespace does not exist: db"
+	require.True(t, isTableMissing(errors.New(notFound)))
+	require.True(t, isTableMissing(errors.New(noNamespace)))
 	require.False(t, isTableMissing(errors.New("[PARSE_SYNTAX_ERROR] Syntax error")))
 	require.False(t, isTableMissing(nil))
 }

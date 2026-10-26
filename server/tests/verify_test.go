@@ -26,7 +26,7 @@ const postgresSpec = "tests/integration/postgres-iceberg.spec.ts"
 // sync. See postgres-iceberg.spec.ts for the UI side of each step.
 func TestPostgres(t *testing.T) {
 	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
-	r := StartWorkflow(t, Workflow{
+	r := StartWorkflow(t, &Workflow{
 		Source:      postgres.Source,
 		Destination: jdbc.Destination,
 		Job:         "e2e_postgres_jdbc",

@@ -161,6 +161,10 @@ func Absent(name string) Check {
 		Name: name + " absent",
 		Run: func(ctx context.Context, spark sql.SparkSession, table func(string) string) error {
 			tbl := table(ident(name))
+			// REFRESH drops Spark's cached metadata, which can outlive a dropped table.
+			if _, err := spark.Sql(ctx, "REFRESH TABLE "+tbl); isTableMissing(err) {
+				return nil
+			}
 			_, err := query(ctx, spark, "SELECT 1 FROM "+tbl+" LIMIT 1")
 			if isTableMissing(err) {
 				return nil
