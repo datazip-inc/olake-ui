@@ -291,6 +291,10 @@ func (r *Run) Check(phase string, checks ...Check) {
 				t.Errorf("Failed to stop Spark session: %v", stopErr)
 			}
 		}()
+		// One probe first: when Spark Connect is down, fail now rather than retry every check.
+		if err := waitForSpark(r.ctx, spark); err != nil {
+			t.Fatalf("Spark Connect at sc://%s:%s does not answer: %v", r.sparkHost, r.sparkPort, err)
+		}
 		table := func(name string) string { return r.w.Destination.Table(r.w.database(), name) }
 		runChecks(r.ctx, t, spark, table, checks)
 	})

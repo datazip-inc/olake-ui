@@ -64,6 +64,18 @@ func runChecks(ctx context.Context, t *testing.T, spark sql.SparkSession, table 
 	}
 }
 
+// waitForSpark runs SELECT 1 until Spark Connect answers, for up to checkTimeout.
+func waitForSpark(ctx context.Context, spark sql.SparkSession) error {
+	deadline := time.Now().Add(checkTimeout)
+	for {
+		_, err := query(ctx, spark, "SELECT 1")
+		if err == nil || time.Now().After(deadline) || ctx.Err() != nil {
+			return err
+		}
+		time.Sleep(checkInterval)
+	}
+}
+
 // query runs q and returns every row as strings; NULL becomes "NULL".
 func query(ctx context.Context, spark sql.SparkSession, q string) ([][]string, error) {
 	df, err := spark.Sql(ctx, q)
