@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -203,29 +204,54 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 		r.exec(clearDirCmd(root+"/server/tests/"+w.Destination.ComposeDir+"/"+w.Destination.DataDir), "clearing the %s data failed", w.Destination.Name)
 	}
 
-	r.Step("Starting %s source...", w.Source.Name)
-	r.exec(composeStartCmd(root, "source", w.Source.ComposeDir, nil, w.Source.ReadyCmd), "%s startup failed", w.Source.Name)
+	// The source, the destination, OLake and Playwright do not depend on each other, so they start
+	// at the same time. The first that fails cancels the others.
+	startCtx, cancelStart := context.WithCancel(ctx)
+	var tasks sync.WaitGroup
+	// Also when Seed fails the test below: no task may outlive StartWorkflow and log after the
+	// test has ended.
+	defer func() {
+		cancelStart()
+		tasks.Wait()
+	}()
+	source := r.task(startCtx, cancelStart, &tasks, "source "+w.Source.Name, func(ctx context.Context) error {
+		return r.run(ctx, composeStartCmd(root, "source", w.Source.ComposeDir, nil, w.Source.ReadyCmd), "%s startup failed", w.Source.Name)
+	})
+	destination := r.task(startCtx, cancelStart, &tasks, "destination "+w.Destination.Name, func(ctx context.Context) error {
+		return r.run(ctx, composeStartCmd(root, "destination", w.Destination.ComposeDir, w.Destination.Services, w.Destination.ReadyCmd), "destination services startup failed")
+	})
+	olake := r.task(startCtx, cancelStart, &tasks, "OLake", func(ctx context.Context) error {
+		// Build olake-ui from this checkout, unless the workflow already built olake-ui:ci
+		if os.Getenv("OLAKE_TEST_SKIP_UI_BUILD") == "true" {
+			if err := r.run(ctx, "docker image inspect --format '{{.Id}}' olake-ui:ci", "OLAKE_TEST_SKIP_UI_BUILD is set but olake-ui:ci is missing"); err != nil {
+				return err
+			}
+		} else if err := r.run(ctx, buildOLakeUICmd(root), "olake-ui image build failed"); err != nil {
+			return err
+		}
+		return r.run(ctx, startOLakeCmd(root), "OLake startup failed")
+	})
+	playwright := r.task(startCtx, cancelStart, &tasks, "Playwright", func(ctx context.Context) error {
+		return env.InstallPlaywright(ctx, t)
+	})
 
-	r.Step("Starting %s destination...", w.Destination.Name)
-	r.exec(composeStartCmd(root, "destination", w.Destination.ComposeDir, w.Destination.Services, w.Destination.ReadyCmd), "destination services startup failed")
-
-	// Build olake-ui from this checkout, unless the workflow already built olake-ui:ci
-	if os.Getenv("OLAKE_TEST_SKIP_UI_BUILD") == "true" {
-		r.Step("Using the prebuilt olake-ui image...")
-		r.exec("docker image inspect --format '{{.Id}}' olake-ui:ci", "OLAKE_TEST_SKIP_UI_BUILD is set but olake-ui:ci is missing")
+	// Seed as soon as the source is ready. Seed fails the test through t, which only the test's
+	// own goroutine may do, so it runs here.
+	var failures []string
+	if err := <-source; err != nil {
+		failures = append(failures, err.Error())
 	} else {
-		r.Step("Building the olake-ui image...")
-		r.exec(buildOLakeUICmd(root), "olake-ui image build failed")
+		r.Step("Seeding the %s source...", w.Source.Name)
+		w.Source.Seed(ctx, t, r.sourceHost, r.sourcePort)
 	}
-
-	r.Step("Starting OLake docker-compose services...")
-	r.exec(startOLakeCmd(root), "OLake startup failed")
-
-	r.Step("Seeding the %s source...", w.Source.Name)
-	w.Source.Seed(ctx, t, r.sourceHost, r.sourcePort)
-
-	r.Step("Installing Playwright and dependencies...")
-	r.require(env.InstallPlaywright(ctx, t))
+	for _, done := range []<-chan error{destination, olake, playwright} {
+		if err := <-done; err != nil {
+			failures = append(failures, err.Error())
+		}
+	}
+	if len(failures) > 0 {
+		t.Fatalf("startup failed:\n%s", strings.Join(failures, "\n"))
+	}
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
 	return r
 }
@@ -252,6 +278,36 @@ func (r *Run) exec(cmd, format string, args ...any) []byte {
 		r.t.Fatalf("%s (%d): %v\n%s", fmt.Sprintf(format, args...), code, err, out)
 	}
 	return out
+}
+
+// run is exec for a task goroutine: it returns the failure instead of failing the test, which
+// only the test's own goroutine may do.
+func (r *Run) run(ctx context.Context, cmd, format string, args ...any) error {
+	code, out, err := r.env.Exec(ctx, cmd)
+	if err != nil || code != 0 {
+		return fmt.Errorf("%s (%d): %v\n%s", fmt.Sprintf(format, args...), code, err, out)
+	}
+	return nil
+}
+
+// task runs fn on its own goroutine, counted in wg, and logs when it starts and ends. The returned
+// channel gets fn's error; an error also calls cancel, which stops the other tasks of the group.
+func (r *Run) task(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, name string, fn func(context.Context) error) <-chan error {
+	done := make(chan error, 1)
+	r.Step("Starting %s...", name)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := fn(ctx)
+		if err != nil {
+			cancel()
+			r.Step("%s failed", name)
+		} else {
+			r.Step("%s is ready", name)
+		}
+		done <- err
+	}()
+	return done
 }
 
 // Playwright runs the tests of spec tagged tag. Every run gets E2E_JOB_NAME, E2E_DATABASE (the
