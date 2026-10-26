@@ -321,17 +321,12 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 			)
 		}
 		const pickSource = async (name: string) => {
-			await page.getByTestId("existing-source").click()
-			await pickOption(page, name)
+			await pickOption(page, page.getByTestId("existing-source"), name)
 		}
-		const queryEngines = page
-			.getByText("Target Query Engines", { exact: true })
-			.locator("xpath=ancestor::div[.//div[contains(@class,'ant-select')]][1]")
-			.locator(".ant-select")
-			.first()
+		// The only multi-select of the config step.
+		const queryEngines = page.locator(".ant-select.ant-select-multiple").first()
 		const toggleQueryEngine = async (label: string) => {
-			await queryEngines.click()
-			await pickOption(page, label)
+			await pickOption(page, queryEngines, label)
 			await page.keyboard.press("Escape")
 		}
 		const next = async () => {

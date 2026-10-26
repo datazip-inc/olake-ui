@@ -253,11 +253,12 @@ const upsertTypeSelect = (page: Page) =>
 		.locator(".ant-select")
 		.first()
 
-/** The upsert types the open stream offers. */
+/** The upsert types the open stream offers (at most 3, so all of them are rendered). */
 export const offeredUpsertTypes = async (page: Page): Promise<string[]> => {
-	await upsertTypeSelect(page).click()
-	const options = page.locator(
-		".ant-select-dropdown:visible .ant-select-item-option",
+	const select = upsertTypeSelect(page)
+	await select.click()
+	const options = (await dropdownOf(page, select)).locator(
+		".ant-select-item-option",
 	)
 	await expect(options.first()).toBeVisible()
 	const labels = (await options.allInnerTexts()).map(text => text.trim())
@@ -270,11 +271,7 @@ export const setUpsertType = async (
 	type: UpsertTypeLabel,
 	formatVersion: "V2" | "V3",
 ) => {
-	await upsertTypeSelect(page).click()
-	await page
-		.locator(".ant-select-dropdown:visible .ant-select-item-option")
-		.filter({ hasText: type })
-		.click()
+	await pickOption(page, upsertTypeSelect(page), type)
 	await expect(upsertTypeSelect(page)).toContainText(type)
 	await expect(page.getByText("Iceberg format version:")).toContainText(
 		formatVersion,
@@ -282,28 +279,51 @@ export const setUpsertType = async (
 }
 
 /**
- * Picks an option of the open Select dropdown by its exact text. antd also renders a hidden copy
- * of each option (role="option", for screen readers) that is never visible, so match the
- * rendered .ant-select-item-option instead of any element with the text.
+ * The dropdown of an antd Select. antd keeps every dropdown it has opened in the page, closed
+ * ones included, so find this select's own through the list id its input controls.
  */
-export const pickOption = async (page: Page, text: string) => {
-	const dropdown = page.locator(".ant-select-dropdown:visible")
-	const option = dropdown
-		.locator(".ant-select-item-option")
+export const dropdownOf = async (page: Page, select: Locator) => {
+	const id = await select
+		.locator("input[role='combobox']")
+		.first()
+		.getAttribute("aria-controls")
+	expect(id, "the select's input names its option list").toBeTruthy()
+	return page
+		.locator(".ant-select-dropdown")
+		.filter({ has: page.locator(`[id="${id}"]`) })
+}
+
+/**
+ * Opens select and clicks its option with exactly text.
+ * - antd also renders a hidden copy of each option (role="option", for screen readers), so this
+ *   matches the rendered .ant-select-item-option instead.
+ * - The list is virtual: only the rows in view exist (about 8), and it scrolls on wheel events
+ *   only, not on scrollTop. So scroll it to the top, then down until the option is rendered.
+ */
+export const pickOption = async (page: Page, select: Locator, text: string) => {
+	await select.click()
+	const dropdown = await dropdownOf(page, select)
+	const options = dropdown.locator(".ant-select-item-option")
+	await expect(options.first()).toBeVisible()
+	const option = options
 		.filter({ has: page.getByText(text, { exact: true }) })
 		.first()
-	// The list is virtual: only the rows in view exist (about 8), so scroll until this one does.
-	await expect(async () => {
-		if (await option.isVisible()) return
-		await dropdown
-			.locator(".rc-virtual-list-holder")
-			.first()
-			.evaluate(list => list.scrollBy(0, list.clientHeight - 40), undefined, {
-				timeout: 1000,
-			})
-			.catch(() => undefined)
-		throw new Error(`option "${text}" is not rendered yet`)
-	}).toPass({ timeout: 20_000, intervals: [150] })
+	// Wheel over the list, aiming at it again each time (a wheel the list cannot use scrolls the
+	// page instead, which moves the list). Turn around at either end: an earlier pick can leave
+	// the list scrolled down.
+	const list = dropdown.locator(".rc-virtual-list-holder").first()
+	let direction = 1
+	let rendered = ""
+	for (let i = 0; i < 100 && !(await option.isVisible()); i++) {
+		const box = await list.boundingBox()
+		if (!box) break
+		await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+		await page.mouse.wheel(0, direction * 80)
+		await page.waitForTimeout(120)
+		const now = (await options.allInnerTexts()).join("|")
+		if (now === rendered) direction = -direction
+		rendered = now
+	}
 	await option.click()
 }
 
@@ -331,10 +351,8 @@ export const setDataFilter = async (
 			.getByText(index === 0 ? "Column I" : "Column II", { exact: true })
 			.locator("xpath=ancestor::div[.//label[normalize-space()='Value']][1]")
 		const selects = block.locator(".ant-select")
-		await selects.nth(0).click()
-		await pickOption(page, condition.column)
-		await selects.nth(1).click()
-		await pickOption(page, condition.operator)
+		await pickOption(page, selects.nth(0), condition.column)
+		await pickOption(page, selects.nth(1), condition.operator)
 		await block.getByRole("textbox").fill(condition.value)
 		await expect(selects.nth(0)).toContainText(condition.column)
 		await expect(selects.nth(1)).toContainText(condition.operator)
