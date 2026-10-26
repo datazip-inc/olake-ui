@@ -128,6 +128,12 @@ func (b *boxEnv) Addr(ctx context.Context, port string) (string, string, error) 
 	return host, mapped.Port(), nil
 }
 
+// ServiceHost is the box's own address: the driver runs on the box's dockerd and reaches the
+// ports published on the box through it.
+func (b *boxEnv) ServiceHost(ctx context.Context) (string, error) {
+	return serviceHost(ctx, b.ctr.ContainerIP)
+}
+
 func (b *boxEnv) InstallPlaywright(ctx context.Context, _ *testing.T) error {
 	if code, out, err := b.Exec(ctx, installPlaywrightCmd(boxRoot)); err != nil || code != 0 {
 		return fmt.Errorf("playwright installation failed (%d): %s\n%s", code, err, out)

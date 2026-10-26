@@ -6,6 +6,11 @@
  * that are used across multiple test files.
  */
 
+// Address the sync driver uses to reach the test's source and destination, which publish their
+// ports on the machine running Docker. The Go integration test passes it as E2E_SERVICE_HOST;
+// 172.17.0.2 is the DinD box's address when it is the first container on the runner.
+export const SERVICE_HOST = process.env.E2E_SERVICE_HOST || "172.17.0.2"
+
 // Job Configurations
 export const JOB_CONFIG = {
 	streamName: "postgres_test_table_olake",

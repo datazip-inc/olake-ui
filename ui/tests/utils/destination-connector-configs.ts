@@ -6,6 +6,7 @@
  */
 
 import { CatalogType, DestinationConnector } from "../enums"
+import { SERVICE_HOST } from "./constants"
 import { DestinationFormConfig } from "../types/PageConfig.types"
 
 /**
@@ -207,17 +208,17 @@ export const ICEBERG_GLUE_CONFIG = {
 	iceberg_s3_path: "s3a://warehouse",
 	aws_access_key: "admin",
 	aws_secret_key: "password",
-	s3_endpoint: "http://172.17.0.2:9000",
+	s3_endpoint: `http://${SERVICE_HOST}:9000`,
 } as const
 
 // 2. Iceberg with JDBC Catalog
 export const ICEBERG_JDBC_CONFIG = {
-	jdbc_url: "jdbc:postgresql://172.17.0.2:5432/iceberg",
+	jdbc_url: `jdbc:postgresql://${SERVICE_HOST}:5432/iceberg`,
 	jdbc_username: "iceberg",
 	jdbc_password: "password",
 	iceberg_s3_path: "s3a://warehouse",
 	aws_region: "us-east-1",
-	s3_endpoint: "http://172.17.0.2:9000",
+	s3_endpoint: `http://${SERVICE_HOST}:9000`,
 	aws_access_key: "admin",
 	aws_secret_key: "password",
 	s3_use_ssl: false,

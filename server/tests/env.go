@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -18,8 +20,31 @@ type Env interface {
 	Root() string
 	// Addr returns the host and port the Go test reaches a published port on, e.g. "5433/tcp".
 	Addr(ctx context.Context, port string) (host, hostPort string, err error)
+	// ServiceHost is the address the sync driver uses to reach the ports the source and the
+	// destination publish. It is passed to the Playwright spec as E2E_SERVICE_HOST.
+	ServiceHost(ctx context.Context) (string, error)
 	// InstallPlaywright installs the UI dependencies and Chromium, unless CI already has.
 	InstallPlaywright(ctx context.Context, t *testing.T) error
+}
+
+// serviceHostPattern accepts IPv4 and IPv6 addresses and host names, so the value is safe to put
+// in a shell command.
+var serviceHostPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.:-]*$`)
+
+// serviceHost returns E2E_SERVICE_HOST when it is set, otherwise the address detect finds.
+func serviceHost(ctx context.Context, detect func(context.Context) (string, error)) (string, error) {
+	host := strings.TrimSpace(os.Getenv("E2E_SERVICE_HOST"))
+	if host == "" {
+		detected, err := detect(ctx)
+		if err != nil {
+			return "", fmt.Errorf("failed to detect the service host: %w", err)
+		}
+		host = strings.TrimSpace(detected)
+	}
+	if !serviceHostPattern.MatchString(host) {
+		return "", fmt.Errorf("invalid service host %q", host)
+	}
+	return host, nil
 }
 
 // newEnv starts the Env that OLAKE_TEST_ENV selects. ports are the published ports the Go test

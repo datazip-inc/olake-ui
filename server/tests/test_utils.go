@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -41,12 +42,18 @@ func installPlaywrightCmd(root string) string {
 }
 
 // Run a Playwright spec, relative to ui/
-func runPlaywrightCmd(root, job, spec string) string {
+func runPlaywrightCmd(root, job, serviceHost, spec string) string {
 	return fmt.Sprintf(`
         cd %s/ui &&
-        E2E_JOB_NAME='%s' PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test %s
-    `, root, job, spec)
+        E2E_JOB_NAME='%s' E2E_SERVICE_HOST='%s' PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test %s
+    `, root, job, serviceHost, spec)
 }
+
+// jobPattern and specPattern limit the values RunWorkflow puts in the Playwright shell command.
+var (
+	jobPattern  = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+	specPattern = regexp.MustCompile(`^[A-Za-z0-9_./-]+$`)
+)
 
 // sparkConnectPort is the port VerifyDestination reaches Spark Connect on. Every destination's
 // compose file must run Spark Connect there; see destinations.Destination.
@@ -88,6 +95,12 @@ func composeStartCmd(root, project, dir string, services []string, ready string)
 func RunWorkflow(t *testing.T, w Workflow) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Minute) // leaves the CI job's 60 minutes room for checkout and setup
 	defer cancel()
+	if !jobPattern.MatchString(w.Job) {
+		return fmt.Errorf("invalid job name %q", w.Job)
+	}
+	if !specPattern.MatchString(w.Spec) {
+		return fmt.Errorf("invalid spec path %q", w.Spec)
+	}
 
 	ports := []string{sparkConnectPort}
 	if w.Source.Port != "" {
@@ -149,8 +162,12 @@ func RunWorkflow(t *testing.T, w Workflow) error {
 	}
 
 	// Step 7: Run Playwright tests
-	t.Log("Executing Playwright tests...")
-	if code, out, err := env.ExecStream(ctx, t, runPlaywrightCmd(root, w.Job, w.Spec)); err != nil || code != 0 {
+	host, err := env.ServiceHost(ctx)
+	if err != nil {
+		return err
+	}
+	t.Logf("Executing Playwright tests (service host %s)...", host)
+	if code, out, err := env.ExecStream(ctx, t, runPlaywrightCmd(root, w.Job, host, w.Spec)); err != nil || code != 0 {
 		return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
 	}
 	t.Log("Playwright tests passed successfully.")
