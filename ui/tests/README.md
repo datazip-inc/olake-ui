@@ -48,4 +48,6 @@ E2E_JOB_NAME=e2e_postgres_jdbc E2E_DATABASE=e2e_postgres_jdbc_postgres_public E2
   npx playwright test tests/integration/postgres-iceberg.spec.ts --grep '@create-job'
 ```
 
-Failure screenshots go to `ui/test-results/`.
+Failure screenshots go to `ui/test-results/`. To log every browser action (Playwright's
+`DEBUG=pw:api`), set `OLAKE_TEST_PW_DEBUG=true` for the Go test, or `DEBUG=pw:api` for a direct
+Playwright run.

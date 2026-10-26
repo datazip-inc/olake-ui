@@ -51,11 +51,16 @@ func TestServiceHost(t *testing.T) {
 
 func TestPlaywrightCmd(t *testing.T) {
 	cmd, err := playwrightCmd("/mnt", "tests/integration/postgres.spec.ts", "@first-sync",
-		map[string]string{"E2E_JOB_NAME": "job", "E2E_WEBHOOK_URL": "http://172.17.0.2:8099/alert"})
+		map[string]string{"E2E_JOB_NAME": "job", "E2E_WEBHOOK_URL": "http://172.17.0.2:8099/alert"}, false)
 	require.NoError(t, err)
 	require.Contains(t, cmd, "cd '/mnt/ui'")
 	require.Contains(t, cmd, "E2E_JOB_NAME='job' E2E_WEBHOOK_URL='http://172.17.0.2:8099/alert' ")
 	require.Contains(t, cmd, "npx playwright test 'tests/integration/postgres.spec.ts' --grep '@first-sync(?![a-z0-9-])'")
+	require.NotContains(t, cmd, "DEBUG=")
+
+	debugCmd, err := playwrightCmd("/mnt", "tests/integration/postgres.spec.ts", "", nil, true)
+	require.NoError(t, err)
+	require.Contains(t, debugCmd, "DEBUG=pw:api PLAYWRIGHT_TEST_BASE_URL=")
 
 	for _, c := range []struct{ spec, tag, key string }{
 		{"tests/a.spec.ts; id", "", "E2E_X"},
@@ -66,7 +71,7 @@ func TestPlaywrightCmd(t *testing.T) {
 		{"tests/a.spec.ts", "", "PATH"},
 		{"tests/a.spec.ts", "", "E2E_X; id"},
 	} {
-		_, err := playwrightCmd("/mnt", c.spec, c.tag, map[string]string{c.key: "v"})
+		_, err := playwrightCmd("/mnt", c.spec, c.tag, map[string]string{c.key: "v"}, false)
 		require.Error(t, err, "%+v", c)
 	}
 }

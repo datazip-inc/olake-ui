@@ -86,8 +86,8 @@ var (
 )
 
 // playwrightCmd runs the tests of spec (relative to ui/) tagged tag, or all of them when tag is
-// empty, with env set for the Playwright process.
-func playwrightCmd(root, spec, tag string, env map[string]string) (string, error) {
+// empty, with env set for the Playwright process. debug logs every browser action (DEBUG=pw:api).
+func playwrightCmd(root, spec, tag string, env map[string]string, debug bool) (string, error) {
 	if !specPattern.MatchString(spec) {
 		return "", fmt.Errorf("invalid spec path %q", spec)
 	}
@@ -106,6 +106,9 @@ func playwrightCmd(root, spec, tag string, env map[string]string) (string, error
 	for _, k := range keys {
 		fmt.Fprintf(&vars, "%s=%s ", k, shellQuote(env[k]))
 	}
+	if debug {
+		vars.WriteString("DEBUG=pw:api ")
+	}
 	grep := ""
 	if tag != "" {
 		// A tag is matched as a whole word, so @sync does not also pick @sync-again.
@@ -113,7 +116,7 @@ func playwrightCmd(root, spec, tag string, env map[string]string) (string, error
 	}
 	return fmt.Sprintf(`
         cd %s &&
-        %sPLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test %s%s
+        %sPLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 npx playwright test %s%s
     `, shellQuote(root+"/ui"), vars.String(), shellQuote(spec), grep), nil
 }
 
@@ -323,7 +326,8 @@ func (r *Run) Playwright(spec, tag string, env map[string]string) {
 	for k, v := range env {
 		vars[k] = v
 	}
-	cmd, err := playwrightCmd(r.env.Root(), spec, tag, vars)
+	// OLAKE_TEST_PW_DEBUG=true logs every browser action; off, the log holds the test steps only.
+	cmd, err := playwrightCmd(r.env.Root(), spec, tag, vars, os.Getenv("OLAKE_TEST_PW_DEBUG") == "true")
 	r.require(err)
 	r.Step("Playwright %s %s...", spec, tag)
 	code, out, err := r.env.ExecStream(r.ctx, r.t, cmd)
