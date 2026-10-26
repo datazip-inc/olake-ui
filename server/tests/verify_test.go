@@ -10,7 +10,7 @@ import (
 // TestPostgresJDBC creates a Postgres -> Iceberg (JDBC) job through the UI, syncs it, and checks the rows in Iceberg.
 func TestPostgresJDBC(t *testing.T) {
 	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
-	err := DinDTestContainer(t, Workflow{
+	err := RunWorkflow(t, Workflow{
 		Source:      postgres.Source,
 		Destination: jdbc.Destination,
 		Spec:        "tests/flows/job-end-to-end.spec.ts",

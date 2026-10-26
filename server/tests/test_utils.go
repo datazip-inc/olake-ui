@@ -1,45 +1,25 @@
 package tests
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"io"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/apache/spark-connect-go/v35/spark/sql"
-	"github.com/moby/moby/api/types/container"
 	"github.com/stretchr/testify/require"
-	testcontainers "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/datazip-inc/olake-ui/server/tests/destinations"
 	"github.com/datazip-inc/olake-ui/server/tests/sources"
 )
 
-const (
-	// Install required tools during initial setup
-	setupToolsCmd = `
-        apt-get update && 
-        apt-get install -y curl postgresql-client dnsutils iputils-ping ncurses-bin ca-certificates gnupg lsb-release netcat-openbsd libatomic1 && 
-        curl -fsSL https://deb.nodesource.com/setup_22.x | bash - &&
-        apt-get install -y nodejs &&
-        npm install -g pnpm@11.24.0 &&
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg &&
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null &&
-        apt-get update &&
-        apt-get install -y docker-compose-plugin &&
-        update-ca-certificates
-    `
-
-	// Start OLake application
-	startOLakeCmd = `
-        cd /mnt && 
-        mkdir -p /mnt/olake-data && 
-        docker compose up -d && 
+// Start OLake application
+func startOLakeCmd(root string) string {
+	return fmt.Sprintf(`
+        cd %[1]s &&
+        mkdir -p %[1]s/olake-data &&
+        docker compose up -d &&
         for i in $(seq 1 60); do
             if curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; then
                 echo "OLake UI ready."
@@ -47,25 +27,29 @@ const (
             fi
             sleep 2
         done
-    `
+    `, root)
+}
 
-	// Install Playwright and dependencies. --frozen-lockfile installs exactly what pnpm-lock.yaml
-	// pins, leaves package.json and the lockfile in the checkout unchanged, and fails if they disagree.
-	installPlaywrightCmd = `
-        cd /mnt/ui &&
+// Install Playwright and dependencies. --frozen-lockfile installs exactly what pnpm-lock.yaml
+// pins, leaves package.json and the lockfile in the checkout unchanged, and fails if they disagree.
+func installPlaywrightCmd(root string) string {
+	return fmt.Sprintf(`
+        cd %s/ui &&
         pnpm install --frozen-lockfile &&
         pnpm exec playwright install --with-deps chromium
-    `
+    `, root)
+}
 
-	// Run a Playwright spec, relative to ui/
-	runPlaywrightCmd = `
-        cd /mnt/ui &&
+// Run a Playwright spec, relative to ui/
+func runPlaywrightCmd(root, job, spec string) string {
+	return fmt.Sprintf(`
+        cd %s/ui &&
         E2E_JOB_NAME='%s' PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test %s
-    `
-)
+    `, root, job, spec)
+}
 
-// sparkConnectPort is the box port VerifyDestination reaches Spark Connect on. Every
-// destination's compose file must run Spark Connect there; see destinations.Destination.
+// sparkConnectPort is the port VerifyDestination reaches Spark Connect on. Every destination's
+// compose file must run Spark Connect there; see destinations.Destination.
 const sparkConnectPort = "15002/tcp"
 
 // Workflow is one integration run: the source and destination to start, the Playwright spec
@@ -87,157 +71,86 @@ func (w Workflow) database() string {
 // fully qualified name Spark reads it from.
 type Check func(ctx context.Context, t *testing.T, spark sql.SparkSession, table func(name string) string)
 
-// composeStartCmd starts the compose file in dir (relative to server/tests) as project
+// composeStartCmd starts the compose file in dir (relative to server/tests under root) as project
 // olake-<project>-test, runs ready in a subshell (skipped when empty), then lists the services.
 // project is "source" or "destination", so the two never share a project whatever their names.
-func composeStartCmd(project, dir string, services []string, ready string) string {
+func composeStartCmd(root, project, dir string, services []string, ready string) string {
 	name := fmt.Sprintf("olake-%s-test", project)
-	cmd := fmt.Sprintf("cd /mnt/server/tests/%s && docker compose -p %s up -d %s", dir, name, strings.Join(services, " "))
+	cmd := fmt.Sprintf("cd %s/server/tests/%s && docker compose -p %s up -d %s", root, dir, name, strings.Join(services, " "))
 	if strings.TrimSpace(ready) != "" {
 		cmd += " && (" + ready + ")"
 	}
 	return cmd + " && docker compose -p " + name + " ps"
 }
 
-func DinDTestContainer(t *testing.T, w Workflow) error {
+// RunWorkflow starts the Env, the source, the destination and OLake, seeds the source, runs the
+// Playwright spec, and runs the workflow's checks on the destination.
+func RunWorkflow(t *testing.T, w Workflow) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Minute) // leaves the CI job's 60 minutes room for checkout and setup
 	defer cancel()
-	projectRoot, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		return fmt.Errorf("could not determine project root: %w", err)
-	}
-	t.Logf("Project root identified at: %s", projectRoot)
 
-	exposedPorts := []string{"8000/tcp", "2375/tcp", sparkConnectPort}
+	ports := []string{sparkConnectPort}
 	if w.Source.Port != "" {
-		exposedPorts = append(exposedPorts, w.Source.Port)
+		ports = append(ports, w.Source.Port)
 	}
-
-	req := testcontainers.ContainerRequest{
-		Image: "ubuntu:22.04",
-		Env: map[string]string{
-			"DOCKER_TLS_CERTDIR":           "",
-			"TELEMETRY_DISABLED":           "true",
-			"TESTCONTAINERS_RYUK_DISABLED": "true",
-			"DEBIAN_FRONTEND":              "noninteractive",
-		},
-		HostConfigModifier: func(hc *container.HostConfig) {
-			hc.Privileged = true
-			hc.Binds = []string{
-				fmt.Sprintf("%s:/mnt:rw", projectRoot),
-			}
-			// Tmpfs mounts create temporary in-memory filesystems inside the container.
-			// These directories behave like RAM disks they exist only in memory (not on disk) and are automatically cleaned up when the container stops.
-			// This is useful for high-performance temporary storage.
-			// 70GB for docker and 15GB for shared memory space in Linux
-			hc.Tmpfs = map[string]string{
-				"/var/lib/docker": "size=70G",
-				"/dev/shm":        "size=10G",
-			}
-			hc.Resources.Memory = 22 * 1024 * 1024 * 1024 // 22GB
-			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
-		},
-		ConfigModifier: func(config *container.Config) {
-			config.WorkingDir = "/mnt"
-		},
-		ExposedPorts: exposedPorts,
-		Cmd: []string{
-			"/bin/sh", "-c",
-			`set -e
-			apt-get update -y &&
-			apt-get install -y --no-install-recommends ca-certificates curl gnupg lsb-release iproute2 procps &&
-			apt-get install -y --no-install-recommends docker.io &&
-			mkdir -p /var/lib/docker /var/run/docker &&
-			exec dockerd --host=tcp://0.0.0.0:2375 --host=unix:///var/run/docker.sock
-			`,
-		},
-		WaitingFor: wait.ForExec([]string{"docker", "-H", "tcp://127.0.0.1:2375", "info"}).WithStartupTimeout(60 * time.Second).WithPollInterval(1 * time.Second),
-	}
-
-	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	// Ryuk is disabled, so nothing else removes the box. Terminate it when the test ends, even
-	// after a failed step. TerminateContainer is nil-safe, and this comes before the error check
-	// because GenericContainer can return a started container together with an error. A failed
-	// terminate is only logged, as before.
-	t.Cleanup(func() {
-		if err := testcontainers.TerminateContainer(ctr); err != nil {
-			t.Logf("Warning: failed to terminate container: %v", err)
-		}
-	})
+	env, err := newEnv(ctx, t, ports)
 	if err != nil {
-		return fmt.Errorf("failed to start DinD container: %w", err)
+		return err
 	}
+	root := env.Root()
 
-	// container host
-	host, err := ctr.Host(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get host: %w", err)
-	}
-
-	// source port, if the source publishes one
-	var sourcePort string
-	if w.Source.Port != "" {
-		mapped, err := ctr.MappedPort(ctx, w.Source.Port)
-		if err != nil {
-			return fmt.Errorf("failed to get %s port: %w", w.Source.Name, err)
-		}
-		sourcePort = mapped.Port()
-	}
-
-	// Spark Connect port
-	sparkPort, err := ctr.MappedPort(ctx, sparkConnectPort)
+	// Spark Connect address
+	sparkHost, sparkPort, err := env.Addr(ctx, sparkConnectPort)
 	if err != nil {
 		return fmt.Errorf("failed to get spark port: %w", err)
 	}
 
-	t.Log("Docker daemon is ready")
-	// Step 1: Install tools
-	t.Log("Installing required tools...")
-	if code, out, err := ExecCommand(ctx, ctr, setupToolsCmd); err != nil || code != 0 {
-		return fmt.Errorf("tools installation failed (%d): %s\n%s", code, err, out)
+	// source address, if the source publishes a port
+	sourceHost, sourcePort := sparkHost, ""
+	if w.Source.Port != "" {
+		if sourceHost, sourcePort, err = env.Addr(ctx, w.Source.Port); err != nil {
+			return fmt.Errorf("failed to get %s port: %w", w.Source.Name, err)
+		}
 	}
 
-	// Step 2: Start the source
+	// Step 1: Start the source
 	t.Logf("Starting %s source...", w.Source.Name)
-	if code, out, err := ExecCommand(ctx, ctr, composeStartCmd("source", w.Source.ComposeDir, nil, w.Source.ReadyCmd)); err != nil || code != 0 {
+	if code, out, err := env.Exec(ctx, composeStartCmd(root, "source", w.Source.ComposeDir, nil, w.Source.ReadyCmd)); err != nil || code != 0 {
 		return fmt.Errorf("%s startup failed (%d): %s\n%s", w.Source.Name, code, err, out)
 	}
 
-	// Step 3: Start the destination
+	// Step 2: Start the destination
 	t.Logf("Starting %s destination...", w.Destination.Name)
-	if code, out, err := ExecCommand(ctx, ctr, composeStartCmd("destination", w.Destination.ComposeDir, w.Destination.Services, w.Destination.ReadyCmd)); err != nil || code != 0 {
+	if code, out, err := env.Exec(ctx, composeStartCmd(root, "destination", w.Destination.ComposeDir, w.Destination.Services, w.Destination.ReadyCmd)); err != nil || code != 0 {
 		return fmt.Errorf("destination services startup failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 4: Patch docker-compose for local images
+	// Step 3: Patch docker-compose for local images
 	t.Log("Patching docker-compose to build local images...")
-	if err := PatchDockerCompose(ctx, t, ctr); err != nil {
+	if err := PatchDockerCompose(ctx, t, env); err != nil {
 		return err
 	}
 
-	// Step 5: Start OLake application
+	// Step 4: Start OLake application
 	t.Log("Starting OLake docker-compose services...")
-	if code, out, err := ExecCommand(ctx, ctr, startOLakeCmd); err != nil || code != 0 {
+	if code, out, err := env.Exec(ctx, startOLakeCmd(root)); err != nil || code != 0 {
 		return fmt.Errorf("OLake startup failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 6: Seed the source
-	w.Source.Seed(ctx, t, host, sourcePort)
+	// Step 5: Seed the source
+	w.Source.Seed(ctx, t, sourceHost, sourcePort)
 
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
 
-	// Step 7: Install Playwright
+	// Step 6: Install Playwright
 	t.Log("Installing Playwright and dependencies...")
-	if code, out, err := ExecCommand(ctx, ctr, installPlaywrightCmd); err != nil || code != 0 {
-		return fmt.Errorf("playwright installation failed (%d): %s\n%s", code, err, out)
+	if err := env.InstallPlaywright(ctx, t); err != nil {
+		return err
 	}
 
-	// Step 8: Run Playwright tests
+	// Step 7: Run Playwright tests
 	t.Log("Executing Playwright tests...")
-	if code, out, err := ExecCommandWithStreaming(ctx, t, ctr, fmt.Sprintf(runPlaywrightCmd, w.Job, w.Spec)); err != nil || code != 0 {
+	if code, out, err := env.ExecStream(ctx, t, runPlaywrightCmd(root, w.Job, w.Spec)); err != nil || code != 0 {
 		return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
 	}
 	t.Log("Playwright tests passed successfully.")
@@ -246,38 +159,16 @@ func DinDTestContainer(t *testing.T, w Workflow) error {
 	t.Log("Waiting for 60 seconds before verifying destination data...")
 	time.Sleep(60 * time.Second)
 
-	// Step 9: Verify the destination
+	// Step 8: Verify the destination
 	t.Logf("Starting %s data verification...", w.Destination.Name)
-	VerifyDestination(ctx, t, host, sparkPort.Port(), w)
+	VerifyDestination(ctx, t, sparkHost, sparkPort, w)
 	return nil
-}
-
-// ExecCommandWithStreaming executes a command and streams output in real-time
-func ExecCommandWithStreaming(ctx context.Context, t *testing.T, ctr testcontainers.Container, cmd string) (int, string, error) {
-	exitCode, reader, err := ctr.Exec(ctx, []string{"sh", "-c", cmd})
-	if err != nil {
-		return -1, "", err
-	}
-
-	var output strings.Builder
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		line := scanner.Text()
-		t.Log(line)
-		output.WriteString(line + "\n")
-	}
-
-	if err := scanner.Err(); err != nil {
-		return exitCode, output.String(), err
-	}
-
-	return exitCode, output.String(), nil
 }
 
 // PatchDockerCompose updates olake-ui to build from local code
 // TODO: Remove patch command and find alternative to use local code
-func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Container) error {
-	patchCmd := `
+func PatchDockerCompose(ctx context.Context, t *testing.T, env Env) error {
+	patchCmd := fmt.Sprintf(`
     set -e
     tmpfile=$(mktemp)
     awk '
@@ -294,10 +185,10 @@ func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Co
       }
       print
     }
-    ' /mnt/docker-compose.yml > "$tmpfile" && mv "$tmpfile" /mnt/docker-compose.yml
-`
+    ' %[1]s/docker-compose.yml > "$tmpfile" && mv "$tmpfile" %[1]s/docker-compose.yml
+`, env.Root())
 
-	code, out, err := ExecCommand(ctx, ctr, patchCmd)
+	code, out, err := env.Exec(ctx, patchCmd)
 	if err != nil || code != 0 {
 		t.Logf("docker-compose patch output: %s", string(out))
 		return fmt.Errorf("failed to patch docker-compose.yml (%d): %s\n%s", code, err, out)
@@ -322,18 +213,4 @@ func VerifyDestination(ctx context.Context, t *testing.T, host, port string, w W
 	for _, check := range w.Checks {
 		check(ctx, t, spark, table)
 	}
-}
-
-// Helper function to execute container commands
-func ExecCommand(
-	ctx context.Context,
-	c testcontainers.Container,
-	cmd string,
-) (int, []byte, error) {
-	code, reader, err := c.Exec(ctx, []string{"/bin/sh", "-c", cmd})
-	if err != nil {
-		return code, nil, err
-	}
-	output, _ := io.ReadAll(reader)
-	return code, output, nil
 }
