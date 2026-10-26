@@ -47,7 +47,48 @@ var Source = sources.Source{
 		createTable(ctx, t, db)
 		truncateTable(ctx, t, db)
 		insertTestData(ctx, t, db)
+		for _, table := range Tables {
+			for _, statement := range seedStatements(table) {
+				_, err := db.ExecContext(ctx, statement)
+				require.NoError(t, err, "failed to seed %s: %s", table, statement)
+			}
+		}
 	},
+	Exec: Exec,
+}
+
+// Tables are the e2e streams of the integration job, one per feature. Each starts with rows
+// 1-5: id, name 'name_<id>' and amount <id>*10.
+var Tables = []string{
+	"e2e_cdc",
+	"e2e_strict_cdc",
+	"e2e_upsert_eq",
+	"e2e_upsert_dv",
+	"e2e_filter",
+	"e2e_new_columns",
+}
+
+// seedStatements recreates table with rows 1-5.
+func seedStatements(table string) []string {
+	return []string{
+		fmt.Sprintf("DROP TABLE IF EXISTS %s", table),
+		fmt.Sprintf("CREATE TABLE %s (id INT PRIMARY KEY, name TEXT, amount INT)", table),
+		fmt.Sprintf("INSERT INTO %s SELECT g, 'name_' || g, g * 10 FROM generate_series(1, 5) AS g", table),
+	}
+}
+
+// Exec runs statements on the source Postgres in order, each in its own transaction.
+func Exec(ctx context.Context, t *testing.T, host, port string, statements ...string) {
+	t.Helper()
+	db := connect(ctx, t, host, port)
+	defer func() {
+		require.NoError(t, db.Close(), "failed to close postgres connection")
+	}()
+	for _, statement := range statements {
+		t.Logf("source SQL: %s", statement)
+		_, err := db.ExecContext(ctx, statement)
+		require.NoError(t, err, "failed to run %s", statement)
+	}
 }
 
 func connect(ctx context.Context, t *testing.T, host, port string) *sqlx.DB {

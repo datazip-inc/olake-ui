@@ -18,4 +18,8 @@ type Source struct {
 	// Seed creates the tables and rows the workflow syncs. host and port reach the source from the
 	// test; port is empty when Port is.
 	Seed func(ctx context.Context, t *testing.T, host, port string)
+
+	// Exec runs SQL statements on the source in order, for the changes a workflow makes between
+	// syncs. host and port are as for Seed.
+	Exec func(ctx context.Context, t *testing.T, host, port string, statements ...string)
 }
