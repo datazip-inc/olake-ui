@@ -17,13 +17,15 @@ services:
       - bash
       - -c
       - |
-        # Start PostgreSQL with logical replication in background
+        # Start PostgreSQL with logical replication in background. wal_sender_timeout=0 keeps a
+        # long CDC sync from being disconnected; OLake's CDC prerequisite checks recommend it.
         docker-entrypoint.sh postgres \
           -c hba_file=/etc/postgresql/pg_hba.conf \
           -c listen_addresses='*' \
           -c wal_level=logical \
           -c max_wal_senders=10 \
-          -c max_replication_slots=10 &
+          -c max_replication_slots=10 \
+          -c wal_sender_timeout=0 &
 
         # Wait for PostgreSQL to be ready
         while ! pg_isready -U postgres -h localhost -p 5432; do
