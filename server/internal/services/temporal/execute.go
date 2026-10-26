@@ -417,6 +417,16 @@ func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, o
 	newConfigs, newArgs := stageCatalog(newCatalog, "new_", "--difference", "--difference-available-streams", "--difference-selected-streams")
 	configs = append(configs, newConfigs...)
 	cmdArgs = append(append([]string{"discover"}, cmdArgs...), newArgs...)
+
+	if job.Destination != nil {
+		destinationConfig, err := utils.Encrypt(job.Destination.Config)
+		if err != nil {
+			return "", fmt.Errorf("failed to encrypt destination config: %s", err)
+		}
+		configs = append(configs, JobConfig{Name: "destination.json", Data: destinationConfig})
+		cmdArgs = append(cmdArgs, "--destination", "/mnt/config/destination.json")
+	}
+
 	outputFile := "difference_streams.json"
 	if newCatalog.IsSplit() {
 		outputFile = "difference_selected_streams.json"
