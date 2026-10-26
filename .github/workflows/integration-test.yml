@@ -32,3 +32,81 @@ jobs:
         working-directory: ./server
         run: go test -v ./tests -timeout 0 -run '^Test'
 
+  # The same tests, run on a GitHub-hosted runner instead of in a DinD box. Node, pnpm, the UI
+  # dependencies, Playwright and the olake-ui image come from cached steps here, so the test
+  # only starts the stack. The runner is discarded after the job, which runner mode relies on.
+  integration-tests-runner:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h /
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'server/go.mod'
+          cache-dependency-path: 'server/go.sum'
+
+      - name: Download Go dependencies
+        working-directory: ./server
+        run: go mod download
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: npm install -g pnpm@11.24.0
+
+      - name: Find the pnpm store
+        id: pnpm-store
+        working-directory: ./ui
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('ui/pnpm-lock.yaml') }}
+
+      - name: Install UI dependencies
+        working-directory: ./ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('ui/pnpm-lock.yaml') }}
+
+      - name: Install Playwright Chromium
+        working-directory: ./ui
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build olake-ui
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: olake-ui:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run integration tests on the runner
+        working-directory: ./server
+        env:
+          OLAKE_TEST_ENV: runner
+          OLAKE_TEST_SKIP_UI_BUILD: "true"
+        run: go test -v ./tests -timeout 0 -run '^Test'
