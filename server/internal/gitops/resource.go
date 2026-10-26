@@ -290,11 +290,15 @@ func resourceMatches(existing, spec *resourceSpec) bool {
 		utils.EqualJSON(existing.Config.String(), spec.Config.String())
 }
 
-func reconcileResource(ctx context.Context, sink StatusSink, r resource, res *ResourceData) (ctrl.Result, error) {
+func reconcileResource(ctx context.Context, sink StatusSink, secrets *secretRefs, r resource, res *ResourceData) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	observedHash := ContentHash(res.Data)
-	if skipReconcile(res.Annotations, observedHash) {
+	// A synced resource is skipped, except a Ready one whose config has secret references: it is
+	// re-checked so a rotated secret reaches OLake without a change in git.
+	synced := skipReconcile(res.Annotations, observedHash)
+	refreshing := synced && res.Annotations[AnnotationPhase] == PhaseReady && secrets.mayRefresh(res.Config())
+	if synced && !refreshing {
 		return ctrl.Result{}, nil
 	}
 
@@ -307,6 +311,16 @@ func reconcileResource(ctx context.Context, sink StatusSink, r resource, res *Re
 		return failResource(ctx, sink, res, err, observedHash)
 	}
 
+	resolved, hasRefs, err := secrets.resolve(ctx, spec.Config.String())
+	if err != nil {
+		logger.Error(err, "resolve "+r.kind()+" secret references failed")
+		if !errors.Is(err, ErrNonRetryable) {
+			return requeueTransient(ctx, sink, res, err, observedHash)
+		}
+		return failResource(ctx, sink, res, err, observedHash)
+	}
+	spec.Config = dto.JSONConfig(resolved)
+
 	existing, err := r.get(ctx, res.ProjectID(), spec.Name)
 	if err != nil && !errors.Is(err, r.notFoundErr()) {
 		logger.Error(err, "lookup "+r.kind()+" failed")
@@ -314,6 +328,10 @@ func reconcileResource(ctx context.Context, sink StatusSink, r resource, res *Re
 	}
 
 	changed := existing != nil && !resourceMatches(existing, spec)
+	if refreshing && existing != nil && !changed {
+		// Secrets unchanged: nothing to write, so status and indicators are left as they are.
+		return secrets.next(hasRefs), nil
+	}
 	if existing == nil || changed {
 		if err := r.test(ctx, res.ProjectID(), spec); err != nil {
 			logger.Error(err, r.kind()+" connection test failed")
@@ -346,7 +364,7 @@ func reconcileResource(ctx context.Context, sink StatusSink, r resource, res *Re
 		logger.Error(err, "update "+r.kind()+" status failed")
 		return requeueTransient(ctx, sink, res, err, observedHash)
 	}
-	return ctrl.Result{}, nil
+	return secrets.next(hasRefs), nil
 }
 
 func setupResourceController(mgr ctrl.Manager, name, kind string, rec reconcile.Reconciler) error {

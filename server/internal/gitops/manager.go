@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -110,19 +111,22 @@ func Setup(app *services.AppService, restConfig *rest.Config) (*Controller, erro
 func (c *Controller) Run(ctx context.Context) error {
 	etlSvc := c.app.ETL()
 	sink := NewK8sSink(c.mgr.GetClient(), c.mgr.GetEventRecorderFor("olake-gitops"), etlSvc.Temporal())
+	secrets := newSecretRefs(appconfig.Load())
 
 	if err := (&SourceReconciler{
-		Client: c.mgr.GetClient(),
-		ETL:    etlSvc,
-		Sink:   sink,
+		Client:  c.mgr.GetClient(),
+		ETL:     etlSvc,
+		Sink:    sink,
+		Secrets: secrets,
 	}).Setup(c.mgr); err != nil {
 		return fmt.Errorf("setup source controller: %w", err)
 	}
 
 	if err := (&DestinationReconciler{
-		Client: c.mgr.GetClient(),
-		ETL:    etlSvc,
-		Sink:   sink,
+		Client:  c.mgr.GetClient(),
+		ETL:     etlSvc,
+		Sink:    sink,
+		Secrets: secrets,
 	}).Setup(c.mgr); err != nil {
 		return fmt.Errorf("setup destination controller: %w", err)
 	}

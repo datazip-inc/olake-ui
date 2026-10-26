@@ -14,6 +14,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
@@ -72,8 +73,9 @@ func newFileWatcher(dir, stateFile string, etlSvc *etl.Service, t *temporal.Temp
 		stop:           make(chan struct{}),
 	}
 	sink := StatusSink(fw)
-	fw.source = &SourceReconciler{ETL: etlSvc, Sink: sink}
-	fw.dest = &DestinationReconciler{ETL: etlSvc, Sink: sink}
+	secrets := newSecretRefs(appconfig.Load())
+	fw.source = &SourceReconciler{ETL: etlSvc, Sink: sink, Secrets: secrets}
+	fw.dest = &DestinationReconciler{ETL: etlSvc, Sink: sink, Secrets: secrets}
 	fw.job = &JobReconciler{ETL: etlSvc, Sink: sink, findStreams: fw.findStreams}
 	return fw
 }
@@ -309,9 +311,9 @@ func (fw *FileWatcher) enqueueDependentJobs(changed *ResourceData) {
 func (fw *FileWatcher) sync(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
 	switch res.Kind {
 	case KindSource:
-		return reconcileResource(ctx, fw, fw.source, res)
+		return reconcileResource(ctx, fw, fw.source.Secrets, fw.source, res)
 	case KindDestination:
-		return reconcileResource(ctx, fw, fw.dest, res)
+		return reconcileResource(ctx, fw, fw.dest.Secrets, fw.dest, res)
 	case KindJob:
 		return fw.job.reconcileJob(ctx, res)
 	case KindStreams:

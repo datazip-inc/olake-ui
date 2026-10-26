@@ -13,8 +13,9 @@ import (
 
 type DestinationReconciler struct {
 	client.Client
-	ETL  *etl.Service
-	Sink StatusSink
+	ETL     *etl.Service
+	Sink    StatusSink
+	Secrets *secretRefs
 }
 
 func (r *DestinationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -22,7 +23,7 @@ func (r *DestinationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	return reconcileResource(ctx, r.Sink, r, res)
+	return reconcileResource(ctx, r.Sink, r.Secrets, r, res)
 }
 
 func (r *DestinationReconciler) Setup(mgr ctrl.Manager) error {

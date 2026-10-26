@@ -1,0 +1,219 @@
+// Package secretref resolves secret references in connector configs.
+//
+// A reference is a whole JSON string value of the form ${<provider>:<path>[#<key>]}, for example
+// "${aws-sm:olake/prod/pg#password}". The value is fetched from the provider and, when #<key> is
+// given, read from that key of a JSON-object secret.
+//
+// Providers are created on first use, so a cloud SDK client is only built when a config
+// references that provider.
+package secretref
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"maps"
+	"regexp"
+	"slices"
+	"strings"
+	"sync"
+	"time"
+)
+
+// ErrUnresolvable marks an error that will not go away on retry: a malformed reference, an
+// unsupported provider, a missing secret or key, or access denied.
+var ErrUnresolvable = errors.New("secret reference cannot be resolved")
+
+func unresolvable(format string, args ...any) error {
+	return fmt.Errorf("%w: %s", ErrUnresolvable, fmt.Sprintf(format, args...))
+}
+
+// Provider fetches the raw value of one secret. path is the part of the reference between the
+// provider name and "#"; each provider defines its format.
+type Provider interface {
+	Fetch(ctx context.Context, path string) (string, error)
+}
+
+type factory func(ctx context.Context, cfg Config) (Provider, error)
+
+var factories = map[string]factory{
+	"aws-sm": newAWSProvider,
+	"gcp-sm": newGCPProvider,
+}
+
+type Config struct {
+	AWS AWSConfig
+	GCP GCPConfig
+}
+
+// cacheTTL lets resources that share a secret, and reconciles close together, reuse one fetch.
+const cacheTTL = time.Minute
+
+var refPattern = regexp.MustCompile(`^\$\{([a-z][a-z0-9-]*):([^#}]+)(?:#([^}]*))?\}$`)
+
+type cachedSecret struct {
+	value     string
+	fetchedAt time.Time
+}
+
+// Resolver is safe for concurrent use.
+type Resolver struct {
+	cfg Config
+	now func() time.Time
+
+	mu        sync.Mutex
+	providers map[string]Provider
+	cache     map[string]cachedSecret
+}
+
+func New(cfg Config) *Resolver {
+	return &Resolver{
+		cfg:       cfg,
+		now:       time.Now,
+		providers: map[string]Provider{},
+		cache:     map[string]cachedSecret{},
+	}
+}
+
+// NewWithProviders is for tests: it resolves references without a cloud account.
+func NewWithProviders(providers map[string]Provider) *Resolver {
+	r := New(Config{})
+	maps.Copy(r.providers, providers)
+	return r
+}
+
+// Resolve replaces every reference in the JSON config with its secret value and reports whether
+// it found any. Errors name the reference, never a secret value.
+func (r *Resolver) Resolve(ctx context.Context, config string) (string, bool, error) {
+	if !strings.Contains(config, "${") {
+		return config, false, nil
+	}
+
+	fields, err := decodeObject(config)
+	if err != nil {
+		return "", false, unresolvable("config is not a JSON object")
+	}
+
+	found := false
+	if err := r.resolveFields(ctx, fields, &found); err != nil {
+		return "", false, err
+	}
+	resolved, _ := json.Marshal(fields) // cannot fail: fields came from json decoding
+	return string(resolved), found, nil
+}
+
+// resolveFields resolves references in fields and in nested objects, such as ssh_config.password
+// in a source or writer.aws_secret_key in a destination.
+func (r *Resolver) resolveFields(ctx context.Context, fields map[string]any, found *bool) error {
+	for key, value := range fields {
+		switch value := value.(type) {
+		case map[string]any:
+			if err := r.resolveFields(ctx, value, found); err != nil {
+				return err
+			}
+		case string:
+			resolved, err := r.resolveString(ctx, value, found)
+			if err != nil {
+				return err
+			}
+			fields[key] = resolved
+		}
+	}
+	return nil
+}
+
+func (r *Resolver) resolveString(ctx context.Context, ref string, found *bool) (string, error) {
+	match := refPattern.FindStringSubmatch(ref)
+	if match == nil {
+		return ref, nil
+	}
+	providerName, path, key := match[1], match[2], match[3]
+	secret, err := r.fetch(ctx, providerName, path)
+	if err != nil {
+		return "", fmt.Errorf("resolve %s: %w", ref, err)
+	}
+	if strings.Contains(ref, "#") {
+		if secret, err = readKey(secret, key); err != nil {
+			return "", fmt.Errorf("resolve %s: %w", ref, err)
+		}
+	}
+	*found = true
+	return secret, nil
+}
+
+// decodeObject decodes a JSON object, keeping numbers exactly as written.
+func decodeObject(data string) (map[string]any, error) {
+	decoder := json.NewDecoder(strings.NewReader(data))
+	decoder.UseNumber()
+	var fields map[string]any
+	err := decoder.Decode(&fields)
+	return fields, err
+}
+
+// readKey reads key from a JSON-object secret. Errors never quote the secret.
+func readKey(secret, key string) (string, error) {
+	fields, err := decodeObject(secret)
+	if err != nil {
+		return "", unresolvable("secret is not a JSON object, so #%s cannot be read", key)
+	}
+	value, ok := fields[key]
+	if !ok {
+		return "", unresolvable("key %q not found in secret", key)
+	}
+	if s, ok := value.(string); ok {
+		return s, nil
+	}
+	encoded, _ := json.Marshal(value) // cannot fail: value came from json decoding
+	return string(encoded), nil
+}
+
+func (r *Resolver) fetch(ctx context.Context, providerName, path string) (string, error) {
+	cacheKey := providerName + ":" + path
+	r.mu.Lock()
+	cached, ok := r.cache[cacheKey]
+	r.mu.Unlock()
+	if ok && r.now().Sub(cached.fetchedAt) < cacheTTL {
+		return cached.value, nil
+	}
+
+	provider, err := r.loadProvider(ctx, providerName)
+	if err != nil {
+		return "", err
+	}
+	secret, err := provider.Fetch(ctx, path)
+	if err != nil {
+		return "", err
+	}
+
+	r.mu.Lock()
+	r.cache[cacheKey] = cachedSecret{value: secret, fetchedAt: r.now()}
+	r.mu.Unlock()
+	return secret, nil
+}
+
+// loadProvider creates the provider on first use. A failed creation is not kept, so the next
+// call tries again. Two callers may create it at once; either result is a working client.
+func (r *Resolver) loadProvider(ctx context.Context, name string) (Provider, error) {
+	r.mu.Lock()
+	provider, ok := r.providers[name]
+	r.mu.Unlock()
+	if ok {
+		return provider, nil
+	}
+
+	newProvider, ok := factories[name]
+	if !ok {
+		return nil, unresolvable("unsupported secret provider %q (supported: %s)", name,
+			strings.Join(slices.Sorted(maps.Keys(factories)), ", "))
+	}
+	provider, err := newProvider(ctx, r.cfg)
+	if err != nil {
+		return nil, fmt.Errorf("create %s provider: %w", name, err)
+	}
+
+	r.mu.Lock()
+	r.providers[name] = provider
+	r.mu.Unlock()
+	return provider, nil
+}
