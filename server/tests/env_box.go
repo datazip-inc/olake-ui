@@ -74,7 +74,10 @@ func startBoxEnv(ctx context.Context, t *testing.T, ports []string) (*boxEnv, er
 		ConfigModifier: func(config *container.Config) {
 			config.WorkingDir = boxRoot
 		},
-		ExposedPorts: append([]string{"8000/tcp", "2375/tcp"}, ports...),
+		// Only the ports the Go test reaches. The UI (8000) is used from inside the box, and the box's
+		// Docker API listens on 127.0.0.1 only: published, it would give anyone who can reach the
+		// runner an unauthenticated daemon in a privileged container.
+		ExposedPorts: ports,
 		Cmd: []string{
 			"/bin/sh", "-c",
 			`set -e
@@ -82,7 +85,7 @@ func startBoxEnv(ctx context.Context, t *testing.T, ports []string) (*boxEnv, er
 			apt-get install -y --no-install-recommends ca-certificates curl gnupg lsb-release iproute2 procps &&
 			apt-get install -y --no-install-recommends docker.io &&
 			mkdir -p /var/lib/docker /var/run/docker &&
-			exec dockerd --host=tcp://0.0.0.0:2375 --host=unix:///var/run/docker.sock
+			exec dockerd --host=tcp://127.0.0.1:2375 --host=unix:///var/run/docker.sock
 			`,
 		},
 		WaitingFor: wait.ForExec([]string{"docker", "-H", "tcp://127.0.0.1:2375", "info"}).WithStartupTimeout(60 * time.Second).WithPollInterval(1 * time.Second),
