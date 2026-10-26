@@ -95,9 +95,17 @@ export const expectSourceTestPassed = async (page: Page) => {
 			"checks failed",
 		),
 	])
+	// On failure, name the checks: the prerequisite dialog lists each one with its current value.
+	const details =
+		outcome === "success"
+			? ""
+			: await page
+					.getByRole("dialog", { name: "Testing Source Configuration" })
+					.innerText({ timeout: 2000 })
+					.catch(() => "")
 	expect(
 		outcome,
-		"source test connection and its CDC prerequisite checks must all pass",
+		`source test connection and its CDC prerequisite checks must all pass\n${details}`,
 	).toBe("success")
 }
 
