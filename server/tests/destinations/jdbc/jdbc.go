@@ -13,6 +13,7 @@ var Destination = destinations.Destination{
 	ComposeDir: "destinations/jdbc",
 	Services:   []string{"minio", "mc", "postgres", "spark-iceberg"},
 	ReadyCmd:   "sleep 5",
+	DataDir:    "data", // ./data/minio-data and ./data/postgres-data (the Iceberg catalog)
 	Table: func(database, table string) string {
 		return fmt.Sprintf("olake_iceberg.%s.%s", database, table)
 	},

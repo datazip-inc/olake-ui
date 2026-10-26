@@ -63,3 +63,6 @@ CLAUDE.local.md
 # Local dev notes (not committed)
 # ----------------------------
 examples/
+
+# Data the integration test's destination stack writes (server/tests/destinations/*/docker-compose.yml)
+server/tests/destinations/*/data/

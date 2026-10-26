@@ -28,6 +28,12 @@ const olakeComposeFiles = "-p olake-app-test -f docker-compose.yml -f server/tes
 // an OLake a developer runs from the same checkout. It is gitignored like any olake-data folder.
 const olakeHome = "server/tests/.olake-home"
 
+// clearDirCmd empties dir, creating it if needed. It runs rm in a container because files the
+// stack's containers wrote can belong to root.
+func clearDirCmd(dir string) string {
+	return fmt.Sprintf("mkdir -p %[1]s && docker run --rm -v %[1]s:/clear alpine:3.20 find /clear -mindepth 1 -delete", shellQuote(dir))
+}
+
 // olakeCompose is the docker compose command for the test's OLake project, run from root.
 func olakeCompose(root string) string {
 	return fmt.Sprintf("PWD=%s docker compose %s", shellQuote(root+"/"+olakeHome), olakeComposeFiles)
@@ -187,6 +193,14 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 	if w.Source.Port != "" {
 		r.sourceHost, r.sourcePort, err = env.Addr(ctx, w.Source.Port)
 		r.require(err, "failed to get %s port", w.Source.Name)
+	}
+
+	// A checkout that ran the test before still holds that run's Iceberg tables and job state;
+	// a new run must not read them.
+	r.Step("Clearing data left by earlier runs...")
+	r.exec(clearDirCmd(root+"/"+olakeHome), "clearing %s failed", olakeHome)
+	if w.Destination.DataDir != "" {
+		r.exec(clearDirCmd(root+"/server/tests/"+w.Destination.ComposeDir+"/"+w.Destination.DataDir), "clearing the %s data failed", w.Destination.Name)
 	}
 
 	r.Step("Starting %s source...", w.Source.Name)

@@ -87,3 +87,8 @@ func TestShellQuote(t *testing.T) {
 	require.Equal(t, 0, code, string(out))
 	require.Equal(t, dir+"\n", string(out))
 }
+
+func TestClearDirCmd(t *testing.T) {
+	cmd := clearDirCmd("/mnt/server/tests/a dir")
+	require.Equal(t, "mkdir -p '/mnt/server/tests/a dir' && docker run --rm -v '/mnt/server/tests/a dir':/clear alpine:3.20 find /clear -mindepth 1 -delete", cmd)
+}
