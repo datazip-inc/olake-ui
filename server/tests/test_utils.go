@@ -146,11 +146,15 @@ func (w *Workflow) database() string {
 // project is "source" or "destination", so the two never share a project whatever their names.
 func composeStartCmd(root, project, dir string, services []string, ready string) string {
 	name := fmt.Sprintf("olake-%s-test", project)
-	cmd := fmt.Sprintf("cd %s && docker compose -p %s up -d %s", shellQuote(root+"/server/tests/"+dir), name, strings.Join(services, " "))
+	start := fmt.Sprintf("docker compose -p %s up -d %s", name, strings.Join(services, " "))
 	if strings.TrimSpace(ready) != "" {
-		cmd += " && (" + ready + ")"
+		start += " && (" + ready + ")"
 	}
-	return cmd + " && docker compose -p " + name + " ps"
+	start += " && docker compose -p " + name + " ps"
+	// On failure, print the containers' logs: the cleanup removes the containers, and with them
+	// the only record of why one exited.
+	return fmt.Sprintf("cd %s && { %s; } || { echo '--- %s container logs ---'; docker compose -p %s logs --no-color --tail 40; exit 1; }",
+		shellQuote(root+"/server/tests/"+dir), start, name, name)
 }
 
 // Run is a started integration stack: the Env with the source, the destination and OLake up,
