@@ -53,7 +53,7 @@ func (r *runnerEnv) down(t *testing.T) {
 	defer cancel()
 	t.Log("Taking down the compose projects...")
 	for _, cmd := range []string{
-		fmt.Sprintf("cd %s && docker compose %s down -v -t 5 --remove-orphans", shellQuote(r.root), olakeComposeFiles),
+		fmt.Sprintf("cd %s && %s down -v -t 5 --remove-orphans", shellQuote(r.root), olakeCompose(r.root)),
 		"docker compose -p olake-source-test down -v -t 5",
 		"docker compose -p olake-destination-test down -v -t 5",
 		"docker rm -f " + webhookContainer,

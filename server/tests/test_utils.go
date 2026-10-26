@@ -23,6 +23,16 @@ import (
 // project is named after the directory.
 const olakeComposeFiles = "-p olake-app-test -f docker-compose.yml -f server/tests/compose.olake-ui.yml"
 
+// olakeHome, under the checkout, stands in for PWD in the root docker-compose.yml, whose job
+// state lives in ${PWD}/olake-data. The test's state then stays out of the olake-data folder of
+// an OLake a developer runs from the same checkout. It is gitignored like any olake-data folder.
+const olakeHome = "server/tests/.olake-home"
+
+// olakeCompose is the docker compose command for the test's OLake project, run from root.
+func olakeCompose(root string) string {
+	return fmt.Sprintf("PWD=%s docker compose %s", shellQuote(root+"/"+olakeHome), olakeComposeFiles)
+}
+
 // shellQuote quotes s as one word for /bin/sh. The checkout path in runner mode can hold spaces
 // or shell characters, so every interpolated value goes through it.
 func shellQuote(s string) string {
@@ -31,15 +41,15 @@ func shellQuote(s string) string {
 
 // Build the olake-ui:ci image from the checkout
 func buildOLakeUICmd(root string) string {
-	return fmt.Sprintf("cd %s && docker compose %s build olake-ui", shellQuote(root), olakeComposeFiles)
+	return fmt.Sprintf("cd %s && %s build olake-ui", shellQuote(root), olakeCompose(root))
 }
 
 // Start OLake application
 func startOLakeCmd(root string) string {
 	return fmt.Sprintf(`
         cd %[1]s &&
-        mkdir -p olake-data &&
-        docker compose %[2]s up -d &&
+        mkdir -p %[2]s/olake-data &&
+        %[3]s up -d &&
         for i in $(seq 1 60); do
             if curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; then
                 echo "OLake UI ready."
@@ -47,7 +57,7 @@ func startOLakeCmd(root string) string {
             fi
             sleep 2
         done
-    `, shellQuote(root), olakeComposeFiles)
+    `, shellQuote(root), shellQuote(olakeHome), olakeCompose(root))
 }
 
 // Install Playwright and dependencies. --frozen-lockfile installs exactly what pnpm-lock.yaml
