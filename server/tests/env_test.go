@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -47,4 +48,14 @@ func TestRunWorkflowRejectsUnsafeInput(t *testing.T) {
 	} {
 		require.Error(t, RunWorkflow(t, w))
 	}
+}
+
+func TestShellQuote(t *testing.T) {
+	dir := t.TempDir() + "/a dir with 'quote' $HOME;x"
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	r := &runnerEnv{root: dir}
+	code, out, err := r.Exec(context.Background(), "cd "+shellQuote(dir)+" && pwd")
+	require.NoError(t, err)
+	require.Equal(t, 0, code, string(out))
+	require.Equal(t, dir+"\n", string(out))
 }

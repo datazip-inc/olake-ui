@@ -42,7 +42,7 @@ func (r *runnerEnv) down(t *testing.T) {
 	defer cancel()
 	t.Log("Taking down the compose projects...")
 	for _, cmd := range []string{
-		fmt.Sprintf("cd %s && docker compose %s down -v -t 5 --remove-orphans", r.root, olakeComposeFiles),
+		fmt.Sprintf("cd %s && docker compose %s down -v -t 5 --remove-orphans", shellQuote(r.root), olakeComposeFiles),
 		"docker compose -p olake-source-test down -v -t 5",
 		"docker compose -p olake-destination-test down -v -t 5",
 	} {
@@ -74,7 +74,7 @@ func (r *runnerEnv) ServiceHost(ctx context.Context) (string, error) {
 
 // InstallPlaywright only checks that the CI workflow installed Playwright in ui/.
 func (r *runnerEnv) InstallPlaywright(ctx context.Context, t *testing.T) error {
-	cmd := fmt.Sprintf("cd %s/ui && pnpm exec playwright --version", r.root)
+	cmd := fmt.Sprintf("cd %s && pnpm exec playwright --version", shellQuote(r.root+"/ui"))
 	if code, out, err := r.Exec(ctx, cmd); err != nil || code != 0 {
 		return fmt.Errorf("playwright is not installed in ui/ (%d): %v\n%s\n"+
 			"run: pnpm install --frozen-lockfile && pnpm exec playwright install --with-deps chromium", code, err, out)

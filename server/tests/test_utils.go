@@ -22,16 +22,22 @@ import (
 // project is named after the directory.
 const olakeComposeFiles = "-p olake-app-test -f docker-compose.yml -f server/tests/compose.olake-ui.yml"
 
+// shellQuote quotes s as one word for /bin/sh. The checkout path in runner mode can hold spaces
+// or shell characters, so every interpolated value goes through it.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
 // Build the olake-ui:ci image from the checkout
 func buildOLakeUICmd(root string) string {
-	return fmt.Sprintf("cd %s && docker compose %s build olake-ui", root, olakeComposeFiles)
+	return fmt.Sprintf("cd %s && docker compose %s build olake-ui", shellQuote(root), olakeComposeFiles)
 }
 
 // Start OLake application
 func startOLakeCmd(root string) string {
 	return fmt.Sprintf(`
         cd %[1]s &&
-        mkdir -p %[1]s/olake-data &&
+        mkdir -p olake-data &&
         docker compose %[2]s up -d &&
         for i in $(seq 1 60); do
             if curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; then
@@ -40,25 +46,25 @@ func startOLakeCmd(root string) string {
             fi
             sleep 2
         done
-    `, root, olakeComposeFiles)
+    `, shellQuote(root), olakeComposeFiles)
 }
 
 // Install Playwright and dependencies. --frozen-lockfile installs exactly what pnpm-lock.yaml
 // pins, leaves package.json and the lockfile in the checkout unchanged, and fails if they disagree.
 func installPlaywrightCmd(root string) string {
 	return fmt.Sprintf(`
-        cd %s/ui &&
+        cd %s &&
         pnpm install --frozen-lockfile &&
         pnpm exec playwright install --with-deps chromium
-    `, root)
+    `, shellQuote(root+"/ui"))
 }
 
 // Run a Playwright spec, relative to ui/
 func runPlaywrightCmd(root, job, serviceHost, spec string) string {
 	return fmt.Sprintf(`
-        cd %s/ui &&
-        E2E_JOB_NAME='%s' E2E_SERVICE_HOST='%s' PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test %s
-    `, root, job, serviceHost, spec)
+        cd %s &&
+        E2E_JOB_NAME=%s E2E_SERVICE_HOST=%s PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test %s
+    `, shellQuote(root+"/ui"), shellQuote(job), shellQuote(serviceHost), shellQuote(spec))
 }
 
 // jobPattern and specPattern limit the values RunWorkflow puts in the Playwright shell command.
@@ -95,7 +101,7 @@ type Check func(ctx context.Context, t *testing.T, spark sql.SparkSession, table
 // project is "source" or "destination", so the two never share a project whatever their names.
 func composeStartCmd(root, project, dir string, services []string, ready string) string {
 	name := fmt.Sprintf("olake-%s-test", project)
-	cmd := fmt.Sprintf("cd %s/server/tests/%s && docker compose -p %s up -d %s", root, dir, name, strings.Join(services, " "))
+	cmd := fmt.Sprintf("cd %s && docker compose -p %s up -d %s", shellQuote(root+"/server/tests/"+dir), name, strings.Join(services, " "))
 	if strings.TrimSpace(ready) != "" {
 		cmd += " && (" + ready + ")"
 	}
