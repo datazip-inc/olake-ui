@@ -8,21 +8,10 @@ import (
 	"strings"
 )
 
-// File mode manifests are plain JSON, one entity per file, with no Kubernetes fields:
-//
-//	{"kind": "source", "projectId": "123", "userId": 1, "name": "pg", "type": "postgres", "version": "v1.0.0", "config": {...}}
-//	{"kind": "destination", "projectId": "123", "userId": 1, "name": "lake", "type": "iceberg", "version": "v1.0.0", "config": {...}}
-//	{"kind": "job", "projectId": "123", "userId": 1, "name": "orders", "source": "pg", "destination": "lake", "frequency": "0 * * * *"}
-//	{"kind": "streams", "projectId": "123", "job": "orders", "selected_streams": {...}}
-//
-// kind, projectId, userId and job map to the ConfigMap's label and data keys; the remaining fields
-// are the entity itself, in the shape the API takes, and become data.config. A source, destination
-// or job is identified by its OLake name, a streams file by the job it belongs to.
-
 // fileKeys are the manifest fields that are not part of the entity's config.
 var fileKeys = []string{"kind", DataProjectID, DataUserID, DataJob}
 
-// parseFileManifest reads one file mode manifest into the ResourceData the reconcilers take.
+// parseFileManifest parses one JSON manifest (a source, destination, job or streams) into a ResourceData.
 func parseFileManifest(raw []byte) (*ResourceData, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber() // keep numbers as written, so the config and its hash do not change on re-read
@@ -58,7 +47,7 @@ func parseFileManifest(raw []byte) (*ResourceData, error) {
 		if name = data[DataJob]; name == "" {
 			return nil, fmt.Errorf("streams needs job (the name or id of the job it belongs to)")
 		}
-		delete(data, DataUserID) // a Streams ConfigMap has no userId either
+		delete(data, DataUserID) // streams have no userId
 	} else {
 		if name, err = stringField(doc, "name"); err != nil {
 			return nil, err
