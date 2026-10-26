@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -82,15 +83,26 @@ func (r *runnerEnv) InstallPlaywright(ctx context.Context, t *testing.T) error {
 	return nil
 }
 
+// shellCommand runs cmd with sh -c in its own process group. When ctx is done the whole group is
+// killed: killing only sh would leave children such as docker compose or Playwright running and
+// holding the output pipe open, so the call would not return at the deadline.
+func shellCommand(ctx context.Context, shell, cmd string) *exec.Cmd {
+	c := exec.CommandContext(ctx, shell, "-c", cmd)
+	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	c.Cancel = func() error { return syscall.Kill(-c.Process.Pid, syscall.SIGKILL) }
+	c.WaitDelay = 10 * time.Second // a process that left the group cannot hold the pipe forever
+	return c
+}
+
 // Exec runs cmd and returns its exit code and combined output. Like the box, a non-zero exit is
 // reported through the code, not the error.
 func (r *runnerEnv) Exec(ctx context.Context, cmd string) (int, []byte, error) {
-	out, err := exec.CommandContext(ctx, "/bin/sh", "-c", cmd).CombinedOutput()
+	out, err := shellCommand(ctx, "/bin/sh", cmd).CombinedOutput()
 	return exitResult(ctx, err, out)
 }
 
 func (r *runnerEnv) ExecStream(ctx context.Context, t *testing.T, cmd string) (int, string, error) {
-	c := exec.CommandContext(ctx, "sh", "-c", cmd)
+	c := shellCommand(ctx, "sh", cmd)
 	stdout, err := c.StdoutPipe()
 	if err != nil {
 		return -1, "", err
@@ -99,6 +111,9 @@ func (r *runnerEnv) ExecStream(ctx context.Context, t *testing.T, cmd string) (i
 	if err := c.Start(); err != nil {
 		return -1, "", err
 	}
+	// Stop reading at the deadline even if a process outside the group still holds the pipe.
+	stop := context.AfterFunc(ctx, func() { _ = stdout.Close() })
+	defer stop()
 
 	var output strings.Builder
 	scanner := bufio.NewScanner(stdout)
