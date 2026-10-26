@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -24,7 +25,17 @@ type runnerEnv struct {
 
 // newRunnerEnv uses the checkout that contains this package. The compose projects it starts are
 // taken down when the test ends.
+//
+// The stack publishes its ports on every interface (Postgres with trust auth, MinIO, Spark, a
+// Jupyter server without a token), so it refuses to run anywhere but a GitHub-hosted runner, which
+// GitHub sets RUNNER_ENVIRONMENT=github-hosted on. OLAKE_TEST_RUNNER_ANY_HOST=true overrides that
+// for a machine you know is isolated.
 func newRunnerEnv(t *testing.T) (*runnerEnv, error) {
+	if os.Getenv("RUNNER_ENVIRONMENT") != "github-hosted" && os.Getenv("OLAKE_TEST_RUNNER_ANY_HOST") != "true" {
+		return nil, fmt.Errorf("OLAKE_TEST_ENV=runner publishes the test stack's ports on all interfaces and " +
+			"runs only on a GitHub-hosted runner (RUNNER_ENVIRONMENT=github-hosted); " +
+			"set OLAKE_TEST_RUNNER_ANY_HOST=true to run it on an isolated machine")
+	}
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		return nil, fmt.Errorf("could not determine project root: %w", err)

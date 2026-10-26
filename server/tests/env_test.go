@@ -57,6 +57,16 @@ func TestRunWorkflowRejectsUnsafeInput(t *testing.T) {
 	}
 }
 
+func TestRunnerEnvOnlyOnGitHubHosted(t *testing.T) {
+	t.Setenv("OLAKE_TEST_ENV", "runner")
+	t.Setenv("OLAKE_TEST_RUNNER_ANY_HOST", "")
+	for _, env := range []string{"", "self-hosted"} {
+		t.Setenv("RUNNER_ENVIRONMENT", env)
+		_, err := newEnv(context.Background(), t, nil)
+		require.ErrorContains(t, err, "GitHub-hosted")
+	}
+}
+
 func TestShellQuote(t *testing.T) {
 	dir := t.TempDir() + "/a dir with 'quote' $HOME;x"
 	require.NoError(t, os.MkdirAll(dir, 0o755))
