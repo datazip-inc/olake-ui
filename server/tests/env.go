@@ -53,7 +53,9 @@ func newEnv(ctx context.Context, t *testing.T, ports []string) (Env, error) {
 	switch mode := os.Getenv("OLAKE_TEST_ENV"); mode {
 	case "", "dind":
 		return startBoxEnv(ctx, t, ports)
+	case "runner":
+		return newRunnerEnv(t)
 	default:
-		return nil, fmt.Errorf("unknown OLAKE_TEST_ENV %q: want dind", mode)
+		return nil, fmt.Errorf("unknown OLAKE_TEST_ENV %q: want dind or runner", mode)
 	}
 }

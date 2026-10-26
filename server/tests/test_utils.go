@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -16,8 +17,10 @@ import (
 )
 
 // olakeComposeFiles starts OLake from the root docker-compose.yml, with olake-ui taken from the
-// olake-ui:ci image built from this checkout (see compose.olake-ui.yml).
-const olakeComposeFiles = "-f docker-compose.yml -f server/tests/compose.olake-ui.yml"
+// olake-ui:ci image built from this checkout (see compose.olake-ui.yml). The project has its own
+// name, so taking it down never touches an OLake a developer runs from the same checkout, whose
+// project is named after the directory.
+const olakeComposeFiles = "-p olake-app-test -f docker-compose.yml -f server/tests/compose.olake-ui.yml"
 
 // Build the olake-ui:ci image from the checkout
 func buildOLakeUICmd(root string) string {
@@ -147,10 +150,17 @@ func RunWorkflow(t *testing.T, w Workflow) error {
 		return fmt.Errorf("destination services startup failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 3: Build olake-ui from this checkout
-	t.Log("Building the olake-ui image...")
-	if code, out, err := env.Exec(ctx, buildOLakeUICmd(root)); err != nil || code != 0 {
-		return fmt.Errorf("olake-ui image build failed (%d): %s\n%s", code, err, out)
+	// Step 3: Build olake-ui from this checkout, unless the workflow already built olake-ui:ci
+	if os.Getenv("OLAKE_TEST_SKIP_UI_BUILD") == "true" {
+		t.Log("Using the prebuilt olake-ui image...")
+		if code, out, err := env.Exec(ctx, "docker image inspect --format '{{.Id}}' olake-ui:ci"); err != nil || code != 0 {
+			return fmt.Errorf("OLAKE_TEST_SKIP_UI_BUILD is set but olake-ui:ci is missing (%d): %s\n%s", code, err, out)
+		}
+	} else {
+		t.Log("Building the olake-ui image...")
+		if code, out, err := env.Exec(ctx, buildOLakeUICmd(root)); err != nil || code != 0 {
+			return fmt.Errorf("olake-ui image build failed (%d): %s\n%s", code, err, out)
+		}
 	}
 
 	// Step 4: Start OLake application
