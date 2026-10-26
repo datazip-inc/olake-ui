@@ -62,6 +62,12 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 		"run by the Go integration test (server/tests), which sets E2E_JOB_NAME",
 	)
 
+	// Every test starts on the jobs page, where the sidebar links the steps click are rendered.
+	test.beforeEach(async ({ page }) => {
+		await page.goto("/jobs")
+		await expect(page).toHaveURL(/\/jobs$/)
+	})
+
 	test("@create-job: CDC source, destination, and a job with one stream per feature", async ({
 		page,
 		sourcesPage,
