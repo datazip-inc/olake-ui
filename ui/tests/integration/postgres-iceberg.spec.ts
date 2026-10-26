@@ -570,11 +570,12 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 		await jobsPage.navigateToJobs()
 		await jobsPage.expectJobsPageVisible()
 		await page.getByRole("tab", { name: "Failed jobs" }).click()
-		await expect(page.getByTestId(`job-${job}`)).toBeVisible({
-			timeout: TIMEOUTS.LONG,
-		})
-		await expect(
-			page.locator(".ant-table-tbody tr").filter({ hasText: job }),
-		).toContainText("Failed")
+		// antd keeps the panels it has shown in the page, so look only in the Failed jobs panel.
+		const failed = page.getByRole("tabpanel", { name: "Failed jobs" })
+		const row = failed.getByRole("row").filter({ hasText: job })
+		await expect(row).toBeVisible({ timeout: TIMEOUTS.LONG })
+		await expect(row).toContainText("Failed")
+		await expect(row).toContainText("Sync")
+		await expect(failed.getByTestId(`job-${job}`)).toBeVisible()
 	})
 })
