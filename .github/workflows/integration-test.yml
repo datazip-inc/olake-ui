@@ -12,11 +12,17 @@ permissions:
 
 jobs:
   integration-tests:
+    # Fork PRs run their own code here, in a privileged DinD box. Keep this job to pushes and to PRs
+    # from branches of this repository; fork PRs are covered by integration-tests-runner, which runs
+    # on a GitHub-hosted runner that is discarded after the job.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: 32gb-runner
     timeout-minutes: 60
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false # the checkout is mounted into the box; keep the token out of .git/config
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -41,6 +47,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Free disk space
         run: |
