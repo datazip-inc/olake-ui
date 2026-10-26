@@ -92,10 +92,6 @@ func (w Workflow) database() string {
 	return strings.ToLower(w.Job + "_" + w.Source.Namespace)
 }
 
-// Check verifies the destination through Spark. table turns a source table name into the
-// fully qualified name Spark reads it from.
-type Check func(ctx context.Context, t *testing.T, spark sql.SparkSession, table func(name string) string)
-
 // composeStartCmd starts the compose file in dir (relative to server/tests under root) as project
 // olake-<project>-test, runs ready in a subshell (skipped when empty), then lists the services.
 // project is "source" or "destination", so the two never share a project whatever their names.
@@ -200,10 +196,6 @@ func RunWorkflow(t *testing.T, w Workflow) error {
 	}
 	t.Log("Playwright tests passed successfully.")
 
-	// wait before verifying destination data
-	t.Log("Waiting for 60 seconds before verifying destination data...")
-	time.Sleep(60 * time.Second)
-
 	// Step 8: Verify the destination
 	t.Logf("Starting %s data verification...", w.Destination.Name)
 	VerifyDestination(ctx, t, sparkHost, sparkPort, w)
@@ -221,7 +213,5 @@ func VerifyDestination(ctx context.Context, t *testing.T, host, port string, w W
 		}
 	}()
 	table := func(name string) string { return w.Destination.Table(w.database(), name) }
-	for _, check := range w.Checks {
-		check(ctx, t, spark, table)
-	}
+	runChecks(ctx, t, spark, table, w.Checks)
 }
