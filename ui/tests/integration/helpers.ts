@@ -425,7 +425,7 @@ export const waitForNewestRun = async (
 		const newest = historyRows(page).first()
 		await expect(newest).toContainText(jobType, { timeout: 2000 })
 		await expect(newest).toContainText(status, { timeout: 2000 })
-	}).toPass({ timeout, intervals: [10_000] })
+	}).toPass({ timeout, intervals: [3000] })
 }
 
 /** "Sync now" from the jobs page, then waits for the run on the history page. */
