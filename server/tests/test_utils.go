@@ -111,7 +111,7 @@ func composeStartCmd(root, project, dir string, services []string, ready string)
 // RunWorkflow starts the Env, the source, the destination and OLake, seeds the source, runs the
 // Playwright spec, and runs the workflow's checks on the destination.
 func RunWorkflow(t *testing.T, w Workflow) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Minute) // leaves the CI job's 60 minutes room for checkout and setup
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Minute) // under both CI jobs' timeouts (60 and 75 minutes), with room for setup and cleanup
 	defer cancel()
 	if !jobPattern.MatchString(w.Job) {
 		return fmt.Errorf("invalid job name %q", w.Job)
