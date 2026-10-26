@@ -46,14 +46,25 @@ func TestServiceHost(t *testing.T) {
 	}
 }
 
-func TestRunWorkflowRejectsUnsafeInput(t *testing.T) {
-	for _, w := range []Workflow{
-		{Job: "job'; id; '", Spec: "tests/a.spec.ts"},
-		{Job: "job", Spec: "tests/a.spec.ts; id"},
-		{Job: "job", Spec: "-c/tmp/evil.config.ts"},
-		{Job: "job", Spec: "tests/flows/notaspec.ts"},
+func TestPlaywrightCmd(t *testing.T) {
+	cmd, err := playwrightCmd("/mnt", "tests/integration/postgres.spec.ts", "@first-sync",
+		map[string]string{"E2E_JOB_NAME": "job", "E2E_WEBHOOK_URL": "http://172.17.0.2:8099/alert"})
+	require.NoError(t, err)
+	require.Contains(t, cmd, "cd '/mnt/ui'")
+	require.Contains(t, cmd, "E2E_JOB_NAME='job' E2E_WEBHOOK_URL='http://172.17.0.2:8099/alert' ")
+	require.Contains(t, cmd, "npx playwright test 'tests/integration/postgres.spec.ts' --grep '@first-sync(?![a-z0-9-])'")
+
+	for _, c := range []struct{ spec, tag, key string }{
+		{"tests/a.spec.ts; id", "", "E2E_X"},
+		{"-c/tmp/evil.config.ts", "", "E2E_X"},
+		{"tests/flows/notaspec.ts", "", "E2E_X"},
+		{"tests/a.spec.ts", "sync", "E2E_X"},
+		{"tests/a.spec.ts", "@sync; id", "E2E_X"},
+		{"tests/a.spec.ts", "", "PATH"},
+		{"tests/a.spec.ts", "", "E2E_X; id"},
 	} {
-		require.Error(t, RunWorkflow(t, w))
+		_, err := playwrightCmd("/mnt", c.spec, c.tag, map[string]string{c.key: "v"})
+		require.Error(t, err, "%+v", c)
 	}
 }
 

@@ -56,6 +56,7 @@ func (r *runnerEnv) down(t *testing.T) {
 		fmt.Sprintf("cd %s && docker compose %s down -v -t 5 --remove-orphans", shellQuote(r.root), olakeComposeFiles),
 		"docker compose -p olake-source-test down -v -t 5",
 		"docker compose -p olake-destination-test down -v -t 5",
+		"docker rm -f " + webhookContainer,
 	} {
 		if code, out, err := r.Exec(ctx, cmd); err != nil || code != 0 {
 			t.Logf("Warning: %q failed (%d): %v\n%s", cmd, code, err, out)

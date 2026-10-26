@@ -22,6 +22,7 @@ var Source = sources.Source{
 	ComposeDir: "sources/postgres",
 	Port:       "5433/tcp",
 	Namespace:  "postgres_public",
+	Container:  "olake_postgres-test",
 	// Ready once the pgoutput slot olake_slot and the publication olake_publication exist: the
 	// compose command creates them after Postgres accepts connections.
 	ReadyCmd: `

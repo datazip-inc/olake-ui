@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -59,32 +60,60 @@ func installPlaywrightCmd(root string) string {
     `, shellQuote(root+"/ui"))
 }
 
-// Run a Playwright spec, relative to ui/
-func runPlaywrightCmd(root, job, serviceHost, spec string) string {
-	return fmt.Sprintf(`
-        cd %s &&
-        E2E_JOB_NAME=%s E2E_SERVICE_HOST=%s PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test %s
-    `, shellQuote(root+"/ui"), shellQuote(job), shellQuote(serviceHost), shellQuote(spec))
-}
-
-// jobPattern and specPattern limit the values RunWorkflow puts in the Playwright shell command.
+// playwrightPatterns limit the values Run.Playwright puts in the Playwright shell command.
 var (
-	jobPattern  = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
-	specPattern = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_./-]*\.spec\.ts$`) // no leading '-': Playwright would read an option
+	jobPattern    = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+	specPattern   = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_./-]*\.spec\.ts$`) // no leading '-': Playwright would read an option
+	tagPattern    = regexp.MustCompile(`^@[a-z0-9][a-z0-9-]*$`)
+	envKeyPattern = regexp.MustCompile(`^E2E_[A-Z0-9_]+$`)
 )
 
-// sparkConnectPort is the port VerifyDestination reaches Spark Connect on. Every destination's
-// compose file must run Spark Connect there; see destinations.Destination.
+// playwrightCmd runs the tests of spec (relative to ui/) tagged tag, or all of them when tag is
+// empty, with env set for the Playwright process.
+func playwrightCmd(root, spec, tag string, env map[string]string) (string, error) {
+	if !specPattern.MatchString(spec) {
+		return "", fmt.Errorf("invalid spec path %q", spec)
+	}
+	if tag != "" && !tagPattern.MatchString(tag) {
+		return "", fmt.Errorf("invalid tag %q", tag)
+	}
+	keys := make([]string, 0, len(env))
+	for k := range env {
+		if !envKeyPattern.MatchString(k) {
+			return "", fmt.Errorf("invalid Playwright env name %q", k)
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var vars strings.Builder
+	for _, k := range keys {
+		fmt.Fprintf(&vars, "%s=%s ", k, shellQuote(env[k]))
+	}
+	grep := ""
+	if tag != "" {
+		// A tag is matched as a whole word, so @sync does not also pick @sync-again.
+		grep = " --grep " + shellQuote(tag+`(?![a-z0-9-])`)
+	}
+	return fmt.Sprintf(`
+        cd %s &&
+        %sPLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test %s%s
+    `, shellQuote(root+"/ui"), vars.String(), shellQuote(spec), grep), nil
+}
+
+// sparkConnectPort is the port the checks reach Spark Connect on. Every destination's compose
+// file must run Spark Connect there; see destinations.Destination.
 const sparkConnectPort = "15002/tcp"
 
-// Workflow is one integration run: the source and destination to start, the Playwright spec
-// that creates and syncs the job through the UI, and the checks run on the destination afterwards.
+// runTimeout bounds a whole workflow run. It is under both CI jobs' timeouts, with room for their
+// setup steps and the cleanup.
+const runTimeout = 90 * time.Minute
+
+// Workflow is the source and destination of an integration run, and the name of the job the
+// Playwright specs create.
 type Workflow struct {
 	Source      sources.Source
 	Destination destinations.Destination
-	Spec        string  // Playwright spec relative to ui/
-	Job         string  // name of the job the spec creates; passed to it as E2E_JOB_NAME
-	Checks      []Check // run on the destination after the spec has passed
+	Job         string // passed to the specs as E2E_JOB_NAME
 }
 
 // database is the destination database OLake writes the job to: <job>_<source namespace>, lowercased.
@@ -104,114 +133,196 @@ func composeStartCmd(root, project, dir string, services []string, ready string)
 	return cmd + " && docker compose -p " + name + " ps"
 }
 
-// RunWorkflow starts the Env, the source, the destination and OLake, seeds the source, runs the
-// Playwright spec, and runs the workflow's checks on the destination.
-func RunWorkflow(t *testing.T, w Workflow) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Minute) // under both CI jobs' timeouts (60 and 75 minutes), with room for setup and cleanup
-	defer cancel()
+// Run is a started integration stack: the Env with the source, the destination and OLake up,
+// the source seeded and Playwright installed. Its methods fail the test on error.
+type Run struct {
+	t           *testing.T
+	ctx         context.Context
+	env         Env
+	w           Workflow
+	start       time.Time
+	ServiceHost string // what the driver, and the specs, use to reach the published ports
+
+	sourceHost, sourcePort string
+	sparkHost, sparkPort   string
+}
+
+// StartWorkflow starts the Env, the source, the destination and OLake, and seeds the source.
+func StartWorkflow(t *testing.T, w Workflow) *Run {
+	t.Helper()
 	if !jobPattern.MatchString(w.Job) {
-		return fmt.Errorf("invalid job name %q", w.Job)
+		t.Fatalf("invalid job name %q", w.Job)
 	}
-	if !specPattern.MatchString(w.Spec) {
-		return fmt.Errorf("invalid spec path %q", w.Spec)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), runTimeout)
+	r := &Run{t: t, ctx: ctx, w: w, start: time.Now()}
 
 	ports := []string{sparkConnectPort}
 	if w.Source.Port != "" {
 		ports = append(ports, w.Source.Port)
 	}
 	env, err := newEnv(ctx, t, ports)
-	if err != nil {
-		return err
-	}
+	t.Cleanup(cancel) // registered after the Env's own cleanup, so it runs before it
+	r.require(err)
+	r.env = env
 	root := env.Root()
 
 	// The address the driver uses for the source and destination; checked before anything starts.
-	serviceHost, err := env.ServiceHost(ctx)
-	if err != nil {
-		return err
-	}
-	t.Logf("Service host: %s", serviceHost)
+	r.ServiceHost, err = env.ServiceHost(ctx)
+	r.require(err)
+	t.Logf("Service host: %s", r.ServiceHost)
 
-	// Spark Connect address
-	sparkHost, sparkPort, err := env.Addr(ctx, sparkConnectPort)
-	if err != nil {
-		return fmt.Errorf("failed to get spark port: %w", err)
-	}
-
-	// source address, if the source publishes a port
-	sourceHost, sourcePort := sparkHost, ""
+	r.sparkHost, r.sparkPort, err = env.Addr(ctx, sparkConnectPort)
+	r.require(err, "failed to get spark port")
+	r.sourceHost = r.sparkHost
 	if w.Source.Port != "" {
-		if sourceHost, sourcePort, err = env.Addr(ctx, w.Source.Port); err != nil {
-			return fmt.Errorf("failed to get %s port: %w", w.Source.Name, err)
-		}
+		r.sourceHost, r.sourcePort, err = env.Addr(ctx, w.Source.Port)
+		r.require(err, "failed to get %s port", w.Source.Name)
 	}
 
-	// Step 1: Start the source
-	t.Logf("Starting %s source...", w.Source.Name)
-	if code, out, err := env.Exec(ctx, composeStartCmd(root, "source", w.Source.ComposeDir, nil, w.Source.ReadyCmd)); err != nil || code != 0 {
-		return fmt.Errorf("%s startup failed (%d): %s\n%s", w.Source.Name, code, err, out)
-	}
+	r.Step("Starting %s source...", w.Source.Name)
+	r.exec(composeStartCmd(root, "source", w.Source.ComposeDir, nil, w.Source.ReadyCmd), "%s startup failed", w.Source.Name)
 
-	// Step 2: Start the destination
-	t.Logf("Starting %s destination...", w.Destination.Name)
-	if code, out, err := env.Exec(ctx, composeStartCmd(root, "destination", w.Destination.ComposeDir, w.Destination.Services, w.Destination.ReadyCmd)); err != nil || code != 0 {
-		return fmt.Errorf("destination services startup failed (%d): %s\n%s", code, err, out)
-	}
+	r.Step("Starting %s destination...", w.Destination.Name)
+	r.exec(composeStartCmd(root, "destination", w.Destination.ComposeDir, w.Destination.Services, w.Destination.ReadyCmd), "destination services startup failed")
 
-	// Step 3: Build olake-ui from this checkout, unless the workflow already built olake-ui:ci
+	// Build olake-ui from this checkout, unless the workflow already built olake-ui:ci
 	if os.Getenv("OLAKE_TEST_SKIP_UI_BUILD") == "true" {
-		t.Log("Using the prebuilt olake-ui image...")
-		if code, out, err := env.Exec(ctx, "docker image inspect --format '{{.Id}}' olake-ui:ci"); err != nil || code != 0 {
-			return fmt.Errorf("OLAKE_TEST_SKIP_UI_BUILD is set but olake-ui:ci is missing (%d): %s\n%s", code, err, out)
-		}
+		r.Step("Using the prebuilt olake-ui image...")
+		r.exec("docker image inspect --format '{{.Id}}' olake-ui:ci", "OLAKE_TEST_SKIP_UI_BUILD is set but olake-ui:ci is missing")
 	} else {
-		t.Log("Building the olake-ui image...")
-		if code, out, err := env.Exec(ctx, buildOLakeUICmd(root)); err != nil || code != 0 {
-			return fmt.Errorf("olake-ui image build failed (%d): %s\n%s", code, err, out)
-		}
+		r.Step("Building the olake-ui image...")
+		r.exec(buildOLakeUICmd(root), "olake-ui image build failed")
 	}
 
-	// Step 4: Start OLake application
-	t.Log("Starting OLake docker-compose services...")
-	if code, out, err := env.Exec(ctx, startOLakeCmd(root)); err != nil || code != 0 {
-		return fmt.Errorf("OLake startup failed (%d): %s\n%s", code, err, out)
-	}
+	r.Step("Starting OLake docker-compose services...")
+	r.exec(startOLakeCmd(root), "OLake startup failed")
 
-	// Step 5: Seed the source
-	w.Source.Seed(ctx, t, sourceHost, sourcePort)
+	r.Step("Seeding the %s source...", w.Source.Name)
+	w.Source.Seed(ctx, t, r.sourceHost, r.sourcePort)
 
+	r.Step("Installing Playwright and dependencies...")
+	r.require(env.InstallPlaywright(ctx, t))
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
-
-	// Step 6: Install Playwright
-	t.Log("Installing Playwright and dependencies...")
-	if err := env.InstallPlaywright(ctx, t); err != nil {
-		return err
-	}
-
-	// Step 7: Run Playwright tests
-	t.Log("Executing Playwright tests...")
-	if code, out, err := env.ExecStream(ctx, t, runPlaywrightCmd(root, w.Job, serviceHost, w.Spec)); err != nil || code != 0 {
-		return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
-	}
-	t.Log("Playwright tests passed successfully.")
-
-	// Step 8: Verify the destination
-	t.Logf("Starting %s data verification...", w.Destination.Name)
-	VerifyDestination(ctx, t, sparkHost, sparkPort, w)
-	return nil
+	return r
 }
 
-// VerifyDestination connects to Spark and runs every check of the workflow.
-func VerifyDestination(ctx context.Context, t *testing.T, host, port string, w Workflow) {
-	sparkConnectAddress := fmt.Sprintf("sc://%s:%s", host, port)
-	spark, err := sql.NewSessionBuilder().Remote(sparkConnectAddress).Build(ctx)
-	require.NoError(t, err, "Failed to connect to Spark Connect server")
-	defer func() {
-		if stopErr := spark.Stop(); stopErr != nil {
-			t.Errorf("Failed to stop Spark session: %v", stopErr)
+// Step logs a step with the time since the run started.
+func (r *Run) Step(format string, args ...any) {
+	r.t.Helper()
+	r.t.Logf("[%6.1fs] "+format, append([]any{time.Since(r.start).Seconds()}, args...)...)
+}
+
+// require fails the test when err is set.
+func (r *Run) require(err error, msgAndArgs ...any) {
+	r.t.Helper()
+	if err != nil {
+		require.NoError(r.t, err, msgAndArgs...)
+	}
+}
+
+// exec runs cmd in the Env and fails the test with its output when it does not exit 0.
+func (r *Run) exec(cmd, format string, args ...any) []byte {
+	r.t.Helper()
+	code, out, err := r.env.Exec(r.ctx, cmd)
+	if err != nil || code != 0 {
+		r.t.Fatalf("%s (%d): %v\n%s", fmt.Sprintf(format, args...), code, err, out)
+	}
+	return out
+}
+
+// Playwright runs the tests of spec tagged tag. Every run gets E2E_JOB_NAME and
+// E2E_SERVICE_HOST; env adds more E2E_* variables.
+func (r *Run) Playwright(spec, tag string, env map[string]string) {
+	r.t.Helper()
+	vars := map[string]string{"E2E_JOB_NAME": r.w.Job, "E2E_SERVICE_HOST": r.ServiceHost}
+	for k, v := range env {
+		vars[k] = v
+	}
+	cmd, err := playwrightCmd(r.env.Root(), spec, tag, vars)
+	r.require(err)
+	r.Step("Playwright %s %s...", spec, tag)
+	code, out, err := r.env.ExecStream(r.ctx, r.t, cmd)
+	if err != nil || code != 0 {
+		r.t.Fatalf("playwright %s %s failed (%d): %v\n%s", spec, tag, code, err, out)
+	}
+}
+
+// SourceSQL runs statements on the source, in order.
+func (r *Run) SourceSQL(statements ...string) {
+	r.t.Helper()
+	r.Step("Changing the %s source...", r.w.Source.Name)
+	r.w.Source.Exec(r.ctx, r.t, r.sourceHost, r.sourcePort, statements...)
+}
+
+// Check runs checks on the destination as subtests of a subtest named phase, through one Spark
+// Connect session. It fails the test if any check fails.
+func (r *Run) Check(phase string, checks ...Check) {
+	r.t.Helper()
+	r.Step("Checking the destination: %s...", phase)
+	ok := r.t.Run(phase, func(t *testing.T) {
+		spark, err := sql.NewSessionBuilder().Remote(fmt.Sprintf("sc://%s:%s", r.sparkHost, r.sparkPort)).Build(r.ctx)
+		require.NoError(t, err, "Failed to connect to Spark Connect server")
+		defer func() {
+			if stopErr := spark.Stop(); stopErr != nil {
+				t.Errorf("Failed to stop Spark session: %v", stopErr)
+			}
+		}()
+		table := func(name string) string { return r.w.Destination.Table(r.w.database(), name) }
+		runChecks(r.ctx, t, spark, table, checks)
+	})
+	if !ok {
+		r.t.FailNow()
+	}
+}
+
+// webhookContainer receives OLake's alert webhook and prints each request body to its log.
+const webhookContainer = "olake-webhook-test"
+
+// webhookReceiver is a minimal HTTP server that prints every POST body.
+const webhookReceiver = `
+import http.server
+class H(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        print(self.rfile.read(n).decode(errors="replace"), flush=True)
+        self.send_response(200)
+        self.end_headers()
+    def log_message(self, *args):
+        pass
+http.server.HTTPServer(("", 8099), H).serve_forever()
+`
+
+// StartWebhookReceiver starts the receiver, published on 8099, and returns the URL OLake posts
+// alerts to.
+func (r *Run) StartWebhookReceiver() string {
+	r.t.Helper()
+	r.Step("Starting the webhook receiver...")
+	r.exec(fmt.Sprintf("docker rm -f %[1]s >/dev/null 2>&1; docker run -d --name %[1]s -p 8099:8099 python:3.12-alpine python -u -c %[2]s",
+		webhookContainer, shellQuote(webhookReceiver)), "webhook receiver startup failed")
+	return fmt.Sprintf("http://%s:8099/alert", r.ServiceHost)
+}
+
+// WaitForWebhook waits until the receiver has logged a request containing text.
+func (r *Run) WaitForWebhook(text string, timeout time.Duration) {
+	r.t.Helper()
+	r.Step("Waiting for the webhook %q...", text)
+	deadline := time.Now().Add(timeout)
+	for {
+		out := r.exec("docker logs "+webhookContainer+" 2>&1", "reading the webhook receiver log failed")
+		if strings.Contains(string(out), text) {
+			r.t.Logf("✅ webhook received %q", text)
+			return
 		}
-	}()
-	table := func(name string) string { return w.Destination.Table(w.database(), name) }
-	runChecks(ctx, t, spark, table, w.Checks)
+		if time.Now().After(deadline) {
+			r.t.Fatalf("no webhook with %q after %s; receiver log:\n%s", text, timeout, out)
+		}
+		time.Sleep(5 * time.Second)
+	}
+}
+
+// StopSource stops the source container, to make the next sync fail.
+func (r *Run) StopSource() {
+	r.t.Helper()
+	r.Step("Stopping the %s source...", r.w.Source.Name)
+	r.exec("docker stop "+shellQuote(r.w.Source.Container), "stopping the source failed")
 }
