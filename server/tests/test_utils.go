@@ -15,12 +15,21 @@ import (
 	"github.com/datazip-inc/olake-ui/server/tests/sources"
 )
 
+// olakeComposeFiles starts OLake from the root docker-compose.yml, with olake-ui taken from the
+// olake-ui:ci image built from this checkout (see compose.olake-ui.yml).
+const olakeComposeFiles = "-f docker-compose.yml -f server/tests/compose.olake-ui.yml"
+
+// Build the olake-ui:ci image from the checkout
+func buildOLakeUICmd(root string) string {
+	return fmt.Sprintf("cd %s && docker compose %s build olake-ui", root, olakeComposeFiles)
+}
+
 // Start OLake application
 func startOLakeCmd(root string) string {
 	return fmt.Sprintf(`
         cd %[1]s &&
         mkdir -p %[1]s/olake-data &&
-        docker compose up -d &&
+        docker compose %[2]s up -d &&
         for i in $(seq 1 60); do
             if curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; then
                 echo "OLake UI ready."
@@ -28,7 +37,7 @@ func startOLakeCmd(root string) string {
             fi
             sleep 2
         done
-    `, root)
+    `, root, olakeComposeFiles)
 }
 
 // Install Playwright and dependencies. --frozen-lockfile installs exactly what pnpm-lock.yaml
@@ -138,10 +147,10 @@ func RunWorkflow(t *testing.T, w Workflow) error {
 		return fmt.Errorf("destination services startup failed (%d): %s\n%s", code, err, out)
 	}
 
-	// Step 3: Patch docker-compose for local images
-	t.Log("Patching docker-compose to build local images...")
-	if err := PatchDockerCompose(ctx, t, env); err != nil {
-		return err
+	// Step 3: Build olake-ui from this checkout
+	t.Log("Building the olake-ui image...")
+	if code, out, err := env.Exec(ctx, buildOLakeUICmd(root)); err != nil || code != 0 {
+		return fmt.Errorf("olake-ui image build failed (%d): %s\n%s", code, err, out)
 	}
 
 	// Step 4: Start OLake application
@@ -179,40 +188,6 @@ func RunWorkflow(t *testing.T, w Workflow) error {
 	// Step 8: Verify the destination
 	t.Logf("Starting %s data verification...", w.Destination.Name)
 	VerifyDestination(ctx, t, sparkHost, sparkPort, w)
-	return nil
-}
-
-// PatchDockerCompose updates olake-ui to build from local code
-// TODO: Remove patch command and find alternative to use local code
-func PatchDockerCompose(ctx context.Context, t *testing.T, env Env) error {
-	patchCmd := fmt.Sprintf(`
-    set -e
-    tmpfile=$(mktemp)
-    awk '
-    BEGIN{svc="";}
-    /^  olake-ui:/{svc="olake-ui"; print; next}
-    /^  temporal-worker:/{svc="temporal-worker"; print; next}
-    /^  [A-Za-z0-9_-]+:/{ if (svc!="") svc=""; print; next}
-    {
-      if (svc=="olake-ui" && $0 ~ /^    image:/) {
-        print "    build:";
-        print "      context: .";
-        print "      dockerfile: Dockerfile";
-        next
-      }
-      print
-    }
-    ' %[1]s/docker-compose.yml > "$tmpfile" && mv "$tmpfile" %[1]s/docker-compose.yml
-`, env.Root())
-
-	code, out, err := env.Exec(ctx, patchCmd)
-	if err != nil || code != 0 {
-		t.Logf("docker-compose patch output: %s", string(out))
-		return fmt.Errorf("failed to patch docker-compose.yml (%d): %s\n%s", code, err, out)
-	}
-	t.Log("docker-compose.yml patched to build local images")
-	t.Logf("Patched docker-compose.yml:\n%s", string(out))
-
 	return nil
 }
 
