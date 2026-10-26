@@ -32,7 +32,12 @@ func TestServiceHost(t *testing.T) {
 		_, err := serviceHost(ctx, detect("", errors.New("no bridge")))
 		require.Error(t, err)
 	})
-	for _, bad := range []string{"", "a b", "1.2.3.4;rm -rf /", "'x'", "$(id)", "-x"} {
+	t.Run("empty detection names the override", func(t *testing.T) {
+		t.Setenv("E2E_SERVICE_HOST", "")
+		_, err := serviceHost(ctx, detect("", nil))
+		require.ErrorContains(t, err, "E2E_SERVICE_HOST")
+	})
+	for _, bad := range []string{"a b", "1.2.3.4;rm -rf /", "'x'", "$(id)", "-x", "fd00::1", "1.2.3.4\nx"} {
 		t.Run("rejects "+bad, func(t *testing.T) {
 			t.Setenv("E2E_SERVICE_HOST", "")
 			_, err := serviceHost(ctx, detect(bad, nil))
@@ -45,6 +50,8 @@ func TestRunWorkflowRejectsUnsafeInput(t *testing.T) {
 	for _, w := range []Workflow{
 		{Job: "job'; id; '", Spec: "tests/a.spec.ts"},
 		{Job: "job", Spec: "tests/a.spec.ts; id"},
+		{Job: "job", Spec: "-c/tmp/evil.config.ts"},
+		{Job: "job", Spec: "tests/flows/notaspec.ts"},
 	} {
 		require.Error(t, RunWorkflow(t, w))
 	}

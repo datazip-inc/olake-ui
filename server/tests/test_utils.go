@@ -70,7 +70,7 @@ func runPlaywrightCmd(root, job, serviceHost, spec string) string {
 // jobPattern and specPattern limit the values RunWorkflow puts in the Playwright shell command.
 var (
 	jobPattern  = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
-	specPattern = regexp.MustCompile(`^[A-Za-z0-9_./-]+$`)
+	specPattern = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_./-]*\.spec\.ts$`) // no leading '-': Playwright would read an option
 )
 
 // sparkConnectPort is the port VerifyDestination reaches Spark Connect on. Every destination's
@@ -130,6 +130,13 @@ func RunWorkflow(t *testing.T, w Workflow) error {
 	}
 	root := env.Root()
 
+	// The address the driver uses for the source and destination; checked before anything starts.
+	serviceHost, err := env.ServiceHost(ctx)
+	if err != nil {
+		return err
+	}
+	t.Logf("Service host: %s", serviceHost)
+
 	// Spark Connect address
 	sparkHost, sparkPort, err := env.Addr(ctx, sparkConnectPort)
 	if err != nil {
@@ -187,12 +194,8 @@ func RunWorkflow(t *testing.T, w Workflow) error {
 	}
 
 	// Step 7: Run Playwright tests
-	host, err := env.ServiceHost(ctx)
-	if err != nil {
-		return err
-	}
-	t.Logf("Executing Playwright tests (service host %s)...", host)
-	if code, out, err := env.ExecStream(ctx, t, runPlaywrightCmd(root, w.Job, host, w.Spec)); err != nil || code != 0 {
+	t.Log("Executing Playwright tests...")
+	if code, out, err := env.ExecStream(ctx, t, runPlaywrightCmd(root, w.Job, serviceHost, w.Spec)); err != nil || code != 0 {
 		return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
 	}
 	t.Log("Playwright tests passed successfully.")

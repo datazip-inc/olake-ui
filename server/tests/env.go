@@ -27,9 +27,9 @@ type Env interface {
 	InstallPlaywright(ctx context.Context, t *testing.T) error
 }
 
-// serviceHostPattern accepts IPv4 and IPv6 addresses and host names, so the value is safe to put
-// in a shell command.
-var serviceHostPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.:-]*$`)
+// serviceHostPattern accepts IPv4 addresses and host names. IPv6 is refused: the specs put the
+// host into URLs such as http://<host>:9000 without brackets.
+var serviceHostPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.-]*$`)
 
 // serviceHost returns E2E_SERVICE_HOST when it is set, otherwise the address detect finds.
 func serviceHost(ctx context.Context, detect func(context.Context) (string, error)) (string, error) {
@@ -40,6 +40,9 @@ func serviceHost(ctx context.Context, detect func(context.Context) (string, erro
 			return "", fmt.Errorf("failed to detect the service host: %w", err)
 		}
 		host = strings.TrimSpace(detected)
+		if host == "" {
+			return "", fmt.Errorf("no service host detected; set E2E_SERVICE_HOST")
+		}
 	}
 	if !serviceHostPattern.MatchString(host) {
 		return "", fmt.Errorf("invalid service host %q", host)
