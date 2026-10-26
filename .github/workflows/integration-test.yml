@@ -11,46 +11,11 @@ permissions:
   contents: read
 
 jobs:
+  # Runs the stack directly on a GitHub-hosted runner (OLAKE_TEST_ENV=runner). Node, pnpm, the UI
+  # dependencies, Playwright and the olake-ui image come from cached steps here, so the test only
+  # starts the stack. The runner is discarded after the job, which runner mode relies on. The
+  # DinD mode (the default of the Go test) is for machines such as the test server.
   integration-tests:
-    # Fork PRs run their own code here, in a privileged DinD box. Keep this job to pushes and to PRs
-    # from branches of this repository; fork PRs are covered by integration-tests-runner, which runs
-    # on a GitHub-hosted runner that is discarded after the job.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: 32gb-runner
-    timeout-minutes: 100 # the test's own limit is 90 minutes (runTimeout in server/tests)
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false # the checkout is mounted into the box; keep the token out of .git/config
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: 'server/go.mod'
-          cache-dependency-path: 'server/go.sum'
-
-      - name: Download Go dependencies
-        working-directory: ./server
-        run: go mod download
-
-      - name: Run Docker In Docker Container Tests
-        working-directory: ./server
-        run: go test -v ./tests -timeout 0 -run '^Test'
-
-      - name: Upload Playwright results
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-results-dind
-          path: ui/test-results
-          if-no-files-found: ignore
-          retention-days: 7
-
-  # The same tests, run on a GitHub-hosted runner instead of in a DinD box. Node, pnpm, the UI
-  # dependencies, Playwright and the olake-ui image come from cached steps here, so the test
-  # only starts the stack. The runner is discarded after the job, which runner mode relies on.
-  integration-tests-runner:
     runs-on: ubuntu-24.04
     # Setup runs in workflow steps here, outside the test's 90-minute limit, and the cleanup takes up
     # to 5 more minutes.
@@ -135,7 +100,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results-runner
+          name: playwright-results
           path: ui/test-results
           if-no-files-found: ignore
           retention-days: 7
