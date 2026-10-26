@@ -7,31 +7,161 @@ on:
     branches:
       - "*"
 
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its run in progress; runs on master are never cancelled.
+concurrency:
+  group: integration-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  integration-tests:
-    name: ${{ matrix.test }}
-    runs-on: 32gb-runner
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        # each test starts its own Docker-in-Docker box, so they run on separate runners
-        test:
-          - TestPostgres
-          - TestMongoDB
+  # Decides whether the change can affect the integration test. Markdown files never do; code under
+  # server/ or ui/, the image build and the compose files do.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the changed files
+        id: filter
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # Without a usable base commit (a new branch, a force push), run the test.
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE" "$GITHUB_SHA")
+          echo "Changed files:"
+          echo "$changed"
+          if echo "$changed" | grep -v '\.md$' \
+              | grep -qE '^(server/|ui/|Dockerfile$|\.dockerignore$|docker-compose\.yml$|\.github/workflows/integration-test\.yml$)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Runs the stack directly on a GitHub-hosted runner (OLAKE_TEST_ENV=runner). Node, pnpm, the UI
+  # dependencies, Playwright and the olake-ui image come from cached steps here, so the test only
+  # starts the stack. The runner is discarded after the job, which runner mode relies on. The
+  # DinD mode (the default of the Go test) is for machines such as the test server.
+  integration-tests:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    # Setup runs in workflow steps here, outside the test's 90-minute limit, and the cleanup takes up
+    # to 5 more minutes.
+    timeout-minutes: 110
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Free disk space
+        run: |
+          df -h / /mnt || df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h / /mnt || df -h /
+          free -g
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version-file: 'server/go.mod'
-      
+          cache-dependency-path: 'server/go.sum'
+
       - name: Download Go dependencies
         working-directory: ./server
         run: go mod download
 
-      - name: Run Docker In Docker Container Tests
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: npm install -g pnpm@11.24.0
+
+      - name: Find the pnpm store
+        id: pnpm-store
+        working-directory: ./ui
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('ui/pnpm-lock.yaml') }}
+
+      - name: Install UI dependencies
+        working-directory: ./ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('ui/pnpm-lock.yaml') }}
+
+      - name: Install Playwright Chromium
+        working-directory: ./ui
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build olake-ui
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: olake-ui:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run integration tests on the runner
         working-directory: ./server
-        run: go test -v ./tests -timeout 0 -run '^${{ matrix.test }}$'
+        env:
+          OLAKE_TEST_ENV: runner
+          OLAKE_TEST_SKIP_UI_BUILD: "true"
+        run: go test -v ./tests -timeout 0 -run '^Test'
+
+      - name: Upload Playwright results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: ui/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # One check that always reports, for branch protection: it passes when the test passed, or when
+  # the change could not affect it and the test was skipped.
+  integration-result:
+    needs: [changes, integration-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the integration test result
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
+          TESTS: ${{ needs.integration-tests.result }}
+        run: |
+          echo "changes: $CHANGES (code changed: $CODE), integration-tests: $TESTS"
+          [ "$CHANGES" = success ] || exit 1
+          if [ "$CODE" = true ]; then
+            [ "$TESTS" = success ]
+          else
+            [ "$TESTS" = skipped ]
+          fi

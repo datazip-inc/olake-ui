@@ -8,8 +8,8 @@
  * @module SourceConnectorConfigs
  */
 
-import { E2E_HOST } from "./constants"
 import { SourceConnector } from "../enums"
+import { SERVICE_HOST } from "./constants"
 import { SourceFormConfig } from "../types/PageConfig.types"
 
 /**
@@ -83,130 +83,12 @@ export const createPostgresSourceConfig = (data: {
 })
 
 /**
- * MongoDB Source Configuration Template
- * Based on the actual MongoDB connector schema
- */
-export const createMongoDBSourceConfig = (data: {
-	name: string
-	hosts: string[]
-	database: string
-	username: string
-	password: string
-	version?: string
-	// Optional fields from schema
-	authdb?: string
-	replica_set?: string
-	read_preference?: string
-	srv?: boolean
-	max_threads?: number
-	backoff_retry_count?: number
-	chunking_strategy?: "Split Vector" | "Timestamp"
-}): SourceFormConfig => ({
-	name: data.name,
-	connector: SourceConnector.MongoDB,
-	version: data.version,
-	fields: {
-		hosts: data.hosts,
-		database: data.database,
-		authdb: data.authdb || "admin", // Default value from schema
-		username: data.username,
-		password: data.password,
-		...(data.replica_set && { replica_set: data.replica_set }),
-		...(data.read_preference && { read_preference: data.read_preference }),
-		...(data.srv !== undefined && { srv: data.srv }),
-		...(data.max_threads && { max_threads: data.max_threads }),
-		...(data.backoff_retry_count && {
-			backoff_retry_count: data.backoff_retry_count,
-		}),
-		...(data.chunking_strategy && {
-			chunking_strategy: data.chunking_strategy,
-		}),
-	},
-})
-
-/**
- * MySQL Source Configuration Template
- * Example of how to add a new connector - no CreateSourcePage changes needed!
- */
-export const createMySQLSourceConfig = (data: {
-	name: string
-	host: string
-	port: string
-	database: string
-	username: string
-	password: string
-	version?: string
-	ssl?: boolean
-}): SourceFormConfig => ({
-	name: data.name,
-	connector: SourceConnector.MySQL,
-	version: data.version,
-	fields: {
-		host: data.host,
-		port: data.port,
-		database: data.database,
-		username: data.username,
-		password: data.password,
-		...(data.ssl !== undefined && { ssl: data.ssl }),
-	},
-})
-
-/**
- * Oracle Source Configuration Template
- * Another example of adding a new connector
- */
-export const createOracleSourceConfig = (data: {
-	name: string
-	host: string
-	port: string
-	serviceName: string
-	username: string
-	password: string
-	version?: string
-}): SourceFormConfig => ({
-	name: data.name,
-	connector: SourceConnector.Oracle,
-	version: data.version,
-	fields: {
-		host: data.host,
-		port: data.port,
-		service_name: data.serviceName,
-		username: data.username,
-		password: data.password,
-	},
-})
-
-/**
- * Generic Source Configuration Builder
- * Use this for custom or one-off configurations
- */
-export const createGenericSourceConfig = (
-	connector: SourceConnector,
-	name: string,
-	fields: Record<string, any>,
-	version?: string,
-): SourceFormConfig => ({
-	name,
-	connector,
-	version,
-	fields,
-})
-
-/**
- * Test data configurations for E2E tests
+ * The Postgres source of the integration test (server/tests/sources/postgres/docker-compose.yml)
  */
 export const POSTGRES_SOURCE_CONFIG = {
-	host: E2E_HOST,
+	host: SERVICE_HOST,
 	database: "postgres",
 	username: "postgres",
 	password: "secret1234",
 	port: "5433",
-} as const
-
-export const MONGODB_SOURCE_CONFIG = {
-	host: E2E_HOST,
-	database: "test_db",
-	username: "admin",
-	password: "password",
-	port: "27017",
 } as const

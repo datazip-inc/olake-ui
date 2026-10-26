@@ -2,26 +2,137 @@
 package postgres
 
 import (
-	_ "github.com/lib/pq"
+	"context"
+	"database/sql"
+	"fmt"
+	"testing"
+
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq" // registers the "postgres" driver sqlx connects with
+	"github.com/stretchr/testify/require"
 
 	"github.com/datazip-inc/olake-ui/server/tests/sources"
 )
 
-// Source starts Postgres from this folder's docker-compose.yml and seeds the feature tables.
+// Source starts Postgres from this folder's docker-compose.yml and seeds the e2e Tables.
 var Source = sources.Source{
 	Name:       "postgres",
 	ComposeDir: "sources/postgres",
 	Port:       "5433/tcp",
+	Namespace:  "postgres_public",
+	Container:  "olake_postgres-test",
+	// Ready once the pgoutput slot olake_slot and the publication olake_publication exist: the
+	// compose command creates them after Postgres accepts connections.
 	ReadyCmd: `
-        for i in $(seq 1 30); do
-            if docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1" 2>/dev/null; then
-                echo "PostgreSQL ready."
-                break
+        for i in $(seq 1 60); do
+            ready=$(docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -tAc \
+                "SELECT (SELECT count(*) FROM pg_replication_slots WHERE slot_name = 'olake_slot' AND plugin = 'pgoutput') + (SELECT count(*) FROM pg_publication WHERE pubname = 'olake_publication')" 2>/dev/null)
+            if [ "$ready" = "2" ]; then
+                echo "PostgreSQL ready: olake_slot (pgoutput) and olake_publication exist."
+                exit 0
             fi
             sleep 2
-        done &&
-        docker exec olake_postgres-test psql -U postgres -d postgres -c \
-            "SELECT slot_name, plugin, slot_type, active FROM pg_replication_slots WHERE slot_name = 'olake_slot';"
+        done
+        echo "PostgreSQL, olake_slot or olake_publication not ready after 120s" >&2
+        docker logs --tail 50 olake_postgres-test >&2
+        exit 1
     `,
-	Seed: SeedFeatureTables,
+	Seed: func(ctx context.Context, t *testing.T, host, port string) {
+		t.Helper()
+		db := connect(ctx, t, host, port)
+		defer func() {
+			require.NoError(t, db.Close(), "failed to close postgres connection")
+		}()
+		for _, table := range Tables {
+			for _, statement := range seedStatements(table) {
+				_, err := db.ExecContext(ctx, statement)
+				require.NoError(t, err, "failed to seed %s: %s", table, statement)
+			}
+		}
+	},
+	Exec:  Exec,
+	Query: Query,
+}
+
+// Tables are the e2e streams of the integration job, one per feature. Each starts with rows
+// 1-5: id, name 'name_<id>' and amount <id>*10.
+var Tables = []string{
+	"e2e_cdc",
+	"e2e_strict_cdc",
+	"e2e_upsert_eq",
+	"e2e_upsert_dv",
+	"e2e_filter",
+	"e2e_new_columns",
+}
+
+// seedStatements recreates table with rows 1-5.
+func seedStatements(table string) []string {
+	return []string{
+		fmt.Sprintf("DROP TABLE IF EXISTS %s", table),
+		fmt.Sprintf("CREATE TABLE %s (id INT PRIMARY KEY, name TEXT, amount INT)", table),
+		fmt.Sprintf("INSERT INTO %s SELECT g, 'name_' || g, g * 10 FROM generate_series(1, 5) AS g", table),
+	}
+}
+
+// Exec runs statements on the source Postgres in order, each in its own transaction.
+func Exec(ctx context.Context, t *testing.T, host, port string, statements ...string) {
+	t.Helper()
+	db := connect(ctx, t, host, port)
+	defer func() {
+		require.NoError(t, db.Close(), "failed to close postgres connection")
+	}()
+	for _, statement := range statements {
+		t.Logf("source SQL: %s", statement)
+		_, err := db.ExecContext(ctx, statement)
+		require.NoError(t, err, "failed to run %s", statement)
+	}
+}
+
+// Query runs query on the source Postgres and returns every row as text, NULL as "NULL".
+func Query(ctx context.Context, host, port, query string) ([][]string, error) {
+	db, err := sqlx.ConnectContext(ctx, "postgres", connString(host, port))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
+	}
+	defer db.Close()
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", query, err)
+	}
+	defer rows.Close()
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	var out [][]string
+	for rows.Next() {
+		values := make([]sql.NullString, len(columns))
+		targets := make([]any, len(columns))
+		for i := range values {
+			targets[i] = &values[i]
+		}
+		if err := rows.Scan(targets...); err != nil {
+			return nil, err
+		}
+		row := make([]string, len(columns))
+		for i, v := range values {
+			row[i] = "NULL"
+			if v.Valid {
+				row[i] = v.String
+			}
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+func connString(host, port string) string {
+	return fmt.Sprintf("postgres://postgres@%s:%s/postgres?sslmode=disable", host, port)
+}
+
+func connect(ctx context.Context, t *testing.T, host, port string) *sqlx.DB {
+	t.Helper()
+	db, err := sqlx.ConnectContext(ctx, "postgres", connString(host, port))
+	require.NoError(t, err, "failed to connect to postgres")
+	return db
 }

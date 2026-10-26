@@ -1,0 +1,20 @@
+# Override for the integration test, used with the root docker-compose.yml:
+#
+#   docker compose -f docker-compose.yml -f server/tests/compose.olake-ui.yml ...
+#
+# olake-ui runs from olake-ui:ci, built from this checkout, instead of olakego/ui:latest.
+# Paths are relative to the first file, so the build context is the repository root.
+services:
+  olake-ui:
+    image: olake-ui:ci
+    pull_policy: never # the root file says "always", which would try to pull the local tag
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+  # Temporal waits for Elasticsearch to be healthy, and the check allows only 5 tries 10s apart. On
+  # a 4-vCPU runner ES boots while Spark's JVMs start, so give it a start period before failures
+  # count.
+  elasticsearch:
+    healthcheck:
+      start_period: 90s
