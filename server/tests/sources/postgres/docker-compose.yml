@@ -13,50 +13,36 @@ services:
       - "5433:5432"
     volumes:
       - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
-    command: 
+    command:
       - bash
       - -c
       - |
-        # Install wal2json
-        apt-get update && apt-get install -y postgresql-15-wal2json
-        
-        # Start PostgreSQL with basic config in background
+        # Start PostgreSQL with logical replication in background
         docker-entrypoint.sh postgres \
           -c hba_file=/etc/postgresql/pg_hba.conf \
           -c listen_addresses='*' \
           -c wal_level=logical \
           -c max_wal_senders=10 \
-          -c max_replication_slots=10 \
-          -c shared_preload_libraries=wal2json &
-        
+          -c max_replication_slots=10 &
+
         # Wait for PostgreSQL to be ready
         while ! pg_isready -U postgres -h localhost -p 5432; do
           sleep 1
         done
 
-        # Postgres 15.19+ only loads output plugins listed in output_plugin_libraries, which
-        # defaults to pgoutput and test_decoding. Older versions reject this statement with an
-        # error, which is fine.
-        psql -U postgres -c "ALTER SYSTEM SET output_plugin_libraries = pgoutput, test_decoding, wal2json" \
-          -c "SELECT pg_reload_conf()"
-
-        # Create replication slot if it doesn't exist. pg_reload_conf() returns before the
-        # server has reread its config, so retry until the slot is created.
-        for i in 1 2 3 4 5 6 7 8 9 10; do
-          psql -v ON_ERROR_STOP=1 -U postgres <<EOF && break
+        # OLake's Postgres CDC reads a pgoutput slot through a publication. FOR ALL TABLES also
+        # covers the tables the test creates later. The slot is created in its own statement: a
+        # logical slot cannot be created in a transaction that has already written.
+        psql -v ON_ERROR_STOP=1 -U postgres <<EOF
         DO \$\$
         BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'olake_slot') THEN
-            PERFORM pg_create_logical_replication_slot('olake_slot', 'wal2json');
-            RAISE NOTICE 'Replication slot created successfully';
-          ELSE
-            RAISE NOTICE 'Replication slot already exists';
+          IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'olake_publication') THEN
+            CREATE PUBLICATION olake_publication FOR ALL TABLES;
           END IF;
         END
         \$\$;
         EOF
-          sleep 1
-        done
-        
+        psql -v ON_ERROR_STOP=1 -U postgres -c "SELECT pg_create_logical_replication_slot('olake_slot', 'pgoutput') WHERE NOT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'olake_slot')"
+
         # Keep container running
         wait
