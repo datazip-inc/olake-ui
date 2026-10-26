@@ -254,11 +254,16 @@ func (r *Run) exec(cmd, format string, args ...any) []byte {
 	return out
 }
 
-// Playwright runs the tests of spec tagged tag. Every run gets E2E_JOB_NAME and
+// Playwright runs the tests of spec tagged tag. Every run gets E2E_JOB_NAME, E2E_DATABASE (the
+// destination database the checks read, so the spec does not derive it again) and
 // E2E_SERVICE_HOST; env adds more E2E_* variables.
 func (r *Run) Playwright(spec, tag string, env map[string]string) {
 	r.t.Helper()
-	vars := map[string]string{"E2E_JOB_NAME": r.w.Job, "E2E_SERVICE_HOST": r.ServiceHost}
+	vars := map[string]string{
+		"E2E_JOB_NAME":     r.w.Job,
+		"E2E_DATABASE":     r.w.database(),
+		"E2E_SERVICE_HOST": r.ServiceHost,
+	}
 	for k, v := range env {
 		vars[k] = v
 	}

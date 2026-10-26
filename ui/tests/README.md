@@ -22,11 +22,12 @@ tests/
 
 ## Inputs
 
-| Variable | Set by | Meaning |
-|---|---|---|
-| `E2E_JOB_NAME` | Go test | Name of the job; the source, destination and database names derive from it. Without it every test skips. |
-| `E2E_SERVICE_HOST` | Go test | Address the sync driver uses to reach the source and destination ports (default `172.17.0.2`). |
-| `E2E_WEBHOOK_URL` | Go test | Webhook receiver URL for the `@alerts` step. |
+| Variable           | Set by  | Meaning                                                                                                                    |
+| ------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `E2E_JOB_NAME`     | Go test | Name of the job; the source and destination names derive from it. Without it every test skips.                             |
+| `E2E_DATABASE`     | Go test | Destination database the job writes to and the Go checks read (Dynamic: `<job>_postgres_public`). Needed by `@create-job`. |
+| `E2E_SERVICE_HOST` | Go test | Address the sync driver uses to reach the source and destination ports (default `172.17.0.2`).                             |
+| `E2E_WEBHOOK_URL`  | Go test | Webhook receiver URL for the `@alerts` step.                                                                               |
 
 ## Running
 
@@ -43,7 +44,7 @@ One step against a stack that is already up, after the steps before it:
 
 ```bash
 cd ui
-E2E_JOB_NAME=e2e_postgres_jdbc E2E_SERVICE_HOST=172.17.0.1 \
+E2E_JOB_NAME=e2e_postgres_jdbc E2E_DATABASE=e2e_postgres_jdbc_postgres_public E2E_SERVICE_HOST=172.17.0.1 \
   npx playwright test tests/integration/postgres-iceberg.spec.ts --grep '@create-job'
 ```
 

@@ -51,7 +51,7 @@ import {
 } from "./helpers"
 
 const job = E2E.job
-const n = names(job)
+const n = names(job, E2E.database)
 const SYNC_COMPLETED_LOG =
 	"Sync completed, wait 5 seconds cleanup in progress..."
 
@@ -79,6 +79,10 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 		createJobPage,
 	}) => {
 		test.setTimeout(20 * 60 * 1000)
+		expect(
+			E2E.database,
+			"E2E_DATABASE: the database the Go checks read",
+		).not.toBe("")
 
 		await createPostgresSource(
 			page,

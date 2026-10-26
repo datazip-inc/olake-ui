@@ -25,22 +25,29 @@ import {
 	verifyEntityCreationSuccessModal,
 } from "../utils"
 
-/** Inputs from the Go integration test. A spec skips itself when E2E_JOB_NAME is unset. */
+/**
+ * Inputs from the Go integration test (server/tests, Run.Playwright), which runs Playwright as a
+ * separate process and passes them as environment variables. A spec skips itself when
+ * E2E_JOB_NAME is unset.
+ */
 export const E2E = {
 	job: process.env.E2E_JOB_NAME?.trim() || "",
+	// The destination database the Go checks read: <job>_<source database>_<schema>.
+	database: process.env.E2E_DATABASE?.trim() || "",
 	webhookUrl: process.env.E2E_WEBHOOK_URL?.trim() || "",
 }
 
 /** Names of everything the Postgres workflow creates, derived from the job name. */
-export const names = (job: string) => ({
+export const names = (job: string, database: string) => ({
 	source: `${job}_source`,
 	// Unique per run: the source is created in @stream-rules, which can be run again on its own.
 	sourceNoCdc: `${job}_source_nocdc_${Date.now()}`,
 	destination: `${job}_dest`,
 	rulesJob: `${job}_rules`,
-	// Dynamic database name: <job>_<source database>_<schema>
-	databasePrefix: `${job}_postgres`,
-	database: `${job}_postgres_public`,
+	database,
+	// The UI shows a Dynamic name as <prefix>_${source_namespace}: the database without its
+	// source schema (public).
+	databasePrefix: database.replace(/_public$/, ""),
 })
 
 /** The e2e tables the Go test seeds, one stream per feature. */
