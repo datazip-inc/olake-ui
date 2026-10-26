@@ -21,6 +21,15 @@ const (
 
 const postgresSpec = "tests/integration/postgres-iceberg.spec.ts"
 
+// The source columns before and after e2e_new_columns gets extra_col.
+var (
+	baseColumns  = []string{"id", "name", "amount"}
+	extraColumns = []string{"id", "name", "amount", "extra_col"}
+)
+
+// filterWhere is e2e_filter's Data Filter, as the source query that gives the same rows.
+const filterWhere = "amount > 20 AND id < 5"
+
 // TestPostgres runs the Postgres → Iceberg (JDBC) workflow: one job with a stream per feature,
 // created and driven through the UI, and its data checked in Iceberg through Spark after every
 // sync. See postgres-iceberg.spec.ts for the UI side of each step.
@@ -47,6 +56,13 @@ func TestPostgres(t *testing.T) {
 		LiveIDs(filterTable, 3, 4),
 		LiveIDs(newColumnsTable, 1, 2, 3, 4, 5),
 		Columns(newColumnsTable, []string{"id", "name", "amount"}, []string{"extra_col"}),
+
+		// Row by row against the source.
+		r.MatchesSource(cdcTable, baseColumns, ""),
+		r.MatchesSource(upsertEqTable, baseColumns, ""),
+		r.MatchesSource(upsertDVTable, baseColumns, ""),
+		r.MatchesSource(filterTable, baseColumns, filterWhere),
+		r.MatchesSource(newColumnsTable, baseColumns, ""),
 	)
 
 	// Source changes, read by CDC in sync 2.
@@ -97,6 +113,14 @@ func TestPostgres(t *testing.T) {
 		Columns(newColumnsTable, []string{"id", "name", "amount", "extra_col"}, nil),
 		LiveIDs(newColumnsTable, 1, 2, 3, 4, 5, 6),
 		Value(newColumnsTable, 6, "extra_col", "99"),
+
+		// Row by row against the source. CDC Only holds only the rows inserted after sync 1.
+		r.MatchesSource(cdcTable, baseColumns, ""),
+		r.MatchesSource(strictCDCTable, baseColumns, "id >= 6"),
+		r.MatchesSource(upsertEqTable, baseColumns, ""),
+		r.MatchesSource(upsertDVTable, baseColumns, ""),
+		r.MatchesSource(filterTable, baseColumns, filterWhere),
+		r.MatchesSource(newColumnsTable, extraColumns, ""),
 	)
 
 	// Clear Destination drops every table of the job.
@@ -133,6 +157,13 @@ func TestPostgres(t *testing.T) {
 		Columns(newColumnsTable, []string{"id", "name", "amount", "extra_col"}, nil),
 		LiveIDs(newColumnsTable, 1, 2, 3, 4, 5, 6),
 		Value(newColumnsTable, 6, "extra_col", "99"),
+
+		// Row by row against the source.
+		r.MatchesSource(cdcTable, baseColumns, ""),
+		r.MatchesSource(upsertEqTable, baseColumns, ""),
+		r.MatchesSource(upsertDVTable, baseColumns, ""),
+		r.MatchesSource(filterTable, baseColumns, filterWhere),
+		r.MatchesSource(newColumnsTable, extraColumns, ""),
 	)
 
 	// UI-only steps.

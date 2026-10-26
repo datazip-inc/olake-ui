@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -371,4 +372,63 @@ func FormatVersion(name string, want int) Check {
 			return nil
 		},
 	}
+}
+
+// keyColumn is the primary key of the e2e tables; the source comparison matches rows on it.
+const keyColumn = "id"
+
+// diffRows compares the source rows with the destination rows, both with the key in the first
+// column, and describes every difference: rows only on one side and rows whose values differ.
+func diffRows(columns []string, source, destination [][]string) error {
+	index := func(rows [][]string) map[string][]string {
+		m := make(map[string][]string, len(rows))
+		for _, row := range rows {
+			m[row[0]] = row
+		}
+		return m
+	}
+	src, dst := index(source), index(destination)
+	keys := make([]string, 0, len(src)+len(dst))
+	for k := range src {
+		keys = append(keys, k)
+	}
+	for k := range dst {
+		if _, ok := src[k]; !ok {
+			keys = append(keys, k)
+		}
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		a, errA := strconv.ParseInt(keys[i], 10, 64)
+		b, errB := strconv.ParseInt(keys[j], 10, 64)
+		if errA == nil && errB == nil {
+			return a < b
+		}
+		return keys[i] < keys[j]
+	})
+
+	var diffs []string
+	for _, k := range keys {
+		s, inSrc := src[k]
+		d, inDst := dst[k]
+		switch {
+		case !inDst:
+			diffs = append(diffs, fmt.Sprintf("%s %s: only in the source %v", keyColumn, k, s))
+		case !inSrc:
+			diffs = append(diffs, fmt.Sprintf("%s %s: only in the destination %v", keyColumn, k, d))
+		default:
+			for i := range columns {
+				if s[i] != d[i] {
+					diffs = append(diffs, fmt.Sprintf("%s %s: %s is %q in the source, %q in the destination", keyColumn, k, columns[i], s[i], d[i]))
+				}
+			}
+		}
+	}
+	if len(source) != len(src) || len(destination) != len(dst) {
+		diffs = append(diffs, fmt.Sprintf("duplicate %s values: %d source rows for %d ids, %d destination rows for %d ids",
+			keyColumn, len(source), len(src), len(destination), len(dst)))
+	}
+	if len(diffs) > 0 {
+		return fmt.Errorf("%d difference(s) between source and destination:\n  %s", len(diffs), strings.Join(diffs, "\n  "))
+	}
+	return nil
 }

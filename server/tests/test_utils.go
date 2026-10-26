@@ -299,6 +299,48 @@ func (r *Run) Check(phase string, checks ...Check) {
 	}
 }
 
+// MatchesSource checks that the destination's current rows of table equal the source's rows,
+// column by column. The current row of an id is its newest row by _olake_timestamp, and an id
+// whose newest row is a delete tombstone (_op_type 'd') has none: that reads Append tables, which
+// keep every change, and Upsert tables the same way. where, a code constant or empty, limits the
+// source rows the way a Data Filter or CDC Only limits what reaches the destination.
+func (r *Run) MatchesSource(table string, columns []string, where string) Check {
+	if len(columns) == 0 || columns[0] != keyColumn {
+		panic(fmt.Sprintf("MatchesSource(%s): the first column must be %s", table, keyColumn))
+	}
+	srcCols := make([]string, len(columns))
+	dstCols := make([]string, len(columns))
+	for i, c := range columns {
+		srcCols[i] = fmt.Sprintf("CAST(%s AS TEXT)", ident(c))
+		dstCols[i] = fmt.Sprintf("CAST(%s AS STRING)", ident(c))
+	}
+	srcQuery := fmt.Sprintf("SELECT %s FROM %s", strings.Join(srcCols, ", "), ident(table))
+	name := fmt.Sprintf("%s matches the source (%s)", table, strings.Join(columns, ", "))
+	if where != "" {
+		srcQuery += " WHERE " + where
+		name += " where " + where
+	}
+	srcQuery += " ORDER BY " + keyColumn
+	return Check{
+		Name: name,
+		Run: func(ctx context.Context, spark sql.SparkSession, tableName func(string) string) error {
+			source, err := r.w.Source.Query(ctx, r.sourceHost, r.sourcePort, srcQuery)
+			if err != nil {
+				return fmt.Errorf("reading the source: %w", err)
+			}
+			tbl := tableName(ident(table))
+			destination, err := refreshed(ctx, spark, tbl, fmt.Sprintf(
+				"SELECT %s FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY %s ORDER BY _olake_timestamp DESC) AS _current FROM %s) "+
+					"WHERE _current = 1 AND _op_type != 'd' ORDER BY %s",
+				strings.Join(dstCols, ", "), keyColumn, tbl, keyColumn))
+			if err != nil {
+				return fmt.Errorf("reading the destination: %w", err)
+			}
+			return diffRows(columns, source, destination)
+		},
+	}
+}
+
 // webhookContainer receives OLake's alert webhook and prints each request body to its log.
 const webhookContainer = "olake-webhook-test"
 
