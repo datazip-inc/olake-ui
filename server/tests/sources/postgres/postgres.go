@@ -3,6 +3,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 
@@ -49,7 +50,8 @@ var Source = sources.Source{
 			}
 		}
 	},
-	Exec: Exec,
+	Exec:  Exec,
+	Query: Query,
 }
 
 // Tables are the e2e streams of the integration job, one per feature. Each starts with rows
@@ -86,10 +88,51 @@ func Exec(ctx context.Context, t *testing.T, host, port string, statements ...st
 	}
 }
 
+// Query runs query on the source Postgres and returns every row as text, NULL as "NULL".
+func Query(ctx context.Context, host, port, query string) ([][]string, error) {
+	db, err := sqlx.ConnectContext(ctx, "postgres", connString(host, port))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
+	}
+	defer db.Close()
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", query, err)
+	}
+	defer rows.Close()
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	var out [][]string
+	for rows.Next() {
+		values := make([]sql.NullString, len(columns))
+		targets := make([]any, len(columns))
+		for i := range values {
+			targets[i] = &values[i]
+		}
+		if err := rows.Scan(targets...); err != nil {
+			return nil, err
+		}
+		row := make([]string, len(columns))
+		for i, v := range values {
+			row[i] = "NULL"
+			if v.Valid {
+				row[i] = v.String
+			}
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+func connString(host, port string) string {
+	return fmt.Sprintf("postgres://postgres@%s:%s/postgres?sslmode=disable", host, port)
+}
+
 func connect(ctx context.Context, t *testing.T, host, port string) *sqlx.DB {
 	t.Helper()
-	connStr := fmt.Sprintf("postgres://postgres@%s:%s/postgres?sslmode=disable", host, port)
-	db, err := sqlx.ConnectContext(ctx, "postgres", connStr)
+	db, err := sqlx.ConnectContext(ctx, "postgres", connString(host, port))
 	require.NoError(t, err, "failed to connect to postgres")
 	return db
 }

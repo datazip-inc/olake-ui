@@ -23,4 +23,8 @@ type Source struct {
 	// Exec runs SQL statements on the source in order, for the changes a workflow makes between
 	// syncs. host and port are as for Seed.
 	Exec func(ctx context.Context, t *testing.T, host, port string, statements ...string)
+
+	// Query runs a query on the source and returns every row as text, NULL as "NULL", so the
+	// checks can compare it with the destination. host and port are as for Seed.
+	Query func(ctx context.Context, host, port, query string) ([][]string, error)
 }
