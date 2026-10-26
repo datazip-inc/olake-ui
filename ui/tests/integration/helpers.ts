@@ -34,7 +34,8 @@ export const E2E = {
 /** Names of everything the Postgres workflow creates, derived from the job name. */
 export const names = (job: string) => ({
 	source: `${job}_source`,
-	sourceNoCdc: `${job}_source_nocdc`,
+	// Unique per run: the source is created in @stream-rules, which can be run again on its own.
+	sourceNoCdc: `${job}_source_nocdc_${Date.now()}`,
 	destination: `${job}_dest`,
 	rulesJob: `${job}_rules`,
 	// Dynamic database name: <job>_<source database>_<schema>
@@ -286,11 +287,24 @@ export const setUpsertType = async (
  * rendered .ant-select-item-option instead of any element with the text.
  */
 export const pickOption = async (page: Page, text: string) => {
-	await page
-		.locator(".ant-select-dropdown:visible .ant-select-item-option")
+	const dropdown = page.locator(".ant-select-dropdown:visible")
+	const option = dropdown
+		.locator(".ant-select-item-option")
 		.filter({ has: page.getByText(text, { exact: true }) })
 		.first()
-		.click()
+	// The list is virtual: only the rows in view exist (about 8), so scroll until this one does.
+	await expect(async () => {
+		if (await option.isVisible()) return
+		await dropdown
+			.locator(".rc-virtual-list-holder")
+			.first()
+			.evaluate(list => list.scrollBy(0, list.clientHeight - 40), undefined, {
+				timeout: 1000,
+			})
+			.catch(() => undefined)
+		throw new Error(`option "${text}" is not rendered yet`)
+	}).toPass({ timeout: 20_000, intervals: [150] })
+	await option.click()
 }
 
 export type FilterCondition = {
