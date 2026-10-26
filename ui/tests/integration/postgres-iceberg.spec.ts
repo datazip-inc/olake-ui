@@ -450,10 +450,20 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 			hasText: "Apply Configurations",
 		})
 		await expect(apply).toBeVisible()
+		// Nothing is marked as changed yet, and the sync mode sits in a collapsed section.
+		const review = apply.getByRole("button", { name: "Review Changes" })
+		await expect(review).toBeDisabled()
+		const ingestion = apply.getByRole("button", {
+			name: "Toggle sync and ingestion settings",
+		})
+		await expect(ingestion).toHaveAttribute("aria-expanded", "false")
+		await ingestion.click()
+		await expect(ingestion).toHaveAttribute("aria-expanded", "true")
 		await apply
 			.getByRole("radio", { name: "Full Refresh", exact: true })
 			.check()
-		await apply.getByRole("button", { name: "Review Changes" }).click()
+		await expect(review).toBeEnabled()
+		await review.click()
 		const summary = page.getByRole("dialog").filter({
 			hasText: "Summary of Changes",
 		})
