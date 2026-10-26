@@ -280,11 +280,15 @@ export const setUpsertType = async (
 	)
 }
 
-/** Picks an option of an open Select dropdown by its exact text. */
-const pickOption = async (page: Page, text: string) => {
+/**
+ * Picks an option of the open Select dropdown by its exact text. antd also renders a hidden copy
+ * of each option (role="option", for screen readers) that is never visible, so match the
+ * rendered .ant-select-item-option instead of any element with the text.
+ */
+export const pickOption = async (page: Page, text: string) => {
 	await page
-		.locator(".ant-select-dropdown:visible")
-		.getByText(text, { exact: true })
+		.locator(".ant-select-dropdown:visible .ant-select-item-option")
+		.filter({ has: page.getByText(text, { exact: true }) })
 		.first()
 		.click()
 }

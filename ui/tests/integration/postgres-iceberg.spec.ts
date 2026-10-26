@@ -36,6 +36,7 @@ import {
 	names,
 	offeredUpsertTypes,
 	openStream,
+	pickOption,
 	selectStream,
 	setDataFilter,
 	setIngestionMode,
@@ -321,10 +322,7 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 		}
 		const pickSource = async (name: string) => {
 			await page.getByTestId("existing-source").click()
-			await page
-				.locator(".ant-select-dropdown:visible")
-				.getByText(name, { exact: true })
-				.click()
+			await pickOption(page, name)
 		}
 		const queryEngines = page
 			.getByText("Target Query Engines", { exact: true })
@@ -333,10 +331,7 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 			.first()
 		const toggleQueryEngine = async (label: string) => {
 			await queryEngines.click()
-			await page
-				.locator(".ant-select-dropdown:visible")
-				.getByText(label, { exact: true })
-				.click()
+			await pickOption(page, label)
 			await page.keyboard.press("Escape")
 		}
 		const next = async () => {
