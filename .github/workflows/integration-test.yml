@@ -17,7 +17,7 @@ jobs:
     # on a GitHub-hosted runner that is discarded after the job.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: 32gb-runner
-    timeout-minutes: 60
+    timeout-minutes: 100 # the test's own limit is 90 minutes (runTimeout in server/tests)
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,9 +52,9 @@ jobs:
   # only starts the stack. The runner is discarded after the job, which runner mode relies on.
   integration-tests-runner:
     runs-on: ubuntu-24.04
-    # Setup runs in workflow steps here, outside the test's 50-minute context, and the test adds its
-    # 60s wait and up to 5 minutes of compose cleanup.
-    timeout-minutes: 75
+    # Setup runs in workflow steps here, outside the test's 90-minute limit, and the cleanup takes up
+    # to 5 more minutes.
+    timeout-minutes: 110
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
