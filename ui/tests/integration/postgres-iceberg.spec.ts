@@ -287,20 +287,23 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 		await page.getByTestId("refresh-tasks-button").click()
 		await expect(rows).toHaveCount(4)
 
-		// Task logs of the newest run
+		// Task logs of the newest run. The checks search the log: it is a virtual list that renders
+		// only the rows in view, so a line of a long log may be loaded but not rendered.
 		await expectNewestRunLogs(page, SYNC_COMPLETED_LOG)
 		const searchLogs = page.getByPlaceholder("Search Logs")
 		await searchLogs.fill("Sync completed")
 		await expect(page.getByText(SYNC_COMPLETED_LOG).first()).toBeVisible()
-		await searchLogs.fill("")
 
+		// Errors also keeps only error lines, so the completion line goes away, and comes back.
 		const errors = page.getByRole("button", { name: "Errors", exact: true })
 		await errors.click()
 		await expect(errors).toHaveClass(/ant-btn-primary/)
 		await expect(page.getByText(SYNC_COMPLETED_LOG)).toHaveCount(0)
+		await expect(page.getByText("No logs found")).toBeVisible()
 		await errors.click()
 		await expect(errors).not.toHaveClass(/ant-btn-primary/)
 		await expect(page.getByText(SYNC_COMPLETED_LOG).first()).toBeVisible()
+		await searchLogs.fill("")
 
 		const download = page.waitForEvent("download")
 		await page.getByRole("button", { name: "Download Logs" }).click()

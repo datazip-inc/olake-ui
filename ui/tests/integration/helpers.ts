@@ -442,15 +442,38 @@ export const syncAndWait = async (
 	await waitForNewestRun(page, runs, "Sync", status)
 }
 
-/** Opens the newest run's logs and waits for the line a finished sync writes. */
+/**
+ * Opens the newest run's logs and checks that they hold line, the line a finished sync writes.
+ *
+ * The page loads the newest 1000 log lines into a virtual list, which renders only the rows
+ * around the scroll position; with a long log the last line can be loaded but never rendered.
+ * So search for the line: "Search Logs" filters the loaded lines, and the match is the only row.
+ */
 export const expectNewestRunLogs = async (page: Page, line: string) => {
 	await historyRows(page)
 		.first()
 		.getByRole("button", { name: "View logs" })
 		.click()
 	await expect(page).toHaveURL(/\/jobs\/\d+\/history\/\d+\/logs\?file=/)
-	await expect(async () => {
-		await page.getByTestId("refresh-logs-button").click()
-		await expect(page.getByText(line).first()).toBeVisible({ timeout: 2000 })
-	}).toPass({ timeout: TIMEOUTS.LONG, intervals: [3000] })
+	const search = page.getByPlaceholder("Search Logs")
+	await search.fill(line)
+	try {
+		await expect(async () => {
+			await page.getByTestId("refresh-logs-button").click()
+			await expect(page.getByText(line).first()).toBeVisible({ timeout: 3000 })
+		}).toPass({ timeout: 2 * 60 * 1000, intervals: [2000] })
+	} catch (error) {
+		// Show what the log holds instead: its newest rendered lines, without the search. Clearing
+		// the search reloads the log and then scrolls it to the end, so give that a moment.
+		await search.fill("")
+		await page.waitForTimeout(2000)
+		const rendered = await page
+			.locator("[data-testid='virtuoso-item-list']")
+			.innerText({ timeout: 5000 })
+			.catch(() => "(no log lines rendered)")
+		throw new Error(
+			`the run's log has no line "${line}"; rendered lines:\n${rendered.slice(-3000)}\n${error}`,
+		)
+	}
+	await search.fill("")
 }
