@@ -10,12 +10,52 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels its run in progress; runs on master are never cancelled.
+concurrency:
+  group: integration-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # Decides whether the change can affect the integration test. Markdown files never do; code under
+  # server/ or ui/, the image build and the compose files do.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the changed files
+        id: filter
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # Without a usable base commit (a new branch, a force push), run the test.
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE" "$GITHUB_SHA")
+          echo "Changed files:"
+          echo "$changed"
+          if echo "$changed" | grep -v '\.md$' \
+              | grep -qE '^(server/|ui/|Dockerfile$|\.dockerignore$|docker-compose\.yml$|\.github/workflows/integration-test\.yml$)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # Runs the stack directly on a GitHub-hosted runner (OLAKE_TEST_ENV=runner). Node, pnpm, the UI
   # dependencies, Playwright and the olake-ui image come from cached steps here, so the test only
   # starts the stack. The runner is discarded after the job, which runner mode relies on. The
   # DinD mode (the default of the Go test) is for machines such as the test server.
   integration-tests:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     # Setup runs in workflow steps here, outside the test's 90-minute limit, and the cleanup takes up
     # to 5 more minutes.
@@ -104,3 +144,24 @@ jobs:
           path: ui/test-results
           if-no-files-found: ignore
           retention-days: 7
+
+  # One check that always reports, for branch protection: it passes when the test passed, or when
+  # the change could not affect it and the test was skipped.
+  integration-result:
+    needs: [changes, integration-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the integration test result
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
+          TESTS: ${{ needs.integration-tests.result }}
+        run: |
+          echo "changes: $CHANGES (code changed: $CODE), integration-tests: $TESTS"
+          [ "$CHANGES" = success ] || exit 1
+          if [ "$CODE" = true ]; then
+            [ "$TESTS" = success ]
+          else
+            [ "$TESTS" = skipped ]
+          fi
