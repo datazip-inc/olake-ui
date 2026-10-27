@@ -68,16 +68,6 @@ func startOLakeCmd(root string) string {
     `, shellQuote(root), shellQuote(olakeHome), olakeCompose(root))
 }
 
-// Install Playwright and dependencies. --frozen-lockfile installs exactly what pnpm-lock.yaml
-// pins, leaves package.json and the lockfile in the checkout unchanged, and fails if they disagree.
-func installPlaywrightCmd(root string) string {
-	return fmt.Sprintf(`
-        cd %s &&
-        pnpm install --frozen-lockfile &&
-        pnpm exec playwright install --with-deps chromium
-    `, shellQuote(root+"/ui"))
-}
-
 // playwrightPatterns limit the values Run.Playwright puts in the Playwright shell command.
 var (
 	jobPattern    = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
@@ -125,7 +115,7 @@ func playwrightCmd(root, spec, tag string, env map[string]string, debug bool) (s
 // file must run Spark Connect there; see destinations.Destination.
 const sparkConnectPort = "15002/tcp"
 
-// runTimeout bounds a whole workflow run. It is under both CI jobs' timeouts, with room for their
+// runTimeout bounds a whole workflow run. It is under the CI job's timeout, with room for its
 // setup steps and the cleanup.
 const runTimeout = 90 * time.Minute
 
@@ -158,12 +148,12 @@ func composeStartCmd(root, project, dir string, services []string, ready string)
 		shellQuote(root+"/server/tests/"+dir), start, name, name)
 }
 
-// Run is a started integration stack: the Env with the source, the destination and OLake up,
-// the source seeded and Playwright installed. Its methods fail the test on error.
+// Run is a started integration stack: the source, the destination and OLake up, the source
+// seeded and Playwright installed. Its methods fail the test on error.
 type Run struct {
 	t           *testing.T
 	ctx         context.Context
-	env         Env
+	env         *Env
 	w           *Workflow
 	start       time.Time
 	ServiceHost string // what the driver, and the specs, use to reach the published ports
@@ -181,11 +171,7 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 	ctx, cancel := context.WithTimeout(context.Background(), runTimeout)
 	r := &Run{t: t, ctx: ctx, w: w, start: time.Now()}
 
-	ports := []string{sparkConnectPort}
-	if w.Source.Port != "" {
-		ports = append(ports, w.Source.Port)
-	}
-	env, err := newEnv(ctx, t, ports)
+	env, err := newEnv(t)
 	t.Cleanup(cancel) // registered after the Env's own cleanup, so it runs before it
 	r.require(err)
 	r.env = env
@@ -196,12 +182,10 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 	r.require(err)
 	t.Logf("Service host: %s", r.ServiceHost)
 
-	r.sparkHost, r.sparkPort, err = env.Addr(ctx, sparkConnectPort)
-	r.require(err, "failed to get spark port")
+	r.sparkHost, r.sparkPort = env.Addr(sparkConnectPort)
 	r.sourceHost = r.sparkHost
 	if w.Source.Port != "" {
-		r.sourceHost, r.sourcePort, err = env.Addr(ctx, w.Source.Port)
-		r.require(err, "failed to get %s port", w.Source.Name)
+		r.sourceHost, r.sourcePort = env.Addr(w.Source.Port)
 	}
 
 	// A checkout that ran the test before still holds that run's Iceberg tables and job state;
@@ -240,7 +224,7 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 		return r.run(ctx, startOLakeCmd(root), "OLake startup failed")
 	})
 	playwright := r.task(startCtx, cancelStart, &tasks, "Playwright", func(ctx context.Context) error {
-		return env.InstallPlaywright(ctx, t)
+		return env.CheckPlaywright(ctx, t)
 	})
 
 	// Seed as soon as the source is ready. Seed fails the test through t, which only the test's
@@ -278,7 +262,7 @@ func (r *Run) require(err error, msgAndArgs ...any) {
 	}
 }
 
-// exec runs cmd in the Env and fails the test with its output when it does not exit 0.
+// exec runs cmd and fails the test with its output when it does not exit 0.
 func (r *Run) exec(cmd, format string, args ...any) []byte {
 	r.t.Helper()
 	code, out, err := r.env.Exec(r.ctx, cmd)
