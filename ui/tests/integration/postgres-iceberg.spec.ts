@@ -57,7 +57,6 @@ import { clearDestination } from "./job/settings"
 import {
 	bulkConfigureSyncMode,
 	deselectAllStreams,
-	expectUpsertType,
 	offeredUpsertTypes,
 	openStream,
 	selectStream,
@@ -312,14 +311,12 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 		await editBack(page)
 		await toggleQueryEngine(page, "Dremio")
 		await proceedWithChangedQueryEngines(page, STREAMS.upsertEq)
-		// Dremio reads position deletes only, so both upsert streams are resolved to them again.
-		await openStream(page, STREAMS.upsertEq)
-		await streamTab(page, "Config")
-		expect(await offeredUpsertTypes(page)).toEqual(["Positional Deletes"])
-		await expectUpsertType(page, "Positional Deletes")
-		await openStream(page, STREAMS.upsertDv)
-		await streamTab(page, "Config")
-		await expectUpsertType(page, "Positional Deletes")
+		// Dremio reads position deletes only, so both upsert streams are offered just those now.
+		for (const stream of [STREAMS.upsertEq, STREAMS.upsertDv]) {
+			await openStream(page, stream)
+			await streamTab(page, "Config")
+			expect(await offeredUpsertTypes(page)).toEqual(["Positional Deletes"])
+		}
 		// Leave without saving: the job keeps its streams as they are.
 		await page.goto("/jobs")
 	})

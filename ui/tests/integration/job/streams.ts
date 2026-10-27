@@ -196,11 +196,6 @@ export const offeredUpsertTypes = async (page: Page): Promise<string[]> => {
 	return labels
 }
 
-/** Checks the upsert type the open stream has. */
-export const expectUpsertType = async (page: Page, type: UpsertTypeLabel) => {
-	await expect(upsertTypeSelect(page)).toContainText(type)
-}
-
 export const setUpsertType = async (
 	page: Page,
 	type: UpsertTypeLabel,
