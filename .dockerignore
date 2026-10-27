@@ -22,3 +22,6 @@ server/logger/logs
 server/.idea
 server/.vscode
 server/*.log 
+# Job state of local OLake runs and of the integration test (server/tests/.olake-home)
+olake-data
+server/tests/.olake-home

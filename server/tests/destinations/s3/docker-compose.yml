@@ -1,0 +1,95 @@
+# Destination for the Amazon S3 (parquet) writer: MinIO stands in for S3, and Spark reads the
+# parquet files back over s3a so the test can check them. Nothing here is Iceberg.
+services:
+  # Spark Connect, only used by the test to read the parquet files. The image's built-in config
+  # also opens an Iceberg JDBC catalog on start-up, which the S3 writer never uses; that is the
+  # only reason the postgres service below exists.
+  spark:
+    image: olakego/spark-connect:v0.0.1
+    container_name: s3-spark
+    networks:
+      s3_net:
+    depends_on:
+      minio:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+    ports:
+      - 15002:15002
+    # As in the jdbc destination: curl fetches the one jar the image lacks, and Ivy resolves
+    # nothing. The s3a settings let Spark read the parquet files straight from MinIO.
+    entrypoint: |
+          /bin/sh -c "
+          ./entrypoint.sh &&
+          echo 'Fetching the Spark Connect jar...' &&
+          (curl -fsS --retry 3 -o /tmp/spark-connect.jar https://maven-central.storage-download.googleapis.com/maven2/org/apache/spark/spark-connect_2.12/3.5.2/spark-connect_2.12-3.5.2.jar ||
+            curl -fsS --retry 3 -o /tmp/spark-connect.jar https://repo1.maven.org/maven2/org/apache/spark/spark-connect_2.12/3.5.2/spark-connect_2.12-3.5.2.jar ||
+            { echo 'failed to fetch the Spark Connect jar'; false; }) &&
+          echo 'Starting Spark Connect server...' &&
+          /opt/spark/sbin/start-connect-server.sh --conf spark.jars.packages= --jars /tmp/spark-connect.jar,/root/.ivy2/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar,/root/.ivy2/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar,/root/.ivy2/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem --conf spark.hadoop.fs.s3a.endpoint=http://minio:9000 --conf spark.hadoop.fs.s3a.path.style.access=true --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false --conf spark.hadoop.fs.s3a.access.key=admin --conf spark.hadoop.fs.s3a.secret.key=password &
+          while true; do sleep 30; done
+          "
+
+  # The S3 bucket the job writes to (s3://warehouse/<path>/...)
+  minio:
+    image: olakego/minio:RELEASE.2025-04-03T14-56-28Z
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+      - MINIO_DOMAIN=minio
+    networks:
+      s3_net:
+        aliases:
+          - warehouse.minio
+    ports:
+      - 9001:9001
+      - 9000:9000
+    command: [ "server", "/data", "--console-address", ":9001" ]
+
+  # Creates the warehouse bucket
+  mc:
+    depends_on:
+      - minio
+    image: olakego/mc:RELEASE.2025-04-03T17-07-56Z
+    container_name: mc
+    networks:
+      s3_net:
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+    entrypoint: |
+      /bin/sh -c "
+      until (/usr/bin/mc config host add minio http://minio:9000 admin password) do echo '...waiting...' && sleep 1; done;
+      if ! /usr/bin/mc ls minio/warehouse > /dev/null 2>&1; then
+        /usr/bin/mc mb minio/warehouse;
+        /usr/bin/mc policy set public minio/warehouse;
+      fi;
+      tail -f /dev/null
+      "
+
+  # Not used by the S3 writer. It has to be called postgres, with this database and user,
+  # because that is where the Spark image's built-in Iceberg catalog config looks for it.
+  postgres:
+    image: postgres:15
+    container_name: spark-catalog-postgres
+    networks:
+      s3_net:
+    environment:
+      - POSTGRES_USER=iceberg
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=iceberg
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "iceberg", "-d", "iceberg" ]
+      interval: 2s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  s3_net:

@@ -23,7 +23,11 @@ export const selectConnector = async (
 			: DESTINATION_CONNECTOR_TEST_ID_MAP[connector]
 
 	if (testId) {
-		await page.getByTestId(testId).click()
+		// the selected connector also renders its test id, so look only in the open dropdown
+		await page
+			.locator(".ant-select-dropdown:visible")
+			.getByTestId(testId)
+			.click()
 	} else {
 		await page
 			.locator(".ant-select-dropdown:visible")

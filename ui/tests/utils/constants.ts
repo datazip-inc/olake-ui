@@ -6,49 +6,16 @@
  * that are used across multiple test files.
  */
 
-// Job Configurations
-export const JOB_CONFIG = {
-	streamName: "postgres_test_table_olake",
-	frequency: "Every Week",
-} as const
-
-// Validation Messages
-export const VALIDATION_MESSAGES = {
-	username: {
-		required: "Please input your username!",
-		minLength: "Username must be at least 3 characters",
-	},
-	password: {
-		required: "Please input your password!",
-		minLength: "Password must be at least 6 characters",
-	},
-	sourceName: {
-		required: "Source name is required",
-	},
-	destinationName: {
-		required: "Destination name is required",
-	},
-	jobName: {
-		required: "Job name is required",
-	},
-} as const
-
-// URLs
-export const URLS = {
-	login: "/login",
-	jobs: "/jobs",
-	sources: "/sources",
-	destinations: "/destinations",
-} as const
+// Address the sync driver uses to reach the test's source and destination, which publish their
+// ports on the machine running Docker. The Go integration test passes it as E2E_SERVICE_HOST;
+// 172.17.0.1, the usual gateway of Docker's default bridge, is the address of that machine as
+// the driver containers see it.
+export const SERVICE_HOST = process.env.E2E_SERVICE_HOST?.trim() || "172.17.0.1"
 
 export const LOGIN_CREDENTIALS = {
 	admin: {
 		username: "admin",
 		password: "password",
-	},
-	invalid: {
-		username: "invalid",
-		password: "invalid",
 	},
 } as const
 

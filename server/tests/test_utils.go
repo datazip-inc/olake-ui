@@ -1,66 +1,63 @@
 package tests
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"io"
-	"path/filepath"
+	"os"
+	"regexp"
+	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/apache/spark-connect-go/v35/spark/sql"
-	"github.com/jmoiron/sqlx"
-	"github.com/moby/moby/api/types/container"
 	"github.com/stretchr/testify/require"
-	testcontainers "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/datazip-inc/olake-ui/server/tests/destinations"
+	"github.com/datazip-inc/olake-ui/server/tests/sources"
 )
 
-const (
-	// Install required tools during initial setup
-	setupToolsCmd = `
-        apt-get update && 
-        apt-get install -y curl postgresql-client dnsutils iputils-ping ncurses-bin ca-certificates gnupg lsb-release netcat-openbsd libatomic1 && 
-        curl -fsSL https://deb.nodesource.com/setup_22.x | bash - &&
-        apt-get install -y nodejs &&
-        npm install -g pnpm@11.24.0 &&
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg &&
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null &&
-        apt-get update &&
-        apt-get install -y docker-compose-plugin &&
-        update-ca-certificates
-    `
+// olakeComposeFiles starts OLake from the root docker-compose-v1.yml, with olake-ui taken from the
+// olake-ui:ci image built from this checkout (see compose.olake-ui.yml). The Fusion services in
+// that file are in the "fusion" profile, which the test does not enable. The project has its own
+// name, so taking it down never touches an OLake a developer runs from the same checkout, whose
+// project is named after the directory.
+const olakeComposeFiles = "-p olake-app-test -f docker-compose-v1.yml -f server/tests/compose.olake-ui.yml"
 
-	// Start postgres test infrastructure
-	startPostgresCmd = `
-        cd /mnt/server/tests &&
-        docker compose -p olake-source-test up -d &&
-        for i in $(seq 1 30); do
-            if docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1" 2>/dev/null; then
-                echo "PostgreSQL ready."
-                break
-            fi
-            sleep 2
-        done &&
-        docker exec olake_postgres-test psql -U postgres -d postgres -c \
-            "SELECT slot_name, plugin, slot_type, active FROM pg_replication_slots WHERE slot_name = 'olake_slot';"
-    `
+// olakeHome, under the checkout, stands in for PWD in the root docker-compose-v1.yml, whose job
+// state lives in ${PWD}/olake-data. The test's state then stays out of the olake-data folder of
+// an OLake a developer runs from the same checkout. It is gitignored like any olake-data folder.
+const olakeHome = "server/tests/.olake-home"
 
-	// Start destination services (iceberg stack)
-	startDestinationCmd = `
-        cd /mnt/server/tests &&
-        docker compose -p olake-destination-test -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg &&
-        sleep 5 &&
-        docker compose -p olake-destination-test -f docker-compose.destination.yml ps
-    `
+// clearDirCmd empties dir, creating it if needed. It runs rm in a container because files the
+// stack's containers wrote can belong to root.
+func clearDirCmd(dir string) string {
+	return fmt.Sprintf("mkdir -p %[1]s && docker run --rm -v %[1]s:/clear alpine:3.20 find /clear -mindepth 1 -delete", shellQuote(dir))
+}
 
-	// Start OLake application
-	startOLakeCmd = `
-        cd /mnt && 
-        mkdir -p /mnt/olake-data && 
-        docker compose up -d && 
+// olakeCompose is the docker compose command for the test's OLake project, run from root.
+func olakeCompose(root string) string {
+	return fmt.Sprintf("PWD=%s docker compose %s", shellQuote(root+"/"+olakeHome), olakeComposeFiles)
+}
+
+// shellQuote quotes s as one word for /bin/sh. The checkout path in runner mode can hold spaces
+// or shell characters, so every interpolated value goes through it.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// Build the olake-ui:ci image from the checkout
+func buildOLakeUICmd(root string) string {
+	return fmt.Sprintf("cd %s && %s build olake-ui", shellQuote(root), olakeCompose(root))
+}
+
+// Start OLake application
+func startOLakeCmd(root string) string {
+	return fmt.Sprintf(`
+        cd %[1]s &&
+        mkdir -p %[2]s/olake-data &&
+        %[3]s up -d &&
         for i in $(seq 1 60); do
             if curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; then
                 echo "OLake UI ready."
@@ -68,424 +65,432 @@ const (
             fi
             sleep 2
         done
-    `
+    `, shellQuote(root), shellQuote(olakeHome), olakeCompose(root))
+}
 
-	// Network setup
-	networkSetupCmd = `
-        docker network create olake-network || true &&
-        docker network connect olake-network olake-ui || true &&
-        docker network connect olake-network postgres || true &&
-        docker network connect olake-network olake_postgres-test || true
-    `
-
-	// Install Playwright and dependencies
-	installPlaywrightCmd = `
-        cd /mnt/ui &&
-        pnpm add -D @playwright/test &&
-        pnpm exec playwright install --with-deps chromium
-    `
-
-	// Run Playwright tests
-	runPlaywrightCmd = `
-        cd /mnt/ui &&
-        PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test tests/flows/job-end-to-end.spec.ts
-    `
-
-	icebergDB        = "postgres_iceberg_jdbc_job_postgres_public"
-	icebergCatalog   = "olake_iceberg"
-	currentTestTable = "postgres_test_table_olake"
+// playwrightPatterns limit the values Run.Playwright puts in the Playwright shell command.
+var (
+	jobPattern    = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+	specPattern   = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_./-]*\.spec\.ts$`) // no leading '-': Playwright would read an option
+	tagPattern    = regexp.MustCompile(`^@[a-z0-9][a-z0-9-]*$`)
+	envKeyPattern = regexp.MustCompile(`^E2E_[A-Z0-9_]+$`)
 )
 
-func DinDTestContainer(t *testing.T) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
-	defer cancel()
-	projectRoot, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		return fmt.Errorf("could not determine project root: %w", err)
+// playwrightCmd runs the tests of spec (relative to ui/) tagged tag, or all of them when tag is
+// empty, with env set for the Playwright process. debug logs every browser action (DEBUG=pw:api).
+func playwrightCmd(root, spec, tag string, env map[string]string, debug bool) (string, error) {
+	if !specPattern.MatchString(spec) {
+		return "", fmt.Errorf("invalid spec path %q", spec)
 	}
-	t.Logf("Project root identified at: %s", projectRoot)
+	if tag != "" && !tagPattern.MatchString(tag) {
+		return "", fmt.Errorf("invalid tag %q", tag)
+	}
+	keys := make([]string, 0, len(env))
+	for k := range env {
+		if !envKeyPattern.MatchString(k) {
+			return "", fmt.Errorf("invalid Playwright env name %q", k)
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var vars strings.Builder
+	for _, k := range keys {
+		fmt.Fprintf(&vars, "%s=%s ", k, shellQuote(env[k]))
+	}
+	if debug {
+		vars.WriteString("DEBUG=pw:api ")
+	}
+	grep := ""
+	if tag != "" {
+		// A tag is matched as a whole word, so @sync does not also pick @sync-again.
+		grep = " --grep " + shellQuote(tag+`(?![a-z0-9-])`)
+	}
+	return fmt.Sprintf(`
+        cd %s &&
+        %sPLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 npx playwright test %s%s
+    `, shellQuote(root+"/ui"), vars.String(), shellQuote(spec), grep), nil
+}
 
-	req := testcontainers.ContainerRequest{
-		Image: "ubuntu:22.04",
-		Env: map[string]string{
-			"DOCKER_TLS_CERTDIR":           "",
-			"TELEMETRY_DISABLED":           "true",
-			"TESTCONTAINERS_RYUK_DISABLED": "true",
-			"DEBIAN_FRONTEND":              "noninteractive",
-		},
-		HostConfigModifier: func(hc *container.HostConfig) {
-			hc.Privileged = true
-			hc.Binds = []string{
-				fmt.Sprintf("%s:/mnt:rw", projectRoot),
-			}
-			// Tmpfs mounts create temporary in-memory filesystems inside the container.
-			// These directories behave like RAM disks they exist only in memory (not on disk) and are automatically cleaned up when the container stops.
-			// This is useful for high-performance temporary storage.
-			// 70GB for docker and 15GB for shared memory space in Linux
-			hc.Tmpfs = map[string]string{
-				"/var/lib/docker": "size=70G",
-				"/dev/shm":        "size=10G",
-			}
-			hc.Resources.Memory = 22 * 1024 * 1024 * 1024 // 22GB
-			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
-		},
-		ConfigModifier: func(config *container.Config) {
-			config.WorkingDir = "/mnt"
-		},
-		ExposedPorts: []string{"8000/tcp", "2375/tcp", "5433/tcp", "15002/tcp"},
-		Cmd: []string{
-			"/bin/sh", "-c",
-			`set -e
-			apt-get update -y &&
-			apt-get install -y --no-install-recommends ca-certificates curl gnupg lsb-release iproute2 procps &&
-			apt-get install -y --no-install-recommends docker.io &&
-			mkdir -p /var/lib/docker /var/run/docker &&
-			exec dockerd --host=tcp://0.0.0.0:2375 --host=unix:///var/run/docker.sock
-			`,
-		},
-		WaitingFor: wait.ForExec([]string{"docker", "-H", "tcp://127.0.0.1:2375", "info"}).WithStartupTimeout(60 * time.Second).WithPollInterval(1 * time.Second),
+// sparkConnectPort is the port the checks reach Spark Connect on. Every destination's compose
+// file must run Spark Connect there; see destinations.Destination.
+const sparkConnectPort = "15002/tcp"
+
+// runTimeout bounds a whole workflow run. It is under the CI job's timeout, with room for its
+// setup steps and the cleanup.
+const runTimeout = 90 * time.Minute
+
+// Workflow is the source and destination of an integration run, and the name of the job the
+// Playwright specs create.
+type Workflow struct {
+	Source      sources.Source
+	Destination destinations.Destination
+	Job         string // passed to the specs as E2E_JOB_NAME
+
+	// Database is the destination database or folder the spec gives the job, for a custom name;
+	// empty for the Dynamic default, <job>_<source namespace>.
+	Database string
+}
+
+// database is the destination database OLake writes the job to, passed to the specs as
+// E2E_DATABASE: Database, or <job>_<source namespace>, lowercased.
+func (w *Workflow) database() string {
+	if w.Database != "" {
+		return w.Database
+	}
+	return strings.ToLower(w.Job + "_" + w.Source.Namespace)
+}
+
+// composeStartCmd starts the compose file in dir (relative to server/tests under root) as project
+// olake-<project>-test, runs ready in a subshell (skipped when empty), then lists the services.
+// project is "source" or "destination", so the two never share a project whatever their names.
+func composeStartCmd(root, project, dir string, services []string, ready string) string {
+	name := fmt.Sprintf("olake-%s-test", project)
+	start := fmt.Sprintf("docker compose -p %s up -d %s", name, strings.Join(services, " "))
+	if strings.TrimSpace(ready) != "" {
+		start += " && (" + ready + ")"
+	}
+	start += " && docker compose -p " + name + " ps"
+	// On failure, print the containers' logs: the cleanup removes the containers, and with them
+	// the only record of why one exited.
+	return fmt.Sprintf("cd %s && { %s; } || { echo '--- %s container logs ---'; docker compose -p %s logs --no-color --tail 40; exit 1; }",
+		shellQuote(root+"/server/tests/"+dir), start, name, name)
+}
+
+// Run is a started integration stack: the source, the destination and OLake up, the source
+// seeded and Playwright installed. Its methods fail the test on error.
+type Run struct {
+	t           *testing.T
+	ctx         context.Context
+	env         *Env
+	w           *Workflow
+	start       time.Time
+	ServiceHost string // what the driver, and the specs, use to reach the published ports
+
+	sourceHost, sourcePort string
+	sparkHost, sparkPort   string
+}
+
+// StartWorkflow starts the Env, the source, the destination and OLake, and seeds the source.
+func StartWorkflow(t *testing.T, w *Workflow) *Run {
+	t.Helper()
+	if !jobPattern.MatchString(w.Job) {
+		t.Fatalf("invalid job name %q", w.Job)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), runTimeout)
+	r := &Run{t: t, ctx: ctx, w: w, start: time.Now()}
+
+	env, err := newEnv(t)
+	t.Cleanup(cancel) // registered after the Env's own cleanup, so it runs before it
+	r.require(err)
+	r.env = env
+	root := env.Root()
+
+	// The address the driver uses for the source and destination; checked before anything starts.
+	r.ServiceHost, err = env.ServiceHost(ctx)
+	r.require(err)
+	t.Logf("Service host: %s", r.ServiceHost)
+
+	r.sparkHost, r.sparkPort = env.Addr(sparkConnectPort)
+	r.sourceHost = r.sparkHost
+	if w.Source.Port != "" {
+		r.sourceHost, r.sourcePort = env.Addr(w.Source.Port)
 	}
 
-	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
+	// A checkout that ran the test before still holds that run's Iceberg tables and job state;
+	// a new run must not read them.
+	r.Step("Clearing data left by earlier runs...")
+	r.exec(clearDirCmd(root+"/"+olakeHome), "clearing %s failed", olakeHome)
+	if w.Destination.DataDir != "" {
+		r.exec(clearDirCmd(root+"/server/tests/"+w.Destination.ComposeDir+"/"+w.Destination.DataDir), "clearing the %s data failed", w.Destination.Name)
+	}
+
+	// The source, the destination, OLake and Playwright do not depend on each other, so they start
+	// at the same time. The first that fails cancels the others.
+	startCtx, cancelStart := context.WithCancel(ctx)
+	var tasks sync.WaitGroup
+	// Also when Seed fails the test below: no task may outlive StartWorkflow and log after the
+	// test has ended.
+	defer func() {
+		cancelStart()
+		tasks.Wait()
+	}()
+	source := r.task(startCtx, cancelStart, &tasks, "source "+w.Source.Name, func(ctx context.Context) error {
+		return r.run(ctx, composeStartCmd(root, "source", w.Source.ComposeDir, nil, w.Source.ReadyCmd), "%s startup failed", w.Source.Name)
 	})
-	if err != nil {
-		return fmt.Errorf("failed to start DinD container: %w", err)
+	destination := r.task(startCtx, cancelStart, &tasks, "destination "+w.Destination.Name, func(ctx context.Context) error {
+		return r.run(ctx, composeStartCmd(root, "destination", w.Destination.ComposeDir, w.Destination.Services, w.Destination.ReadyCmd), "destination services startup failed")
+	})
+	olake := r.task(startCtx, cancelStart, &tasks, "OLake", func(ctx context.Context) error {
+		// Build olake-ui from this checkout, unless the workflow already built olake-ui:ci
+		if os.Getenv("OLAKE_TEST_SKIP_UI_BUILD") == "true" {
+			if err := r.run(ctx, "docker image inspect --format '{{.Id}}' olake-ui:ci", "OLAKE_TEST_SKIP_UI_BUILD is set but olake-ui:ci is missing"); err != nil {
+				return err
+			}
+		} else if err := r.run(ctx, buildOLakeUICmd(root), "olake-ui image build failed"); err != nil {
+			return err
+		}
+		return r.run(ctx, startOLakeCmd(root), "OLake startup failed")
+	})
+	playwright := r.task(startCtx, cancelStart, &tasks, "Playwright", func(ctx context.Context) error {
+		return env.CheckPlaywright(ctx, t)
+	})
+
+	// Seed as soon as the source is ready. Seed fails the test through t, which only the test's
+	// own goroutine may do, so it runs here.
+	var failures []string
+	if err := <-source; err != nil {
+		failures = append(failures, err.Error())
+	} else if w.Source.Seed != nil {
+		r.Step("Seeding the %s source...", w.Source.Name)
+		w.Source.Seed(ctx, t, r.sourceHost, r.sourcePort)
 	}
-
-	// container host
-	host, err := ctr.Host(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get host: %w", err)
+	for _, done := range []<-chan error{destination, olake, playwright} {
+		if err := <-done; err != nil {
+			failures = append(failures, err.Error())
+		}
 	}
-
-	// postgres port
-	postgresPort, err := ctr.MappedPort(ctx, "5433/tcp")
-	if err != nil {
-		return fmt.Errorf("failed to get postgres port: %w", err)
+	if len(failures) > 0 {
+		t.Fatalf("startup failed:\n%s", strings.Join(failures, "\n"))
 	}
-
-	// iceberg-spark port
-	sparkPort, err := ctr.MappedPort(ctx, "15002/tcp")
-	if err != nil {
-		return fmt.Errorf("failed to get spark port: %w", err)
-	}
-
-	t.Log("Docker daemon is ready")
-	// Step 1: Install tools
-	t.Log("Installing required tools...")
-	if code, out, err := ExecCommand(ctx, ctr, setupToolsCmd); err != nil || code != 0 {
-		return fmt.Errorf("tools installation failed (%d): %s\n%s", code, err, out)
-	}
-
-	// Step 2: Start PostgreSQL test infrastructure
-	t.Log("Starting PostgreSQL test infrastructure...")
-	if code, out, err := ExecCommand(ctx, ctr, startPostgresCmd); err != nil || code != 0 {
-		return fmt.Errorf("postgres startup failed (%d): %s\n%s", code, err, out)
-	}
-
-	// Step 3: Start destination services (Iceberg stack)
-	t.Log("Starting destination services...")
-	if code, out, err := ExecCommand(ctx, ctr, startDestinationCmd); err != nil || code != 0 {
-		return fmt.Errorf("destination services startup failed (%d): %s\n%s", code, err, out)
-	}
-
-	// Step 4: Patch docker-compose for local images
-	t.Log("Patching docker-compose to build local images...")
-	if err := PatchDockerCompose(ctx, t, ctr); err != nil {
-		return err
-	}
-
-	// Step 5: Start OLake application
-	t.Log("Starting OLake docker-compose services...")
-	if code, out, err := ExecCommand(ctx, ctr, startOLakeCmd); err != nil || code != 0 {
-		return fmt.Errorf("OLake startup failed (%d): %s\n%s", code, err, out)
-	}
-
-	// Step 6: Setup networks
-	t.Log("Setting up Docker networks...")
-	if code, out, err := ExecCommand(ctx, ctr, networkSetupCmd); err != nil || code != 0 {
-		t.Logf("Warning: Network setup failed (%d): %s\n%s", code, err, out)
-	}
-
-	// Step 7: Query the postgres source
-	ExecuteQuery(ctx, t, "create", host, postgresPort.Port())
-	ExecuteQuery(ctx, t, "clean", host, postgresPort.Port())
-	ExecuteQuery(ctx, t, "add", host, postgresPort.Port())
-
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
+	return r
+}
 
-	// Step 8: Install Playwright
-	t.Log("Installing Playwright and dependencies...")
-	if code, out, err := ExecCommand(ctx, ctr, installPlaywrightCmd); err != nil || code != 0 {
-		return fmt.Errorf("playwright installation failed (%d): %s\n%s", code, err, out)
+// Step logs a step with the time since the run started.
+func (r *Run) Step(format string, args ...any) {
+	r.t.Helper()
+	r.t.Logf("[%6.1fs] "+format, append([]any{time.Since(r.start).Seconds()}, args...)...)
+}
+
+// require fails the test when err is set.
+func (r *Run) require(err error, msgAndArgs ...any) {
+	r.t.Helper()
+	if err != nil {
+		require.NoError(r.t, err, msgAndArgs...)
 	}
+}
 
-	// Step 9: Run Playwright tests
-	t.Log("Executing Playwright tests...")
-	if code, out, err := ExecCommandWithStreaming(ctx, t, ctr, runPlaywrightCmd); err != nil || code != 0 {
-		return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
+// exec runs cmd and fails the test with its output when it does not exit 0.
+func (r *Run) exec(cmd, format string, args ...any) []byte {
+	r.t.Helper()
+	code, out, err := r.env.Exec(r.ctx, cmd)
+	if err != nil || code != 0 {
+		r.t.Fatalf("%s (%d): %v\n%s", fmt.Sprintf(format, args...), code, err, out)
 	}
-	t.Log("Playwright tests passed successfully.")
+	return out
+}
 
-	// wait before verifying iceberg data
-	t.Log("Waiting for 60 seconds before verifying iceberg data...")
-	time.Sleep(60 * time.Second)
-
-	// Step 10: Verify in iceberg
-	t.Logf("Starting Iceberg data verification...")
-	VerifyIcebergTest(ctx, t, ctr, host, sparkPort.Port())
+// run is exec for a task goroutine: it returns the failure instead of failing the test, which
+// only the test's own goroutine may do.
+func (r *Run) run(ctx context.Context, cmd, format string, args ...any) error {
+	code, out, err := r.env.Exec(ctx, cmd)
+	if err != nil || code != 0 {
+		return fmt.Errorf("%s (%d): %v\n%s", fmt.Sprintf(format, args...), code, err, out)
+	}
 	return nil
 }
 
-// ExecCommandWithStreaming executes a command and streams output in real-time
-func ExecCommandWithStreaming(ctx context.Context, t *testing.T, ctr testcontainers.Container, cmd string) (int, string, error) {
-	exitCode, reader, err := ctr.Exec(ctx, []string{"sh", "-c", cmd})
-	if err != nil {
-		return -1, "", err
-	}
-
-	var output strings.Builder
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		line := scanner.Text()
-		t.Log(line)
-		output.WriteString(line + "\n")
-	}
-
-	if err := scanner.Err(); err != nil {
-		return exitCode, output.String(), err
-	}
-
-	return exitCode, output.String(), nil
+// task runs fn on its own goroutine, counted in wg, and logs when it starts and ends. The returned
+// channel gets fn's error; an error also calls cancel, which stops the other tasks of the group.
+func (r *Run) task(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, name string, fn func(context.Context) error) <-chan error {
+	done := make(chan error, 1)
+	r.Step("Starting %s...", name)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := fn(ctx)
+		if err != nil {
+			cancel()
+			r.Step("%s failed", name)
+		} else {
+			r.Step("%s is ready", name)
+		}
+		done <- err
+	}()
+	return done
 }
 
-// PatchDockerCompose updates olake-ui to build from local code
-// TODO: Remove patch command and find alternative to use local code
-func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Container) error {
-	patchCmd := `
-    set -e
-    tmpfile=$(mktemp)
-    awk '
-    BEGIN{svc="";}
-    /^  olake-ui:/{svc="olake-ui"; print; next}
-    /^  temporal-worker:/{svc="temporal-worker"; print; next}
-    /^  [A-Za-z0-9_-]+:/{ if (svc!="") svc=""; print; next}
-    {
-      if (svc=="olake-ui" && $0 ~ /^    image:/) {
-        print "    build:";
-        print "      context: .";
-        print "      dockerfile: Dockerfile";
-        next
-      }
-      print
-    }
-    ' /mnt/docker-compose.yml > "$tmpfile" && mv "$tmpfile" /mnt/docker-compose.yml
+// Playwright runs the tests of spec tagged tag. Every run gets E2E_JOB_NAME, E2E_DATABASE (the
+// destination database the checks read, so the spec does not derive it again) and
+// E2E_SERVICE_HOST; env adds more E2E_* variables.
+func (r *Run) Playwright(spec, tag string, env map[string]string) {
+	r.t.Helper()
+	vars := map[string]string{
+		"E2E_JOB_NAME":     r.w.Job,
+		"E2E_DATABASE":     r.w.database(),
+		"E2E_SERVICE_HOST": r.ServiceHost,
+	}
+	for k, v := range env {
+		vars[k] = v
+	}
+	// OLAKE_TEST_PW_DEBUG=true logs every browser action; off, the log holds the test steps only.
+	cmd, err := playwrightCmd(r.env.Root(), spec, tag, vars, os.Getenv("OLAKE_TEST_PW_DEBUG") == "true")
+	r.require(err)
+	r.Step("Playwright %s %s...", spec, tag)
+	code, out, err := r.env.ExecStream(r.ctx, r.t, cmd)
+	if err != nil || code != 0 {
+		r.t.Fatalf("playwright %s %s failed (%d): %v\n%s", spec, tag, code, err, out)
+	}
+}
+
+// ChangeSource runs statements on the source, in order and in the source's own language.
+func (r *Run) ChangeSource(statements ...string) {
+	r.t.Helper()
+	r.Step("Changing the %s source...", r.w.Source.Name)
+	r.w.Source.Exec(r.ctx, r.t, r.sourceHost, r.sourcePort, statements...)
+}
+
+// Check runs checks on the destination as subtests of a subtest named phase, through one Spark
+// Connect session. It fails the test if any check fails.
+func (r *Run) Check(phase string, checks ...Check) {
+	r.t.Helper()
+	r.Step("Checking the destination: %s...", phase)
+	ok := r.t.Run(phase, func(t *testing.T) {
+		spark, err := sql.NewSessionBuilder().Remote(fmt.Sprintf("sc://%s:%s", r.sparkHost, r.sparkPort)).Build(r.ctx)
+		require.NoError(t, err, "Failed to connect to Spark Connect server")
+		defer func() {
+			if stopErr := spark.Stop(); stopErr != nil {
+				t.Errorf("Failed to stop Spark session: %v", stopErr)
+			}
+		}()
+		// One probe first: when Spark Connect is down, fail now rather than retry every check.
+		if err := waitForSpark(r.ctx, spark); err != nil {
+			t.Fatalf("Spark Connect at sc://%s:%s does not answer: %v", r.sparkHost, r.sparkPort, err)
+		}
+		table := func(name string) string { return r.w.Destination.Table(r.w.database(), name) }
+		runChecks(r.ctx, t, spark, table, checks)
+	})
+	if !ok {
+		r.t.FailNow()
+	}
+}
+
+// SourceColumn is a column MatchesSourceAs compares: its name, and the source SQL whose text is
+// the value as Spark's CAST(... AS STRING) shows it in the destination. Source is a code constant.
+type SourceColumn struct {
+	Name   string
+	Source string
+}
+
+// Col is column c compared as text on both sides.
+func Col(c string) SourceColumn {
+	return SourceColumn{Name: c, Source: fmt.Sprintf("CAST(%s AS TEXT)", ident(c))}
+}
+
+// MatchesSource checks that the destination's current rows of table equal the source's rows,
+// column by column, each compared as text. The current row of an id is its newest row by
+// _olake_timestamp, and an id whose newest row is a delete tombstone (_op_type 'd') has none: that
+// reads Append tables, which keep every change, and Upsert tables the same way. where, a code
+// constant or empty, limits the source rows the way a Data Filter or CDC Only limits what reaches
+// the destination.
+func (r *Run) MatchesSource(table string, columns []string, where string) Check {
+	cols := make([]SourceColumn, len(columns))
+	for i, c := range columns {
+		cols[i] = Col(c)
+	}
+	return r.MatchesSourceAs(table, cols, where)
+}
+
+// MatchesSourceAs is MatchesSource with the source side of each column written out, for types
+// OLake writes in another form than the source's text, such as a DATE as a timestamp.
+func (r *Run) MatchesSourceAs(table string, columns []SourceColumn, where string) Check {
+	if len(columns) == 0 || columns[0].Name != keyColumn {
+		panic(fmt.Sprintf("MatchesSource(%s): the first column must be %s", table, keyColumn))
+	}
+	names := make([]string, len(columns))
+	srcCols := make([]string, len(columns))
+	dstCols := make([]string, len(columns))
+	for i, c := range columns {
+		names[i] = ident(c.Name)
+		srcCols[i] = c.Source
+		dstCols[i] = fmt.Sprintf("CAST(%s AS STRING)", ident(c.Name))
+	}
+	srcQuery := fmt.Sprintf("SELECT %s FROM %s", strings.Join(srcCols, ", "), ident(table))
+	name := fmt.Sprintf("%s matches the source (%s)", table, strings.Join(names, ", "))
+	if where != "" {
+		srcQuery += " WHERE " + where
+		name += " where " + where
+	}
+	srcQuery += " ORDER BY " + keyColumn
+	return Check{
+		Name: name,
+		Run: func(ctx context.Context, spark sql.SparkSession, tableName func(string) string) error {
+			source, err := r.w.Source.Query(ctx, r.sourceHost, r.sourcePort, srcQuery)
+			if err != nil {
+				return fmt.Errorf("reading the source: %w", err)
+			}
+			tbl := tableName(ident(table))
+			destination, err := refreshed(ctx, spark, tbl, fmt.Sprintf(
+				"SELECT %s FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY %s ORDER BY _olake_timestamp DESC) AS _current FROM %s) "+
+					"WHERE _current = 1 AND _op_type != 'd' ORDER BY %s",
+				strings.Join(dstCols, ", "), keyColumn, tbl, keyColumn))
+			if err != nil {
+				return fmt.Errorf("reading the destination: %w", err)
+			}
+			return diffRows(names, source, destination)
+		},
+	}
+}
+
+// webhookContainer receives OLake's alert webhook and prints each request body to its log.
+const webhookContainer = "olake-webhook-test"
+
+// webhookReceiver is a minimal HTTP server that prints every POST body.
+const webhookReceiver = `
+import http.server
+class H(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        print(self.rfile.read(n).decode(errors="replace"), flush=True)
+        self.send_response(200)
+        self.end_headers()
+    def log_message(self, *args):
+        pass
+http.server.HTTPServer(("", 8099), H).serve_forever()
 `
 
-	code, out, err := ExecCommand(ctx, ctr, patchCmd)
-	if err != nil || code != 0 {
-		t.Logf("docker-compose patch output: %s", string(out))
-		return fmt.Errorf("failed to patch docker-compose.yml (%d): %s\n%s", code, err, out)
-	}
-	t.Log("docker-compose.yml patched to build local images")
-	t.Logf("Patched docker-compose.yml:\n%s", string(out))
-
-	return nil
+// StartWebhookReceiver starts the receiver, published on 8099, and returns the URL OLake posts
+// alerts to.
+func (r *Run) StartWebhookReceiver() string {
+	r.t.Helper()
+	r.Step("Starting the webhook receiver...")
+	r.exec(fmt.Sprintf("docker rm -f %[1]s >/dev/null 2>&1; docker run -d --name %[1]s -p 8099:8099 python:3.12-alpine python -u -c %[2]s",
+		webhookContainer, shellQuote(webhookReceiver)), "webhook receiver startup failed")
+	return fmt.Sprintf("http://%s:8099/alert", r.ServiceHost)
 }
 
-func VerifyIcebergTest(ctx context.Context, t *testing.T, ctr testcontainers.Container, host, port string) {
-	sparkConnectAddress := fmt.Sprintf("sc://%s:%s", host, port)
-	spark, err := sql.NewSessionBuilder().Remote(sparkConnectAddress).Build(ctx)
-	require.NoError(t, err, "Failed to connect to Spark Connect server")
-	defer func() {
-		if stopErr := spark.Stop(); stopErr != nil {
-			t.Errorf("Failed to stop Spark session: %v", stopErr)
+// WaitForWebhook waits until the receiver has logged a request containing text.
+func (r *Run) WaitForWebhook(text string, timeout time.Duration) {
+	r.t.Helper()
+	r.Step("Waiting for the webhook %q...", text)
+	deadline := time.Now().Add(timeout)
+	for {
+		out := r.exec("docker logs "+webhookContainer+" 2>&1", "reading the webhook receiver log failed")
+		if strings.Contains(string(out), text) {
+			r.t.Logf("✅ webhook received %q", text)
+			return
 		}
-		if ctr != nil {
-			t.Log("Running cleanup...")
-			// Stop docker-compose services
-			_, _, _ = ExecCommand(ctx, ctr, "cd /mnt && docker-compose down -v --remove-orphans")
-			// Terminate the DinD container
-			if err := ctr.Terminate(ctx); err != nil {
-				t.Logf("Warning: failed to terminate container: %v", err)
-			}
-			t.Log("Cleanup complete")
+		if time.Now().After(deadline) {
+			r.t.Fatalf("no webhook with %q after %s; receiver log:\n%s", text, timeout, out)
 		}
-	}()
-	countQuery := fmt.Sprintf(
-		"SELECT COUNT(DISTINCT _olake_id) as unique_count FROM %s.%s.%s",
-		icebergCatalog, icebergDB, currentTestTable,
-	)
-	t.Logf("Executing query: %s", countQuery)
-
-	countQueryDf, err := spark.Sql(ctx, countQuery)
-	require.NoError(t, err, "Failed to execute query on the table")
-
-	rows, err := countQueryDf.Collect(ctx)
-	require.NoError(t, err, "Failed to collect data rows from Iceberg")
-	require.NotEmpty(t, rows, "No rows returned for _op_type = 'r'")
-
-	// check count and verify
-	countValue := rows[0].Value("unique_count").(int64)
-	require.Equal(t, int64(5), countValue, "Expected count to be 5")
-	t.Logf("✅ Test passed: count value %v matches expected value 5", countValue)
-}
-
-func ExecuteQuery(ctx context.Context, t *testing.T, operation, host, port string) {
-	t.Helper()
-	connStr := fmt.Sprintf("postgres://postgres@%s:%s/postgres?sslmode=disable", host, port)
-	db, ok := sqlx.ConnectContext(ctx, "postgres", connStr)
-	require.NoError(t, ok, "failed to connect to postgres")
-	defer func() {
-		require.NoError(t, db.Close(), "failed to close postgres connection")
-	}()
-
-	// integration test uses only one stream for testing
-	integrationTestTable := currentTestTable
-	var query string
-
-	switch operation {
-	case "create":
-		query = fmt.Sprintf(`
-			CREATE TABLE IF NOT EXISTS %s (
-				col_bigint BIGINT,
-				col_bigserial BIGSERIAL PRIMARY KEY,
-				col_bool BOOLEAN,
-				col_char CHAR(1),
-				col_character CHAR(10),
-				col_character_varying VARCHAR(50),
-				col_date DATE,
-				col_decimal NUMERIC,
-				col_double_precision DOUBLE PRECISION,
-				col_float4 REAL,
-				col_int INT,
-				col_int2 SMALLINT,
-				col_integer INTEGER,
-				col_interval INTERVAL,
-				col_json JSON,
-				col_jsonb JSONB,
-				col_name NAME,
-				col_numeric NUMERIC,
-				col_real REAL,
-				col_text TEXT,
-				col_timestamp TIMESTAMP,
-				col_timestamptz TIMESTAMPTZ,
-				col_uuid UUID,
-				col_varbit VARBIT(20),
-				col_xml XML,
-				CONSTRAINT unique_custom_key UNIQUE (col_bigserial)
-			)`, integrationTestTable)
-
-	case "drop":
-		query = fmt.Sprintf("DROP TABLE IF EXISTS %s", integrationTestTable)
-
-	case "clean":
-		query = fmt.Sprintf("TRUNCATE TABLE %s", integrationTestTable)
-
-	case "add":
-		insertTestData(ctx, t, db, integrationTestTable)
-		return // Early return since we handle all inserts in the helper function
-
-	case "insert":
-		query = fmt.Sprintf(`
-			INSERT INTO %s (
-				col_bigint, col_bool, col_char, col_character,
-				col_character_varying, col_date, col_decimal,
-				col_double_precision, col_float4, col_int, col_int2,
-				col_integer, col_interval, col_json, col_jsonb,
-				col_name, col_numeric, col_real, col_text,
-				col_timestamp, col_timestamptz, col_uuid, col_varbit, col_xml
-			) VALUES (
-				123456789012345, TRUE, 'c', 'char_val',
-				'varchar_val', '2023-01-01', 123.45,
-				123.456789, 123.45, 123, 123, 12345,
-				'1 hour', '{"key": "value"}', '{"key": "value"}',
-				'test_name', 123.45, 123.45, 'sample text',
-				'2023-01-01 12:00:00', '2023-01-01 12:00:00+00',
-				'123e4567-e89b-12d3-a456-426614174000', B'101010',
-				'<tag>value</tag>'
-			)`, integrationTestTable)
-
-	case "update":
-		query = fmt.Sprintf(`
-			UPDATE %s SET
-				col_bigint = 123456789012340,
-				col_bool = FALSE,
-				col_char = 'd',
-				col_character = 'updated__',
-				col_character_varying = 'updated val',
-				col_date = '2024-07-01',
-				col_decimal = 543.21,
-				col_double_precision = 987.654321,
-				col_float4 = 543.21,
-				col_int = 321,
-				col_int2 = 321,
-				col_integer = 54321,
-				col_interval = '2 hours',
-				col_json = '{"new": "json"}',
-				col_jsonb = '{"new": "jsonb"}',
-				col_name = 'updated_name',
-				col_numeric = 321.00,
-				col_real = 321.00,
-				col_text = 'updated text',
-				col_timestamp = '2024-07-01 15:30:00',
-				col_timestamptz = '2024-07-01 15:30:00+00',
-				col_uuid = '00000000-0000-0000-0000-000000000000',
-				col_varbit = B'111000',
-				col_xml = '<updated>value</updated>'
-			WHERE col_bigserial = 1`, integrationTestTable)
-
-	case "delete":
-		query = fmt.Sprintf("DELETE FROM %s WHERE col_bigserial = 1", integrationTestTable)
-
-	default:
-		t.Fatalf("Unsupported operation: %s", operation)
-	}
-	_, err := db.ExecContext(ctx, query)
-	require.NoError(t, err, "Failed to execute %s operation", operation)
-}
-
-// insertTestData inserts test data into the specified table
-func insertTestData(ctx context.Context, t *testing.T, db *sqlx.DB, tableName string) {
-	t.Helper()
-
-	for i := 1; i <= 5; i++ {
-		query := fmt.Sprintf(`
-		INSERT INTO %s (
-			col_bigint, col_bigserial, col_bool, col_char, col_character,
-			col_character_varying, col_date, col_decimal,
-			col_double_precision, col_float4, col_int, col_int2, col_integer,
-			col_interval, col_json, col_jsonb, col_name, col_numeric,
-			col_real, col_text, col_timestamp, col_timestamptz,
-			col_uuid, col_varbit, col_xml
-		) VALUES (
-			123456789012345, DEFAULT, TRUE, 'c', 'char_val',
-			'varchar_val', '2023-01-01', 123.45,
-			123.456789, 123.45, 123, 123, 12345, '1 hour', '{"key": "value"}',
-			'{"key": "value"}', 'test_name', 123.45, 123.45,
-			'sample text', '2023-01-01 12:00:00',
-			'2023-01-01 12:00:00+00',
-			'123e4567-e89b-12d3-a456-426614174000', B'101010',
-			'<tag>value</tag>'
-		)`, tableName)
-
-		_, err := db.ExecContext(ctx, query)
-		require.NoError(t, err, "Failed to insert test data")
+		time.Sleep(5 * time.Second)
 	}
 }
 
-// Helper function to execute container commands
-func ExecCommand(
-	ctx context.Context,
-	c testcontainers.Container,
-	cmd string,
-) (int, []byte, error) {
-	code, reader, err := c.Exec(ctx, []string{"/bin/sh", "-c", cmd})
-	if err != nil {
-		return code, nil, err
+// StopSource stops the source container, to make the next sync fail.
+func (r *Run) StopSource() {
+	r.t.Helper()
+	r.Step("Stopping the %s source...", r.w.Source.Name)
+	r.exec("docker stop "+shellQuote(r.w.Source.Container), "stopping the source failed")
+}
+
+// StartSource starts the source container StopSource stopped, with its data, and waits until the
+// source is ready again.
+func (r *Run) StartSource() {
+	r.t.Helper()
+	r.Step("Starting the %s source again...", r.w.Source.Name)
+	r.exec("docker start "+shellQuote(r.w.Source.Container), "starting the source failed")
+	if strings.TrimSpace(r.w.Source.ReadyCmd) != "" {
+		r.exec("("+r.w.Source.ReadyCmd+")", "the %s source is not ready", r.w.Source.Name)
 	}
-	output, _ := io.ReadAll(reader)
-	return code, output, nil
 }

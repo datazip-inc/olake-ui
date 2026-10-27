@@ -4,10 +4,9 @@ import { CreateDestinationPage } from "../pages/CreateDestinationPage"
 import { CreateJobPage } from "../pages/CreateJobPage"
 import { CreateSourcePage } from "../pages/CreateSourcePage"
 import { DestinationsPage } from "../pages/DestinationsPage"
-import { EditDestinationPage } from "../pages/EditDestinationPage"
-import { EditSourcePage } from "../pages/EditSourcePage"
 import { JobsPage } from "../pages/JobsPage"
 import { LoginPage } from "../pages/LoginPage"
+import { SettingsPage } from "../pages/SettingsPage"
 import { SourcesPage } from "../pages/SourcesPage"
 
 /**
@@ -17,12 +16,11 @@ export type BaseFixtures = {
 	loginPage: LoginPage
 	sourcesPage: SourcesPage
 	createSourcePage: CreateSourcePage
-	editSourcePage: EditSourcePage
 	destinationsPage: DestinationsPage
 	createDestinationPage: CreateDestinationPage
-	editDestinationPage: EditDestinationPage
 	jobsPage: JobsPage
 	createJobPage: CreateJobPage
+	settingsPage: SettingsPage
 }
 
 export const test = base.extend<BaseFixtures>({
@@ -38,10 +36,6 @@ export const test = base.extend<BaseFixtures>({
 		await use(new CreateSourcePage(page))
 	},
 
-	editSourcePage: async ({ page }, use) => {
-		await use(new EditSourcePage(page))
-	},
-
 	destinationsPage: async ({ page }, use) => {
 		await use(new DestinationsPage(page))
 	},
@@ -50,16 +44,16 @@ export const test = base.extend<BaseFixtures>({
 		await use(new CreateDestinationPage(page))
 	},
 
-	editDestinationPage: async ({ page }, use) => {
-		await use(new EditDestinationPage(page))
-	},
-
 	jobsPage: async ({ page }, use) => {
 		await use(new JobsPage(page))
 	},
 
 	createJobPage: async ({ page }, use) => {
 		await use(new CreateJobPage(page))
+	},
+
+	settingsPage: async ({ page }, use) => {
+		await use(new SettingsPage(page))
 	},
 })
 

@@ -67,8 +67,12 @@ services:
     entrypoint: |
           /bin/sh -c "
           ./entrypoint.sh &&
+          echo 'Fetching the Spark Connect jar...' &&
+          (curl -fsS --retry 3 -o /tmp/spark-connect.jar https://maven-central.storage-download.googleapis.com/maven2/org/apache/spark/spark-connect_2.12/3.5.2/spark-connect_2.12-3.5.2.jar ||
+            curl -fsS --retry 3 -o /tmp/spark-connect.jar https://repo1.maven.org/maven2/org/apache/spark/spark-connect_2.12/3.5.2/spark-connect_2.12-3.5.2.jar ||
+            { echo 'failed to fetch the Spark Connect jar'; false; }) &&
           echo 'Starting Spark Connect server...' &&
-          /opt/spark/sbin/start-connect-server.sh --packages org.apache.spark:spark-connect_2.12:3.5.2,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262 --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem &
+          /opt/spark/sbin/start-connect-server.sh --conf spark.jars.packages= --jars /tmp/spark-connect.jar,/root/.ivy2/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar,/root/.ivy2/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar,/root/.ivy2/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem &
           echo 'Starting Jupyter Notebook server...' &&
           export PYSPARK_DRIVER_PYTHON=jupyter-notebook &&
           export PYSPARK_DRIVER_PYTHON_OPTS=\"--notebook-dir=/home/iceberg/notebooks --ip='*' --NotebookApp.token='' --NotebookApp.password='' --port=8888 --no-browser --allow-root\" &&
@@ -132,8 +136,11 @@ services:
       start_period: 10s
     ports:
       - 5432:5432
-    volumes:
-      - ./data/postgres-data:/var/lib/postgresql/data
+    # The catalog lives only as long as the container, like the run that uses it. On a bind mount,
+    # Docker Desktop on macOS at times loses the data directory's owner, and Postgres then exits
+    # with "data directory ... has wrong ownership".
+    tmpfs:
+      - /var/lib/postgresql/data
     command: postgres -c max_connections=300
 
   hive-metastore:
