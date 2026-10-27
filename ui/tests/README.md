@@ -26,18 +26,18 @@ tests/
 | ------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `E2E_JOB_NAME`     | Go test | Name of the job; the source and destination names derive from it. Without it every test skips.                             |
 | `E2E_DATABASE`     | Go test | Destination database the job writes to and the Go checks read (Dynamic: `<job>_postgres_public`). Needed by `@create-job`. |
-| `E2E_SERVICE_HOST` | Go test | Address the sync driver uses to reach the source and destination ports (default `172.17.0.2`).                             |
+| `E2E_SERVICE_HOST` | Go test | Address the sync driver uses to reach the source and destination ports (default `172.17.0.1`).                             |
 | `E2E_WEBHOOK_URL`  | Go test | Webhook receiver URL for the `@alerts` step.                                                                               |
 
 ## Running
 
-Run the whole workflow through Go (see `server/tests`):
+Run the whole workflow through Go (see `server/tests`), on this machine's Docker. It runs only on
+a GitHub-hosted runner unless `OLAKE_TEST_RUNNER_ANY_HOST=true`, since the stack publishes its
+ports on all interfaces:
 
 ```bash
 cd server
-go test -v ./tests -timeout 0 -run '^TestPostgres$'                    # DinD, e.g. on the test server
-OLAKE_TEST_ENV=runner OLAKE_TEST_RUNNER_ANY_HOST=true \
-  go test -v ./tests -timeout 0 -run '^TestPostgres$'                  # on this machine's Docker
+OLAKE_TEST_RUNNER_ANY_HOST=true go test -v ./tests -timeout 0 -run '^TestPostgres$'
 ```
 
 One step against a stack that is already up, after the steps before it:
