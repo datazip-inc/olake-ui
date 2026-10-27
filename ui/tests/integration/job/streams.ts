@@ -24,12 +24,19 @@ export const searchStreams = async (page: Page, text: string) => {
 	await page.getByRole("searchbox", { name: "Search Streams" }).fill(text)
 }
 
-/** Shows the streams the list's filter keeps: all, the selected ones, or the others. */
+/**
+ * Shows the streams the list's filter keeps: all, the selected ones, or the others. Selected and
+ * Not Selected toggle on top of each other, and both on show every stream, so All tables, which
+ * turns them off, goes first.
+ */
 export const filterStreams = async (
 	page: Page,
 	filter: "All tables" | "Selected" | "Not Selected",
 ) => {
-	await page.getByRole("button", { name: filter, exact: true }).click()
+	await page.getByRole("button", { name: "All tables", exact: true }).click()
+	if (filter !== "All tables") {
+		await page.getByRole("button", { name: filter, exact: true }).click()
+	}
 }
 
 /** The checkbox that selects every stream of namespace at once. */
