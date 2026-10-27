@@ -20,9 +20,8 @@ type Check struct {
 	Run  func(ctx context.Context, spark sql.SparkSession, table func(name string) string) error
 }
 
-// checkTimeout and checkInterval bound how long a check is retried before it fails. They are
-// variables so unit tests can shorten them.
-var (
+// checkTimeout and checkInterval bound how long a check is retried before it fails.
+const (
 	checkTimeout  = 2 * time.Minute
 	checkInterval = 5 * time.Second
 )
