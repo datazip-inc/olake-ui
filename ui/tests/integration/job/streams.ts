@@ -1,6 +1,6 @@
 /** The job wizard's streams step: the streams list, a stream's configuration, and bulk changes. */
 
-import { Page } from "@playwright/test"
+import { Locator, Page } from "@playwright/test"
 
 import { expect } from "../../fixtures"
 import {
@@ -358,11 +358,10 @@ export const expectFilterConditionRules = async (
 }
 
 /**
- * Bulk Configure over streams with no cursor field of one type in common: Full Refresh +
- * Incremental is disabled ("No common cursor fields across selected streams"), and the data
- * filter's second condition waits for the first. Closes the dialogs without applying anything.
+ * Opens Bulk Configure, picks streams, and goes on to the dialog that configures them, which it
+ * returns. The dialog starts with no streams picked each time it opens.
  */
-export const expectBulkRules = async (page: Page, streams: string[]) => {
+const openBulkConfigure = async (page: Page, streams: string[]) => {
 	await page.getByRole("button", { name: "Bulk Configure" }).click()
 	const bulk = page.getByRole("dialog").filter({ hasText: "Select Streams" })
 	await expect(bulk).toBeVisible()
@@ -374,6 +373,32 @@ export const expectBulkRules = async (page: Page, streams: string[]) => {
 		hasText: "Apply Configurations",
 	})
 	await expect(apply).toBeVisible()
+	return apply
+}
+
+/** The Data Filter switch of the Bulk Configure dialog. */
+const bulkDataFilterSwitch = (apply: Locator) =>
+	apply
+		.getByText("Data Filter", { exact: true })
+		.first()
+		.locator("xpath=ancestor::div[.//button[@role='switch']][1]")
+		.getByRole("switch")
+		.first()
+
+/**
+ * Bulk Configure rules, without applying anything:
+ * - over noCommonCursor, streams with no cursor field of one type in common, Full Refresh +
+ *   Incremental is disabled ("No common cursor fields across selected streams"), and so is the
+ *   data filter ("No common columns across selected streams");
+ * - over sharedCursor, streams that have one, the data filter's second condition waits for the
+ *   first.
+ */
+export const expectBulkRules = async (
+	page: Page,
+	noCommonCursor: string[],
+	sharedCursor: string[],
+) => {
+	let apply = await openBulkConfigure(page, noCommonCursor)
 	await apply
 		.getByRole("button", { name: "Toggle sync and ingestion settings" })
 		.click()
@@ -388,16 +413,15 @@ export const expectBulkRules = async (page: Page, streams: string[]) => {
 			hasText: "No common cursor fields across selected streams",
 		}),
 	).toBeVisible()
+	await expect(bulkDataFilterSwitch(apply)).toBeDisabled()
+	await expect(
+		apply.getByText("No common columns across selected streams"),
+	).toBeVisible()
+	await page.keyboard.press("Escape")
+	await expect(apply).toBeHidden()
 
-	await setSwitch(
-		apply
-			.getByText("Data Filter", { exact: true })
-			.first()
-			.locator("xpath=ancestor::div[.//button[@role='switch']][1]")
-			.getByRole("switch")
-			.first(),
-		true,
-	)
+	apply = await openBulkConfigure(page, sharedCursor)
+	await setSwitch(bulkDataFilterSwitch(apply), true)
 	await apply.getByRole("button", { name: "New Column filter" }).click()
 	await expect(
 		page.getByText("Please complete the first filter before applying another."),

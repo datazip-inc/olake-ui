@@ -305,9 +305,14 @@ test.describe("MongoDB → S3 (parquet) integration workflow", () => {
 			value: "a",
 		})
 
-		// Bulk Configure over collections with no cursor field of one type in common: Incremental
-		// is disabled and says why, and its data filter waits for a first condition too.
-		await expectBulkRules(page, [STREAMS.partition, STREAMS.intIds])
+		// Bulk Configure over collections with no cursor field of one type in common (an ObjectId
+		// _id and an integer _id): Incremental and the data filter are disabled and say why. Over
+		// two with an ObjectId _id, the data filter waits for a first condition too.
+		await expectBulkRules(
+			page,
+			[STREAMS.partition, STREAMS.intIds],
+			[STREAMS.partition, STREAMS.columns],
+		)
 
 		// Cancel the wizard: the job is never created.
 		await cancelWizard(page, n.rulesJob)
