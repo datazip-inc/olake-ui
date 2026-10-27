@@ -136,8 +136,11 @@ services:
       start_period: 10s
     ports:
       - 5432:5432
-    volumes:
-      - ./data/postgres-data:/var/lib/postgresql/data
+    # The catalog lives only as long as the container, like the run that uses it. On a bind mount,
+    # Docker Desktop on macOS at times loses the data directory's owner, and Postgres then exits
+    # with "data directory ... has wrong ownership".
+    tmpfs:
+      - /var/lib/postgresql/data
     command: postgres -c max_connections=300
 
   hive-metastore:

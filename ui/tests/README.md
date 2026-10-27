@@ -11,7 +11,14 @@ destination data between the steps.
 tests/
 ├── integration/
 │   ├── postgres-iceberg.spec.ts   Postgres → Iceberg (JDBC) workflow, one test per step (@create-job, @first-sync, ...)
-│   └── helpers.ts                 UI actions the workflow uses (forms, stream settings, history, logs)
+│   ├── e2e.ts                     inputs from the Go test (E2E_*) and timeouts
+│   ├── common/                    controls.ts (antd switches and selects), connection.ts (test connection)
+│   ├── sources/                   source.ts (any source: create), postgres.ts
+│   ├── destinations/              destination.ts (any destination: create), iceberg-jdbc.ts
+│   ├── job/                       wizard.ts, streams.ts (stream settings, All Append, Bulk Configure),
+│   │                              edit.ts (Edit Streams), runs.ts (Sync now, history, Failed jobs),
+│   │                              logs.ts, settings.ts (Clear Destination, Editing Disabled)
+│   └── settings/alerts.ts         system settings: webhook alerts
 ├── setup/auth.setup.ts            logs in once and saves the session to tests/.auth/user.json
 ├── fixtures/                      page-object fixtures; testAuthenticated reuses the saved session
 ├── pages/                         page objects for login, sources, destinations, jobs and the job wizard
@@ -20,24 +27,29 @@ tests/
 └── types/                         form config types
 ```
 
+A spec holds only what is particular to its workflow (names, streams and their settings) and
+composes the steps from the modules. A new workflow adds its spec next to postgres-iceberg.spec.ts,
+and its connectors under `sources/` and `destinations/` when they are new.
+
 ## Inputs
 
 | Variable           | Set by  | Meaning                                                                                                                    |
 | ------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `E2E_JOB_NAME`     | Go test | Name of the job; the source and destination names derive from it. Without it every test skips.                             |
 | `E2E_DATABASE`     | Go test | Destination database the job writes to and the Go checks read (Dynamic: `<job>_postgres_public`). Needed by `@create-job`. |
-| `E2E_SERVICE_HOST` | Go test | Address the sync driver uses to reach the source and destination ports (default `172.17.0.2`).                             |
+| `E2E_SERVICE_HOST` | Go test | Address the sync driver uses to reach the source and destination ports (default `172.17.0.1`).                             |
 | `E2E_WEBHOOK_URL`  | Go test | Webhook receiver URL for the `@alerts` step.                                                                               |
+| `E2E_RUNS`         | Go test | For a step that starts a run: how many runs the job's history lists once it has.                                           |
 
 ## Running
 
-Run the whole workflow through Go (see `server/tests`):
+Run the whole workflow through Go (see `server/tests`), on this machine's Docker. It runs only on
+a GitHub-hosted runner unless `OLAKE_TEST_RUNNER_ANY_HOST=true`, since the stack publishes its
+ports on all interfaces:
 
 ```bash
 cd server
-go test -v ./tests -timeout 0 -run '^TestPostgres$'                    # DinD, e.g. on the test server
-OLAKE_TEST_ENV=runner OLAKE_TEST_RUNNER_ANY_HOST=true \
-  go test -v ./tests -timeout 0 -run '^TestPostgres$'                  # on this machine's Docker
+OLAKE_TEST_RUNNER_ANY_HOST=true go test -v ./tests -timeout 0 -run '^TestPostgres$'
 ```
 
 One step against a stack that is already up, after the steps before it:

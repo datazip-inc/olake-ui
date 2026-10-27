@@ -20,9 +20,8 @@ type Check struct {
 	Run  func(ctx context.Context, spark sql.SparkSession, table func(name string) string) error
 }
 
-// checkTimeout and checkInterval bound how long a check is retried before it fails. They are
-// variables so unit tests can shorten them.
-var (
+// checkTimeout and checkInterval bound how long a check is retried before it fails.
+const (
 	checkTimeout  = 2 * time.Minute
 	checkInterval = 5 * time.Second
 )
@@ -342,6 +341,7 @@ type DeleteKind string
 
 const (
 	EqualityDeletes DeleteKind = "equality"        // content = 2
+	PositionDeletes DeleteKind = "position"        // content = 1, not PUFFIN
 	DeletionVectors DeleteKind = "deletion vector" // content = 1, PUFFIN
 )
 
@@ -349,6 +349,7 @@ const (
 func DeleteFiles(name string, kind DeleteKind) Check {
 	where := map[DeleteKind]string{
 		EqualityDeletes: "content = 2",
+		PositionDeletes: "content = 1 AND upper(file_format) != 'PUFFIN'",
 		DeletionVectors: "content = 1 AND upper(file_format) = 'PUFFIN'",
 	}[kind]
 	return Check{

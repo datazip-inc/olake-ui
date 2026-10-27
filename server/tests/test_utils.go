@@ -18,13 +18,14 @@ import (
 	"github.com/datazip-inc/olake-ui/server/tests/sources"
 )
 
-// olakeComposeFiles starts OLake from the root docker-compose.yml, with olake-ui taken from the
-// olake-ui:ci image built from this checkout (see compose.olake-ui.yml). The project has its own
+// olakeComposeFiles starts OLake from the root docker-compose-v1.yml, with olake-ui taken from the
+// olake-ui:ci image built from this checkout (see compose.olake-ui.yml). The Fusion services in
+// that file are in the "fusion" profile, which the test does not enable. The project has its own
 // name, so taking it down never touches an OLake a developer runs from the same checkout, whose
 // project is named after the directory.
-const olakeComposeFiles = "-p olake-app-test -f docker-compose.yml -f server/tests/compose.olake-ui.yml"
+const olakeComposeFiles = "-p olake-app-test -f docker-compose-v1.yml -f server/tests/compose.olake-ui.yml"
 
-// olakeHome, under the checkout, stands in for PWD in the root docker-compose.yml, whose job
+// olakeHome, under the checkout, stands in for PWD in the root docker-compose-v1.yml, whose job
 // state lives in ${PWD}/olake-data. The test's state then stays out of the olake-data folder of
 // an OLake a developer runs from the same checkout. It is gitignored like any olake-data folder.
 const olakeHome = "server/tests/.olake-home"
@@ -65,16 +66,6 @@ func startOLakeCmd(root string) string {
             sleep 2
         done
     `, shellQuote(root), shellQuote(olakeHome), olakeCompose(root))
-}
-
-// Install Playwright and dependencies. --frozen-lockfile installs exactly what pnpm-lock.yaml
-// pins, leaves package.json and the lockfile in the checkout unchanged, and fails if they disagree.
-func installPlaywrightCmd(root string) string {
-	return fmt.Sprintf(`
-        cd %s &&
-        pnpm install --frozen-lockfile &&
-        pnpm exec playwright install --with-deps chromium
-    `, shellQuote(root+"/ui"))
 }
 
 // playwrightPatterns limit the values Run.Playwright puts in the Playwright shell command.
@@ -124,7 +115,7 @@ func playwrightCmd(root, spec, tag string, env map[string]string, debug bool) (s
 // file must run Spark Connect there; see destinations.Destination.
 const sparkConnectPort = "15002/tcp"
 
-// runTimeout bounds a whole workflow run. It is under both CI jobs' timeouts, with room for their
+// runTimeout bounds a whole workflow run. It is under the CI job's timeout, with room for its
 // setup steps and the cleanup.
 const runTimeout = 90 * time.Minute
 
@@ -157,12 +148,12 @@ func composeStartCmd(root, project, dir string, services []string, ready string)
 		shellQuote(root+"/server/tests/"+dir), start, name, name)
 }
 
-// Run is a started integration stack: the Env with the source, the destination and OLake up,
-// the source seeded and Playwright installed. Its methods fail the test on error.
+// Run is a started integration stack: the source, the destination and OLake up, the source
+// seeded and Playwright installed. Its methods fail the test on error.
 type Run struct {
 	t           *testing.T
 	ctx         context.Context
-	env         Env
+	env         *Env
 	w           *Workflow
 	start       time.Time
 	ServiceHost string // what the driver, and the specs, use to reach the published ports
@@ -180,11 +171,7 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 	ctx, cancel := context.WithTimeout(context.Background(), runTimeout)
 	r := &Run{t: t, ctx: ctx, w: w, start: time.Now()}
 
-	ports := []string{sparkConnectPort}
-	if w.Source.Port != "" {
-		ports = append(ports, w.Source.Port)
-	}
-	env, err := newEnv(ctx, t, ports)
+	env, err := newEnv(t)
 	t.Cleanup(cancel) // registered after the Env's own cleanup, so it runs before it
 	r.require(err)
 	r.env = env
@@ -195,12 +182,10 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 	r.require(err)
 	t.Logf("Service host: %s", r.ServiceHost)
 
-	r.sparkHost, r.sparkPort, err = env.Addr(ctx, sparkConnectPort)
-	r.require(err, "failed to get spark port")
+	r.sparkHost, r.sparkPort = env.Addr(sparkConnectPort)
 	r.sourceHost = r.sparkHost
 	if w.Source.Port != "" {
-		r.sourceHost, r.sourcePort, err = env.Addr(ctx, w.Source.Port)
-		r.require(err, "failed to get %s port", w.Source.Name)
+		r.sourceHost, r.sourcePort = env.Addr(w.Source.Port)
 	}
 
 	// A checkout that ran the test before still holds that run's Iceberg tables and job state;
@@ -239,7 +224,7 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 		return r.run(ctx, startOLakeCmd(root), "OLake startup failed")
 	})
 	playwright := r.task(startCtx, cancelStart, &tasks, "Playwright", func(ctx context.Context) error {
-		return env.InstallPlaywright(ctx, t)
+		return env.CheckPlaywright(ctx, t)
 	})
 
 	// Seed as soon as the source is ready. Seed fails the test through t, which only the test's
@@ -277,7 +262,7 @@ func (r *Run) require(err error, msgAndArgs ...any) {
 	}
 }
 
-// exec runs cmd in the Env and fails the test with its output when it does not exit 0.
+// exec runs cmd and fails the test with its output when it does not exit 0.
 func (r *Run) exec(cmd, format string, args ...any) []byte {
 	r.t.Helper()
 	code, out, err := r.env.Exec(r.ctx, cmd)
@@ -372,23 +357,48 @@ func (r *Run) Check(phase string, checks ...Check) {
 	}
 }
 
+// SourceColumn is a column MatchesSourceAs compares: its name, and the source SQL whose text is
+// the value as Spark's CAST(... AS STRING) shows it in the destination. Source is a code constant.
+type SourceColumn struct {
+	Name   string
+	Source string
+}
+
+// Col is column c compared as text on both sides.
+func Col(c string) SourceColumn {
+	return SourceColumn{Name: c, Source: fmt.Sprintf("CAST(%s AS TEXT)", ident(c))}
+}
+
 // MatchesSource checks that the destination's current rows of table equal the source's rows,
-// column by column. The current row of an id is its newest row by _olake_timestamp, and an id
-// whose newest row is a delete tombstone (_op_type 'd') has none: that reads Append tables, which
-// keep every change, and Upsert tables the same way. where, a code constant or empty, limits the
-// source rows the way a Data Filter or CDC Only limits what reaches the destination.
+// column by column, each compared as text. The current row of an id is its newest row by
+// _olake_timestamp, and an id whose newest row is a delete tombstone (_op_type 'd') has none: that
+// reads Append tables, which keep every change, and Upsert tables the same way. where, a code
+// constant or empty, limits the source rows the way a Data Filter or CDC Only limits what reaches
+// the destination.
 func (r *Run) MatchesSource(table string, columns []string, where string) Check {
-	if len(columns) == 0 || columns[0] != keyColumn {
+	cols := make([]SourceColumn, len(columns))
+	for i, c := range columns {
+		cols[i] = Col(c)
+	}
+	return r.MatchesSourceAs(table, cols, where)
+}
+
+// MatchesSourceAs is MatchesSource with the source side of each column written out, for types
+// OLake writes in another form than the source's text, such as a DATE as a timestamp.
+func (r *Run) MatchesSourceAs(table string, columns []SourceColumn, where string) Check {
+	if len(columns) == 0 || columns[0].Name != keyColumn {
 		panic(fmt.Sprintf("MatchesSource(%s): the first column must be %s", table, keyColumn))
 	}
+	names := make([]string, len(columns))
 	srcCols := make([]string, len(columns))
 	dstCols := make([]string, len(columns))
 	for i, c := range columns {
-		srcCols[i] = fmt.Sprintf("CAST(%s AS TEXT)", ident(c))
-		dstCols[i] = fmt.Sprintf("CAST(%s AS STRING)", ident(c))
+		names[i] = ident(c.Name)
+		srcCols[i] = c.Source
+		dstCols[i] = fmt.Sprintf("CAST(%s AS STRING)", ident(c.Name))
 	}
 	srcQuery := fmt.Sprintf("SELECT %s FROM %s", strings.Join(srcCols, ", "), ident(table))
-	name := fmt.Sprintf("%s matches the source (%s)", table, strings.Join(columns, ", "))
+	name := fmt.Sprintf("%s matches the source (%s)", table, strings.Join(names, ", "))
 	if where != "" {
 		srcQuery += " WHERE " + where
 		name += " where " + where
@@ -409,7 +419,7 @@ func (r *Run) MatchesSource(table string, columns []string, where string) Check 
 			if err != nil {
 				return fmt.Errorf("reading the destination: %w", err)
 			}
-			return diffRows(columns, source, destination)
+			return diffRows(names, source, destination)
 		},
 	}
 }
@@ -464,4 +474,15 @@ func (r *Run) StopSource() {
 	r.t.Helper()
 	r.Step("Stopping the %s source...", r.w.Source.Name)
 	r.exec("docker stop "+shellQuote(r.w.Source.Container), "stopping the source failed")
+}
+
+// StartSource starts the source container StopSource stopped, with its data, and waits until the
+// source is ready again.
+func (r *Run) StartSource() {
+	r.t.Helper()
+	r.Step("Starting the %s source again...", r.w.Source.Name)
+	r.exec("docker start "+shellQuote(r.w.Source.Container), "starting the source failed")
+	if strings.TrimSpace(r.w.Source.ReadyCmd) != "" {
+		r.exec("("+r.w.Source.ReadyCmd+")", "the %s source is not ready", r.w.Source.Name)
+	}
 }

@@ -2,58 +2,145 @@
  * Postgres → Apache Iceberg (JDBC catalog) integration workflow.
  *
  * Run by TestPostgres in server/tests, one tagged test at a time and in this order, between the
- * Go steps that seed and change the source and check the destination through Spark:
+ * Go steps that seed and change the source and check the destination through Spark. Go passes
+ * E2E_RUNS to the steps that start a run: how many runs the job's history lists once it has.
  *
- *   @create-job        CDC source, destination, and one job with a stream per feature
- *   @first-sync        sync 1                                  (Go checks, then changes the source)
- *   @second-sync       sync 2                                  (Go checks)
- *   @clear-destination Clear Destination from Job settings     (Go checks every table is gone)
- *   @rebuild-sync      sync 3 rebuilds the tables              (Go checks)
- *   @history           history, Job Type, search, refresh, task logs, errors filter, download
- *   @stream-rules      CDC modes off without CDC, Target Query Engines, "All Append",
- *                      Bulk Configure, index-build warning Cancel, wizard Cancel
- *   @alerts            webhook URL: save, edit + cancel, clear, save again
- *   @failed-sync       sync 4 with the source stopped by Go: Failed, "Failed jobs" tab
- *                                                             (Go waits for the webhook)
+ *   @create-job          CDC source, destination, and one job with a stream per feature
+ *   @first-sync          sync 1                                   (Go checks, then changes the source)
+ *   @sync                sync 2                                   (Go checks)
+ *   @clear-destination   Clear Destination: Cancel, then Confirm; "Editing Disabled" while it runs
+ *   @sync                sync 3 rebuilds the tables               (Go checks)
+ *   @edit-query-engines  Edit Streams: Dremio re-resolves the upsert types; left unsaved
+ *   @edit-upsert-type    Edit Streams: e2e_upsert_dv to Positional Deletes clears its table
+ *   @sync, @sync         its full load, then CDC with position deletes (Go checks)
+ *   @dropped-table       the dropped e2e_dropped fails the sync; Edit Streams removes it
+ *   @sync                the next sync completes                  (Go checks)
+ *   @stream-rules        CDC modes off without CDC, Target Query Engines, "All Append",
+ *                        Bulk Configure, index-build warning Cancel, wizard Cancel
+ *   @alerts              webhook URL: validation, save, edit + cancel, clear, save again
+ *   @failed-sync         with the source stopped by Go: Failed, its error log, "Failed jobs" tab
+ *   @discovery-failure   Edit Streams cannot discover the streams; Retry fails again
+ *   @recovery            with the source back: discovery works, the next sync completes (Go checks)
+ *   @history             every run over two pages, Job Type, search, refresh, task logs, download
  *
- * Without E2E_JOB_NAME every test skips.
+ * Without E2E_JOB_NAME every test skips. The steps come from the modules next to this file; this
+ * file holds what is particular to Postgres → Iceberg: its names, streams and their settings.
  */
 
-import { TIMEOUTS } from "../../playwright.config"
 import { DestinationConnector, SourceConnector } from "../enums"
 import { testAuthenticated as test, expect } from "../fixtures"
+import { createIcebergJdbcDestination } from "./destinations/iceberg-jdbc"
+import { E2E, SYNC_TIMEOUT } from "./e2e"
 import {
-	E2E,
-	STREAMS,
-	SYNC_TIMEOUT,
-	createIcebergJdbcDestination,
-	createJobFromStreams,
-	createPostgresSource,
+	editBack,
+	expectDiscoveryFailure,
+	finishEdit,
+	finishWithStreamChange,
+	openEditStreams,
+	proceedWithChangedQueryEngines,
+} from "./job/edit"
+import {
+	expectErrorLogs,
+	expectLogTools,
 	expectNewestRunLogs,
-	expectWizardConnectionsPassed,
-	historyRows,
+	openNewestRunLogs,
+} from "./job/logs"
+import {
+	HistoryRun,
+	expectHistory,
+	expectInFailedJobs,
 	jobMenu,
-	names,
+	syncAndWait,
+	waitForNewestRun,
+} from "./job/runs"
+import { clearDestination } from "./job/settings"
+import {
+	bulkConfigureSyncMode,
+	deselectAllStreams,
+	expectUpsertType,
 	offeredUpsertTypes,
 	openStream,
-	pickOption,
 	selectStream,
 	setDataFilter,
 	setIngestionMode,
-	setSwitch,
+	setNormalization,
 	setSyncMode,
+	setSyncNewColumns,
 	setUpsertType,
+	streamRow,
 	streamTab,
-	switchNear,
-	syncAndWait,
+	switchAllIngestion,
 	syncModeRadio,
-	waitForNewestRun,
-} from "./helpers"
+} from "./job/streams"
+import {
+	JobConfig,
+	cancelAtIndexBuildWarning,
+	cancelWizard,
+	createJobFromStreams,
+	expectDynamicDatabase,
+	pickExistingSource,
+	startJob,
+	toggleQueryEngine,
+	wizardBack,
+	wizardNext,
+} from "./job/wizard"
+import { expectWebhookAlerts } from "./settings/alerts"
+import { createPostgresSource } from "./sources/postgres"
 
 const job = E2E.job
-const n = names(job, E2E.database)
-const SYNC_COMPLETED_LOG =
-	"Sync completed, wait 5 seconds cleanup in progress..."
+
+/** Names of everything the workflow creates, derived from the job name. */
+const n = {
+	source: `${job}_source`,
+	// Unique per run: the source is created in @stream-rules, which can be run again on its own.
+	sourceNoCdc: `${job}_source_nocdc_${Date.now()}`,
+	destination: `${job}_dest`,
+	rulesJob: `${job}_rules`,
+	database: E2E.database,
+	// The UI shows a Dynamic name as <prefix>_${source_namespace}: the database without its
+	// source schema (public).
+	databasePrefix: E2E.database.replace(/_public$/, ""),
+}
+
+/** The e2e tables the Go test seeds, one stream per feature. */
+const STREAMS = {
+	cdc: "e2e_cdc",
+	strictCdc: "e2e_strict_cdc",
+	upsertEq: "e2e_upsert_eq",
+	upsertDv: "e2e_upsert_dv",
+	filter: "e2e_filter",
+	newColumns: "e2e_new_columns",
+	frAppend: "e2e_fr_append",
+	frUpsert: "e2e_fr_upsert",
+	types: "e2e_types",
+	noPk: "e2e_no_pk",
+	schemaChange: "e2e_schema_change",
+	dropped: "e2e_dropped",
+} as const
+
+/** The job's runs, newest first, once TestPostgres has run every step before @history. */
+const HISTORY: HistoryRun[] = [
+	{ type: "Sync", status: "Completed" }, // @recovery
+	{ type: "Sync", status: "Failed" }, // @failed-sync, with the source down
+	{ type: "Sync", status: "Completed" }, // after the dropped table's stream is gone
+	{ type: "Sync", status: "Failed" }, // @dropped-table
+	{ type: "Sync", status: "Completed" }, // position deletes
+	{ type: "Sync", status: "Completed" }, // e2e_upsert_dv's full load again
+	{ type: "Clear Destination", status: "Completed" }, // @edit-upsert-type
+	{ type: "Sync", status: "Completed" }, // the rebuild
+	{ type: "Clear Destination", status: "Completed" }, // @clear-destination
+	{ type: "Sync", status: "Completed" }, // sync 2
+	{ type: "Sync", status: "Completed" }, // @first-sync
+]
+
+/** The job's config step; @stream-rules uses it with its own job and sources. */
+const jobConfig: JobConfig = {
+	job,
+	source: n.source,
+	sourceConnector: SourceConnector.Postgres,
+	destination: n.destination,
+	destinationConnector: DestinationConnector.ApacheIceberg,
+}
 
 test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 	// Go owns retries: a retry would create the job a second time.
@@ -92,47 +179,16 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 			true,
 		)
 		await createIcebergJdbcDestination(
+			page,
 			destinationsPage,
 			createDestinationPage,
 			n.destination,
 		)
+		await startJob(page, jobsPage, createJobPage, jobConfig)
 
-		await jobsPage.navigateToJobs()
-		await jobsPage.expectJobsPageVisible()
-		await jobsPage.clickCreateJob()
-		await createJobPage.expectCreateJobPageVisible()
-		await createJobPage.configureJobSettings(
-			job,
-			"Every Week",
-			n.source,
-			SourceConnector.Postgres,
-			n.destination,
-			DestinationConnector.ApacheIceberg,
-		)
-		await expectWizardConnectionsPassed(page)
-
-		// Dynamic database name: the header shows the pattern, the modal has Dynamic selected,
-		// and every stream's destination table is <job>_postgres_public/<table>.
-		await expect(
-			page.getByText(`${n.databasePrefix}_\${source_namespace}`),
-		).toBeVisible({ timeout: TIMEOUTS.LONG })
-		await page
-			.getByText("Iceberg DB", { exact: true })
-			.locator("xpath=ancestor::div[contains(@class,'group')][1]")
-			.locator("svg.cursor-pointer")
-			.first()
-			.click()
-		const databaseModal = page.getByRole("dialog").filter({
-			hasText: "Iceberg Database Name",
-		})
-		await expect(databaseModal).toBeVisible()
-		await expect(
-			databaseModal.getByRole("radio", { name: /Dynamic \(Default\)/ }),
-		).toBeChecked()
-		await databaseModal.getByRole("button", { name: "Close" }).click()
-		await expect(databaseModal).toBeHidden()
-
-		await page.getByRole("checkbox", { name: "Sync all" }).uncheck()
+		// Dynamic database name: every stream's destination table is <job>_postgres_public/<table>.
+		await expectDynamicDatabase(page, n.databasePrefix)
+		await deselectAllStreams(page)
 
 		const configure: Record<string, () => Promise<void>> = {
 			// Full Refresh + CDC, Append: inserts, updates and deletes all land as rows.
@@ -174,12 +230,36 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 			[STREAMS.newColumns]: async () => {
 				await setSyncMode(page, "Full Refresh + CDC")
 				await setIngestionMode(page, "Append")
-				await streamTab(page, "Schema")
-				await setSwitch(
-					switchNear(page, "Sync new columns automatically"),
-					true,
-				)
-				await streamTab(page, "Config")
+				await setSyncNewColumns(page, true)
+			},
+			// Full Refresh alone: every sync drops the table and reads the source again.
+			[STREAMS.frAppend]: async () => {
+				await setSyncMode(page, "Full Refresh")
+				await setIngestionMode(page, "Append")
+			},
+			[STREAMS.frUpsert]: async () => {
+				await setSyncMode(page, "Full Refresh")
+				await setIngestionMode(page, "Upsert")
+			},
+			// A column per type, compared row by row with the source.
+			[STREAMS.types]: async () => {
+				await setSyncMode(page, "Full Refresh + CDC")
+				await setIngestionMode(page, "Append")
+			},
+			// No primary key; its replica identity is FULL.
+			[STREAMS.noPk]: async () => {
+				await setSyncMode(page, "Full Refresh + CDC")
+				await setIngestionMode(page, "Append")
+			},
+			// amount becomes BIGINT and name is dropped at the source before sync 2.
+			[STREAMS.schemaChange]: async () => {
+				await setSyncMode(page, "Full Refresh + CDC")
+				await setIngestionMode(page, "Append")
+			},
+			// Dropped at the source before sync 2.
+			[STREAMS.dropped]: async () => {
+				await setSyncMode(page, "Full Refresh + CDC")
+				await setIngestionMode(page, "Append")
 			},
 		}
 
@@ -190,32 +270,29 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 				page.getByText(`${n.database}/${stream}`, { exact: true }).first(),
 			).toBeVisible()
 			// Every stream is normalized: the checks read the source columns.
-			await setSwitch(switchNear(page, "Normalization"), true)
+			await setNormalization(page, true)
 			await configure[stream]()
 		}
 
 		// Deletion Vector needs a destination index, so Create Job asks first.
-		await createJobFromStreams(page, true)
-		await createJobPage.goToJobsPage()
-		await jobsPage.expectJobsPageVisible()
-		await jobsPage.expectJobExists(job)
+		await createJobFromStreams(page, createJobPage, jobsPage, job, true)
 	})
 
 	test("@first-sync: sync 1", async ({ page, jobsPage }) => {
 		test.setTimeout(SYNC_TIMEOUT + 5 * 60 * 1000)
-		await syncAndWait(page, jobsPage, job, 1, "Completed")
-		await expectNewestRunLogs(page, SYNC_COMPLETED_LOG)
+		await syncAndWait(page, jobsPage, job, E2E.runs, "Completed")
+		await expectNewestRunLogs(page)
 		await jobsPage.navigateToJobs()
 		await jobsPage.expectJobStatus(job, "Completed")
 	})
 
-	test("@second-sync: sync 2, after the source changes", async ({
+	test("@sync: Sync now, the run completes and logs its end", async ({
 		page,
 		jobsPage,
 	}) => {
 		test.setTimeout(SYNC_TIMEOUT + 5 * 60 * 1000)
-		await syncAndWait(page, jobsPage, job, 2, "Completed")
-		await expectNewestRunLogs(page, SYNC_COMPLETED_LOG)
+		await syncAndWait(page, jobsPage, job, E2E.runs, "Completed")
+		await expectNewestRunLogs(page)
 	})
 
 	test("@clear-destination: Clear Destination from Job settings", async ({
@@ -223,92 +300,57 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 		jobsPage,
 	}) => {
 		test.setTimeout(SYNC_TIMEOUT + 5 * 60 * 1000)
-		await jobMenu(page, jobsPage, job, "Job settings")
-		await page
-			.getByRole("button", { name: "Clear Destination", exact: true })
-			.click()
-		const dialog = page.getByRole("dialog").filter({
-			hasText: "This will erase all data that was synced by this job",
-		})
-		await expect(dialog).toBeVisible()
-		await expect(dialog).toContainText("cannot be undone")
-		await dialog.getByRole("button", { name: "Confirm" }).click()
-		await expect(dialog).toBeHidden()
-
-		await jobMenu(page, jobsPage, job, "Job Logs & History")
-		await waitForNewestRun(page, 3, "Clear Destination", "Completed")
+		await clearDestination(page, jobsPage, job, E2E.runs)
 	})
 
-	test("@rebuild-sync: sync 3 rebuilds the cleared tables", async ({
+	test("@edit-query-engines: Edit Streams, Target Query Engines resolve the upsert types again", async ({
+		page,
+		jobsPage,
+	}) => {
+		test.setTimeout(15 * 60 * 1000)
+		await openEditStreams(page, jobsPage, job, STREAMS.upsertEq)
+		await editBack(page)
+		await toggleQueryEngine(page, "Dremio")
+		await proceedWithChangedQueryEngines(page, STREAMS.upsertEq)
+		// Dremio reads position deletes only, so both upsert streams are resolved to them again.
+		await openStream(page, STREAMS.upsertEq)
+		await streamTab(page, "Config")
+		expect(await offeredUpsertTypes(page)).toEqual(["Positional Deletes"])
+		await expectUpsertType(page, "Positional Deletes")
+		await openStream(page, STREAMS.upsertDv)
+		await streamTab(page, "Config")
+		await expectUpsertType(page, "Positional Deletes")
+		// Leave without saving: the job keeps its streams as they are.
+		await page.goto("/jobs")
+	})
+
+	test("@edit-upsert-type: Edit Streams, an upsert type change clears the stream's table", async ({
 		page,
 		jobsPage,
 	}) => {
 		test.setTimeout(SYNC_TIMEOUT + 5 * 60 * 1000)
-		await syncAndWait(page, jobsPage, job, 4, "Completed")
-		await expectNewestRunLogs(page, SYNC_COMPLETED_LOG)
+		// Deletion Vector (Iceberg v3) to Positional Deletes (v2): the table has to be written anew.
+		await openEditStreams(page, jobsPage, job, STREAMS.upsertDv)
+		await openStream(page, STREAMS.upsertDv)
+		await streamTab(page, "Config")
+		await setUpsertType(page, "Positional Deletes", "V2")
+		await finishWithStreamChange(page, STREAMS.upsertDv)
+		await jobMenu(page, jobsPage, job, "Job Logs & History")
+		await waitForNewestRun(page, E2E.runs, "Clear Destination", "Completed")
 	})
 
-	test("@history: runs, Job Type, search, refresh and task logs", async ({
+	test("@dropped-table: a table dropped at the source fails the sync until its stream is gone", async ({
 		page,
 		jobsPage,
 	}) => {
-		test.setTimeout(10 * 60 * 1000)
-		await jobMenu(page, jobsPage, job, "Job Logs & History")
-
-		for (const header of [
-			"Start time",
-			"Runtime",
-			"Status",
-			"Job Type",
-			"Actions",
-		]) {
-			await expect(
-				page.getByRole("columnheader", { name: header }),
-			).toBeVisible()
-		}
-		const rows = historyRows(page)
-		await expect(rows).toHaveCount(4)
-		await expect(rows.filter({ hasText: "Completed" })).toHaveCount(4)
-		await expect(rows.filter({ hasText: "Clear Destination" })).toHaveCount(1)
-		await expect(rows.nth(1)).toContainText("Clear Destination")
-		for (const index of [0, 2, 3]) {
-			await expect(rows.nth(index)).toContainText("Sync")
-		}
-
-		// Search matches the status and the start time.
-		const search = page.getByPlaceholder("Search Tasks")
-		await search.fill("completed")
-		await expect(rows).toHaveCount(4)
-		await search.fill("no-such-run")
-		await expect(rows).toHaveCount(0)
-		await search.fill("")
-		await expect(rows).toHaveCount(4)
-
-		await page.getByTestId("refresh-tasks-button").click()
-		await expect(rows).toHaveCount(4)
-
-		// Task logs of the newest run. The checks search the log: it is a virtual list that renders
-		// only the rows in view, so a line of a long log may be loaded but not rendered.
-		await expectNewestRunLogs(page, SYNC_COMPLETED_LOG)
-		const searchLogs = page.getByPlaceholder("Search Logs")
-		await searchLogs.fill("Sync completed")
-		await expect(page.getByText(SYNC_COMPLETED_LOG).first()).toBeVisible()
-
-		// Errors also keeps only error lines, so the completion line goes away, and comes back.
-		const errors = page.getByRole("button", { name: "Errors", exact: true })
-		await errors.click()
-		await expect(errors).toHaveClass(/ant-btn-primary/)
-		await expect(page.getByText(SYNC_COMPLETED_LOG)).toHaveCount(0)
-		await expect(page.getByText("No logs found")).toBeVisible()
-		await errors.click()
-		await expect(errors).not.toHaveClass(/ant-btn-primary/)
-		await expect(page.getByText(SYNC_COMPLETED_LOG).first()).toBeVisible()
-		await searchLogs.fill("")
-
-		const download = page.waitForEvent("download")
-		await page.getByRole("button", { name: "Download Logs" }).click()
-		await expect(page.getByText("Downloading logs...")).toBeVisible()
-		expect((await download).suggestedFilename()).not.toBe("")
+		test.setTimeout(SYNC_TIMEOUT + 10 * 60 * 1000)
+		// The publication no longer covers the dropped table, and the log says so.
+		await syncAndWait(page, jobsPage, job, E2E.runs, "Failed")
+		await expectNewestRunLogs(page, "NOT tracked by publication")
+		// Edit Streams discovers the source again, which has no such table, and Finish saves that.
+		await openEditStreams(page, jobsPage, job, STREAMS.cdc)
+		await expect(streamRow(page, STREAMS.dropped)).toHaveCount(0)
+		await finishEdit(page)
 	})
 
 	test("@stream-rules: CDC modes, Target Query Engines, All Append, Bulk Configure", async ({
@@ -320,31 +362,6 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 	}) => {
 		test.setTimeout(25 * 60 * 1000)
 
-		const back = async () => {
-			await page.getByRole("button", { name: "Back", exact: true }).click()
-			await page.getByRole("button", { name: "Yes, Leave" }).click()
-			await expect(page.getByTestId("create-job-wizard-submit")).toHaveText(
-				"Next",
-			)
-		}
-		const pickSource = async (name: string) => {
-			await pickOption(page, page.getByTestId("existing-source"), name)
-		}
-		// The only multi-select of the config step.
-		const queryEngines = page.locator(".ant-select.ant-select-multiple").first()
-		const toggleQueryEngine = async (label: string) => {
-			await pickOption(page, queryEngines, label)
-			await page.keyboard.press("Escape")
-		}
-		const next = async () => {
-			await page.getByTestId("create-job-wizard-submit").click()
-			await expectWizardConnectionsPassed(page)
-			await expect(streamRow(STREAMS.upsertEq)).toBeVisible({
-				timeout: TIMEOUTS.LONG,
-			})
-		}
-		const streamRow = (stream: string) =>
-			page.getByRole("button", { name: stream, exact: true })
 		const upsertTypesOf = async (stream: string) => {
 			await selectStream(page, stream)
 			await streamTab(page, "Config")
@@ -361,18 +378,11 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 			n.sourceNoCdc,
 			false,
 		)
-		await jobsPage.navigateToJobs()
-		await jobsPage.clickCreateJob()
-		await createJobPage.expectCreateJobPageVisible()
-		await createJobPage.configureJobSettings(
-			n.rulesJob,
-			"Every Week",
-			n.sourceNoCdc,
-			SourceConnector.Postgres,
-			n.destination,
-			DestinationConnector.ApacheIceberg,
-		)
-		await expectWizardConnectionsPassed(page)
+		await startJob(page, jobsPage, createJobPage, {
+			...jobConfig,
+			job: n.rulesJob,
+			source: n.sourceNoCdc,
+		})
 		await selectStream(page, STREAMS.cdc)
 		await streamTab(page, "Config")
 		await expect(syncModeRadio(page, "Full Refresh + CDC")).toBeDisabled()
@@ -383,9 +393,9 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 		).toBeEnabled()
 
 		// With the CDC source the CDC modes are offered.
-		await back()
-		await pickSource(n.source)
-		await next()
+		await wizardBack(page)
+		await pickExistingSource(page, n.source)
+		await wizardNext(page, STREAMS.upsertEq)
 		await selectStream(page, STREAMS.cdc)
 		await streamTab(page, "Config")
 		await expect(syncModeRadio(page, "Full Refresh + CDC")).toBeEnabled()
@@ -398,93 +408,33 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 			"Positional Deletes",
 			"Deletion Vector",
 		])
-		await back()
-		await toggleQueryEngine("Dremio")
-		await next()
+		await wizardBack(page)
+		await toggleQueryEngine(page, "Dremio")
+		await wizardNext(page, STREAMS.upsertEq)
 		expect(await upsertTypesOf(STREAMS.upsertEq)).toEqual([
 			"Positional Deletes",
 		])
-		await back()
-		await toggleQueryEngine("Dremio")
-		await toggleQueryEngine("Databricks")
-		await next()
+		await wizardBack(page)
+		await toggleQueryEngine(page, "Dremio")
+		await toggleQueryEngine(page, "Databricks")
+		await wizardNext(page, STREAMS.upsertEq)
 		expect(await upsertTypesOf(STREAMS.upsertEq)).toEqual(["Deletion Vector"])
-		await back()
-		await toggleQueryEngine("Databricks")
-		await next()
+		await wizardBack(page)
+		await toggleQueryEngine(page, "Databricks")
+		await wizardNext(page, STREAMS.upsertEq)
 
 		// "All Append" switches every stream to Append; "All Upsert" switches them back.
 		await selectStream(page, STREAMS.cdc)
 		await selectStream(page, STREAMS.upsertEq)
-		const switchAll = async (mode: "Append" | "Upsert") => {
-			await page.getByText(`All ${mode}`, { exact: true }).click()
-			const dialog = page.getByRole("dialog").filter({
-				hasText: `Switch to ${mode} for all tables ?`,
-			})
-			await expect(dialog).toBeVisible()
-			await expect(dialog).toContainText(
-				"You can change mode for individual tables",
-			)
-			await dialog.getByRole("button", { name: "Confirm" }).click()
-			await expect(dialog).toBeHidden()
-			for (const stream of [STREAMS.cdc, STREAMS.upsertEq]) {
-				await openStream(page, stream)
-				await streamTab(page, "Config")
-				await expect(
-					page.getByRole("radio", { name: mode, exact: true }),
-				).toBeChecked()
-			}
-		}
-		await switchAll("Append")
-		await switchAll("Upsert")
+		await switchAllIngestion(page, "Append", [STREAMS.cdc, STREAMS.upsertEq])
+		await switchAllIngestion(page, "Upsert", [STREAMS.cdc, STREAMS.upsertEq])
 
 		// Bulk Configure: Full Refresh for two streams.
-		await page.getByRole("button", { name: "Bulk Configure" }).click()
-		const bulk = page.getByRole("dialog").filter({ hasText: "Select Streams" })
-		await expect(bulk).toBeVisible()
-		await expect(bulk).toContainText(
-			"Select streams you wish to bulk configure",
+		await bulkConfigureSyncMode(
+			page,
+			[STREAMS.cdc, STREAMS.filter],
+			"Full Refresh",
 		)
-		for (const stream of [STREAMS.cdc, STREAMS.filter]) {
-			await bulk.getByRole("checkbox", { name: stream, exact: true }).check()
-		}
-		await bulk.getByRole("button", { name: "Configure Streams" }).click()
-		const apply = page.getByRole("dialog").filter({
-			hasText: "Apply Configurations",
-		})
-		await expect(apply).toBeVisible()
-		// Nothing is marked as changed yet, and the sync mode sits in a collapsed section.
-		const review = apply.getByRole("button", { name: "Review Changes" })
-		await expect(review).toBeDisabled()
-		const ingestion = apply.getByRole("button", {
-			name: "Toggle sync and ingestion settings",
-		})
-		await expect(ingestion).toHaveAttribute("aria-expanded", "false")
-		await ingestion.click()
-		await expect(ingestion).toHaveAttribute("aria-expanded", "true")
-		await apply
-			.getByRole("radio", { name: "Full Refresh", exact: true })
-			.check()
-		await expect(review).toBeEnabled()
-		await review.click()
-		const summary = page.getByRole("dialog").filter({
-			hasText: "Summary of Changes",
-		})
-		await expect(summary).toBeVisible()
-		await summary.getByRole("button", { name: "Apply Changes" }).click()
-		await expect(
-			page.getByText("2 streams configured successfully"),
-		).toBeVisible()
-		await expect(
-			page.getByText("2 streams configured successfully"),
-		).toBeHidden({
-			timeout: 30_000,
-		})
-		for (const stream of [STREAMS.cdc, STREAMS.filter]) {
-			await openStream(page, stream)
-			await streamTab(page, "Config")
-			await expect(syncModeRadio(page, "Full Refresh")).toBeChecked()
-		}
 
 		// The index-build warning: Cancel keeps the wizard open, nothing is created.
 		await selectStream(page, STREAMS.upsertDv)
@@ -492,93 +442,58 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 		await setSyncMode(page, "Full Refresh + CDC")
 		await setIngestionMode(page, "Upsert")
 		await setUpsertType(page, "Deletion Vector", "V3")
-		await page.getByTestId("create-job-wizard-submit").click()
-		const warning = page
-			.getByRole("dialog")
-			.filter({ hasText: "Please Confirm" })
-		await expect(warning).toBeVisible()
-		await warning.getByRole("button", { name: "Cancel" }).click()
-		await expect(warning).toBeHidden()
-		await expect(page.getByTestId("create-job-wizard-submit")).toHaveText(
-			"Create Job",
-		)
+		await cancelAtIndexBuildWarning(page)
 
 		// Cancel the wizard: the job is never created.
-		await page
-			.getByRole("button", { name: "Cancel", exact: true })
-			.first()
-			.click()
-		const cancel = page.getByRole("dialog").filter({ hasText: "Don't cancel" })
-		await expect(cancel).toBeVisible()
-		await cancel.getByRole("button", { name: "Cancel", exact: true }).click()
-		await expect(page).toHaveURL(/\/jobs$/)
-		await expect(page.getByTestId(`job-${n.rulesJob}`)).toHaveCount(0)
+		await cancelWizard(page, n.rulesJob)
 	})
 
-	test("@alerts: webhook URL save, edit and cancel, clear, save again", async ({
+	test("@alerts: webhook URL validation, save, edit and cancel, clear, save again", async ({
 		page,
 	}) => {
 		test.skip(!E2E.webhookUrl, "needs E2E_WEBHOOK_URL")
-		const url = E2E.webhookUrl
-		const open = async () => {
-			await page.goto("/settings")
-			await page.getByRole("tab", { name: "Alerts and Notifications" }).click()
-		}
-		const input = page.getByPlaceholder("Enter your webhook URL")
-		const save = page.getByRole("button", { name: "Save changes" })
-
-		await open()
-		// A new OLake has no URL, so the field starts editable and Save is disabled while empty.
-		await expect(input).toBeEditable()
-		await expect(input).toHaveValue("")
-		await expect(save).toBeDisabled()
-		await input.fill(url)
-		await save.click()
-		await expect(input).toBeDisabled()
-		await expect(input).toHaveValue(url)
-		await open()
-		await expect(input).toHaveValue(url)
-		await expect(input).toBeDisabled()
-
-		// Edit, then Cancel, keeps the saved URL.
-		await page.getByRole("button", { name: "Edit" }).click()
-		await expect(input).toBeEditable()
-		await input.fill("http://changed.invalid/alert")
-		await page.getByRole("button", { name: "Cancel", exact: true }).click()
-		await expect(input).toHaveValue(url)
-		await expect(input).toBeDisabled()
-
-		// Clear removes it.
-		await page.getByRole("button", { name: "Clear webhook URL" }).click()
-		await expect(input).toHaveValue("")
-		await expect(input).toBeEditable()
-		await open()
-		await expect(input).toHaveValue("")
-
-		// Save again: the URL the failure alert goes to.
-		await input.fill(url)
-		await save.click()
-		await expect(input).toBeDisabled()
-		await open()
-		await expect(input).toHaveValue(url)
+		await expectWebhookAlerts(page, E2E.webhookUrl)
 	})
 
-	test("@failed-sync: a sync with the source down fails and shows in Failed jobs", async ({
+	test("@failed-sync: a sync with the source down fails, logs why, and shows in Failed jobs", async ({
 		page,
 		jobsPage,
 	}) => {
 		test.setTimeout(SYNC_TIMEOUT + 5 * 60 * 1000)
-		await syncAndWait(page, jobsPage, job, 5, "Failed")
+		await syncAndWait(page, jobsPage, job, E2E.runs, "Failed")
+		await openNewestRunLogs(page)
+		await expectErrorLogs(page)
+		await expectInFailedJobs(page, jobsPage, job)
+	})
 
-		await jobsPage.navigateToJobs()
-		await jobsPage.expectJobsPageVisible()
-		await page.getByRole("tab", { name: "Failed jobs" }).click()
-		// antd keeps the panels it has shown in the page, so look only in the Failed jobs panel.
-		const failed = page.getByRole("tabpanel", { name: "Failed jobs" })
-		const row = failed.getByRole("row").filter({ hasText: job })
-		await expect(row).toBeVisible({ timeout: TIMEOUTS.LONG })
-		await expect(row).toContainText("Failed")
-		await expect(row).toContainText("Sync")
-		await expect(failed.getByTestId(`job-${job}`)).toBeVisible()
+	test("@discovery-failure: Edit Streams with the source down cannot discover the streams", async ({
+		page,
+		jobsPage,
+	}) => {
+		test.setTimeout(15 * 60 * 1000)
+		await expectDiscoveryFailure(page, jobsPage, job)
+		await page.goto("/jobs")
+	})
+
+	test("@recovery: with the source back, discovery works and the next sync completes", async ({
+		page,
+		jobsPage,
+	}) => {
+		test.setTimeout(SYNC_TIMEOUT + 10 * 60 * 1000)
+		await openEditStreams(page, jobsPage, job, STREAMS.cdc)
+		await page.goto("/jobs")
+		await syncAndWait(page, jobsPage, job, E2E.runs, "Completed")
+		await expectNewestRunLogs(page)
+	})
+
+	test("@history: runs over two pages, Job Type, search, refresh and task logs", async ({
+		page,
+		jobsPage,
+	}) => {
+		test.setTimeout(10 * 60 * 1000)
+		await jobMenu(page, jobsPage, job, "Job Logs & History")
+		await expectHistory(page, HISTORY)
+		await expectNewestRunLogs(page)
+		await expectLogTools(page)
 	})
 })

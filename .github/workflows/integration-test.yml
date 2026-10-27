@@ -43,16 +43,15 @@ jobs:
           echo "Changed files:"
           echo "$changed"
           if echo "$changed" | grep -v '\.md$' \
-              | grep -qE '^(server/|ui/|Dockerfile$|\.dockerignore$|docker-compose\.yml$|\.github/workflows/integration-test\.yml$)'; then
+              | grep -qE '^(server/|ui/|Dockerfile$|\.dockerignore$|docker-compose-v1\.yml$|\.github/workflows/integration-test\.yml$)'; then
             echo "code=true" >> "$GITHUB_OUTPUT"
           else
             echo "code=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # Runs the stack directly on a GitHub-hosted runner (OLAKE_TEST_ENV=runner). Node, pnpm, the UI
-  # dependencies, Playwright and the olake-ui image come from cached steps here, so the test only
-  # starts the stack. The runner is discarded after the job, which runner mode relies on. The
-  # DinD mode (the default of the Go test) is for machines such as the test server.
+  # Runs the stack directly on a GitHub-hosted runner. Node, pnpm, the UI dependencies, Playwright
+  # and the olake-ui image come from cached steps here, so the test only starts the stack. The
+  # runner is discarded after the job, which the test relies on.
   integration-tests:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -132,7 +131,6 @@ jobs:
       - name: Run integration tests on the runner
         working-directory: ./server
         env:
-          OLAKE_TEST_ENV: runner
           OLAKE_TEST_SKIP_UI_BUILD: "true"
         run: go test -v ./tests -timeout 0 -run '^Test'
 
