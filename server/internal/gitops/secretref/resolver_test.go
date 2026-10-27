@@ -5,17 +5,14 @@ import (
 	"errors"
 	"strings"
 	"testing"
-	"time"
 )
 
 type fakeProvider struct {
 	secrets map[string]string
 	err     error
-	calls   int
 }
 
 func (f *fakeProvider) Fetch(_ context.Context, path string) (string, error) {
-	f.calls++
 	if f.err != nil {
 		return "", f.err
 	}
@@ -124,36 +121,6 @@ func TestResolve(t *testing.T) {
 			}
 			if got != tc.want || found != tc.wantFound {
 				t.Fatalf("got %s found=%v, want %s found=%v", got, found, tc.want, tc.wantFound)
-			}
-		})
-	}
-}
-
-func TestFetch(t *testing.T) {
-	testCases := []struct {
-		name      string
-		elapsed   time.Duration
-		wantCalls int
-	}{
-		{name: "within the cache TTL reuses the secret", elapsed: cacheTTL - time.Second, wantCalls: 1},
-		{name: "after the cache TTL fetches again", elapsed: cacheTTL, wantCalls: 2},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			provider := &fakeProvider{secrets: testSecrets}
-			r := NewWithProviders(map[string]Provider{"aws-sm": provider})
-			now := time.Now()
-			r.now = func() time.Time { return now }
-
-			for _, step := range []time.Duration{0, tc.elapsed} {
-				now = now.Add(step)
-				if _, err := r.fetch(context.Background(), "aws-sm", "olake/pg"); err != nil {
-					t.Fatal(err)
-				}
-			}
-			if provider.calls != tc.wantCalls {
-				t.Fatalf("provider calls = %d, want %d", provider.calls, tc.wantCalls)
 			}
 		})
 	}

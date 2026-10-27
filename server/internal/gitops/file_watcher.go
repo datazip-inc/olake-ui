@@ -15,6 +15,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
+	"github.com/datazip-inc/olake-ui/server/internal/gitops/secretref"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
@@ -73,7 +74,7 @@ func newFileWatcher(dir, stateFile string, etlSvc *etl.Service, t *temporal.Temp
 		stop:           make(chan struct{}),
 	}
 	sink := StatusSink(fw)
-	secrets := newSecretRefs(appconfig.Load())
+	secrets := newSecretRefs(appconfig.Load(), secretref.K8sConfig{}) // no cluster: ${secrets:...} is refused
 	fw.source = &SourceReconciler{ETL: etlSvc, Sink: sink, Secrets: secrets}
 	fw.dest = &DestinationReconciler{ETL: etlSvc, Sink: sink, Secrets: secrets}
 	fw.job = &JobReconciler{ETL: etlSvc, Sink: sink, findStreams: fw.findStreams}

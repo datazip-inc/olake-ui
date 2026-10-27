@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
+	"github.com/datazip-inc/olake-ui/server/internal/gitops/secretref"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -30,8 +31,9 @@ func init() {
 
 // Controller runs the embedded GitOps reconcilers.
 type Controller struct {
-	mgr ctrl.Manager
-	app *services.AppService
+	mgr       ctrl.Manager
+	app       *services.AppService
+	namespace string
 }
 
 // InitGitOps starts GitOps when enabled. In-cluster uses the ConfigMap
@@ -104,14 +106,14 @@ func Setup(app *services.AppService, restConfig *rest.Config) (*Controller, erro
 	}
 
 	logger.Info("GitOps controller manager configured for labelled ConfigMap/Secret watch in namespace scope")
-	return &Controller{mgr: mgr, app: app}, nil
+	return &Controller{mgr: mgr, app: app, namespace: ns}, nil
 }
 
 // Run registers reconcilers and blocks until ctx is cancelled.
 func (c *Controller) Run(ctx context.Context) error {
 	etlSvc := c.app.ETL()
 	sink := NewK8sSink(c.mgr.GetClient(), c.mgr.GetEventRecorderFor("olake-gitops"), etlSvc.Temporal())
-	secrets := newSecretRefs(appconfig.Load())
+	secrets := newSecretRefs(appconfig.Load(), secretref.K8sConfig{Client: c.mgr.GetClient(), Namespace: c.namespace})
 
 	if err := (&SourceReconciler{
 		Client:  c.mgr.GetClient(),

@@ -77,14 +77,15 @@ func awsSecretRegion(path string) string {
 }
 
 // classifyAWSError marks a 4xx response as unresolvable (not found, access denied, KMS decryption
-// failure, deleted secret), except throttling. The SDK has already retried throttling and 5xx.
+// failure, deleted secret), except throttling. Everything else is retried: 5xx, and network
+// failures such as DNS errors, which the SDK reports with status 0.
 func classifyAWSError(err error) error {
 	var respErr *awshttp.ResponseError
 	if !errors.As(err, &respErr) {
 		return err
 	}
 	status := respErr.HTTPStatusCode()
-	if status >= 500 || status == 429 {
+	if status < 400 || status >= 500 || status == 429 {
 		return err
 	}
 	var apiErr smithy.APIError

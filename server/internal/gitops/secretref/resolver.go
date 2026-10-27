@@ -18,7 +18,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 )
 
 // ErrUnresolvable marks an error that will not go away on retry: a malformed reference, an
@@ -38,42 +37,30 @@ type Provider interface {
 type factory func(ctx context.Context, cfg Config) (Provider, error)
 
 var factories = map[string]factory{
-	"aws-sm": newAWSProvider,
-	"gcp-sm": newGCPProvider,
+	"aws-sm":  newAWSProvider,
+	"gcp-sm":  newGCPProvider,
+	"secrets": newK8sProvider, // k8s secrets
+	"env":     newEnvProvider, // environment variables for docker environment
 }
 
 type Config struct {
 	AWS AWSConfig
 	GCP GCPConfig
+	K8s K8sConfig
 }
-
-// cacheTTL lets resources that share a secret, and reconciles close together, reuse one fetch.
-const cacheTTL = time.Minute
 
 var refPattern = regexp.MustCompile(`^\$\{([a-z][a-z0-9-]*):([^#}]+)(?:#([^}]*))?\}$`)
-
-type cachedSecret struct {
-	value     string
-	fetchedAt time.Time
-}
 
 // Resolver is safe for concurrent use.
 type Resolver struct {
 	cfg Config
-	now func() time.Time
 
 	mu        sync.Mutex
 	providers map[string]Provider
-	cache     map[string]cachedSecret
 }
 
 func New(cfg Config) *Resolver {
-	return &Resolver{
-		cfg:       cfg,
-		now:       time.Now,
-		providers: map[string]Provider{},
-		cache:     map[string]cachedSecret{},
-	}
+	return &Resolver{cfg: cfg, providers: map[string]Provider{}}
 }
 
 // NewWithProviders is for tests: it resolves references without a cloud account.
@@ -129,7 +116,11 @@ func (r *Resolver) resolveString(ctx context.Context, ref string, found *bool) (
 		return ref, nil
 	}
 	providerName, path, key := match[1], match[2], match[3]
-	secret, err := r.fetch(ctx, providerName, path)
+	provider, err := r.loadProvider(ctx, providerName)
+	if err != nil {
+		return "", fmt.Errorf("resolve %s: %w", ref, err)
+	}
+	secret, err := provider.Fetch(ctx, path)
 	if err != nil {
 		return "", fmt.Errorf("resolve %s: %w", ref, err)
 	}
@@ -166,30 +157,6 @@ func readKey(secret, key string) (string, error) {
 	}
 	encoded, _ := json.Marshal(value) // cannot fail: value came from json decoding
 	return string(encoded), nil
-}
-
-func (r *Resolver) fetch(ctx context.Context, providerName, path string) (string, error) {
-	cacheKey := providerName + ":" + path
-	r.mu.Lock()
-	cached, ok := r.cache[cacheKey]
-	r.mu.Unlock()
-	if ok && r.now().Sub(cached.fetchedAt) < cacheTTL {
-		return cached.value, nil
-	}
-
-	provider, err := r.loadProvider(ctx, providerName)
-	if err != nil {
-		return "", err
-	}
-	secret, err := provider.Fetch(ctx, path)
-	if err != nil {
-		return "", err
-	}
-
-	r.mu.Lock()
-	r.cache[cacheKey] = cachedSecret{value: secret, fetchedAt: r.now()}
-	r.mu.Unlock()
-	return secret, nil
 }
 
 // loadProvider creates the provider on first use. A failed creation is not kept, so the next

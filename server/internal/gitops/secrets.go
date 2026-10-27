@@ -25,7 +25,7 @@ type secretRefs struct {
 	encrypted bool
 }
 
-func newSecretRefs(cfg appconfig.Config) *secretRefs {
+func newSecretRefs(cfg appconfig.Config, k8s secretref.K8sConfig) *secretRefs {
 	return &secretRefs{
 		resolver: secretref.New(secretref.Config{
 			AWS: secretref.AWSConfig{
@@ -36,6 +36,7 @@ func newSecretRefs(cfg appconfig.Config) *secretRefs {
 			GCP: secretref.GCPConfig{
 				Project: cfg.GitOpsSecretsGCPProject,
 			},
+			K8s: k8s,
 		}),
 		refresh:   cfg.GitOpsSecretsRefreshInterval,
 		encrypted: cfg.EncryptionKey != "",
