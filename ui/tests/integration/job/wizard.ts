@@ -7,13 +7,10 @@ import { DestinationConnector, SourceConnector } from "../../enums"
 import { expect } from "../../fixtures"
 import { CreateJobPage } from "../../pages/CreateJobPage"
 import { JobsPage } from "../../pages/JobsPage"
-import {
-	assertTestConnectionOutcome,
-	expectTestConnectionModalVisible,
-} from "../../utils"
+import { expectTestConnectionModalVisible } from "../../utils"
+import { expectConnectionTestPassed } from "../common/connection"
 import { pickOption } from "../common/controls"
 import { TIMEOUTS } from "../e2e"
-import { expectSourceTestPassed } from "../sources/source"
 
 /** What the config step of a new job is filled with. */
 export type JobConfig = {
@@ -28,12 +25,22 @@ export type JobConfig = {
 /** The wizard's main button: "Next" on the config step, "Create Job" on the streams step. */
 const submit = (page: Page) => page.getByTestId("create-job-wizard-submit")
 
-/** Waits for the job wizard's source and destination test connections after "Next". */
+/**
+ * Waits for the job wizard's source and destination test connections after "Next": the source's
+ * passes when the destination's starts, and the destination's when the streams step opens.
+ */
 export const expectWizardConnectionsPassed = async (page: Page) => {
 	await expectTestConnectionModalVisible(page, "Source")
-	await expectSourceTestPassed(page)
-	await expectTestConnectionModalVisible(page, "Destination")
-	await assertTestConnectionOutcome(page, "Destination")
+	await expectConnectionTestPassed(
+		page,
+		"Source",
+		page.getByText("Testing Destination connection"),
+	)
+	await expectConnectionTestPassed(
+		page,
+		"Destination",
+		submit(page).filter({ hasText: "Create Job" }),
+	)
 }
 
 /**

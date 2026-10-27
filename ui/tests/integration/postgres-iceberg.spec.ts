@@ -133,6 +133,7 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 			true,
 		)
 		await createIcebergJdbcDestination(
+			page,
 			destinationsPage,
 			createDestinationPage,
 			n.destination,
