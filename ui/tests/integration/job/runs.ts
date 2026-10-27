@@ -12,19 +12,33 @@ export type RunStatus = "Completed" | "Failed"
 /** A run as the history table shows it. */
 export type HistoryRun = { type: RunType; status: RunStatus }
 
+/** The jobs page tab that lists a job: Inactive jobs while it is paused. */
+export type JobsTab = "Active jobs" | "Inactive jobs"
+
+/**
+ * One tab of the jobs page, opened. exact: "Inactive jobs" holds "Active jobs". antd keeps the
+ * panels it has shown in the page, so the returned panel is this tab's only.
+ */
+const openJobsTab = async (page: Page, jobsPage: JobsPage, tab: JobsTab) => {
+	await jobsPage.navigateToJobs()
+	await jobsPage.expectJobsPageVisible()
+	await page.getByRole("tab", { name: tab, exact: true }).click()
+	return page.getByRole("tabpanel", { name: tab, exact: true })
+}
+
 /** The history table shows this many runs a page, newest first. */
 export const HISTORY_PAGE_SIZE = 8
 
-/** Opens one entry of a job's actions menu on the jobs page. */
+/** Opens one entry of a job's actions menu on the jobs page, in the tab that lists the job. */
 export const jobMenu = async (
 	page: Page,
 	jobsPage: JobsPage,
 	job: string,
 	item: string,
+	tab: JobsTab = "Active jobs",
 ) => {
-	await jobsPage.navigateToJobs()
-	await jobsPage.expectJobsPageVisible()
-	await page.getByTestId(`job-${job}`).click()
+	const panel = await openJobsTab(page, jobsPage, tab)
+	await panel.getByTestId(`job-${job}`).click()
 	await page.getByRole("menuitem", { name: item }).click()
 }
 
@@ -174,25 +188,24 @@ export const setJobPaused = async (
 	job: string,
 	paused: boolean,
 ) => {
-	await jobMenu(page, jobsPage, job, paused ? "Pause job" : "Resume job")
+	// A running job is listed in Active jobs, a paused one in Inactive jobs.
+	await jobMenu(
+		page,
+		jobsPage,
+		job,
+		paused ? "Pause job" : "Resume job",
+		paused ? "Active jobs" : "Inactive jobs",
+	)
 }
 
 /** On the jobs page, checks whether the tab lists job; a tab lists its jobs once opened. */
 export const expectJobInTab = async (
 	page: Page,
 	jobsPage: JobsPage,
-	tab: "Active jobs" | "Inactive jobs",
+	tab: JobsTab,
 	job: string,
 	listed: boolean,
 ) => {
-	await jobsPage.navigateToJobs()
-	await jobsPage.expectJobsPageVisible()
-	// exact: "Inactive jobs" holds "Active jobs".
-	await page.getByRole("tab", { name: tab, exact: true }).click()
-	// antd keeps the panels it has shown in the page, so look only in this tab's panel.
-	await expect(
-		page
-			.getByRole("tabpanel", { name: tab, exact: true })
-			.getByTestId(`job-${job}`),
-	).toHaveCount(listed ? 1 : 0)
+	const panel = await openJobsTab(page, jobsPage, tab)
+	await expect(panel.getByTestId(`job-${job}`)).toHaveCount(listed ? 1 : 0)
 }

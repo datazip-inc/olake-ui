@@ -395,7 +395,7 @@ test.describe("MongoDB → S3 (parquet) integration workflow", () => {
 		await expectJobInTab(page, jobsPage, "Inactive jobs", job, true)
 		await expectJobInTab(page, jobsPage, "Active jobs", job, false)
 		await expectClearDestinationDisabled(page, jobsPage, job)
-		await jobMenu(page, jobsPage, job, "Job Logs & History")
+		await jobMenu(page, jobsPage, job, "Job Logs & History", "Inactive jobs")
 		await page.waitForTimeout(90_000)
 		await page.getByTestId("refresh-tasks-button").click()
 		await expect(historyRows(page)).toHaveCount(

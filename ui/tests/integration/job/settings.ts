@@ -100,7 +100,7 @@ export const expectClearDestinationDisabled = async (
 	jobsPage: JobsPage,
 	job: string,
 ) => {
-	await jobMenu(page, jobsPage, job, "Job settings")
+	await jobMenu(page, jobsPage, job, "Job settings", "Inactive jobs")
 	await expect(
 		page.getByRole("button", { name: "Clear Destination", exact: true }),
 	).toBeDisabled()
