@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/secretref"
 )
 
@@ -138,6 +139,27 @@ func TestSecretRefsNext(t *testing.T) {
 			got := refs.next(tc.hasRefs).RequeueAfter
 			if got < tc.wantMin || got > tc.wantMax {
 				t.Fatalf("RequeueAfter = %s, want between %s and %s", got, tc.wantMin, tc.wantMax)
+			}
+		})
+	}
+}
+
+func TestNewSecretRefs(t *testing.T) {
+	testCases := []struct {
+		name    string
+		refresh time.Duration
+		want    time.Duration
+	}{
+		{name: "interval is used as set", refresh: 15 * time.Minute, want: 15 * time.Minute},
+		{name: "zero turns refresh off", refresh: 0, want: 0},
+		{name: "value without a unit (60ns) is raised to the minimum", refresh: 60, want: minSecretRefresh},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			refs := newSecretRefs(appconfig.Config{GitOpsSecretsRefreshInterval: tc.refresh}, secretref.K8sConfig{})
+			if refs.refresh != tc.want {
+				t.Fatalf("refresh = %s, want %s", refs.refresh, tc.want)
 			}
 		})
 	}

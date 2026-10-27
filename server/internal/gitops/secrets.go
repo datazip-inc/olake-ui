@@ -12,7 +12,13 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/secretref"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
+
+// minSecretRefresh is the shortest refresh interval used. A value without a unit, such as
+// GITOPS_SECRETS_REFRESH_INTERVAL=60, is parsed as nanoseconds and would call the secret managers
+// in a tight loop.
+const minSecretRefresh = time.Minute
 
 // secretRefs resolves secret references in source/destination configs, and re-checks resources
 // that use them every refresh interval so a rotated secret reaches OLake without a change in git.
@@ -26,6 +32,11 @@ type secretRefs struct {
 }
 
 func newSecretRefs(cfg appconfig.Config, k8s secretref.K8sConfig) *secretRefs {
+	refresh := cfg.GitOpsSecretsRefreshInterval
+	if refresh > 0 && refresh < minSecretRefresh {
+		logger.Warnf("GITOPS_SECRETS_REFRESH_INTERVAL %s is below %s (a value needs a unit, such as 15m); using %s", refresh, minSecretRefresh, minSecretRefresh)
+		refresh = minSecretRefresh
+	}
 	return &secretRefs{
 		resolver: secretref.New(secretref.Config{
 			AWS: secretref.AWSConfig{
@@ -43,7 +54,7 @@ func newSecretRefs(cfg appconfig.Config, k8s secretref.K8sConfig) *secretRefs {
 			},
 			K8s: k8s,
 		}),
-		refresh:   cfg.GitOpsSecretsRefreshInterval,
+		refresh:   refresh,
 		encrypted: cfg.EncryptionKey != "",
 	}
 }

@@ -1,6 +1,6 @@
 # GitOps for OLake
 
-Manage OLake sources, destinations, jobs, and stream selections as labelled **ConfigMaps** in git. Argo CD or Flux applies the manifests; an **embedded reconciler** inside `olake-ui` syncs each object into OLake.
+Manage OLake sources, destinations, jobs, and stream selections as labelled **ConfigMaps** (or, for Source/Destination, **Secrets**) in git. Argo CD or Flux applies the manifests; an **embedded reconciler** inside `olake-ui` syncs each object into OLake.
 
 ## Prerequisites
 
@@ -8,6 +8,8 @@ Manage OLake sources, destinations, jobs, and stream selections as labelled **Co
 - Source drivers at **v1.0.0 or later**. A job whose source is older fails reconcile until the Source is upgraded.
 - `GITOPS_ENABLED=true` on the `olake-ui` Deployment (Helm `gitops.enabled: true`).
 - GitOps RBAC: namespace `Role` on `configmaps` and `secrets` (get/list/watch/update/patch) and `events` (create/patch). **No `pods` permission on olake-ui.**
+
+**Secrets RBAC note:** granting `update`/`patch` on Secrets (needed because the operator writes `olake.io/*` status annotations back onto whichever object type a Source/Destination uses) applies to **every** Secret in the release namespace, not only ones managed by GitOps. Deploy OLake GitOps in a dedicated namespace, or accept that trust boundary.
 
 ## Quick start
 
@@ -41,7 +43,7 @@ Replace `projectId` with your OLake project ID. Examples: [olake-helm/examples/g
 
 ### 2. Argo CD / Flux health
 
-Status is written to **annotations** on the managed object (not a status subresource):
+Status is written to **annotations** on the managed object (ConfigMap or Secret; not a status subresource):
 
 | Annotation | Meaning |
 |------------|---------|
@@ -54,7 +56,7 @@ Kubernetes Events: reason `Synced` (normal) or `SyncFailed` (warning).
 
 **TODO:** Tool-specific health (Argo CD Lua, Flux) keyed off `olake.io/phase` — see olake-helm docs.
 
-## ConfigMap reference
+## ConfigMap / Secret reference
 
 Label every managed object:
 
@@ -65,12 +67,12 @@ metadata:
     olake.io/kind: source   # source | destination | job | streams
 ```
 
-| Kind | `data` keys | Purpose |
-|------|-------------|---------|
-| source | `projectId`, `userId`, `config` | Source connector JSON (POST `/sources` shape) |
-| destination | `projectId`, `userId`, `config` | Destination connector JSON |
-| job | `projectId`, `userId`, `config` | Job metadata; `config.source` / `destination` by name or numeric ID; `config.activate` defaults to `true` (set `false` to keep the job's schedule paused) |
-| streams | `projectId`, `job`, `config` | Streams selection; `job` matches Job ConfigMap name or job entity ID |
+| Kind | Object type | `data` keys | Purpose |
+|------|-------------|-------------|---------|
+| source | ConfigMap **or** Secret | `projectId`, `userId`, `config` | Source connector JSON (POST `/sources` shape) |
+| destination | ConfigMap **or** Secret | `projectId`, `userId`, `config` | Destination connector JSON |
+| job | ConfigMap only | `projectId`, `userId`, `config` | Job metadata; `config.source` / `destination` by name or numeric ID; `config.activate` defaults to `true` (set `false` to keep the job's schedule paused) |
+| streams | ConfigMap only | `projectId`, `job`, `config` | Streams selection; `job` matches Job ConfigMap name or job entity ID |
 
 ### Streams catalog format
 
@@ -96,6 +98,35 @@ The Streams ConfigMap `data.config` JSON holds your selection only, in the `sele
 - `selected_streams` must be non-empty.
 - When the selection changes, OLake clears the destination for the streams that differ.
 - Selections for streams that no longer exist in the source are dropped.
+
+### Source or Destination as a Secret
+
+A Source or Destination can be defined as a **Secret** instead of a ConfigMap. The Secret carries the same `data` keys (`projectId`, `userId`, `config`) and the same `olake.io/managed` / `olake.io/kind` labels. Use one object type per Source/Destination name; if both exist for the same name, the ConfigMap wins.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-postgres
+  labels:
+    olake.io/managed: "true"
+    olake.io/kind: source
+type: Opaque
+stringData:
+  projectId: "123"
+  userId: "1"
+  config: |
+    {
+      "name": "my-postgres",
+      "type": "postgres",
+      "version": "v1.0.0",
+      "config": { "host": "...", "username": "...", "password": "..." }
+    }
+```
+
+Editing the Secret's `data.config` re-triggers reconcile the same way editing a ConfigMap does. To keep the config in git and only the credentials out of it, use [secret references](#secret-references) instead.
+
+Do **not** put `olake.io/phase` or other status annotations in git — the operator writes them.
 
 ## Docker Compose (file mode)
 
@@ -210,7 +241,7 @@ Format: `${<provider>:<path>[#<key>]}`
 **Requirements and behaviour**
 
 - **`OLAKE_SECRET_KEY`** must be set on olake-ui and the worker, because resolved values are stored in the database. Without it, a resource with references fails. On AWS, prefer a KMS key ARN as its value.
-- **Rotation:** a `Ready` resource with references is re-checked every `GITOPS_SECRETS_REFRESH_INTERVAL` (default `1h`, `0` turns it off). A changed secret is connection-tested and applied without any change in git. To re-check now, edit the object, for example `kubectl annotate cm <name> olake.io/refresh="$(date +%s)" --overwrite`.
+- **Rotation:** a `Ready` resource with references is re-checked every `GITOPS_SECRETS_REFRESH_INTERVAL` (a duration with a unit, such as `15m`; default `1h`, minimum `1m`, `0` turns it off). A changed secret is connection-tested and applied without any change in git. To re-check now, edit the object, for example `kubectl annotate cm <name> olake.io/refresh="$(date +%s)" --overwrite`.
 - **Errors:** a missing secret or key, or access denied, makes the resource `Failed` with the reason. Network errors and throttling are retried like other transient errors.
 - **Settings** go on olake-ui as environment variables. In Helm use `olakeUI.env`; in Docker Compose use the olake-ui service's `environment`.
 
@@ -313,7 +344,7 @@ Configure alerts on failed Pods with that label. olake-ui never creates Pods dir
 
 ## Reconciliation behavior
 
-- **Create/update only** — deleting a ConfigMap from git does **not** delete the OLake entity (v1).
+- **Create/update only** — deleting a ConfigMap or Secret from git does **not** delete the OLake entity (v1).
 - **Validation errors** → `phase=Failed`, indicator spawned, no requeue until content changes.
 - **Failed job + fix** → no need to edit the job file. Changing the referenced source, destination, or Streams ConfigMap data re-runs a Failed job. A failed discover or connection test is `Failed` too: it retries on one of these edits, not on a timer.
 - **Missing dependencies** → the Job waits for its source, destination, and Streams ConfigMap to exist. Until they do: `phase=Pending`, requeue every 30s, no indicator. No timeout; it waits as long as needed.
@@ -339,6 +370,7 @@ kubectl logs -l app.kubernetes.io/name=olake-ui | grep -i gitops
 
 ## Security notes
 
-- olake-ui GitOps RBAC: ConfigMaps (read/write status annotations) and Events in the release namespace. **No pods create/delete.**
+- olake-ui GitOps RBAC: ConfigMaps and Secrets (read/write status annotations on both), Events in the release namespace. **No pods create/delete.**
+- Secret `update`/`patch` (needed for status annotations) applies to all Secrets in the namespace, not only GitOps-managed ones — use a dedicated namespace for OLake GitOps.
 - Secret references: olake-ui reads only Secrets labelled `olake.io/managed=true` and environment variables starting with `GITOPS_SECRET_`. For cloud secret managers, scope olake-ui's IAM permission to the secrets it needs, because anyone who can write a config can reference any secret that identity can read.
 - Failure indicators use worker SA (already has `pods` create for connector jobs).
