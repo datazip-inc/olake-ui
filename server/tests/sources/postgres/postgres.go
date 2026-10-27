@@ -43,19 +43,23 @@ var Source = sources.Source{
 		defer func() {
 			require.NoError(t, db.Close(), "failed to close postgres connection")
 		}()
+		var statements []string
 		for _, table := range Tables {
-			for _, statement := range seedStatements(table) {
-				_, err := db.ExecContext(ctx, statement)
-				require.NoError(t, err, "failed to seed %s: %s", table, statement)
-			}
+			statements = append(statements, seedStatements(table)...)
+		}
+		statements = append(statements, typesTable...)
+		statements = append(statements, noPKTable...)
+		for _, statement := range statements {
+			_, err := db.ExecContext(ctx, statement)
+			require.NoError(t, err, "failed to seed: %s", statement)
 		}
 	},
 	Exec:  Exec,
 	Query: Query,
 }
 
-// Tables are the e2e streams of the integration job, one per feature. Each starts with rows
-// 1-5: id, name 'name_<id>' and amount <id>*10.
+// Tables are the e2e streams of the integration job, one per feature, that start with rows 1-5:
+// id, name 'name_<id>' and amount <id>*10. e2e_types and e2e_no_pk have columns of their own.
 var Tables = []string{
 	"e2e_cdc",
 	"e2e_strict_cdc",
@@ -63,6 +67,10 @@ var Tables = []string{
 	"e2e_upsert_dv",
 	"e2e_filter",
 	"e2e_new_columns",
+	"e2e_fr_append",
+	"e2e_fr_upsert",
+	"e2e_schema_change",
+	"e2e_dropped",
 }
 
 // seedStatements recreates table with rows 1-5.
@@ -72,6 +80,36 @@ func seedStatements(table string) []string {
 		fmt.Sprintf("CREATE TABLE %s (id INT PRIMARY KEY, name TEXT, amount INT)", table),
 		fmt.Sprintf("INSERT INTO %s SELECT g, 'name_' || g, g * 10 FROM generate_series(1, 5) AS g", table),
 	}
+}
+
+// typesTable holds a value of each type the workflow checks row by row: dates, timestamps with
+// and without a time zone, decimals, JSON, arrays and unicode text, and a row of NULLs.
+var typesTable = []string{
+	"DROP TABLE IF EXISTS e2e_types",
+	`CREATE TABLE e2e_types (
+		id INT PRIMARY KEY,
+		d DATE,
+		ts TIMESTAMP,
+		tstz TIMESTAMPTZ,
+		num NUMERIC(12, 2),
+		js JSONB,
+		arr INT[],
+		txt TEXT
+	)`,
+	`INSERT INTO e2e_types VALUES
+		(1, '2024-01-15', '2024-01-15 10:30:45', '2024-01-15 10:30:45+00', 12345.67, '{"k": "v", "n": 1}', '{1,2,3}', 'héllo wörld ✓ 日本語'),
+		(2, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+		(3, '1999-12-31', '1999-12-31 23:59:59', '2000-01-01 05:30:00+05:30', -0.01, '[1, "a", null]', '{}', '')`,
+}
+
+// noPKTable is e2e_no_pk: the base columns without a primary key. Its replica identity is FULL:
+// the publication covers all tables, and Postgres refuses an UPDATE or DELETE on a published
+// table without one.
+var noPKTable = []string{
+	"DROP TABLE IF EXISTS e2e_no_pk",
+	"CREATE TABLE e2e_no_pk (id INT, name TEXT, amount INT)",
+	"ALTER TABLE e2e_no_pk REPLICA IDENTITY FULL",
+	"INSERT INTO e2e_no_pk SELECT g, 'name_' || g, g * 10 FROM generate_series(1, 5) AS g",
 }
 
 // Exec runs statements on the source Postgres in order, each in its own transaction.

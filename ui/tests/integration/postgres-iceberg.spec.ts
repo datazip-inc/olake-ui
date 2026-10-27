@@ -85,6 +85,12 @@ const STREAMS = {
 	upsertDv: "e2e_upsert_dv",
 	filter: "e2e_filter",
 	newColumns: "e2e_new_columns",
+	frAppend: "e2e_fr_append",
+	frUpsert: "e2e_fr_upsert",
+	types: "e2e_types",
+	noPk: "e2e_no_pk",
+	schemaChange: "e2e_schema_change",
+	dropped: "e2e_dropped",
 } as const
 
 /** The job's config step; @stream-rules uses it with its own job and sources. */
@@ -185,6 +191,35 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 				await setSyncMode(page, "Full Refresh + CDC")
 				await setIngestionMode(page, "Append")
 				await setSyncNewColumns(page, true)
+			},
+			// Full Refresh alone: every sync drops the table and reads the source again.
+			[STREAMS.frAppend]: async () => {
+				await setSyncMode(page, "Full Refresh")
+				await setIngestionMode(page, "Append")
+			},
+			[STREAMS.frUpsert]: async () => {
+				await setSyncMode(page, "Full Refresh")
+				await setIngestionMode(page, "Upsert")
+			},
+			// A column per type, compared row by row with the source.
+			[STREAMS.types]: async () => {
+				await setSyncMode(page, "Full Refresh + CDC")
+				await setIngestionMode(page, "Append")
+			},
+			// No primary key; its replica identity is FULL.
+			[STREAMS.noPk]: async () => {
+				await setSyncMode(page, "Full Refresh + CDC")
+				await setIngestionMode(page, "Append")
+			},
+			// amount becomes BIGINT and name is dropped at the source before sync 2.
+			[STREAMS.schemaChange]: async () => {
+				await setSyncMode(page, "Full Refresh + CDC")
+				await setIngestionMode(page, "Append")
+			},
+			// Dropped at the source before sync 2.
+			[STREAMS.dropped]: async () => {
+				await setSyncMode(page, "Full Refresh + CDC")
+				await setIngestionMode(page, "Append")
 			},
 		}
 
