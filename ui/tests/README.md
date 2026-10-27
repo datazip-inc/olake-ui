@@ -11,7 +11,13 @@ destination data between the steps.
 tests/
 ├── integration/
 │   ├── postgres-iceberg.spec.ts   Postgres → Iceberg (JDBC) workflow, one test per step (@create-job, @first-sync, ...)
-│   └── helpers.ts                 UI actions the workflow uses (forms, stream settings, history, logs)
+│   ├── e2e.ts                     inputs from the Go test (E2E_*) and timeouts
+│   ├── common/controls.ts         antd switches and selects
+│   ├── sources/                   source.ts (any source: create, test connection), postgres.ts
+│   ├── destinations/              destination.ts (any destination: create), iceberg-jdbc.ts
+│   ├── job/                       wizard.ts, streams.ts (stream settings, All Append, Bulk Configure),
+│   │                              runs.ts (Sync now, history, Failed jobs), logs.ts, settings.ts (Clear Destination)
+│   └── settings/alerts.ts         system settings: webhook alerts
 ├── setup/auth.setup.ts            logs in once and saves the session to tests/.auth/user.json
 ├── fixtures/                      page-object fixtures; testAuthenticated reuses the saved session
 ├── pages/                         page objects for login, sources, destinations, jobs and the job wizard
@@ -19,6 +25,10 @@ tests/
 ├── enums/                         connector and catalog names as the UI shows them
 └── types/                         form config types
 ```
+
+A spec holds only what is particular to its workflow (names, streams and their settings) and
+composes the steps from the modules. A new workflow adds its spec next to postgres-iceberg.spec.ts,
+and its connectors under `sources/` and `destinations/` when they are new.
 
 ## Inputs
 
