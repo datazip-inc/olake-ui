@@ -21,6 +21,8 @@ export const E2E = {
 	// The destination database the Go checks read: <job>_<source database>_<schema>.
 	database: process.env.E2E_DATABASE?.trim() || "",
 	webhookUrl: process.env.E2E_WEBHOOK_URL?.trim() || "",
+	// For a step that starts a run: how many runs the job's history lists once it has.
+	runs: Number(process.env.E2E_RUNS?.trim() || "0"),
 }
 
 /** Long waits: a CDC sync waits initial_wait_time for changes after its full load. */

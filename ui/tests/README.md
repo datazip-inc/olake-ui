@@ -12,11 +12,12 @@ tests/
 ├── integration/
 │   ├── postgres-iceberg.spec.ts   Postgres → Iceberg (JDBC) workflow, one test per step (@create-job, @first-sync, ...)
 │   ├── e2e.ts                     inputs from the Go test (E2E_*) and timeouts
-│   ├── common/controls.ts         antd switches and selects
-│   ├── sources/                   source.ts (any source: create, test connection), postgres.ts
+│   ├── common/                    controls.ts (antd switches and selects), connection.ts (test connection)
+│   ├── sources/                   source.ts (any source: create), postgres.ts
 │   ├── destinations/              destination.ts (any destination: create), iceberg-jdbc.ts
 │   ├── job/                       wizard.ts, streams.ts (stream settings, All Append, Bulk Configure),
-│   │                              runs.ts (Sync now, history, Failed jobs), logs.ts, settings.ts (Clear Destination)
+│   │                              edit.ts (Edit Streams), runs.ts (Sync now, history, Failed jobs),
+│   │                              logs.ts, settings.ts (Clear Destination, Editing Disabled)
 │   └── settings/alerts.ts         system settings: webhook alerts
 ├── setup/auth.setup.ts            logs in once and saves the session to tests/.auth/user.json
 ├── fixtures/                      page-object fixtures; testAuthenticated reuses the saved session
@@ -38,6 +39,7 @@ and its connectors under `sources/` and `destinations/` when they are new.
 | `E2E_DATABASE`     | Go test | Destination database the job writes to and the Go checks read (Dynamic: `<job>_postgres_public`). Needed by `@create-job`. |
 | `E2E_SERVICE_HOST` | Go test | Address the sync driver uses to reach the source and destination ports (default `172.17.0.1`).                             |
 | `E2E_WEBHOOK_URL`  | Go test | Webhook receiver URL for the `@alerts` step.                                                                               |
+| `E2E_RUNS`         | Go test | For a step that starts a run: how many runs the job's history lists once it has.                                           |
 
 ## Running
 

@@ -9,6 +9,12 @@ import { SYNC_TIMEOUT, TIMEOUTS } from "../e2e"
 export type RunType = "Sync" | "Clear Destination"
 export type RunStatus = "Completed" | "Failed"
 
+/** A run as the history table shows it. */
+export type HistoryRun = { type: RunType; status: RunStatus }
+
+/** The history table shows this many runs a page, newest first. */
+export const HISTORY_PAGE_SIZE = 8
+
 /** Opens one entry of a job's actions menu on the jobs page. */
 export const jobMenu = async (
 	page: Page,
@@ -22,13 +28,15 @@ export const jobMenu = async (
 	await page.getByRole("menuitem", { name: item }).click()
 }
 
-/** The rows of the history table. */
+/** The rows of the history table's current page. */
 export const historyRows = (page: Page) =>
 	page.locator(".ant-table-tbody tr.ant-table-row")
 
 /**
- * On the job's history page, waits until it lists runs rows and the newest has jobType and
- * status. Refreshes the table between tries.
+ * On the job's history page, waits until the job has runs runs and the newest has jobType and
+ * status. Refreshes the table between tries, and fails at once when the newest run of jobType
+ * ended with another status. Past a page of runs only the page's count shows; after Sync now the
+ * page itself waits for the new run before it lists any.
  */
 export const waitForNewestRun = async (
 	page: Page,
@@ -37,14 +45,37 @@ export const waitForNewestRun = async (
 	status: RunStatus,
 	timeout = SYNC_TIMEOUT,
 ) => {
-	await expect(async () => {
+	const rows = historyRows(page)
+	const deadline = Date.now() + timeout
+	let newest = "(no runs listed)"
+	for (;;) {
 		await page.getByTestId("refresh-tasks-button").click()
-		await expect(historyRows(page)).toHaveCount(runs, { timeout: 5000 })
-		const newest = historyRows(page).first()
-		await expect(newest).toContainText(jobType, { timeout: 2000 })
-		await expect(newest).toContainText(status, { timeout: 2000 })
-	}).toPass({ timeout, intervals: [3000] })
+		await page.waitForTimeout(1000)
+		if ((await rows.count()) === Math.min(runs, HISTORY_PAGE_SIZE)) {
+			newest = (await rows.first().innerText()).replace(/\s+/g, " ")
+			if (newest.includes(jobType)) {
+				if (newest.includes(status)) return
+				const ended = ENDED.find(
+					other => other !== status && newest.includes(other),
+				)
+				if (ended) {
+					throw new Error(
+						`the newest ${jobType} run ended ${ended}, want ${status}: ${newest}`,
+					)
+				}
+			}
+		}
+		if (Date.now() > deadline) {
+			throw new Error(
+				`no ${status} ${jobType} run as the newest of ${runs} within ${timeout / 1000}s; newest: ${newest}`,
+			)
+		}
+		await page.waitForTimeout(2000)
+	}
 }
+
+/** The statuses of a run that has ended. */
+const ENDED = ["Completed", "Failed", "Cancelled"]
 
 /** "Sync now" from the jobs page, then waits for the run on the history page. */
 export const syncAndWait = async (
@@ -61,10 +92,11 @@ export const syncAndWait = async (
 }
 
 /**
- * On the history page, checks the table: its columns, that it lists runs (newest first) all
- * Completed, the search by status, and the refresh button.
+ * On the history page, checks the table: its columns; its pages, which list runs (newest first)
+ * HISTORY_PAGE_SIZE at a time, each with its Job Type and status; the search, which matches the
+ * status; and the refresh button.
  */
-export const expectHistory = async (page: Page, runs: RunType[]) => {
+export const expectHistory = async (page: Page, runs: HistoryRun[]) => {
 	for (const header of [
 		"Start time",
 		"Runtime",
@@ -75,26 +107,46 @@ export const expectHistory = async (page: Page, runs: RunType[]) => {
 		await expect(page.getByRole("columnheader", { name: header })).toBeVisible()
 	}
 	const rows = historyRows(page)
-	await expect(rows).toHaveCount(runs.length)
-	await expect(rows.filter({ hasText: "Completed" })).toHaveCount(runs.length)
-	await expect(rows.filter({ hasText: "Clear Destination" })).toHaveCount(
-		runs.filter(run => run === "Clear Destination").length,
-	)
-	for (const [index, run] of runs.entries()) {
-		await expect(rows.nth(index)).toContainText(run)
+	const expectRows = async (expected: HistoryRun[]) => {
+		await expect(rows).toHaveCount(expected.length)
+		for (const [index, run] of expected.entries()) {
+			await expect(rows.nth(index)).toContainText(run.type)
+			await expect(rows.nth(index)).toContainText(run.status)
+		}
 	}
+	const pageButton = (n: number) => page.locator(`.ant-pagination-item-${n}`)
+
+	const pages = Math.ceil(runs.length / HISTORY_PAGE_SIZE)
+	for (let n = 1; n <= pages; n++) {
+		if (n > 1) {
+			await pageButton(n).click()
+		}
+		await expectRows(
+			runs.slice((n - 1) * HISTORY_PAGE_SIZE, n * HISTORY_PAGE_SIZE),
+		)
+	}
+	await expect(pageButton(pages + 1)).toHaveCount(0)
+	if (pages > 1) {
+		await pageButton(1).click()
+	}
+	const firstPage = runs.slice(0, HISTORY_PAGE_SIZE)
+	await expectRows(firstPage)
 
 	// Search matches the status and the start time.
 	const search = page.getByPlaceholder("Search Tasks")
+	const withStatus = (status: RunStatus) =>
+		runs.filter(run => run.status === status)
 	await search.fill("completed")
-	await expect(rows).toHaveCount(runs.length)
+	await expectRows(withStatus("Completed").slice(0, HISTORY_PAGE_SIZE))
+	await search.fill("failed")
+	await expectRows(withStatus("Failed").slice(0, HISTORY_PAGE_SIZE))
 	await search.fill("no-such-run")
 	await expect(rows).toHaveCount(0)
 	await search.fill("")
-	await expect(rows).toHaveCount(runs.length)
+	await expectRows(firstPage)
 
 	await page.getByTestId("refresh-tasks-button").click()
-	await expect(rows).toHaveCount(runs.length)
+	await expectRows(firstPage)
 }
 
 /** On the jobs page, the "Failed jobs" tab lists job with its failed sync. */

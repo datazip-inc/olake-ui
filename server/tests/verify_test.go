@@ -2,6 +2,7 @@ package tests
 
 import (
 	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -24,7 +25,7 @@ const (
 	typesTable        = "e2e_types"         // Full Refresh + CDC, Append; a column per type, see postgres.Source
 	noPKTable         = "e2e_no_pk"         // Full Refresh + CDC, Append; no primary key
 	schemaChangeTable = "e2e_schema_change" // Full Refresh + CDC, Append; amount becomes BIGINT, name is dropped
-	droppedTable      = "e2e_dropped"       // Full Refresh + CDC, Append
+	droppedTable      = "e2e_dropped"       // Full Refresh + CDC, Append; dropped at the source late in the run
 )
 
 const postgresSpec = "tests/integration/postgres-iceberg.spec.ts"
@@ -65,17 +66,25 @@ const filterWhere = "amount > 20 AND id < 5"
 // created and driven through the UI, and its data checked in Iceberg through Spark after every
 // sync. See postgres-iceberg.spec.ts for the UI side of each step.
 func TestPostgres(t *testing.T) {
-	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
 	r := StartWorkflow(t, &Workflow{
 		Source:      postgres.Source,
 		Destination: jdbc.Destination,
 		Job:         "e2e_postgres_jdbc",
 	})
+	// step runs the spec's test tagged tag. runs, for a step that starts a run of the job, is how
+	// many runs the job's history lists once it has; 0 for the others.
+	step := func(tag string, runs int) {
+		var env map[string]string
+		if runs > 0 {
+			env = map[string]string{"E2E_RUNS": strconv.Itoa(runs)}
+		}
+		r.Playwright(postgresSpec, tag, env)
+	}
 
-	r.Playwright(postgresSpec, "@create-job", nil)
+	step("@create-job", 0)
 
 	// Sync 1: the full loads. CDC Only starts at the current WAL position, so it writes nothing.
-	r.Playwright(postgresSpec, "@first-sync", nil)
+	step("@first-sync", 1)
 	r.Check("after sync 1",
 		Ops(cdcTable, map[string]int64{"r": 5}),
 		CountOrAbsent(strictCDCTable, 0),
@@ -155,7 +164,7 @@ func TestPostgres(t *testing.T) {
 	)
 
 	// Sync 2: insert, update and delete arrive through CDC.
-	r.Playwright(postgresSpec, "@second-sync", nil)
+	step("@sync", 2)
 	r.Check("after sync 2",
 		Ops(cdcTable, map[string]int64{"r": 5, "c": 1, "u": 1, "d": 1}),
 		Value(cdcTable, 1, "name", "updated_1"),
@@ -212,7 +221,7 @@ func TestPostgres(t *testing.T) {
 	)
 
 	// Clear Destination drops every table of the job.
-	r.Playwright(postgresSpec, "@clear-destination", nil)
+	step("@clear-destination", 3)
 	r.Check("after clear destination",
 		Absent(cdcTable),
 		Absent(strictCDCTable),
@@ -229,7 +238,7 @@ func TestPostgres(t *testing.T) {
 	)
 
 	// The next sync rebuilds the tables in full from the source as it is now.
-	r.Playwright(postgresSpec, "@rebuild-sync", nil)
+	step("@sync", 4)
 	r.Check("after rebuild",
 		Count(cdcTable, 5),
 		Ops(cdcTable, map[string]int64{"r": 5}),
@@ -271,14 +280,80 @@ func TestPostgres(t *testing.T) {
 		r.MatchesSource(droppedTable, baseColumns, ""),
 	)
 
+	// Edit Streams: Target Query Engines decide the upsert types again; the step leaves unsaved.
+	step("@edit-query-engines", 0)
+
+	// Edit Streams: e2e_upsert_dv goes from Deletion Vector (Iceberg v3) to Positional Deletes (v2),
+	// so its table, and only its, is cleared.
+	step("@edit-upsert-type", 5)
+	r.Check("after the upsert type change",
+		Absent(upsertDVTable),
+		LiveIDs(upsertEqTable, 1, 3, 4, 5),
+		LiveIDs(cdcTable, 1, 3, 4, 5, 6),
+	)
+
+	// The next sync loads it again in full, now Iceberg v2; then CDC changes it with position deletes.
+	step("@sync", 6)
+	r.Check("after the re-sync",
+		Ops(upsertDVTable, map[string]int64{"r": 4}),
+		LiveIDs(upsertDVTable, 1, 3, 4, 5),
+		OneRowPerID(upsertDVTable),
+		FormatVersion(upsertDVTable, 2),
+		r.MatchesSource(upsertDVTable, baseColumns, ""),
+	)
+	r.SourceSQL(
+		"UPDATE e2e_upsert_dv SET name = 'updated_3' WHERE id = 3",
+		"DELETE FROM e2e_upsert_dv WHERE id = 4",
+	)
+	step("@sync", 7)
+	r.Check("after position deletes",
+		LiveIDs(upsertDVTable, 1, 3, 5),
+		OneRowPerID(upsertDVTable),
+		Value(upsertDVTable, 3, "name", "updated_3"),
+		DeleteFiles(upsertDVTable, PositionDeletes),
+		FormatVersion(upsertDVTable, 2),
+		r.MatchesSource(upsertDVTable, baseColumns, ""),
+	)
+
+	// A selected table dropped at the source: the publication no longer covers it, so CDC syncs fail
+	// until Edit Streams, which no longer discovers it, saves the job without it.
+	r.SourceSQL("DROP TABLE e2e_dropped")
+	step("@dropped-table", 8)
+	step("@sync", 9)
+	r.Check("after the dropped table's stream is gone",
+		// Its destination table stays as it was.
+		Ops(droppedTable, map[string]int64{"r": 5}),
+		LiveIDs(droppedTable, 1, 2, 3, 4, 5),
+	)
+
 	// UI-only steps.
-	r.Playwright(postgresSpec, "@history", nil)
-	r.Playwright(postgresSpec, "@stream-rules", nil)
+	step("@stream-rules", 0)
 
 	// Alerts: a failed sync posts "Sync Failure Detected!" to the saved webhook URL.
 	url := r.StartWebhookReceiver()
 	r.Playwright(postgresSpec, "@alerts", map[string]string{"E2E_WEBHOOK_URL": url})
+
+	// Changes made before the source goes down: the failed sync cannot read them, so the sync after
+	// it must, exactly once.
+	r.SourceSQL(
+		"INSERT INTO e2e_cdc VALUES (7, 'name_7', 70)",
+		"UPDATE e2e_cdc SET name = 'updated_3' WHERE id = 3",
+	)
 	r.StopSource()
-	r.Playwright(postgresSpec, "@failed-sync", nil)
+	step("@failed-sync", 10)
+	step("@discovery-failure", 0)
 	r.WaitForWebhook("Sync Failure Detected!", 5*time.Minute)
+
+	// Recovery: with the source back, discovery works again, and CDC resumes where it stopped.
+	r.StartSource()
+	step("@recovery", 11)
+	r.Check("after recovery",
+		Ops(cdcTable, map[string]int64{"r": 5, "c": 1, "u": 1}),
+		LiveIDs(cdcTable, 1, 3, 4, 5, 6, 7),
+		Value(cdcTable, 3, "name", "updated_3"),
+		r.MatchesSource(cdcTable, baseColumns, ""),
+	)
+
+	// The history of all 11 runs, over two pages, and the newest run's logs.
+	step("@history", 0)
 }
