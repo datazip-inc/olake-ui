@@ -7,7 +7,7 @@ Manage OLake sources, destinations, jobs, and stream selections as labelled **Co
 - Kubernetes: OLake UI deployed **inside** the cluster (in-cluster kubeconfig), or Docker Compose with file-based manifests mounted at `/etc/olake/gitops`.
 - Source drivers at **v1.0.0 or later**. A job whose source is older fails reconcile until the Source is upgraded.
 - `GITOPS_ENABLED=true` on the `olake-ui` Deployment (Helm `gitops.enabled: true`).
-- GitOps RBAC: namespace `Role` on `configmaps` (get/list/watch/update/patch) and `events` (create/patch). **No `pods` permission on olake-ui.**
+- GitOps RBAC: namespace `Role` on `configmaps` and `secrets` (get/list/watch/update/patch) and `events` (create/patch). **No `pods` permission on olake-ui.**
 
 ## Quick start
 
@@ -169,7 +169,7 @@ Outside Kubernetes, olake-ui watches a directory of JSON files instead of Config
 - **Files read:** every `*.json` file, at the root of the directory or in a directory under it (for example one directory per job). The directory holds only these files and the state file.
 - **Editing:** a file is reconciled 5 s after its last change.
 - **Deleting:** deleting a file drops the entity from GitOps, but the OLake entity is kept, as in Kubernetes mode.
-- **Credentials:** there is no Secret equivalent; credentials are written in the source/destination file. Keep the directory private.
+- **Credentials:** use [secret references](#secret-references) (`${env:...}` or a cloud secret manager) instead of writing credentials in the file.
 
 ### Status
 
@@ -180,6 +180,130 @@ There are no annotations, so status (phase, message, entity ID, observed hash) i
 - Deleting the state file, or a manifest, makes the next start reconcile those entities from scratch.
 
 `GITOPS_FILE_DIR` changes the directory, for example when running the server outside Docker.
+
+## Secret references
+
+Keep credentials out of git: set a string field in a source or destination `config` to a reference instead of the value. olake-ui fetches the value when it reconciles, and stores the resolved config encrypted in its database. The value is never written back to the ConfigMap or file.
+
+```json
+"config": {
+  "host": "pg.prod.internal",
+  "username": "${aws-sm:olake/prod/pg#username}",
+  "password": "${aws-sm:olake/prod/pg#password}"
+}
+```
+
+Format: `${<provider>:<path>[#<key>]}`
+
+- The reference must be the whole value. `"x${...}"` is a plain string.
+- `#key` reads one key of a secret that holds a JSON object, such as `{"username":"...","password":"..."}`. Without `#key`, the whole secret value is used.
+- References work in nested objects too, such as `ssh_config.password` or `writer.aws_secret_key`.
+
+| Provider | Reference | Works in |
+|----------|-----------|----------|
+| AWS Secrets Manager | `${aws-sm:<name or ARN>[#key]}` | Kubernetes, Docker |
+| GCP Secret Manager | `${gcp-sm:<secret-id>[#key]}` or `${gcp-sm:projects/<project>/secrets/<id>[/versions/<v>][#key]}` | Kubernetes, Docker |
+| Azure Key Vault | `${azure-kv:<vault-name>/<secret-name>[/<version>][#key]}` | Kubernetes, Docker |
+| Kubernetes Secret | `${secrets:<secret-name>#<key>}` | Kubernetes |
+| Environment variable | `${env:GITOPS_SECRET_<NAME>}` | Kubernetes, Docker |
+
+**Requirements and behaviour**
+
+- **`OLAKE_SECRET_KEY`** must be set on olake-ui and the worker, because resolved values are stored in the database. Without it, a resource with references fails. On AWS, prefer a KMS key ARN as its value.
+- **Rotation:** a `Ready` resource with references is re-checked every `GITOPS_SECRETS_REFRESH_INTERVAL` (default `1h`, `0` turns it off). A changed secret is connection-tested and applied without any change in git. To re-check now, edit the object, for example `kubectl annotate cm <name> olake.io/refresh="$(date +%s)" --overwrite`.
+- **Errors:** a missing secret or key, or access denied, makes the resource `Failed` with the reason. Network errors and throttling are retried like other transient errors.
+- **Settings** go on olake-ui as environment variables. In Helm use `olakeUI.env`; in Docker Compose use the olake-ui service's `environment`.
+
+### AWS Secrets Manager
+
+Authentication, preferred first:
+
+1. **EKS Pod Identity.** Associate the role with olake-ui's ServiceAccount:
+   ```bash
+   kubectl -n <namespace> get deploy olake-ui -o jsonpath='{.spec.template.spec.serviceAccountName}'
+   aws eks create-pod-identity-association --cluster-name <cluster> \
+     --namespace <namespace> --service-account <service-account> --role-arn <role-arn>
+   ```
+2. **IRSA.** Annotate olake-ui's ServiceAccount with `eks.amazonaws.com/role-arn: <role-arn>`. By default olake-ui runs as the job ServiceAccount, so set it in `global.jobServiceAccount.annotations`. A ServiceAccount has one role: if S3 log storage also uses IRSA, give one role both permissions.
+3. **EC2 instance profile or ECS task role** (Docker on AWS).
+4. **Access keys** (testing only): `GITOPS_SECRETS_AWS_ACCESS_KEY_ID` and `GITOPS_SECRETS_AWS_SECRET_ACCESS_KEY`.
+
+Role permission:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": "secretsmanager:GetSecretValue",
+  "Resource": "arn:aws:secretsmanager:<region>:<account>:secret:olake/*"
+}
+```
+
+Add `kms:Decrypt` on the key if the secret uses a customer-managed KMS key.
+
+Settings: `GITOPS_SECRETS_AWS_REGION` is needed when references use secret names. An ARN carries its own region.
+
+### GCP Secret Manager
+
+Authentication, preferred first:
+
+1. **GKE Workload Identity.** Grant the role on the secret to olake-ui's ServiceAccount:
+   ```bash
+   gcloud secrets add-iam-policy-binding <secret-id> --role=roles/secretmanager.secretAccessor \
+     --member="principal://iam.googleapis.com/projects/<project-number>/locations/global/workloadIdentityPools/<project-id>.svc.id.goog/subject/ns/<namespace>/sa/<service-account>"
+   ```
+2. **Attached service account** (Docker on a GCE VM).
+3. **Workload Identity Federation** from a non-GKE cluster (EKS, AKS): mount the credential configuration file and set `GOOGLE_APPLICATION_CREDENTIALS` to its path.
+4. **Service account JSON key** (testing only): mount the key file and set `GOOGLE_APPLICATION_CREDENTIALS` to its path. Many organisations block key creation.
+
+Permission: `roles/secretmanager.secretAccessor` on each secret.
+
+Settings: `GITOPS_SECRETS_GCP_PROJECT` is needed for short secret ids outside GKE or GCE. On GKE and GCE the project comes from the metadata server.
+
+The latest version is read unless the reference pins one. To rotate, add a new version.
+
+### Azure Key Vault
+
+Authentication, preferred first:
+
+1. **AKS Workload Identity.** Create a user-assigned managed identity and a federated credential for `system:serviceaccount:<namespace>:<service-account>`. Then annotate olake-ui's ServiceAccount with `azure.workload.identity/client-id: <client-id>`, and add the pod label `azure.workload.identity/use: "true"` with `olakeUI.podLabels`.
+2. **Managed identity** (Docker on an Azure VM).
+3. **Service principal client secret** (testing only): `GITOPS_SECRETS_AZURE_TENANT_ID`, `GITOPS_SECRETS_AZURE_CLIENT_ID` and `GITOPS_SECRETS_AZURE_CLIENT_SECRET`.
+
+Permission: the **Key Vault Secrets User** role on the vault, which must use the Azure RBAC permission model.
+
+The vault URL is `https://<vault-name>.vault.azure.net`. The latest version is read unless the reference pins one. To rotate, add a new version.
+
+### Kubernetes Secret
+
+Kubernetes mode only. The Secret must be in olake-ui's namespace and labelled `olake.io/managed=true`. Other Secrets cannot be read.
+
+```bash
+kubectl -n <namespace> create secret generic pg-creds \
+  --from-literal=username=olake --from-literal=password='<password>'
+kubectl -n <namespace> label secret pg-creds olake.io/managed=true
+```
+
+```json
+"password": "${secrets:pg-creds#password}"
+```
+
+The Helm chart's GitOps Role lets olake-ui read Secrets in its namespace. The Secret can come from External Secrets Operator, Sealed Secrets or the Vault Secrets Operator; add the label to the Secret they create.
+
+### Environment variable
+
+Only variables whose name starts with `GITOPS_SECRET_` can be read, so a config cannot read olake-ui's own settings such as `OLAKE_SECRET_KEY`. Docker Compose, with the values in an uncommitted `.env` file:
+
+```yaml
+olake-ui:
+  environment:
+    GITOPS_SECRET_PG_PASSWORD: ${GITOPS_SECRET_PG_PASSWORD}
+```
+
+```json
+"password": "${env:GITOPS_SECRET_PG_PASSWORD}"
+```
+
+A changed value takes effect after olake-ui restarts.
 
 ## Failure indicators
 
@@ -216,4 +340,5 @@ kubectl logs -l app.kubernetes.io/name=olake-ui | grep -i gitops
 ## Security notes
 
 - olake-ui GitOps RBAC: ConfigMaps (read/write status annotations) and Events in the release namespace. **No pods create/delete.**
+- Secret references: olake-ui reads only Secrets labelled `olake.io/managed=true` and environment variables starting with `GITOPS_SECRET_`. For cloud secret managers, scope olake-ui's IAM permission to the secrets it needs, because anyone who can write a config can reference any secret that identity can read.
 - Failure indicators use worker SA (already has `pods` create for connector jobs).
