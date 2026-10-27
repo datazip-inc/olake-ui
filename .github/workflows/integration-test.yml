@@ -49,12 +49,18 @@ jobs:
             echo "code=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # Runs the stack directly on a GitHub-hosted runner. Node, pnpm, the UI dependencies, Playwright
-  # and the olake-ui image come from cached steps here, so the test only starts the stack. The
-  # runner is discarded after the job, which the test relies on.
+  # Runs each workflow's stack directly on a GitHub-hosted runner of its own, so the workflows run
+  # in parallel: a stack publishes fixed ports, so two cannot share a machine. Node, pnpm, the UI
+  # dependencies, Playwright and the olake-ui image come from cached steps here, so the test only
+  # starts the stack. The runner is discarded after the job, which the test relies on.
   integration-tests:
+    name: integration-tests (${{ matrix.test }})
     needs: changes
     if: needs.changes.outputs.code == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        test: [TestPostgres, TestMongoDB]
     runs-on: ubuntu-24.04
     # Setup runs in workflow steps here, outside the test's 90-minute limit, and the cleanup takes up
     # to 5 more minutes.
@@ -132,19 +138,19 @@ jobs:
         working-directory: ./server
         env:
           OLAKE_TEST_SKIP_UI_BUILD: "true"
-        run: go test -v ./tests -timeout 0 -run '^Test'
+        run: go test -v ./tests -timeout 0 -run '^${{ matrix.test }}$'
 
       - name: Upload Playwright results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results
+          name: playwright-results-${{ matrix.test }}
           path: ui/test-results
           if-no-files-found: ignore
           retention-days: 7
 
-  # One check that always reports, for branch protection: it passes when the test passed, or when
-  # the change could not affect it and the test was skipped.
+  # One check that always reports, for branch protection: it passes when every workflow's test
+  # passed, or when the change could not affect them and they were skipped.
   integration-result:
     needs: [changes, integration-tests]
     if: always()
