@@ -1,30 +1,55 @@
-// Package mongodb is the MongoDB source, seeded by the init script in this folder.
+// Package mongodb is the MongoDB source, a standalone server (no replica set, so no CDC) seeded
+// by init.js in this folder on its first start.
 package mongodb
 
-import "github.com/datazip-inc/olake-ui/server/tests/sources"
+import (
+	"context"
+	"os/exec"
+	"strings"
+	"testing"
 
-// The collections of init.js, one per behaviour the spec and the checks look at.
-const (
-	CollectionFullRefresh = "e2e_full_refresh" // full refresh, normalization on: fields become columns
-	CollectionNormOff     = "e2e_norm_off"     // the same documents, normalization off: one data column
-	CollectionIncremental = "e2e_incremental"  // cursor updated_at with fallback created_at
-	CollectionPartition   = "e2e_partition"    // parquet partition regex on category
-	CollectionAdded       = "e2e_added"        // added to the job through Edit Streams
+	"github.com/stretchr/testify/require"
+
+	"github.com/datazip-inc/olake-ui/server/tests/sources"
 )
 
-// Source starts MongoDB from this folder's docker-compose.yml. init.js seeds it on first start, so there is no Seed.
+// container is the MongoDB container docker-compose.yml starts.
+const container = "olake_mongodb-test"
+
+// Source starts MongoDB from this folder's docker-compose.yml. init.js seeds it on first start,
+// so Seed is nil; Ready waits for the last collection init.js creates.
 var Source = sources.Source{
 	Name:       "mongodb",
 	ComposeDir: "sources/mongodb",
 	Port:       "27017/tcp",
+	Namespace:  "test_db",
+	Container:  container,
 	ReadyCmd: `
-        for i in $(seq 1 30); do
-            if docker exec olake_mongodb-test mongosh -u admin -p password --authenticationDatabase admin --quiet \
-                --eval "db.getSiblingDB('test_db').e2e_added.countDocuments({}) > 0 ? 0 : quit(1)"; then
-                echo "MongoDB ready."
-                break
+        for i in $(seq 1 60); do
+            if docker exec ` + container + ` mongosh -u admin -p password --authenticationDatabase admin --quiet \
+                --eval "quit(db.getSiblingDB('test_db').e2e_int_ids.countDocuments({}) > 0 ? 0 : 1)" >/dev/null 2>&1; then
+                echo "MongoDB ready: init.js has seeded test_db."
+                exit 0
             fi
             sleep 2
         done
+        echo "MongoDB or its init.js not ready after 120s" >&2
+        docker logs --tail 50 ` + container + ` >&2
+        exit 1
     `,
+	Exec: Exec,
+}
+
+// Exec runs JavaScript statements in mongosh on test_db, in order, each on its own. The statements
+// are passed to mongosh as an argument, not through a shell.
+func Exec(ctx context.Context, t *testing.T, _, _ string, statements ...string) {
+	t.Helper()
+	for _, statement := range statements {
+		t.Logf("source JS: %s", statement)
+		out, err := exec.CommandContext(ctx, "docker", "exec", container,
+			"mongosh", "-u", "admin", "-p", "password", "--authenticationDatabase", "admin", "--quiet",
+			"--eval", `db = db.getSiblingDB("test_db"); `+statement,
+		).CombinedOutput()
+		require.NoError(t, err, "failed to run %s:\n%s", statement, strings.TrimSpace(string(out)))
+	}
 }
