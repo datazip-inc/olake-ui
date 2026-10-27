@@ -18,13 +18,14 @@ import (
 	"github.com/datazip-inc/olake-ui/server/tests/sources"
 )
 
-// olakeComposeFiles starts OLake from the root docker-compose.yml, with olake-ui taken from the
-// olake-ui:ci image built from this checkout (see compose.olake-ui.yml). The project has its own
+// olakeComposeFiles starts OLake from the root docker-compose-v1.yml, with olake-ui taken from the
+// olake-ui:ci image built from this checkout (see compose.olake-ui.yml). The Fusion services in
+// that file are in the "fusion" profile, which the test does not enable. The project has its own
 // name, so taking it down never touches an OLake a developer runs from the same checkout, whose
 // project is named after the directory.
-const olakeComposeFiles = "-p olake-app-test -f docker-compose.yml -f server/tests/compose.olake-ui.yml"
+const olakeComposeFiles = "-p olake-app-test -f docker-compose-v1.yml -f server/tests/compose.olake-ui.yml"
 
-// olakeHome, under the checkout, stands in for PWD in the root docker-compose.yml, whose job
+// olakeHome, under the checkout, stands in for PWD in the root docker-compose-v1.yml, whose job
 // state lives in ${PWD}/olake-data. The test's state then stays out of the olake-data folder of
 // an OLake a developer runs from the same checkout. It is gitignored like any olake-data folder.
 const olakeHome = "server/tests/.olake-home"

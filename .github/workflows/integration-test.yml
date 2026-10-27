@@ -43,7 +43,7 @@ jobs:
           echo "Changed files:"
           echo "$changed"
           if echo "$changed" | grep -v '\.md$' \
-              | grep -qE '^(server/|ui/|Dockerfile$|\.dockerignore$|docker-compose\.yml$|\.github/workflows/integration-test\.yml$)'; then
+              | grep -qE '^(server/|ui/|Dockerfile$|\.dockerignore$|docker-compose-v1\.yml$|\.github/workflows/integration-test\.yml$)'; then
             echo "code=true" >> "$GITHUB_OUTPUT"
           else
             echo "code=false" >> "$GITHUB_OUTPUT"
