@@ -187,9 +187,12 @@ export const expectJobInTab = async (
 ) => {
 	await jobsPage.navigateToJobs()
 	await jobsPage.expectJobsPageVisible()
-	await page.getByRole("tab", { name: tab }).click()
+	// exact: "Inactive jobs" holds "Active jobs".
+	await page.getByRole("tab", { name: tab, exact: true }).click()
 	// antd keeps the panels it has shown in the page, so look only in this tab's panel.
 	await expect(
-		page.getByRole("tabpanel", { name: tab }).getByTestId(`job-${job}`),
+		page
+			.getByRole("tabpanel", { name: tab, exact: true })
+			.getByTestId(`job-${job}`),
 	).toHaveCount(listed ? 1 : 0)
 }
