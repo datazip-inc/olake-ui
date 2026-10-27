@@ -7,8 +7,9 @@ import { expect } from "../../fixtures"
 import { JobsPage } from "../../pages/JobsPage"
 
 /**
- * Clear Destination from the job's settings, confirmed in its dialog, then waits on the history
- * page until it is the newest of runs and Completed.
+ * Clear Destination from the job's settings: Cancel in its dialog first, which clears nothing,
+ * then Confirm. While it runs, editing the job is disabled. Then waits on the history page until
+ * it is the newest of runs and Completed.
  */
 export const clearDestination = async (
 	page: Page,
@@ -17,17 +18,58 @@ export const clearDestination = async (
 	runs: number,
 ) => {
 	await jobMenu(page, jobsPage, job, "Job settings")
-	await page
-		.getByRole("button", { name: "Clear Destination", exact: true })
-		.click()
+	await expect(page).toHaveURL(/\/jobs\/\d+\/settings/)
+	const jobId = page.url().match(/\/jobs\/(\d+)\//)![1]
+	const clear = page.getByRole("button", {
+		name: "Clear Destination",
+		exact: true,
+	})
 	const dialog = page.getByRole("dialog").filter({
 		hasText: "This will erase all data that was synced by this job",
 	})
+	await clear.click()
 	await expect(dialog).toBeVisible()
 	await expect(dialog).toContainText("cannot be undone")
-	await dialog.getByRole("button", { name: "Confirm" }).click()
+	await dialog.getByRole("button", { name: "Cancel", exact: true }).click()
 	await expect(dialog).toBeHidden()
+
+	// Wait for the request: leaving the page before it answers aborts it, and the clear with it.
+	await clear.click()
+	await expect(dialog).toBeVisible()
+	const started = page.waitForResponse(
+		response =>
+			response.url().includes("/clear-destination") &&
+			response.request().method() === "POST",
+	)
+	await dialog.getByRole("button", { name: "Confirm" }).click()
+	expect((await started).ok(), "Clear Destination started").toBe(true)
+	await expect(dialog).toBeHidden()
+
+	await expectEditingDisabled(page, jobId)
 
 	await jobMenu(page, jobsPage, job, "Job Logs & History")
 	await waitForNewestRun(page, runs, "Clear Destination", "Completed")
+}
+
+/**
+ * While Clear Destination runs, Job settings and Edit Streams open the "Editing Disabled" dialog
+ * instead, whose "Go back to Jobs" returns to the jobs page. A clear takes seconds only, so both
+ * pages are opened straight from their URLs.
+ */
+export const expectEditingDisabled = async (page: Page, jobId: string) => {
+	const dialog = page.getByRole("dialog").filter({
+		hasText: "Editing Disabled",
+	})
+	for (const [path, what] of [
+		["settings", "Job Settings Edit"],
+		["edit", "Stream editing"],
+	] as const) {
+		await page.goto(`/jobs/${jobId}/${path}`)
+		await expect(dialog).toBeVisible()
+		await expect(dialog).toContainText(
+			`${what} is disabled while the destination is being cleared`,
+		)
+		await dialog.getByRole("button", { name: "Go back to Jobs" }).click()
+		await expect(page).toHaveURL(/\/jobs$/)
+	}
 }
