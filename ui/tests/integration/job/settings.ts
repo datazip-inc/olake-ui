@@ -3,6 +3,7 @@
 import { Page } from "@playwright/test"
 
 import { jobMenu, waitForNewestRun } from "./runs"
+import { setFrequency } from "./wizard"
 import { expect } from "../../fixtures"
 import { JobsPage } from "../../pages/JobsPage"
 
@@ -72,4 +73,35 @@ export const expectEditingDisabled = async (page: Page, jobId: string) => {
 		await dialog.getByRole("button", { name: "Go back to Jobs" }).click()
 		await expect(page).toHaveURL(/\/jobs$/)
 	}
+}
+
+/** In the job's settings, checks the frequency is from, then sets it to label and saves it. */
+export const setJobFrequency = async (
+	page: Page,
+	jobsPage: JobsPage,
+	job: string,
+	from: string,
+	label: string,
+) => {
+	await jobMenu(page, jobsPage, job, "Job settings")
+	await expect(
+		page
+			.getByText("Frequency", { exact: true })
+			.locator("xpath=ancestor::div[.//div[contains(@class,'ant-select')]][1]"),
+	).toContainText(from)
+	await setFrequency(page, label)
+	await page.getByRole("button", { name: "Save", exact: true }).click()
+	await expect(page).toHaveURL(/\/jobs$/)
+}
+
+/** In the job's settings, Clear Destination is disabled: the job is paused. */
+export const expectClearDestinationDisabled = async (
+	page: Page,
+	jobsPage: JobsPage,
+	job: string,
+) => {
+	await jobMenu(page, jobsPage, job, "Job settings")
+	await expect(
+		page.getByRole("button", { name: "Clear Destination", exact: true }),
+	).toBeDisabled()
 }

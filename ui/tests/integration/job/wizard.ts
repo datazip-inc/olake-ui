@@ -82,6 +82,17 @@ export const wizardNext = async (page: Page, stream: string) => {
 	await expect(streamRow(page, stream)).toBeVisible({ timeout: TIMEOUTS.LONG })
 }
 
+/** Picks the job's frequency on the config step, in the wizard or in Edit Streams. */
+export const setFrequency = async (page: Page, label: string) => {
+	const select = page
+		.getByText("Frequency", { exact: true })
+		.locator("xpath=ancestor::div[.//div[contains(@class,'ant-select')]][1]")
+		.locator(".ant-select")
+		.first()
+	await pickOption(page, select, label)
+	await expect(select).toContainText(label)
+}
+
 /** Picks an existing source on the config step. */
 export const pickExistingSource = async (page: Page, name: string) => {
 	await pickOption(page, page.getByTestId("existing-source"), name)
@@ -120,6 +131,29 @@ export const expectDynamicDatabase = async (page: Page, prefix: string) => {
 	).toBeChecked()
 	await databaseModal.getByRole("button", { name: "Close" }).click()
 	await expect(databaseModal).toBeHidden()
+}
+
+/**
+ * On the streams step, gives the job a Custom destination database, or S3 folder, name: every
+ * stream is written under it. The header then shows label and name.
+ */
+export const setCustomDatabase = async (
+	page: Page,
+	name: string,
+	label: "S3 Folder" | "Iceberg DB",
+) => {
+	await page.getByTestId("edit-destination-database").click()
+	const modal = page
+		.getByRole("dialog")
+		.filter({ has: page.getByRole("radio") })
+	await expect(modal).toBeVisible()
+	await modal.getByRole("radio", { name: /Custom/ }).check()
+	await modal.getByRole("textbox").fill(name)
+	await modal.getByRole("button", { name: "Save Changes" }).click()
+	await expect(modal).toBeHidden()
+	await expect(
+		page.getByText(label, { exact: true }).locator("xpath=ancestor::div[1]"),
+	).toContainText(name)
 }
 
 /**

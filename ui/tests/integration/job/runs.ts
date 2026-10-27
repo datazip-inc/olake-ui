@@ -166,3 +166,30 @@ export const expectInFailedJobs = async (
 	await expect(row).toContainText("Sync")
 	await expect(failed.getByTestId(`job-${job}`)).toBeVisible()
 }
+
+/** "Pause job" or "Resume job" from the job's menu on the jobs page. */
+export const setJobPaused = async (
+	page: Page,
+	jobsPage: JobsPage,
+	job: string,
+	paused: boolean,
+) => {
+	await jobMenu(page, jobsPage, job, paused ? "Pause job" : "Resume job")
+}
+
+/** On the jobs page, checks whether the tab lists job; a tab lists its jobs once opened. */
+export const expectJobInTab = async (
+	page: Page,
+	jobsPage: JobsPage,
+	tab: "Active jobs" | "Inactive jobs",
+	job: string,
+	listed: boolean,
+) => {
+	await jobsPage.navigateToJobs()
+	await jobsPage.expectJobsPageVisible()
+	await page.getByRole("tab", { name: tab }).click()
+	// antd keeps the panels it has shown in the page, so look only in this tab's panel.
+	await expect(
+		page.getByRole("tabpanel", { name: tab }).getByTestId(`job-${job}`),
+	).toHaveCount(listed ? 1 : 0)
+}

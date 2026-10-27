@@ -2,8 +2,7 @@
 
 import { Page } from "@playwright/test"
 
-import { createSource } from "./source"
-import { expect } from "../../fixtures"
+import { createSource, setSourceCdc } from "./source"
 import { CreateSourcePage } from "../../pages/CreateSourcePage"
 import { SourcesPage } from "../../pages/SourcesPage"
 import { createPostgresSourceConfig, POSTGRES_SOURCE_CONFIG } from "../../utils"
@@ -13,19 +12,6 @@ export const CDC = {
 	slot: "olake_slot",
 	publication: "olake_publication",
 	initialWaitTime: "120", // the minimum; lower values silently become 10800
-}
-
-/** Turns the source form's CDC on or off: the "Enable CDC" switch, or the older radios. */
-export const setSourceCdc = async (page: Page, on: boolean) => {
-	const cdcSwitch = page.getByRole("switch", { name: "Enable CDC" })
-	if (await cdcSwitch.isVisible()) {
-		if ((await cdcSwitch.getAttribute("aria-checked")) !== String(on)) {
-			await cdcSwitch.click()
-		}
-		await expect(cdcSwitch).toHaveAttribute("aria-checked", String(on))
-		return
-	}
-	await page.getByRole("radio", { name: on ? "CDC" : "Standalone" }).check()
 }
 
 /** Creates the Postgres source the Go test started, with CDC on or off. */

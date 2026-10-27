@@ -2,11 +2,25 @@
 
 import { Page } from "@playwright/test"
 
+import { expect } from "../../fixtures"
 import { CreateSourcePage } from "../../pages/CreateSourcePage"
 import { SourcesPage } from "../../pages/SourcesPage"
 import { SourceFormConfig } from "../../types/PageConfig.types"
 import { expectTestConnectionModalVisible } from "../../utils"
 import { expectConnectionTestPassed } from "../common/connection"
+
+/** Turns the source form's CDC on or off: the "Enable CDC" switch, or the older radios. */
+export const setSourceCdc = async (page: Page, on: boolean) => {
+	const cdcSwitch = page.getByRole("switch", { name: "Enable CDC" })
+	if (await cdcSwitch.isVisible()) {
+		if ((await cdcSwitch.getAttribute("aria-checked")) !== String(on)) {
+			await cdcSwitch.click()
+		}
+		await expect(cdcSwitch).toHaveAttribute("aria-checked", String(on))
+		return
+	}
+	await page.getByRole("radio", { name: on ? "CDC" : "Standalone" }).check()
+}
 
 /**
  * Creates a source: fills the Create Source form from config, then fill sets what the form config

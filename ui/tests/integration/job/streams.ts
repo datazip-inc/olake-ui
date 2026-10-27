@@ -19,6 +19,27 @@ export const deselectAllStreams = async (page: Page) => {
 	await page.getByRole("checkbox", { name: "Sync all" }).uncheck()
 }
 
+/** Types text into Search Streams, which keeps the streams whose name holds it. */
+export const searchStreams = async (page: Page, text: string) => {
+	await page.getByRole("searchbox", { name: "Search Streams" }).fill(text)
+}
+
+/** Shows the streams the list's filter keeps: all, the selected ones, or the others. */
+export const filterStreams = async (
+	page: Page,
+	filter: "All tables" | "Selected" | "Not Selected",
+) => {
+	await page.getByRole("button", { name: filter, exact: true }).click()
+}
+
+/** The checkbox that selects every stream of namespace at once. */
+export const namespaceCheckbox = (page: Page, namespace: string) =>
+	page
+		.getByText(namespace, { exact: true })
+		.locator("xpath=ancestor::div[.//input[@type='checkbox']][1]")
+		.getByRole("checkbox")
+		.first()
+
 /** Ticks a stream and opens its configuration. */
 export const selectStream = async (page: Page, stream: string) => {
 	const row = streamRow(page, stream)
@@ -78,6 +99,74 @@ export const setNormalization = async (page: Page, on: boolean) => {
 export const setSyncNewColumns = async (page: Page, on: boolean) => {
 	await streamTab(page, "Schema")
 	await setSwitch(switchNear(page, "Sync new columns automatically"), on)
+	await streamTab(page, "Config")
+}
+
+/**
+ * On a stream of a job to S3 (parquet): there is no Ingestion Mode or Upsert Type to choose, and
+ * no All Append or All Upsert, since parquet files are only ever appended to.
+ */
+export const expectAppendOnlyStream = async (page: Page) => {
+	await expect(page.getByText("Sync mode:")).toBeVisible()
+	for (const text of [
+		"Ingestion Mode:",
+		"Upsert Type:",
+		"All Append",
+		"All Upsert",
+	]) {
+		await expect(page.getByText(text, { exact: true })).toHaveCount(0)
+	}
+}
+
+/**
+ * Sets the open stream's cursor field, and its fallback cursor when given: the field an
+ * Incremental sync reads instead when the cursor field is null.
+ */
+export const setCursor = async (
+	page: Page,
+	cursor: string,
+	fallback?: string,
+) => {
+	const select = (label: string) =>
+		page
+			.getByText(label, { exact: true })
+			.locator("xpath=ancestor::div[.//div[contains(@class,'ant-select')]][1]")
+			.locator(".ant-select")
+			.first()
+	await pickOption(page, select("Cursor field:"), cursor)
+	await expect(select("Cursor field:")).toContainText(cursor)
+	if (fallback) {
+		await page.getByRole("button", { name: "Add Fallback Cursor" }).click()
+		await pickOption(page, select("Fallback Cursor:"), fallback)
+		await expect(select("Fallback Cursor:")).toContainText(fallback)
+	}
+}
+
+/** Sets the open stream's partition regex on its Partitioning tab. */
+export const setPartitionRegex = async (page: Page, regex: string) => {
+	await streamTab(page, "Partitioning")
+	await page.getByPlaceholder("Enter your partition regex").fill(regex)
+	await page.getByRole("button", { name: "Set Partition" }).click()
+	await expect(page.getByText("Active partition regex:")).toBeVisible()
+	await streamTab(page, "Config")
+}
+
+/** Ticks or unticks column on the open stream's Schema tab. */
+export const setColumnSelected = async (
+	page: Page,
+	column: string,
+	selected: boolean,
+) => {
+	await streamTab(page, "Schema")
+	const checkbox = page
+		.locator("div.border-b")
+		.filter({
+			has: page.locator("div.flex-1").getByText(column, { exact: true }),
+		})
+		.first()
+		.getByRole("checkbox")
+	await checkbox.setChecked(selected)
+	await expect(checkbox).toBeChecked({ checked: selected })
 	await streamTab(page, "Config")
 }
 
@@ -235,4 +324,82 @@ export const bulkConfigureSyncMode = async (
 		await streamTab(page, "Config")
 		await expect(syncModeRadio(page, mode)).toBeChecked()
 	}
+}
+
+/**
+ * The open stream's Data Filter: a second condition waits for the first ("Please complete the
+ * first filter before applying another."), then comes as Column II, and Remove takes it away.
+ * The filter is turned off again.
+ */
+export const expectFilterConditionRules = async (
+	page: Page,
+	first: FilterCondition,
+) => {
+	await setSwitch(switchNear(page, "Data Filter"), true)
+	const addCondition = page.getByRole("button", { name: "New Column filter" })
+	const second = page.getByText("Column II", { exact: true })
+	await addCondition.click()
+	await expect(
+		page.getByText("Please complete the first filter before applying another."),
+	).toBeVisible()
+	await expect(second).toHaveCount(0)
+
+	await setDataFilter(page, [first], "AND")
+	await addCondition.click()
+	await expect(second).toBeVisible()
+	await second
+		.locator("xpath=ancestor::div[.//button[normalize-space()='Remove']][1]")
+		.getByRole("button", { name: "Remove" })
+		.click()
+	await expect(second).toHaveCount(0)
+	await setSwitch(switchNear(page, "Data Filter"), false)
+}
+
+/**
+ * Bulk Configure over streams with no cursor field of one type in common: Full Refresh +
+ * Incremental is disabled ("No common cursor fields across selected streams"), and the data
+ * filter's second condition waits for the first. Closes the dialogs without applying anything.
+ */
+export const expectBulkRules = async (page: Page, streams: string[]) => {
+	await page.getByRole("button", { name: "Bulk Configure" }).click()
+	const bulk = page.getByRole("dialog").filter({ hasText: "Select Streams" })
+	await expect(bulk).toBeVisible()
+	for (const stream of streams) {
+		await bulk.getByRole("checkbox", { name: stream, exact: true }).check()
+	}
+	await bulk.getByRole("button", { name: "Configure Streams" }).click()
+	const apply = page.getByRole("dialog").filter({
+		hasText: "Apply Configurations",
+	})
+	await expect(apply).toBeVisible()
+	await apply
+		.getByRole("button", { name: "Toggle sync and ingestion settings" })
+		.click()
+	const incremental = apply.getByRole("radio", {
+		name: "Full Refresh + Incremental",
+		exact: true,
+	})
+	await expect(incremental).toBeDisabled()
+	await apply.getByText("Full Refresh + Incremental", { exact: true }).hover()
+	await expect(
+		page.getByRole("tooltip").filter({
+			hasText: "No common cursor fields across selected streams",
+		}),
+	).toBeVisible()
+
+	await setSwitch(
+		apply
+			.getByText("Data Filter", { exact: true })
+			.first()
+			.locator("xpath=ancestor::div[.//button[@role='switch']][1]")
+			.getByRole("switch")
+			.first(),
+		true,
+	)
+	await apply.getByRole("button", { name: "New Column filter" }).click()
+	await expect(
+		page.getByText("Please complete the first filter before applying another."),
+	).toBeVisible()
+	await page.keyboard.press("Escape")
+	await expect(apply).toBeHidden()
 }

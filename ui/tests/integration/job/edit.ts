@@ -32,6 +32,28 @@ export const editBack = async (page: Page) => {
 }
 
 /**
+ * "Back" from the streams step, then "No" in the dialog that warns the changes are lost: the
+ * streams step stays, with stream listed.
+ */
+export const editBackAndStay = async (page: Page, stream: string) => {
+	await page.getByRole("button", { name: "Back", exact: true }).click()
+	const dialog = page.getByRole("dialog").filter({
+		hasText: "Are you sure you want to leave?",
+	})
+	await expect(dialog).toBeVisible()
+	await expect(dialog).toContainText("Your changes will not be saved")
+	await dialog.getByRole("button", { name: "No", exact: true }).click()
+	await expect(dialog).toBeHidden()
+	await expect(streamRow(page, stream)).toBeVisible()
+}
+
+/** "Next" on the job config step: discovery runs again and the streams step lists stream. */
+export const editNext = async (page: Page, stream: string) => {
+	await mainButton(page, "Next").click()
+	await expect(streamRow(page, stream)).toBeVisible({ timeout: TIMEOUTS.LONG })
+}
+
+/**
  * "Next" after the Target Query Engines changed: the warning says the delete formats may change,
  * and Proceed discovers the streams again, so the streams step lists stream once more.
  */
