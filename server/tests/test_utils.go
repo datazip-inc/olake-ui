@@ -357,23 +357,48 @@ func (r *Run) Check(phase string, checks ...Check) {
 	}
 }
 
+// SourceColumn is a column MatchesSourceAs compares: its name, and the source SQL whose text is
+// the value as Spark's CAST(... AS STRING) shows it in the destination. Source is a code constant.
+type SourceColumn struct {
+	Name   string
+	Source string
+}
+
+// Col is column c compared as text on both sides.
+func Col(c string) SourceColumn {
+	return SourceColumn{Name: c, Source: fmt.Sprintf("CAST(%s AS TEXT)", ident(c))}
+}
+
 // MatchesSource checks that the destination's current rows of table equal the source's rows,
-// column by column. The current row of an id is its newest row by _olake_timestamp, and an id
-// whose newest row is a delete tombstone (_op_type 'd') has none: that reads Append tables, which
-// keep every change, and Upsert tables the same way. where, a code constant or empty, limits the
-// source rows the way a Data Filter or CDC Only limits what reaches the destination.
+// column by column, each compared as text. The current row of an id is its newest row by
+// _olake_timestamp, and an id whose newest row is a delete tombstone (_op_type 'd') has none: that
+// reads Append tables, which keep every change, and Upsert tables the same way. where, a code
+// constant or empty, limits the source rows the way a Data Filter or CDC Only limits what reaches
+// the destination.
 func (r *Run) MatchesSource(table string, columns []string, where string) Check {
-	if len(columns) == 0 || columns[0] != keyColumn {
+	cols := make([]SourceColumn, len(columns))
+	for i, c := range columns {
+		cols[i] = Col(c)
+	}
+	return r.MatchesSourceAs(table, cols, where)
+}
+
+// MatchesSourceAs is MatchesSource with the source side of each column written out, for types
+// OLake writes in another form than the source's text, such as a DATE as a timestamp.
+func (r *Run) MatchesSourceAs(table string, columns []SourceColumn, where string) Check {
+	if len(columns) == 0 || columns[0].Name != keyColumn {
 		panic(fmt.Sprintf("MatchesSource(%s): the first column must be %s", table, keyColumn))
 	}
+	names := make([]string, len(columns))
 	srcCols := make([]string, len(columns))
 	dstCols := make([]string, len(columns))
 	for i, c := range columns {
-		srcCols[i] = fmt.Sprintf("CAST(%s AS TEXT)", ident(c))
-		dstCols[i] = fmt.Sprintf("CAST(%s AS STRING)", ident(c))
+		names[i] = ident(c.Name)
+		srcCols[i] = c.Source
+		dstCols[i] = fmt.Sprintf("CAST(%s AS STRING)", ident(c.Name))
 	}
 	srcQuery := fmt.Sprintf("SELECT %s FROM %s", strings.Join(srcCols, ", "), ident(table))
-	name := fmt.Sprintf("%s matches the source (%s)", table, strings.Join(columns, ", "))
+	name := fmt.Sprintf("%s matches the source (%s)", table, strings.Join(names, ", "))
 	if where != "" {
 		srcQuery += " WHERE " + where
 		name += " where " + where
@@ -394,7 +419,7 @@ func (r *Run) MatchesSource(table string, columns []string, where string) Check 
 			if err != nil {
 				return fmt.Errorf("reading the destination: %w", err)
 			}
-			return diffRows(columns, source, destination)
+			return diffRows(names, source, destination)
 		},
 	}
 }
@@ -449,4 +474,15 @@ func (r *Run) StopSource() {
 	r.t.Helper()
 	r.Step("Stopping the %s source...", r.w.Source.Name)
 	r.exec("docker stop "+shellQuote(r.w.Source.Container), "stopping the source failed")
+}
+
+// StartSource starts the source container StopSource stopped, with its data, and waits until the
+// source is ready again.
+func (r *Run) StartSource() {
+	r.t.Helper()
+	r.Step("Starting the %s source again...", r.w.Source.Name)
+	r.exec("docker start "+shellQuote(r.w.Source.Container), "starting the source failed")
+	if strings.TrimSpace(r.w.Source.ReadyCmd) != "" {
+		r.exec("("+r.w.Source.ReadyCmd+")", "the %s source is not ready", r.w.Source.Name)
+	}
 }

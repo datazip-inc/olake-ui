@@ -341,6 +341,7 @@ type DeleteKind string
 
 const (
 	EqualityDeletes DeleteKind = "equality"        // content = 2
+	PositionDeletes DeleteKind = "position"        // content = 1, not PUFFIN
 	DeletionVectors DeleteKind = "deletion vector" // content = 1, PUFFIN
 )
 
@@ -348,6 +349,7 @@ const (
 func DeleteFiles(name string, kind DeleteKind) Check {
 	where := map[DeleteKind]string{
 		EqualityDeletes: "content = 2",
+		PositionDeletes: "content = 1 AND upper(file_format) != 'PUFFIN'",
 		DeletionVectors: "content = 1 AND upper(file_format) = 'PUFFIN'",
 	}[kind]
 	return Check{
