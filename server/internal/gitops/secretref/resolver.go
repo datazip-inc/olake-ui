@@ -34,19 +34,21 @@ type Provider interface {
 	Fetch(ctx context.Context, path string) (string, error)
 }
 
-type factory func(ctx context.Context, cfg Config) (Provider, error)
+type newProviderFunc func(ctx context.Context, cfg Config) (Provider, error)
 
-var factories = map[string]factory{
-	"aws-sm":  newAWSProvider,
-	"gcp-sm":  newGCPProvider,
-	"secrets": newK8sProvider, // k8s secrets
-	"env":     newEnvProvider, // environment variables for docker environment
+var supportedProviders = map[string]newProviderFunc{
+	"aws-sm":   newAWSProvider,
+	"gcp-sm":   newGCPProvider,
+	"azure-kv": newAzureProvider,
+	"secrets":  newK8sProvider, // k8s secrets
+	"env":      newEnvProvider, // environment variables for docker environment
 }
 
 type Config struct {
-	AWS AWSConfig
-	GCP GCPConfig
-	K8s K8sConfig
+	AWS   AWSConfig
+	GCP   GCPConfig
+	Azure AzureConfig
+	K8s   K8sConfig
 }
 
 var refPattern = regexp.MustCompile(`^\$\{([a-z][a-z0-9-]*):([^#}]+)(?:#([^}]*))?\}$`)
@@ -169,10 +171,10 @@ func (r *Resolver) loadProvider(ctx context.Context, name string) (Provider, err
 		return provider, nil
 	}
 
-	newProvider, ok := factories[name]
+	newProvider, ok := supportedProviders[name]
 	if !ok {
 		return nil, unresolvable("unsupported secret provider %q (supported: %s)", name,
-			strings.Join(slices.Sorted(maps.Keys(factories)), ", "))
+			strings.Join(slices.Sorted(maps.Keys(supportedProviders)), ", "))
 	}
 	provider, err := newProvider(ctx, r.cfg)
 	if err != nil {

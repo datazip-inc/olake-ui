@@ -36,6 +36,11 @@ func newSecretRefs(cfg appconfig.Config, k8s secretref.K8sConfig) *secretRefs {
 			GCP: secretref.GCPConfig{
 				Project: cfg.GitOpsSecretsGCPProject,
 			},
+			Azure: secretref.AzureConfig{
+				TenantID:     cfg.GitOpsSecretsAzureTenantID,
+				ClientID:     cfg.GitOpsSecretsAzureClientID,
+				ClientSecret: cfg.GitOpsSecretsAzureClientSecret,
+			},
 			K8s: k8s,
 		}),
 		refresh:   cfg.GitOpsSecretsRefreshInterval,
