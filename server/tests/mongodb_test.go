@@ -17,7 +17,7 @@ const (
 	columnsColl     = "e2e_columns"      // Full Refresh; secret deselected at creation, note in Edit Streams
 	filterOrColl    = "e2e_filter_or"    // Incremental, Data Filter category = "a" or amount <= 10
 	filterAndColl   = "e2e_filter_and"   // Incremental, Data Filter amount != 30 and amount >= 20
-	partitionTsColl = "e2e_partition_ts" // Full Refresh, partition regex /year={event_at,,YYYY}/month={event_at,,MM}
+	partitionTSColl = "e2e_partition_ts" // Full Refresh, partition regex /year={event_at,,YYYY}/month={event_at,,MM}
 	addedColl       = "e2e_added"        // added to the job in Edit Streams
 )
 
@@ -73,7 +73,7 @@ func TestMongoDB(t *testing.T) {
 		Columns(columnsColl, []string{"name", "amount", "note"}, []string{"secret"}),
 		Rows(filterOrColl, "names", namesQuery, "f1", "f2", "f4"),
 		Rows(filterAndColl, "names", namesQuery, "g1", "g3"),
-		Rows(partitionTsColl, "folders", monthFoldersQuery,
+		Rows(partitionTSColl, "folders", monthFoldersQuery,
 			"year=2024/month=01:t1", "year=2024/month=01:t2", "year=2025/month=06:t3"),
 		Absent(addedColl),
 	)
@@ -114,7 +114,7 @@ func TestMongoDB(t *testing.T) {
 		Rows(columnsColl, "names", namesQuery, "c1", "c2", "c3"),
 		Columns(addedColl, []string{"name", "age"}, nil),
 		Rows(addedColl, "names", namesQuery, "x1", "x2"),
-		Rows(partitionTsColl, "folders", monthFoldersQuery,
+		Rows(partitionTSColl, "folders", monthFoldersQuery,
 			"year=2024/month=01:t1", "year=2024/month=01:t2", "year=2025/month=06:t3", "year=2025/month=06:t4"),
 	)
 
