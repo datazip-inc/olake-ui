@@ -94,13 +94,16 @@ export const setJobFrequency = async (
 	await expect(page).toHaveURL(/\/jobs$/)
 }
 
-/** In the job's settings, Clear Destination is disabled: the job is paused. */
+/**
+ * In a paused job's settings, Clear Destination is disabled. The job's menu disables Job settings
+ * while it is paused, so the page is opened from its URL.
+ */
 export const expectClearDestinationDisabled = async (
 	page: Page,
-	jobsPage: JobsPage,
-	job: string,
+	jobId: string,
 ) => {
-	await jobMenu(page, jobsPage, job, "Job settings", "Inactive jobs")
+	await page.goto(`/jobs/${jobId}/settings`)
+	await expect(page.getByText("Inactive", { exact: true })).toBeVisible()
 	await expect(
 		page.getByRole("button", { name: "Clear Destination", exact: true }),
 	).toBeDisabled()

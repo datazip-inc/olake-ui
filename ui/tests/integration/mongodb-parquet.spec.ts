@@ -40,8 +40,10 @@ import { expectNewestRunLogs } from "./job/logs"
 import {
 	HISTORY_PAGE_SIZE,
 	expectJobInTab,
+	expectPausedJobMenu,
 	historyRows,
 	jobMenu,
+	openJobId,
 	setJobPaused,
 	syncAndWait,
 	waitForNewestRun,
@@ -389,13 +391,17 @@ test.describe("MongoDB → S3 (parquet) integration workflow", () => {
 		await setJobFrequency(page, jobsPage, job, "Every Day", "Every Minute")
 		await jobMenu(page, jobsPage, job, "Job Logs & History")
 		await waitForNewestRun(page, runs + 1, "Sync", "Completed", wait)
+		const jobId = openJobId(page)
 
-		// Paused: Inactive jobs lists it, Clear Destination is disabled, and no run starts.
+		// Paused: Inactive jobs lists it, its menu leaves only Resume job and Delete, Clear
+		// Destination is disabled, and no run starts. The menu disables the job's pages, so they
+		// open from their URLs.
 		await setJobPaused(page, jobsPage, job, true)
 		await expectJobInTab(page, jobsPage, "Inactive jobs", job, true)
 		await expectJobInTab(page, jobsPage, "Active jobs", job, false)
-		await expectClearDestinationDisabled(page, jobsPage, job)
-		await jobMenu(page, jobsPage, job, "Job Logs & History", "Inactive jobs")
+		await expectPausedJobMenu(page, jobsPage, job)
+		await expectClearDestinationDisabled(page, jobId)
+		await page.goto(`/jobs/${jobId}/history`)
 		await page.waitForTimeout(90_000)
 		await page.getByTestId("refresh-tasks-button").click()
 		await expect(historyRows(page)).toHaveCount(

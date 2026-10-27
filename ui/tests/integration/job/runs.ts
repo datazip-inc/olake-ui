@@ -198,6 +198,40 @@ export const setJobPaused = async (
 	)
 }
 
+/**
+ * A paused job's menu, in Inactive jobs: everything but Resume job and Delete is disabled.
+ * Closes the menu.
+ */
+export const expectPausedJobMenu = async (
+	page: Page,
+	jobsPage: JobsPage,
+	job: string,
+) => {
+	const panel = await openJobsTab(page, jobsPage, "Inactive jobs")
+	await panel.getByTestId(`job-${job}`).click()
+	for (const item of [
+		"Sync now",
+		"Edit Streams",
+		"Cancel Run",
+		"Job Logs & History",
+		"Job settings",
+	]) {
+		await expect(page.getByRole("menuitem", { name: item })).toBeDisabled()
+	}
+	for (const item of ["Resume job", "Delete"]) {
+		await expect(page.getByRole("menuitem", { name: item })).toBeEnabled()
+	}
+	await page.keyboard.press("Escape")
+	await expect(page.getByRole("menuitem", { name: "Resume job" })).toBeHidden()
+}
+
+/** The id of the job whose page is open, from its URL: /jobs/<id>/... */
+export const openJobId = (page: Page) => {
+	const id = page.url().match(/\/jobs\/(\d+)\//)?.[1]
+	expect(id, `a job's page is open: ${page.url()}`).toBeTruthy()
+	return id!
+}
+
 /** On the jobs page, checks whether the tab lists job; a tab lists its jobs once opened. */
 export const expectJobInTab = async (
 	page: Page,
