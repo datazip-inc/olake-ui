@@ -125,10 +125,18 @@ type Workflow struct {
 	Source      sources.Source
 	Destination destinations.Destination
 	Job         string // passed to the specs as E2E_JOB_NAME
+
+	// Database is the destination database or folder the spec gives the job, for a custom name;
+	// empty for the Dynamic default, <job>_<source namespace>.
+	Database string
 }
 
-// database is the destination database OLake writes the job to: <job>_<source namespace>, lowercased.
+// database is the destination database OLake writes the job to, passed to the specs as
+// E2E_DATABASE: Database, or <job>_<source namespace>, lowercased.
 func (w *Workflow) database() string {
+	if w.Database != "" {
+		return w.Database
+	}
 	return strings.ToLower(w.Job + "_" + w.Source.Namespace)
 }
 
@@ -232,7 +240,7 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 	var failures []string
 	if err := <-source; err != nil {
 		failures = append(failures, err.Error())
-	} else {
+	} else if w.Source.Seed != nil {
 		r.Step("Seeding the %s source...", w.Source.Name)
 		w.Source.Seed(ctx, t, r.sourceHost, r.sourcePort)
 	}
@@ -325,8 +333,8 @@ func (r *Run) Playwright(spec, tag string, env map[string]string) {
 	}
 }
 
-// SourceSQL runs statements on the source, in order.
-func (r *Run) SourceSQL(statements ...string) {
+// ChangeSource runs statements on the source, in order and in the source's own language.
+func (r *Run) ChangeSource(statements ...string) {
 	r.t.Helper()
 	r.Step("Changing the %s source...", r.w.Source.Name)
 	r.w.Source.Exec(r.ctx, r.t, r.sourceHost, r.sourcePort, statements...)

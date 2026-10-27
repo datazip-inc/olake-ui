@@ -119,7 +119,7 @@ func TestPostgres(t *testing.T) {
 	)
 
 	// Source changes, read by CDC in sync 2.
-	r.SourceSQL(
+	r.ChangeSource(
 		"INSERT INTO e2e_cdc VALUES (6, 'name_6', 60)",
 		"UPDATE e2e_cdc SET name = 'updated_1' WHERE id = 1",
 		"DELETE FROM e2e_cdc WHERE id = 2",
@@ -301,7 +301,7 @@ func TestPostgres(t *testing.T) {
 		FormatVersion(upsertDVTable, 2),
 		r.MatchesSource(upsertDVTable, baseColumns, ""),
 	)
-	r.SourceSQL(
+	r.ChangeSource(
 		"UPDATE e2e_upsert_dv SET name = 'updated_3' WHERE id = 3",
 		"DELETE FROM e2e_upsert_dv WHERE id = 4",
 	)
@@ -317,7 +317,7 @@ func TestPostgres(t *testing.T) {
 
 	// A selected table dropped at the source: the publication no longer covers it, so CDC syncs fail
 	// until Edit Streams, which no longer discovers it, saves the job without it.
-	r.SourceSQL("DROP TABLE e2e_dropped")
+	r.ChangeSource("DROP TABLE e2e_dropped")
 	step("@dropped-table", 8)
 	step("@sync", 9)
 	r.Check("after the dropped table's stream is gone",
@@ -335,7 +335,7 @@ func TestPostgres(t *testing.T) {
 
 	// Changes made before the source goes down: the failed sync cannot read them, so the sync after
 	// it must, exactly once.
-	r.SourceSQL(
+	r.ChangeSource(
 		"INSERT INTO e2e_cdc VALUES (7, 'name_7', 70)",
 		"UPDATE e2e_cdc SET name = 'updated_3' WHERE id = 3",
 	)

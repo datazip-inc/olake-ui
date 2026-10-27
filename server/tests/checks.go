@@ -106,7 +106,7 @@ func isTableMissing(err error) bool {
 		return false
 	}
 	msg := err.Error()
-	for _, marker := range []string{"TABLE_OR_VIEW_NOT_FOUND", "NoSuchTableException", "SCHEMA_NOT_FOUND", "NoSuchNamespaceException"} {
+	for _, marker := range []string{"TABLE_OR_VIEW_NOT_FOUND", "NoSuchTableException", "SCHEMA_NOT_FOUND", "NoSuchNamespaceException", "PATH_NOT_FOUND"} {
 		if strings.Contains(msg, marker) {
 			return true
 		}
@@ -114,12 +114,21 @@ func isTableMissing(err error) bool {
 	return false
 }
 
-// refreshed queries tbl after REFRESH TABLE, so Spark does not answer from a cached snapshot.
+// refreshed queries tbl after REFRESH TABLE, so Spark does not answer from a cached snapshot. A
+// table read from files, such as parquet.`s3a://...`, has no catalog entry to refresh: Spark lists
+// its files on every query.
 func refreshed(ctx context.Context, spark sql.SparkSession, tbl, q string) ([][]string, error) {
-	if _, err := spark.Sql(ctx, "REFRESH TABLE "+tbl); err != nil {
-		return nil, err
+	if !isPathTable(tbl) {
+		if _, err := spark.Sql(ctx, "REFRESH TABLE "+tbl); err != nil {
+			return nil, err
+		}
 	}
 	return query(ctx, spark, q)
+}
+
+// isPathTable reports whether tbl names files, as <format>.`<path>`, rather than a catalog table.
+func isPathTable(tbl string) bool {
+	return strings.HasPrefix(tbl, "parquet.`")
 }
 
 // single runs q, which must return one value.
@@ -174,8 +183,10 @@ func Absent(name string) Check {
 		Run: func(ctx context.Context, spark sql.SparkSession, table func(string) string) error {
 			tbl := table(ident(name))
 			// REFRESH drops Spark's cached metadata, which can outlive a dropped table.
-			if _, err := spark.Sql(ctx, "REFRESH TABLE "+tbl); isTableMissing(err) {
-				return nil
+			if !isPathTable(tbl) {
+				if _, err := spark.Sql(ctx, "REFRESH TABLE "+tbl); isTableMissing(err) {
+					return nil
+				}
 			}
 			_, err := query(ctx, spark, "SELECT 1 FROM "+tbl+" LIMIT 1")
 			if isTableMissing(err) {
@@ -232,6 +243,30 @@ func Ops(name string, want map[string]int64) Check {
 			}
 			if gotText := strings.Join(got, " "); gotText != wantText {
 				return fmt.Errorf("ops are %q, want %q", gotText, wantText)
+			}
+			return nil
+		},
+	}
+}
+
+// Rows checks the rows q returns, each as its values joined by ":", in order. q is a code
+// constant with %s where the table goes; desc names what it checks.
+func Rows(name, desc, q string, want ...string) Check {
+	wantText := strings.Join(want, ", ")
+	return Check{
+		Name: fmt.Sprintf("%s %s: %s", name, desc, wantText),
+		Run: func(ctx context.Context, spark sql.SparkSession, table func(string) string) error {
+			tbl := table(ident(name))
+			rows, err := refreshed(ctx, spark, tbl, fmt.Sprintf(q, tbl))
+			if err != nil {
+				return err
+			}
+			got := make([]string, 0, len(rows))
+			for _, row := range rows {
+				got = append(got, strings.Join(row, ":"))
+			}
+			if gotText := strings.Join(got, ", "); gotText != wantText {
+				return fmt.Errorf("rows are [%s], want [%s]", gotText, wantText)
 			}
 			return nil
 		},
@@ -311,7 +346,12 @@ func Columns(name string, present, absent []string) Check {
 		Name: fmt.Sprintf("%s columns %v present, %v absent", name, present, absent),
 		Run: func(ctx context.Context, spark sql.SparkSession, table func(string) string) error {
 			tbl := table(ident(name))
-			rows, err := refreshed(ctx, spark, tbl, "DESCRIBE TABLE "+tbl)
+			describe := "DESCRIBE TABLE " + tbl
+			if isPathTable(tbl) {
+				// DESCRIBE TABLE needs a catalog table; a query over the files has the same columns.
+				describe = "DESCRIBE QUERY SELECT * FROM " + tbl
+			}
+			rows, err := refreshed(ctx, spark, tbl, describe)
 			if err != nil {
 				return err
 			}
