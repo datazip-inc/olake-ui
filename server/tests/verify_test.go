@@ -71,20 +71,19 @@ func TestPostgres(t *testing.T) {
 		Destination: jdbc.Destination,
 		Job:         "e2e_postgres_jdbc",
 	})
-	// step runs the spec's test tagged tag. runs, for a step that starts a run of the job, is how
-	// many runs the job's history lists once it has; 0 for the others.
-	step := func(tag string, runs int) {
-		var env map[string]string
-		if runs > 0 {
-			env = map[string]string{"E2E_RUNS": strconv.Itoa(runs)}
-		}
-		r.Playwright(postgresSpec, tag, env)
+	// step runs the spec's test tagged tag. runStep is step for a test that starts a run of the
+	// job: it passes E2E_RUNS, how many runs the job's history lists once the run has started.
+	runs := 0
+	step := func(tag string) { r.Playwright(postgresSpec, tag, nil) }
+	runStep := func(tag string) {
+		runs++
+		r.Playwright(postgresSpec, tag, map[string]string{"E2E_RUNS": strconv.Itoa(runs)})
 	}
 
-	step("@create-job", 0)
+	step("@create-job")
 
 	// Sync 1: the full loads. CDC Only starts at the current WAL position, so it writes nothing.
-	step("@first-sync", 1)
+	runStep("@first-sync")
 	r.Check("after sync 1",
 		Ops(cdcTable, map[string]int64{"r": 5}),
 		CountOrAbsent(strictCDCTable, 0),
@@ -164,7 +163,7 @@ func TestPostgres(t *testing.T) {
 	)
 
 	// Sync 2: insert, update and delete arrive through CDC.
-	step("@sync", 2)
+	runStep("@sync")
 	r.Check("after sync 2",
 		Ops(cdcTable, map[string]int64{"r": 5, "c": 1, "u": 1, "d": 1}),
 		Value(cdcTable, 1, "name", "updated_1"),
@@ -221,7 +220,7 @@ func TestPostgres(t *testing.T) {
 	)
 
 	// Clear Destination drops every table of the job.
-	step("@clear-destination", 3)
+	runStep("@clear-destination")
 	r.Check("after clear destination",
 		Absent(cdcTable),
 		Absent(strictCDCTable),
@@ -238,7 +237,7 @@ func TestPostgres(t *testing.T) {
 	)
 
 	// The next sync rebuilds the tables in full from the source as it is now.
-	step("@sync", 4)
+	runStep("@sync")
 	r.Check("after rebuild",
 		Count(cdcTable, 5),
 		Ops(cdcTable, map[string]int64{"r": 5}),
@@ -281,11 +280,11 @@ func TestPostgres(t *testing.T) {
 	)
 
 	// Edit Streams: Target Query Engines decide the upsert types again; the step leaves unsaved.
-	step("@edit-query-engines", 0)
+	step("@edit-query-engines")
 
 	// Edit Streams: e2e_upsert_dv goes from Deletion Vector (Iceberg v3) to Positional Deletes (v2),
 	// so its table, and only its, is cleared.
-	step("@edit-upsert-type", 5)
+	runStep("@edit-upsert-type")
 	r.Check("after the upsert type change",
 		Absent(upsertDVTable),
 		LiveIDs(upsertEqTable, 1, 3, 4, 5),
@@ -293,7 +292,7 @@ func TestPostgres(t *testing.T) {
 	)
 
 	// The next sync loads it again in full, now Iceberg v2; then CDC changes it with position deletes.
-	step("@sync", 6)
+	runStep("@sync")
 	r.Check("after the re-sync",
 		Ops(upsertDVTable, map[string]int64{"r": 4}),
 		LiveIDs(upsertDVTable, 1, 3, 4, 5),
@@ -305,7 +304,7 @@ func TestPostgres(t *testing.T) {
 		"UPDATE e2e_upsert_dv SET name = 'updated_3' WHERE id = 3",
 		"DELETE FROM e2e_upsert_dv WHERE id = 4",
 	)
-	step("@sync", 7)
+	runStep("@sync")
 	r.Check("after position deletes",
 		LiveIDs(upsertDVTable, 1, 3, 5),
 		OneRowPerID(upsertDVTable),
@@ -318,8 +317,8 @@ func TestPostgres(t *testing.T) {
 	// A selected table dropped at the source: the publication no longer covers it, so CDC syncs fail
 	// until Edit Streams, which no longer discovers it, saves the job without it.
 	r.SourceSQL("DROP TABLE e2e_dropped")
-	step("@dropped-table", 8)
-	step("@sync", 9)
+	runStep("@dropped-table")
+	runStep("@sync")
 	r.Check("after the dropped table's stream is gone",
 		// Its destination table stays as it was.
 		Ops(droppedTable, map[string]int64{"r": 5}),
@@ -327,7 +326,7 @@ func TestPostgres(t *testing.T) {
 	)
 
 	// UI-only steps.
-	step("@stream-rules", 0)
+	step("@stream-rules")
 
 	// Alerts: a failed sync posts "Sync Failure Detected!" to the saved webhook URL.
 	url := r.StartWebhookReceiver()
@@ -340,13 +339,13 @@ func TestPostgres(t *testing.T) {
 		"UPDATE e2e_cdc SET name = 'updated_3' WHERE id = 3",
 	)
 	r.StopSource()
-	step("@failed-sync", 10)
-	step("@discovery-failure", 0)
+	runStep("@failed-sync")
+	step("@discovery-failure")
 	r.WaitForWebhook("Sync Failure Detected!", 5*time.Minute)
 
 	// Recovery: with the source back, discovery works again, and CDC resumes where it stopped.
 	r.StartSource()
-	step("@recovery", 11)
+	runStep("@recovery")
 	r.Check("after recovery",
 		Ops(cdcTable, map[string]int64{"r": 5, "c": 1, "u": 1}),
 		LiveIDs(cdcTable, 1, 3, 4, 5, 6, 7),
@@ -354,6 +353,6 @@ func TestPostgres(t *testing.T) {
 		r.MatchesSource(cdcTable, baseColumns, ""),
 	)
 
-	// The history of all 11 runs, over two pages, and the newest run's logs.
-	step("@history", 0)
+	// The history of every run, over two pages, and the newest run's logs.
+	r.Playwright(postgresSpec, "@history", map[string]string{"E2E_RUNS": strconv.Itoa(runs)})
 }

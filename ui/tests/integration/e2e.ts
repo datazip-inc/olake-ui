@@ -21,7 +21,8 @@ export const E2E = {
 	// The destination database the Go checks read: <job>_<source database>_<schema>.
 	database: process.env.E2E_DATABASE?.trim() || "",
 	webhookUrl: process.env.E2E_WEBHOOK_URL?.trim() || "",
-	// For a step that starts a run: how many runs the job's history lists once it has.
+	// For a step that starts a run: how many runs the job's history lists once it has. For
+	// @history: how many runs the job has.
 	runs: Number(process.env.E2E_RUNS?.trim() || "0"),
 }
 

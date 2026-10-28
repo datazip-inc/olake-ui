@@ -2,14 +2,15 @@
  * Postgres → Apache Iceberg (JDBC catalog) integration workflow.
  *
  * Run by TestPostgres in server/tests, one tagged test at a time and in this order, between the
- * Go steps that seed and change the source and check the destination through Spark. Go passes
- * E2E_RUNS to the steps that start a run: how many runs the job's history lists once it has.
+ * Go steps that seed and change the source and check the destination through Spark. Go counts the
+ * job's runs and passes E2E_RUNS to the steps that start one, how many runs the job's history
+ * lists once it has, and to @history, how many runs there are.
  *
  *   @create-job          CDC source, destination, and one job with a stream per feature
  *   @first-sync          sync 1                                   (Go checks, then changes the source)
  *   @sync                sync 2                                   (Go checks)
  *   @clear-destination   Clear Destination: Cancel, then Confirm; "Editing Disabled" while it runs
- *   @sync                sync 3 rebuilds the tables               (Go checks)
+ *   @sync                the next sync rebuilds the tables        (Go checks)
  *   @edit-query-engines  Edit Streams: Dremio re-resolves the upsert types; left unsaved
  *   @edit-upsert-type    Edit Streams: e2e_upsert_dv to Positional Deletes clears its table
  *   @sync, @sync         its full load, then CDC with position deletes (Go checks)
@@ -488,6 +489,10 @@ test.describe("Postgres → Iceberg (JDBC) integration workflow", () => {
 		jobsPage,
 	}) => {
 		test.setTimeout(10 * 60 * 1000)
+		expect(
+			HISTORY,
+			"HISTORY lists every run TestPostgres started",
+		).toHaveLength(E2E.runs)
 		await jobMenu(page, jobsPage, job, "Job Logs & History")
 		await expectHistory(page, HISTORY)
 		await expectNewestRunLogs(page)

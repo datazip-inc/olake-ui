@@ -39,7 +39,7 @@ and its connectors under `sources/` and `destinations/` when they are new.
 | `E2E_DATABASE`     | Go test | Destination database the job writes to and the Go checks read (Dynamic: `<job>_postgres_public`). Needed by `@create-job`. |
 | `E2E_SERVICE_HOST` | Go test | Address the sync driver uses to reach the source and destination ports (default `172.17.0.1`).                             |
 | `E2E_WEBHOOK_URL`  | Go test | Webhook receiver URL for the `@alerts` step.                                                                               |
-| `E2E_RUNS`         | Go test | For a step that starts a run: how many runs the job's history lists once it has.                                           |
+| `E2E_RUNS`         | Go test | For a step that starts a run: how many runs the job's history lists once it has. For `@history`: how many runs there are.  |
 
 ## Running
 
