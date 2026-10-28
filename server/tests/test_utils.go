@@ -113,6 +113,7 @@ type Run struct {
 	w           *Workflow
 	start       time.Time
 	ServiceHost string // what the driver, and the specs, use to reach the published ports
+	loggedIn    bool   // a Playwright run has logged in and saved the session for the next ones
 
 	sourceHost, sourcePort string
 	sparkHost, sparkPort   string
@@ -261,7 +262,13 @@ func (r *Run) task(ctx context.Context, cancel context.CancelFunc, wg *sync.Wait
 func (r *Run) Playwright(spec, tag string, env map[string]string) {
 	r.t.Helper()
 	// A tag is matched as a whole word, so @sync does not also pick @sync-again.
-	cmd := command(r.ctx, "npx", "playwright", "test", spec, "--grep", tag+`(?![a-z0-9-])`)
+	args := []string{"playwright", "test", spec, "--grep", tag + `(?![a-z0-9-])`}
+	// The first run logs in through the setup project, which saves the session in
+	// ui/tests/.auth/user.json; the runs after it reuse the session instead of logging in again.
+	if r.loggedIn {
+		args = append(args, "--no-deps")
+	}
+	cmd := command(r.ctx, "npx", args...)
 	cmd.Dir = filepath.Join(r.env.Root(), "ui")
 	cmd.Env = append(os.Environ(),
 		"E2E_JOB_NAME="+r.w.Job,
@@ -280,6 +287,7 @@ func (r *Run) Playwright(spec, tag string, env map[string]string) {
 	if err != nil || code != 0 {
 		r.t.Fatalf("playwright %s %s failed (%d): %v\n%s", spec, tag, code, err, out)
 	}
+	r.loggedIn = true
 }
 
 // SourceSQL runs statements on the source, in order.
