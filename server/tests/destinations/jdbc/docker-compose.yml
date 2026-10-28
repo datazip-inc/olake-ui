@@ -1,3 +1,4 @@
+# No service keeps its data on the host, so taking the project down with -v clears it.
 services:
   spark-iceberg:
     image: olakego/spark-connect:v0.0.1
@@ -40,8 +41,6 @@ services:
           - warehouse.minio
     ports:
       - 9000:9000
-    volumes:
-      - ./data/minio-data:/data
     command: [ "server", "/data" ]
 
   mc:

@@ -136,13 +136,11 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 	r.require(err)
 	t.Logf("Service host: %s", r.ServiceHost)
 
-	// A checkout that ran the test before still holds that run's Iceberg tables and job state;
-	// a new run must not read them.
+	// A run stopped before its cleanup leaves its containers behind, and every run leaves its job
+	// state in olakeHome; a new run must not read them.
 	r.Step("Clearing data left by earlier runs...")
+	env.down(t)
 	r.exec(clearDirCmd(root+"/"+olakeHome), "clearing %s failed", olakeHome)
-	if w.Destination.DataDir != "" {
-		r.exec(clearDirCmd(root+"/server/tests/"+w.Destination.ComposeDir+"/"+w.Destination.DataDir), "clearing the %s data failed", w.Destination.Name)
-	}
 
 	// The source, the destination, OLake and Playwright do not depend on each other, so they start
 	// at the same time. The first that fails cancels the others.

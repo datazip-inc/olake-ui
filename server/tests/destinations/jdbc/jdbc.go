@@ -34,7 +34,6 @@ var Destination = destinations.Destination{
         docker exec spark-iceberg sh -c 'tail -n 40 /opt/spark/logs/*SparkConnectServer*.out' >&2
         exit 1
     `,
-	DataDir: "data", // ./data/minio-data
 	Table: func(database, table string) string {
 		return fmt.Sprintf("olake_iceberg.%s.%s", database, table)
 	},
