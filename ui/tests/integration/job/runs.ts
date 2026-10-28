@@ -35,8 +35,9 @@ export const historyRows = (page: Page) =>
 /**
  * On the job's history page, waits until the job has runs runs and the newest has jobType and
  * status. Refreshes the table between tries, and fails at once when the newest run of jobType
- * ended with another status. Past a page of runs only the page's count shows; after Sync now the
- * page itself waits for the new run before it lists any.
+ * ended with another status. The table shows one page of runs, so the runs are counted in the
+ * refresh's response, which lists them all: past a page, the table alone cannot tell a new run
+ * from the one before it.
  */
 export const waitForNewestRun = async (
 	page: Page,
@@ -49,9 +50,17 @@ export const waitForNewestRun = async (
 	const deadline = Date.now() + timeout
 	let newest = "(no runs listed)"
 	for (;;) {
-		await page.getByTestId("refresh-tasks-button").click()
-		await page.waitForTimeout(1000)
-		if ((await rows.count()) === Math.min(runs, HISTORY_PAGE_SIZE)) {
+		const [response] = await Promise.all([
+			page.waitForResponse(
+				response =>
+					new URL(response.url()).pathname.endsWith("/tasks") &&
+					response.request().method() === "GET",
+			),
+			page.getByTestId("refresh-tasks-button").click(),
+		])
+		const listed: unknown[] = (await response.json()).data ?? []
+		if (listed.length === runs) {
+			await expect(rows).toHaveCount(Math.min(runs, HISTORY_PAGE_SIZE))
 			newest = (await rows.first().innerText()).replace(/\s+/g, " ")
 			if (newest.includes(jobType)) {
 				if (newest.includes(status)) return
