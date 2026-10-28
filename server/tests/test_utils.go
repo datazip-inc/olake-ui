@@ -94,9 +94,9 @@ func (w *Workflow) database() string {
 // composeStartCmd starts the compose file in dir (relative to server/tests under root) as project
 // olake-<project>-test, runs ready in a subshell (skipped when empty), then lists the services.
 // project is "source" or "destination", so the two never share a project whatever their names.
-func composeStartCmd(root, project, dir string, services []string, ready string) string {
+func composeStartCmd(root, project, dir, ready string) string {
 	name := fmt.Sprintf("olake-%s-test", project)
-	start := fmt.Sprintf("docker compose -p %s up -d %s", name, strings.Join(services, " "))
+	start := fmt.Sprintf("docker compose -p %s up -d", name)
 	if strings.TrimSpace(ready) != "" {
 		start += " && (" + ready + ")"
 	}
@@ -155,10 +155,10 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 		tasks.Wait()
 	}()
 	source := r.task(startCtx, cancelStart, &tasks, "source "+w.Source.Name, func(ctx context.Context) error {
-		return r.run(ctx, composeStartCmd(root, "source", w.Source.ComposeDir, nil, w.Source.ReadyCmd), "%s startup failed", w.Source.Name)
+		return r.run(ctx, composeStartCmd(root, "source", w.Source.ComposeDir, w.Source.ReadyCmd), "%s startup failed", w.Source.Name)
 	})
 	destination := r.task(startCtx, cancelStart, &tasks, "destination "+w.Destination.Name, func(ctx context.Context) error {
-		return r.run(ctx, composeStartCmd(root, "destination", w.Destination.ComposeDir, w.Destination.Services, w.Destination.ReadyCmd), "destination services startup failed")
+		return r.run(ctx, composeStartCmd(root, "destination", w.Destination.ComposeDir, w.Destination.ReadyCmd), "destination services startup failed")
 	})
 	olake := r.task(startCtx, cancelStart, &tasks, "OLake", func(ctx context.Context) error {
 		// Build olake-ui from this checkout, unless the workflow already built olake-ui:ci

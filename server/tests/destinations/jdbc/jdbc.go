@@ -18,7 +18,6 @@ import (
 var Destination = destinations.Destination{
 	Name:       "jdbc",
 	ComposeDir: "destinations/jdbc",
-	Services:   []string{"minio", "mc", "postgres", "spark-iceberg"},
 	ReadyCmd: `
         for i in $(seq 1 100); do
             if docker exec spark-iceberg bash -c 'exec 3<>/dev/tcp/127.0.0.1/15002' 2>/dev/null; then
@@ -35,7 +34,7 @@ var Destination = destinations.Destination{
         docker exec spark-iceberg sh -c 'tail -n 40 /opt/spark/logs/*SparkConnectServer*.out' >&2
         exit 1
     `,
-	DataDir: "data", // ./data/minio-data and ./data/postgres-data (the Iceberg catalog)
+	DataDir: "data", // ./data/minio-data
 	Table: func(database, table string) string {
 		return fmt.Sprintf("olake_iceberg.%s.%s", database, table)
 	},

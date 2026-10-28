@@ -8,11 +8,10 @@ package destinations
 // file in ComposeDir must start a Spark Connect server published on 15002, with a catalog that
 // resolves the names Table returns (the jdbc compose file has the spark-iceberg service for this).
 type Destination struct {
-	Name       string   // shown in logs
-	ComposeDir string   // folder with docker-compose.yml, relative to server/tests
-	Services   []string // compose services to start; empty starts all
-	ReadyCmd   string   // run after compose up, in a subshell; exit 0 once ready, non-zero if it never is; empty skips
-	DataDir    string   // folder, relative to ComposeDir, the compose file bind-mounts for its data; emptied before each run
+	Name       string // shown in logs
+	ComposeDir string // folder with docker-compose.yml, relative to server/tests; it starts every service
+	ReadyCmd   string // run after compose up, in a subshell; exit 0 once ready, non-zero if it never is; empty skips
+	DataDir    string // folder, relative to ComposeDir, the compose file bind-mounts for its data; emptied before each run
 
 	// Table returns the name Spark reads a synced table from, given the destination database
 	// (or folder) and the source table.
