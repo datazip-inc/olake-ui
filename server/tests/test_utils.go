@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"regexp"
-	"sort"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -41,7 +40,7 @@ func olakeCompose(root string) string {
 	return fmt.Sprintf("PWD=%s docker compose %s", shellQuote(root+"/"+olakeHome), olakeComposeFiles)
 }
 
-// shellQuote quotes s as one word for /bin/sh. The checkout path in runner mode can hold spaces
+// shellQuote quotes s as one word for /bin/sh. The checkout path can hold spaces
 // or shell characters, so every interpolated value goes through it.
 func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
@@ -66,49 +65,6 @@ func startOLakeCmd(root string) string {
             sleep 2
         done
     `, shellQuote(root), shellQuote(olakeHome), olakeCompose(root))
-}
-
-// playwrightPatterns limit the values Run.Playwright puts in the Playwright shell command.
-var (
-	jobPattern    = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
-	specPattern   = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_./-]*\.spec\.ts$`) // no leading '-': Playwright would read an option
-	tagPattern    = regexp.MustCompile(`^@[a-z0-9][a-z0-9-]*$`)
-	envKeyPattern = regexp.MustCompile(`^E2E_[A-Z0-9_]+$`)
-)
-
-// playwrightCmd runs the tests of spec (relative to ui/) tagged tag, or all of them when tag is
-// empty, with env set for the Playwright process. debug logs every browser action (DEBUG=pw:api).
-func playwrightCmd(root, spec, tag string, env map[string]string, debug bool) (string, error) {
-	if !specPattern.MatchString(spec) {
-		return "", fmt.Errorf("invalid spec path %q", spec)
-	}
-	if tag != "" && !tagPattern.MatchString(tag) {
-		return "", fmt.Errorf("invalid tag %q", tag)
-	}
-	keys := make([]string, 0, len(env))
-	for k := range env {
-		if !envKeyPattern.MatchString(k) {
-			return "", fmt.Errorf("invalid Playwright env name %q", k)
-		}
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	var vars strings.Builder
-	for _, k := range keys {
-		fmt.Fprintf(&vars, "%s=%s ", k, shellQuote(env[k]))
-	}
-	if debug {
-		vars.WriteString("DEBUG=pw:api ")
-	}
-	grep := ""
-	if tag != "" {
-		// A tag is matched as a whole word, so @sync does not also pick @sync-again.
-		grep = " --grep " + shellQuote(tag+`(?![a-z0-9-])`)
-	}
-	return fmt.Sprintf(`
-        cd %s &&
-        %sPLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 npx playwright test %s%s
-    `, shellQuote(root+"/ui"), vars.String(), shellQuote(spec), grep), nil
 }
 
 // sparkConnectPort is the port the checks reach Spark Connect on. Every destination's compose
@@ -165,9 +121,6 @@ type Run struct {
 // StartWorkflow starts the Env, the source, the destination and OLake, and seeds the source.
 func StartWorkflow(t *testing.T, w *Workflow) *Run {
 	t.Helper()
-	if !jobPattern.MatchString(w.Job) {
-		t.Fatalf("invalid job name %q", w.Job)
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), runTimeout)
 	r := &Run{t: t, ctx: ctx, w: w, start: time.Now()}
 
@@ -302,24 +255,28 @@ func (r *Run) task(ctx context.Context, cancel context.CancelFunc, wg *sync.Wait
 	return done
 }
 
-// Playwright runs the tests of spec tagged tag. Every run gets E2E_JOB_NAME, E2E_DATABASE (the
-// destination database the checks read, so the spec does not derive it again) and
-// E2E_SERVICE_HOST; env adds more E2E_* variables.
+// Playwright runs the tests of spec (relative to ui/) tagged tag. Every run gets E2E_JOB_NAME,
+// E2E_DATABASE (the destination database the checks read, so the spec does not derive it again)
+// and E2E_SERVICE_HOST; env adds more E2E_* variables.
 func (r *Run) Playwright(spec, tag string, env map[string]string) {
 	r.t.Helper()
-	vars := map[string]string{
-		"E2E_JOB_NAME":     r.w.Job,
-		"E2E_DATABASE":     r.w.database(),
-		"E2E_SERVICE_HOST": r.ServiceHost,
-	}
+	// A tag is matched as a whole word, so @sync does not also pick @sync-again.
+	cmd := command(r.ctx, "npx", "playwright", "test", spec, "--grep", tag+`(?![a-z0-9-])`)
+	cmd.Dir = filepath.Join(r.env.Root(), "ui")
+	cmd.Env = append(os.Environ(),
+		"E2E_JOB_NAME="+r.w.Job,
+		"E2E_DATABASE="+r.w.database(),
+		"E2E_SERVICE_HOST="+r.ServiceHost,
+	)
 	for k, v := range env {
-		vars[k] = v
+		cmd.Env = append(cmd.Env, k+"="+v)
 	}
 	// OLAKE_TEST_PW_DEBUG=true logs every browser action; off, the log holds the test steps only.
-	cmd, err := playwrightCmd(r.env.Root(), spec, tag, vars, os.Getenv("OLAKE_TEST_PW_DEBUG") == "true")
-	r.require(err)
+	if os.Getenv("OLAKE_TEST_PW_DEBUG") == "true" {
+		cmd.Env = append(cmd.Env, "DEBUG=pw:api")
+	}
 	r.Step("Playwright %s %s...", spec, tag)
-	code, out, err := r.env.ExecStream(r.ctx, r.t, cmd)
+	code, out, err := stream(r.ctx, r.t, cmd)
 	if err != nil || code != 0 {
 		r.t.Fatalf("playwright %s %s failed (%d): %v\n%s", spec, tag, code, err, out)
 	}

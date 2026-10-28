@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"syscall"
 	"testing"
@@ -75,10 +74,6 @@ func (e *Env) Addr(port string) (host, hostPort string) {
 	return "localhost", number
 }
 
-// serviceHostPattern accepts IPv4 addresses and host names. IPv6 is refused: the specs put the
-// host into URLs such as http://<host>:9000 without brackets.
-var serviceHostPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.-]*$`)
-
 // ServiceHost is the address the sync driver uses to reach the ports the source and the
 // destination publish, passed to the Playwright spec as E2E_SERVICE_HOST. It is E2E_SERVICE_HOST
 // when that is set, otherwise the gateway of Docker's default bridge, the address of this machine
@@ -95,9 +90,6 @@ func (e *Env) ServiceHost(ctx context.Context) (string, error) {
 			return "", fmt.Errorf("no service host detected; set E2E_SERVICE_HOST")
 		}
 	}
-	if !serviceHostPattern.MatchString(host) {
-		return "", fmt.Errorf("invalid service host %q", host)
-	}
 	return host, nil
 }
 
@@ -112,11 +104,11 @@ func (e *Env) CheckPlaywright(ctx context.Context, t *testing.T) error {
 	return nil
 }
 
-// shellCommand runs cmd with sh -c in its own process group. When ctx is done the whole group is
-// killed: killing only sh would leave children such as docker compose or Playwright running and
+// command runs name in its own process group. When ctx is done the whole group is killed:
+// killing only name would leave children such as docker compose or the browser running and
 // holding the output pipe open, so the call would not return at the deadline.
-func shellCommand(ctx context.Context, shell, cmd string) *exec.Cmd {
-	c := exec.CommandContext(ctx, shell, "-c", cmd)
+func command(ctx context.Context, name string, args ...string) *exec.Cmd {
+	c := exec.CommandContext(ctx, name, args...)
 	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	c.Cancel = func() error { return syscall.Kill(-c.Process.Pid, syscall.SIGKILL) }
 	c.WaitDelay = 10 * time.Second // a process that left the group cannot hold the pipe forever
@@ -126,13 +118,13 @@ func shellCommand(ctx context.Context, shell, cmd string) *exec.Cmd {
 // Exec runs cmd with /bin/sh -c and returns its exit code and combined output. A non-zero exit is
 // reported through the code, not the error.
 func (e *Env) Exec(ctx context.Context, cmd string) (int, []byte, error) {
-	out, err := shellCommand(ctx, "/bin/sh", cmd).CombinedOutput()
+	out, err := command(ctx, "/bin/sh", "-c", cmd).CombinedOutput()
 	return exitResult(ctx, err, out)
 }
 
-// ExecStream is Exec, logging every output line as it arrives.
-func (e *Env) ExecStream(ctx context.Context, t *testing.T, cmd string) (int, string, error) {
-	c := shellCommand(ctx, "sh", cmd)
+// stream runs c, made by command with ctx, logging every output line as it arrives. It returns
+// the exit code and the output; a non-zero exit is reported through the code, not the error.
+func stream(ctx context.Context, t *testing.T, c *exec.Cmd) (int, string, error) {
 	stdout, err := c.StdoutPipe()
 	if err != nil {
 		return -1, "", err
