@@ -49,7 +49,7 @@ ports on all interfaces:
 
 ```bash
 cd server
-OLAKE_TEST_RUNNER_ANY_HOST=true go test -v ./tests -timeout 0 -run '^TestPostgres$'
+OLAKE_TEST_RUNNER_ANY_HOST=true go test -v -tags integration ./tests -timeout 0 -run '^TestPostgres$'
 ```
 
 One step against a stack that is already up, after the steps before it:

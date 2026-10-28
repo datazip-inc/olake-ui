@@ -125,7 +125,7 @@ jobs:
         working-directory: ./server
         env:
           OLAKE_TEST_SKIP_UI_BUILD: "true"
-        run: go test -v ./tests -timeout 0 -run '^Test'
+        run: go test -v -tags integration ./tests -timeout 0 -run '^Test'
 
       - name: Upload Playwright results
         if: failure()
