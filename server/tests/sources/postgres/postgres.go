@@ -18,7 +18,7 @@ import (
 var Source = sources.Source{
 	Name:       "postgres",
 	ComposeDir: "sources/postgres",
-	Port:       "5433/tcp",
+	Port:       "5433",
 	Namespace:  "postgres_public",
 	Container:  "olake_postgres-test",
 	// Ready once the pgoutput slot olake_slot and the publication olake_publication exist: the

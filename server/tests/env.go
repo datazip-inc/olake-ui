@@ -67,13 +67,6 @@ func (e *Env) down(t *testing.T) {
 // Root is the repository root.
 func (e *Env) Root() string { return e.root }
 
-// Addr returns the host and port the Go test reaches a published port on, e.g. "5433/tcp": the
-// stack publishes its ports on this machine.
-func (e *Env) Addr(port string) (host, hostPort string) {
-	number, _, _ := strings.Cut(port, "/")
-	return "localhost", number
-}
-
 // ServiceHost is the address the sync driver uses to reach the ports the source and the
 // destination publish, passed to the Playwright spec as E2E_SERVICE_HOST. It is E2E_SERVICE_HOST
 // when that is set, otherwise the gateway of Docker's default bridge, the address of this machine

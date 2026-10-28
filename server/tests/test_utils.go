@@ -67,9 +67,12 @@ func startOLakeCmd(root string) string {
     `, shellQuote(root), shellQuote(olakeHome), olakeCompose(root))
 }
 
-// sparkConnectPort is the port the checks reach Spark Connect on. Every destination's compose
-// file must run Spark Connect there; see destinations.Destination.
-const sparkConnectPort = "15002/tcp"
+// stackHost is where the Go test reaches the ports the stack publishes: this machine.
+const stackHost = "localhost"
+
+// sparkConnect is where the checks reach Spark Connect. Every destination's compose file must run
+// Spark Connect on port 15002; see destinations.Destination.
+const sparkConnect = "sc://" + stackHost + ":15002"
 
 // runTimeout bounds a whole workflow run. It is under the CI job's timeout, with room for its
 // setup steps and the cleanup.
@@ -114,9 +117,6 @@ type Run struct {
 	start       time.Time
 	ServiceHost string // what the driver, and the specs, use to reach the published ports
 	loggedIn    bool   // a Playwright run has logged in and saved the session for the next ones
-
-	sourceHost, sourcePort string
-	sparkHost, sparkPort   string
 }
 
 // StartWorkflow starts the Env, the source, the destination and OLake, and seeds the source.
@@ -135,12 +135,6 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 	r.ServiceHost, err = env.ServiceHost(ctx)
 	r.require(err)
 	t.Logf("Service host: %s", r.ServiceHost)
-
-	r.sparkHost, r.sparkPort = env.Addr(sparkConnectPort)
-	r.sourceHost = r.sparkHost
-	if w.Source.Port != "" {
-		r.sourceHost, r.sourcePort = env.Addr(w.Source.Port)
-	}
 
 	// A checkout that ran the test before still holds that run's Iceberg tables and job state;
 	// a new run must not read them.
@@ -188,7 +182,7 @@ func StartWorkflow(t *testing.T, w *Workflow) *Run {
 		failures = append(failures, err.Error())
 	} else {
 		r.Step("Seeding the %s source...", w.Source.Name)
-		w.Source.Seed(ctx, t, r.sourceHost, r.sourcePort)
+		w.Source.Seed(ctx, t, stackHost, w.Source.Port)
 	}
 	for _, done := range []<-chan error{destination, olake, playwright} {
 		if err := <-done; err != nil {
@@ -294,7 +288,7 @@ func (r *Run) Playwright(spec, tag string, env map[string]string) {
 func (r *Run) SourceSQL(statements ...string) {
 	r.t.Helper()
 	r.Step("Changing the %s source...", r.w.Source.Name)
-	r.w.Source.Exec(r.ctx, r.t, r.sourceHost, r.sourcePort, statements...)
+	r.w.Source.Exec(r.ctx, r.t, stackHost, r.w.Source.Port, statements...)
 }
 
 // Check runs checks on the destination as parallel subtests of a subtest named phase, through one
@@ -303,7 +297,7 @@ func (r *Run) Check(phase string, checks ...Check) {
 	r.t.Helper()
 	r.Step("Checking the destination: %s...", phase)
 	ok := r.t.Run(phase, func(t *testing.T) {
-		spark, err := sql.NewSessionBuilder().Remote(fmt.Sprintf("sc://%s:%s", r.sparkHost, r.sparkPort)).Build(r.ctx)
+		spark, err := sql.NewSessionBuilder().Remote(sparkConnect).Build(r.ctx)
 		require.NoError(t, err, "Failed to connect to Spark Connect server")
 		// A cleanup, not a defer: the checks run after this function returns.
 		t.Cleanup(func() {
@@ -313,7 +307,7 @@ func (r *Run) Check(phase string, checks ...Check) {
 		})
 		// One probe first: when Spark Connect is down, fail now rather than retry every check.
 		if err := waitForSpark(r.ctx, spark); err != nil {
-			t.Fatalf("Spark Connect at sc://%s:%s does not answer: %v", r.sparkHost, r.sparkPort, err)
+			t.Fatalf("Spark Connect at %s does not answer: %v", sparkConnect, err)
 		}
 		table := func(name string) string { return r.w.Destination.Table(r.w.database(), name) }
 		runChecks(r.ctx, t, spark, table, checks)
@@ -373,7 +367,7 @@ func (r *Run) MatchesSourceAs(table string, columns []SourceColumn, where string
 	return Check{
 		Name: name,
 		Run: func(ctx context.Context, spark sql.SparkSession, tableName func(string) string) error {
-			source, err := r.w.Source.Query(ctx, r.sourceHost, r.sourcePort, srcQuery)
+			source, err := r.w.Source.Query(ctx, stackHost, r.w.Source.Port, srcQuery)
 			if err != nil {
 				return fmt.Errorf("reading the source: %w", err)
 			}
