@@ -36,13 +36,14 @@ func ident(name string) string {
 	return name
 }
 
-// runChecks runs every check as a subtest of t, retrying each until it passes or checkTimeout
-// runs out. It fails t once all checks have run if any of them failed.
+// runChecks runs every check as a parallel subtest of t, retrying each until it passes or
+// checkTimeout runs out. The checks start once the caller's function returns; t fails if any of
+// them fails.
 func runChecks(ctx context.Context, t *testing.T, spark sql.SparkSession, table func(string) string, checks []Check) {
 	t.Helper()
-	failed := false
 	for _, check := range checks {
-		ok := t.Run(check.Name, func(t *testing.T) {
+		t.Run(check.Name, func(t *testing.T) {
+			t.Parallel()
 			deadline := time.Now().Add(checkTimeout)
 			for {
 				err := check.Run(ctx, spark, table)
@@ -56,10 +57,6 @@ func runChecks(ctx context.Context, t *testing.T, spark sql.SparkSession, table 
 				time.Sleep(checkInterval)
 			}
 		})
-		failed = failed || !ok
-	}
-	if failed {
-		t.FailNow()
 	}
 }
 

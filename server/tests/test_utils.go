@@ -297,19 +297,20 @@ func (r *Run) SourceSQL(statements ...string) {
 	r.w.Source.Exec(r.ctx, r.t, r.sourceHost, r.sourcePort, statements...)
 }
 
-// Check runs checks on the destination as subtests of a subtest named phase, through one Spark
-// Connect session. It fails the test if any check fails.
+// Check runs checks on the destination as parallel subtests of a subtest named phase, through one
+// Spark Connect session. It fails the test if any check fails.
 func (r *Run) Check(phase string, checks ...Check) {
 	r.t.Helper()
 	r.Step("Checking the destination: %s...", phase)
 	ok := r.t.Run(phase, func(t *testing.T) {
 		spark, err := sql.NewSessionBuilder().Remote(fmt.Sprintf("sc://%s:%s", r.sparkHost, r.sparkPort)).Build(r.ctx)
 		require.NoError(t, err, "Failed to connect to Spark Connect server")
-		defer func() {
+		// A cleanup, not a defer: the checks run after this function returns.
+		t.Cleanup(func() {
 			if stopErr := spark.Stop(); stopErr != nil {
 				t.Errorf("Failed to stop Spark session: %v", stopErr)
 			}
-		}()
+		})
 		// One probe first: when Spark Connect is down, fail now rather than retry every check.
 		if err := waitForSpark(r.ctx, spark); err != nil {
 			t.Fatalf("Spark Connect at sc://%s:%s does not answer: %v", r.sparkHost, r.sparkPort, err)
