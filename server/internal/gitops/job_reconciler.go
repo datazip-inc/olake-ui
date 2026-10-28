@@ -7,14 +7,8 @@ import (
 	"fmt"
 	"strconv"
 
-	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
@@ -24,19 +18,10 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
+// JobReconciler applies a job manifest and its streams manifest to OLake.
 type JobReconciler struct {
-	client.Client
 	ETL  *etl.Service
 	Sink StatusSink
-}
-
-func (r *JobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	var cm corev1.ConfigMap
-	if err := r.Get(ctx, req.NamespacedName, &cm); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-	res := resourceFromCM(&cm)
-	return r.reconcileJob(ctx, &res)
 }
 
 /*
@@ -62,19 +47,16 @@ Why discover here:
   - GitOps: you edit the CM first; discover takes that as input and merges with
     the source (sync_new_columns, new tables in schema, etc.).
 */
-func (r *JobReconciler) reconcileJob(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
+
+// reconcileJob applies job res. streamsRes is its streams manifest, or nil when there is none yet.
+func (r *JobReconciler) reconcileJob(ctx context.Context, res, streamsRes *ResourceData) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	projectID := res.ProjectID()
 
 	refs := r.loadJobRefs(ctx, res)
 	observed := reconcileHash(res, refs.source, refs.dest)
-	if skipReconcile(res.Annotations, observed) {
-		settled, err := r.streamsSettled(ctx, res)
-		if err != nil {
-			logger.Error(err, "check streams drift failed")
-		} else if settled {
-			return ctrl.Result{}, nil
-		}
+	if skipReconcile(res.Annotations, observed) && streamsSettled(streamsRes) {
+		return ctrl.Result{}, nil
 	}
 
 	if refs.cfgErr != nil {
@@ -102,13 +84,8 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res *ResourceData) (ct
 	}
 	jobCfg, source, dest := refs.cfg, refs.source, refs.dest
 
-	streamsRes, err := r.findStreams(ctx, res, projectID, res.EntityID())
-	if errors.Is(err, ErrStreamsNotFound) {
+	if streamsRes == nil {
 		return waitResource(ctx, r.Sink, res, fmt.Sprintf("waiting for Streams referencing job %q", res.Name), observed)
-	}
-	if err != nil {
-		logger.Error(err, "find streams failed")
-		return requeueTransient(ctx, r.Sink, res, err, observed)
 	}
 
 	existingJob, err := r.ETL.GetJobByName(ctx, projectID, jobCfg.Name)
@@ -278,19 +255,43 @@ func (r *JobReconciler) testConnectors(ctx context.Context, source *models.Sourc
 // a Streams CM that failed for its current data is settled; it retries when its data, the Job CM
 // or a connector changes. Retrying it on every status patch would loop on errors that differ per
 // run, such as ones naming a Temporal workflow ID.
-func (r *JobReconciler) streamsSettled(ctx context.Context, job *ResourceData) (bool, error) {
+func streamsSettled(streams *ResourceData) bool {
+	return streams != nil && skipReconcile(streams.Annotations, ContentHash(streams.Data))
+}
+
+// streamsBelongTo reports whether streams is the streams manifest of job: same namespace and
+// project, and its job ref names the job or its entity ID.
+func streamsBelongTo(streams, job *ResourceData) bool {
 	projectID := job.ProjectID()
-	if projectID == "" {
-		return false, nil
+	return streams.Kind == KindStreams &&
+		streams.Namespace == job.Namespace &&
+		projectID != "" && streams.ProjectID() == projectID &&
+		matchesNameOrID(streams.JobRef(), job.Name, job.EntityID())
+}
+
+// jobDependsOn reports whether a change to dep can change the reconcile result of job: dep is the
+// job's streams manifest, or the source/destination its config refers to.
+func jobDependsOn(job, dep *ResourceData) bool {
+	switch dep.Kind {
+	case KindStreams:
+		return streamsBelongTo(dep, job)
+	case KindSource, KindDestination:
+		if dep.Namespace != job.Namespace {
+			return false
+		}
+		cfg, err := ParseAndValidateJobConfig(job.Config())
+		if err != nil {
+			return false
+		}
+		ref := cfg.Source
+		if dep.Kind == KindDestination {
+			ref = cfg.Destination
+		}
+		// a job refers to the OLake entity name from the object's config, not the object's name
+		return matchesNameOrID(ref, configName(dep.Config()), dep.EntityID())
+	default:
+		return false
 	}
-	streamsRes, err := r.findStreams(ctx, job, projectID, job.EntityID())
-	if errors.Is(err, ErrStreamsNotFound) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return skipReconcile(streamsRes.Annotations, ContentHash(streamsRes.Data)), nil
 }
 
 // catalogService is the part of the ETL service that discovers and diffs job catalogs.
@@ -388,79 +389,6 @@ func (r *JobReconciler) resolveDestination(ctx context.Context, projectID, ref s
 	return r.ETL.GetDestinationByName(ctx, projectID, ref)
 }
 
-func (r *JobReconciler) findStreams(ctx context.Context, job *ResourceData, projectID string, entityID int) (*ResourceData, error) {
-	var list corev1.ConfigMapList
-	if err := r.List(ctx, &list, client.InNamespace(job.Namespace), client.MatchingLabels(managedLabels(KindStreams))); err != nil {
-		return nil, err
-	}
-	for i := range list.Items {
-		item := resourceFromCM(&list.Items[i])
-		if item.ProjectID() != projectID {
-			continue
-		}
-		if matchesNameOrID(item.JobRef(), job.Name, entityID) {
-			cp := item
-			return &cp, nil
-		}
-	}
-	return nil, ErrStreamsNotFound
-}
-
-// enqueueJobsFor maps a Source/Destination object to the jobs whose ref (cfg.Source or
-// cfg.Destination) points at it.
-func (r *JobReconciler) enqueueJobsFor(ref func(*JobConfig) string) handler.MapFunc {
-	return func(ctx context.Context, obj client.Object) []reconcile.Request {
-		res, ok := resourceFromObject(obj)
-		if !ok {
-			return nil
-		}
-		// a job refers to the OLake connector name from the object's config, not the object's name
-		name := configName(res.Config())
-		return r.enqueueJobsReferencing(ctx, res.Namespace, func(cfg *JobConfig) bool {
-			return matchesNameOrID(ref(cfg), name, res.EntityID())
-		})
-	}
-}
-
-func (r *JobReconciler) enqueueJobsReferencing(ctx context.Context, namespace string, match func(*JobConfig) bool) []reconcile.Request {
-	var list corev1.ConfigMapList
-	if err := r.List(ctx, &list, client.InNamespace(namespace), client.MatchingLabels(managedLabels(KindJob))); err != nil {
-		log.FromContext(ctx).Error(err, "list jobs failed")
-		return nil
-	}
-	reqs := make([]reconcile.Request, 0, len(list.Items))
-	for i := range list.Items {
-		cm := &list.Items[i]
-		res := resourceFromCM(cm)
-		cfg, err := ParseAndValidateJobConfig(res.Config())
-		if err != nil || !match(cfg) {
-			continue
-		}
-		reqs = append(reqs, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(cm)})
-	}
-	return reqs
-}
-
-func (r *JobReconciler) enqueueJobForStreams(ctx context.Context, obj client.Object) []reconcile.Request {
-	cm, ok := obj.(*corev1.ConfigMap)
-	if !ok {
-		return nil
-	}
-	streams := resourceFromCM(cm)
-	var list corev1.ConfigMapList
-	if err := r.List(ctx, &list, client.InNamespace(streams.Namespace), client.MatchingLabels(managedLabels(KindJob))); err != nil {
-		log.FromContext(ctx).Error(err, "list jobs failed")
-		return nil
-	}
-	for i := range list.Items {
-		job := resourceFromCM(&list.Items[i])
-		if matchesNameOrID(streams.JobRef(), job.Name, job.EntityID()) {
-			return []reconcile.Request{{NamespacedName: client.ObjectKeyFromObject(&list.Items[i])}}
-		}
-	}
-	return nil
-}
-
 type jobDrift struct {
 	connectors bool
 	streams    bool
@@ -515,20 +443,4 @@ func advancedSettingsEqual(stored *string, cfg *dto.AdvancedSettings) bool {
 		return false
 	}
 	return utils.EqualJSON(*stored, string(encoded))
-}
-
-func (r *JobReconciler) Setup(mgr ctrl.Manager) error {
-	dataChanged := predicate.ResourceVersionChangedPredicate{}
-	forSource := handler.EnqueueRequestsFromMapFunc(r.enqueueJobsFor(func(cfg *JobConfig) string { return cfg.Source }))
-	forDestination := handler.EnqueueRequestsFromMapFunc(r.enqueueJobsFor(func(cfg *JobConfig) string { return cfg.Destination }))
-
-	return ctrl.NewControllerManagedBy(mgr).
-		Named("gitops-job").
-		For(&corev1.ConfigMap{}, builder.WithPredicates(kindPredicate(KindJob))).
-		Watches(&corev1.ConfigMap{}, forSource, builder.WithPredicates(kindPredicate(KindSource))).
-		Watches(&corev1.ConfigMap{}, forDestination, builder.WithPredicates(kindPredicate(KindDestination))).
-		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(r.enqueueJobForStreams), builder.WithPredicates(kindPredicate(KindStreams), dataChanged)).
-		Watches(&corev1.Secret{}, forSource, builder.WithPredicates(kindPredicate(KindSource))).
-		Watches(&corev1.Secret{}, forDestination, builder.WithPredicates(kindPredicate(KindDestination))).
-		Complete(r)
 }

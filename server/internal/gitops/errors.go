@@ -12,9 +12,6 @@ import (
 // (bad spec, invalid config, failed credential test).
 var ErrNonRetryable = errors.New("non-retryable sync error")
 
-// ErrStreamsNotFound means no Streams ConfigMap references this job yet.
-var ErrStreamsNotFound = errors.New("streams resource not found")
-
 func NonRetryableError(err error) error {
 	if err == nil {
 		return nil

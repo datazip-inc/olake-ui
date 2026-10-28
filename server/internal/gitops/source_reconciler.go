@@ -4,29 +4,20 @@ import (
 	"context"
 
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 )
 
+// SourceReconciler applies a source manifest to OLake, in every GitOps mode.
 type SourceReconciler struct {
-	client.Client
 	ETL  *etl.Service
 	Sink StatusSink
 }
 
-func (r *SourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	res, err := fetchManaged(ctx, r.Client, req.NamespacedName)
-	if err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
+func (r *SourceReconciler) reconcile(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
 	return reconcileResource(ctx, r.Sink, r, res)
-}
-
-func (r *SourceReconciler) Setup(mgr ctrl.Manager) error {
-	return setupResourceController(mgr, "gitops-source", KindSource, r)
 }
 
 func (r *SourceReconciler) kind() string { return KindSource }

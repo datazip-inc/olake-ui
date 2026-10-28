@@ -6,7 +6,9 @@ Manage OLake sources, destinations, jobs, and stream selections as labelled **Co
 
 - Kubernetes: OLake UI deployed **inside** the cluster (in-cluster kubeconfig).
 - Source drivers at **v1.0.0 or later**. A job whose source is older fails reconcile until the Source is upgraded.
-- `GITOPS_ENABLED=true` on the `olake-ui` Deployment (Helm `gitops.enabled: true`).
+- `GITOPS_MODE=kubernetes` on the `olake-ui` Deployment (Helm `gitops.enabled: true` sets it).
+  Unset or empty disables GitOps.
+  Any other value fails startup.
 - GitOps RBAC: namespace `Role` on `configmaps` and `secrets` (get/list/watch/update/patch each), and `events` (create/patch). **No `pods` permission on olake-ui.**
 
 **Secrets RBAC note:** granting `update`/`patch` on Secrets (needed because the operator writes `olake.io/*` status annotations back onto whichever object type a Source/Destination uses) applies to **every** Secret in the release namespace, not only ones managed by GitOps. Deploy OLake GitOps in a dedicated namespace, or accept that trust boundary.
@@ -156,7 +158,7 @@ Configure alerts on failed Pods with that label. olake-ui never creates Pods dir
 | Pending, waiting for source | Ensure source ConfigMap reaches Ready first |
 | Failed, validation | Fix `data.config` JSON |
 | Failed, no indicator Pod | Check worker logs and Temporal; worker needs `pods` create |
-| Argo synced but phase empty | Operator may be disabled; check `GITOPS_ENABLED` |
+| Argo synced but phase empty | Operator may be disabled; check `GITOPS_MODE=kubernetes` |
 
 ```bash
 kubectl describe configmap my-postgres
