@@ -51,19 +51,15 @@ func buildOLakeUICmd(root string) string {
 	return fmt.Sprintf("cd %s && %s build olake-ui", shellQuote(root), olakeCompose(root))
 }
 
-// Start OLake application
+// startOLakeCmd starts OLake and fails unless signup-init created the admin user the specs log
+// in as. compose up returns once olake-ui is healthy and signup-init, which waits for that, has
+// started.
 func startOLakeCmd(root string) string {
 	return fmt.Sprintf(`
         cd %[1]s &&
         mkdir -p %[2]s/olake-data &&
         %[3]s up -d &&
-        for i in $(seq 1 60); do
-            if curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; then
-                echo "OLake UI ready."
-                break
-            fi
-            sleep 2
-        done
+        { [ "$(docker wait olake-signup-init)" = 0 ] || { docker logs olake-signup-init; exit 1; }; }
     `, shellQuote(root), shellQuote(olakeHome), olakeCompose(root))
 }
 
