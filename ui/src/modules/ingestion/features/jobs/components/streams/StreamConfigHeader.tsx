@@ -8,7 +8,11 @@ import { Tooltip } from "antd"
 import clsx from "clsx"
 
 import { DESTINATION_TABLE_TOOLTIP_TEXT, TAB_STYLES } from "../../constants"
-import { useStreamSelectionStore, selectActiveStreamData } from "../../stores"
+import {
+	useStreamSelectionStore,
+	selectActiveSelectedStream,
+	selectActiveStreamData,
+} from "../../stores"
 import { formatDestinationPath } from "../../utils"
 
 interface StreamConfigHeaderProps {
@@ -55,11 +59,12 @@ const StreamConfigHeader = ({
 	onTabChange,
 }: StreamConfigHeaderProps) => {
 	const stream = useStreamSelectionStore(selectActiveStreamData)
+	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
 
 	if (!stream) return null
 
 	const destinationPath = formatDestinationPath(
-		stream.stream.destination_database,
+		selectedStream?.destination_database,
 		stream.stream.destination_table,
 	)
 

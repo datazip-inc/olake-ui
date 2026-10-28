@@ -20,6 +20,9 @@ import {
 import Row from "antd/lib/row"
 import clsx from "clsx"
 
+import { UiSection } from "./cdc"
+import CdcCard from "./CdcCard"
+
 const DESCRIPTION_COL_STYLE = {
 	paddingBottom: "8px",
 }
@@ -118,6 +121,101 @@ export default function ObjectFieldTemplate<
 			return colSpan
 		}
 		return defaultColSpan
+	}
+
+	// Source forms: the driver uischema groups the root fields into sections ("ui:sections").
+	// Each section keeps the order and widths from the root "ui:grid"; antd wraps the columns.
+	const sections: UiSection[] | null =
+		idSchema.$id === "root" && Array.isArray(uiSchema?.["ui:sections"])
+			? uiSchema["ui:sections"]
+			: null
+
+	const renderSections = (sectionList: UiSection[]) => {
+		const gridSpans = new Map<string, number>()
+		for (const row of (uiSchema?.["ui:grid"] ?? []) as Record<
+			string,
+			number
+		>[]) {
+			for (const [name, span] of Object.entries(row)) gridSpans.set(name, span)
+		}
+		const gridOrder = [...gridSpans.keys()]
+
+		// A field missing from every section still shows, in Connection details
+		const assigned = new Set(sectionList.flatMap(s => s.fields ?? []))
+		const fallbackId =
+			sectionList.find(s => s.id === "connection")?.id ??
+			sectionList.find(s => !s.cdc)?.id
+		const unassigned = properties
+			.map(p => p.name)
+			.filter(name => !assigned.has(name))
+
+		return sectionList.map(section => {
+			const names = [
+				...(section.fields ?? []),
+				...(section.id === fallbackId ? unassigned : []),
+			]
+			const fieldSet = new Set(names)
+			const ordered = [
+				...gridOrder.filter(name => fieldSet.has(name)),
+				...names.filter(name => !gridSpans.has(name)),
+			]
+			const elements = ordered
+				.map(name => properties.find(p => p.name === name))
+				.filter((e): e is ObjectFieldTemplatePropertyType => !!e && !e.hidden)
+
+			const cdcNotSupported =
+				section.cdc === "not_supported" ||
+				(section.cdc === "toggle" && elements.length === 0)
+			let content
+			if (cdcNotSupported) {
+				content = <CdcCard state="not_supported" />
+			} else if (elements.length === 0) {
+				return null
+			} else {
+				content = (
+					<Row gutter={rowGutter}>
+						{elements.map(element => (
+							<Col
+								key={element.name}
+								span={
+									section.cdc
+										? 24
+										: (gridSpans.get(element.name) ?? calculateColSpan(element))
+								}
+							>
+								{element.content}
+							</Col>
+						))}
+					</Row>
+				)
+			}
+
+			// Tells the form which section the user clicked or tabbed into (formContext.onSectionFocus).
+			// Focus counts only when it moves from another element, not when the window regains it.
+			const onSectionFocus = cdcNotSupported
+				? undefined
+				: () => formContext?.onSectionFocus?.(section.id)
+
+			return (
+				<div
+					key={section.id}
+					className="mb-4 rounded-xl border border-olake-border-secondary bg-olake-surface-subtle p-5"
+					onClickCapture={onSectionFocus}
+					onFocusCapture={e => {
+						if (e.relatedTarget) onSectionFocus?.()
+					}}
+				>
+					<p className="mb-4 text-sm font-medium text-olake-text">
+						{section.title}
+					</p>
+					{content}
+				</div>
+			)
+		})
+	}
+
+	if (sections) {
+		return <fieldset id={idSchema.$id}>{renderSections(sections)}</fieldset>
 	}
 
 	return (

@@ -1,5 +1,5 @@
 import { lazy } from "react"
-import { RouteObject } from "react-router-dom"
+import { RouteObject } from "react-router"
 
 const lazyComponents = {
 	Tables: lazy(() => import("./features/tables/pages/Tables")),

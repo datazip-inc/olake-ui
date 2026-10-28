@@ -1,5 +1,5 @@
 import { Suspense, useEffect } from "react"
-import { RouterProvider } from "react-router-dom"
+import { RouterProvider } from "react-router/dom"
 
 import { useAuthStore } from "@/core/auth/stores/authStore"
 import { AuthLoadingScreen } from "@/modules/ingestion/common/components/LoadingStates"
@@ -21,7 +21,10 @@ function App() {
 	return (
 		<AppProvider>
 			<Suspense fallback={<AuthLoadingScreen />}>
-				<RouterProvider router={router} />
+				<RouterProvider
+					router={router}
+					useTransitions={false}
+				/>
 			</Suspense>
 		</AppProvider>
 	)
