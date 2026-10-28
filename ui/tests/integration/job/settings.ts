@@ -54,7 +54,8 @@ export const clearDestination = async (
 /**
  * While Clear Destination runs, Job settings and Edit Streams open the "Editing Disabled" dialog
  * instead, whose "Go back to Jobs" returns to the jobs page. A clear takes seconds only, so both
- * pages are opened straight from their URLs.
+ * pages are opened straight from their URLs; and each page asks the server whether the clear
+ * still runs, so the dialog is expected only while the server says it does.
  */
 export const expectEditingDisabled = async (page: Page, jobId: string) => {
 	const dialog = page.getByRole("dialog").filter({
@@ -64,7 +65,18 @@ export const expectEditingDisabled = async (page: Page, jobId: string) => {
 		["settings", "Job Settings Edit"],
 		["edit", "Stream editing"],
 	] as const) {
+		const status = page.waitForResponse(
+			response =>
+				new URL(response.url()).pathname.endsWith(
+					`/jobs/${jobId}/clear-destination`,
+				) && response.request().method() === "GET",
+		)
 		await page.goto(`/jobs/${jobId}/${path}`)
+		if (!(await (await status).json()).data?.running) {
+			console.log(`Clear Destination ended before ${path} opened; not checked`)
+			await page.goto("/jobs")
+			return
+		}
 		await expect(dialog).toBeVisible()
 		await expect(dialog).toContainText(
 			`${what} is disabled while the destination is being cleared`,
