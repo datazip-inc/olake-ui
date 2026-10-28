@@ -2,7 +2,7 @@
 //
 // A reference is a whole JSON string value of the form ${<provider>:<path>[#<key>]}, for example
 // "${aws-sm:olake/prod/pg#password}". The value is fetched from the provider and, when #<key> is
-// given, read from that key of a JSON-object secret.
+// given, read from that key of a JSON-object secret, keeping that key's JSON type.
 //
 // Providers are created on first use, so a cloud SDK client is only built when a config
 // references that provider.
@@ -102,7 +102,7 @@ func (r *Resolver) resolveFields(ctx context.Context, fields map[string]any, fou
 				return err
 			}
 		case string:
-			resolved, err := r.resolveString(ctx, value, found)
+			resolved, err := r.resolveValue(ctx, value, found)
 			if err != nil {
 				return err
 			}
@@ -112,7 +112,8 @@ func (r *Resolver) resolveFields(ctx context.Context, fields map[string]any, fou
 	return nil
 }
 
-func (r *Resolver) resolveString(ctx context.Context, ref string, found *bool) (string, error) {
+// A #key value keeps its JSON type from the secret, so {"port":5432} gives the number 5432.
+func (r *Resolver) resolveValue(ctx context.Context, ref string, found *bool) (any, error) {
 	match := refPattern.FindStringSubmatch(ref)
 	if match == nil {
 		return ref, nil
@@ -120,19 +121,21 @@ func (r *Resolver) resolveString(ctx context.Context, ref string, found *bool) (
 	providerName, path, key := match[1], match[2], match[3]
 	provider, err := r.loadProvider(ctx, providerName)
 	if err != nil {
-		return "", fmt.Errorf("resolve %s: %w", ref, err)
+		return nil, fmt.Errorf("resolve %s: %w", ref, err)
 	}
 	secret, err := provider.Fetch(ctx, path)
 	if err != nil {
-		return "", fmt.Errorf("resolve %s: %w", ref, err)
-	}
-	if strings.Contains(ref, "#") {
-		if secret, err = readKey(secret, key); err != nil {
-			return "", fmt.Errorf("resolve %s: %w", ref, err)
-		}
+		return nil, fmt.Errorf("resolve %s: %w", ref, err)
 	}
 	*found = true
-	return secret, nil
+	if !strings.Contains(ref, "#") {
+		return secret, nil
+	}
+	value, err := readKey(secret, key)
+	if err != nil {
+		return nil, fmt.Errorf("resolve %s: %w", ref, err)
+	}
+	return value, nil
 }
 
 // decodeObject decodes a JSON object, keeping numbers exactly as written.
@@ -145,20 +148,16 @@ func decodeObject(data string) (map[string]any, error) {
 }
 
 // readKey reads key from a JSON-object secret. Errors never quote the secret.
-func readKey(secret, key string) (string, error) {
+func readKey(secret, key string) (any, error) {
 	fields, err := decodeObject(secret)
 	if err != nil {
-		return "", unresolvable("secret is not a JSON object, so #%s cannot be read", key)
+		return nil, unresolvable("secret is not a JSON object, so #%s cannot be read", key)
 	}
 	value, ok := fields[key]
 	if !ok {
-		return "", unresolvable("key %q not found in secret", key)
+		return nil, unresolvable("key %q not found in secret", key)
 	}
-	if s, ok := value.(string); ok {
-		return s, nil
-	}
-	encoded, _ := json.Marshal(value) // cannot fail: value came from json decoding
-	return string(encoded), nil
+	return value, nil
 }
 
 // loadProvider creates the provider on first use. A failed creation is not kept, so the next

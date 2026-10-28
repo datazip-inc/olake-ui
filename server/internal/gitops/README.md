@@ -227,7 +227,7 @@ Keep credentials out of git: set a string field in a source or destination `conf
 Format: `${<provider>:<path>[#<key>]}`
 
 - The reference must be the whole value. `"x${...}"` is a plain string.
-- `#key` reads one key of a secret that holds a JSON object, such as `{"username":"...","password":"..."}`. Without `#key`, the whole secret value is used.
+- `#key` reads one key of a secret that holds a JSON object, such as `{"username":"...","password":"..."}`. The value keeps its JSON type: with `{"port":5432}`, `"port": "${...#port}"` becomes the number `5432`, while `{"port":"5432"}` gives the string `"5432"`. Without `#key`, the whole secret value is used as a string.
 - References work in nested objects too, such as `ssh_config.password` or `writer.aws_secret_key`.
 
 | Provider | Reference | Works in |

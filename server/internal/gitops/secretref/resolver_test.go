@@ -24,7 +24,7 @@ func (f *fakeProvider) Fetch(_ context.Context, path string) (string, error) {
 }
 
 var testSecrets = map[string]string{
-	"olake/pg":  `{"password":"P&ss<word>!123","port":5432}`,
+	"olake/pg":  `{"password":"P&ss<word>!123","port":5432,"ssl":true,"db_port":"5433"}`,
 	"olake/raw": "Sup3rSecret",
 }
 
@@ -56,9 +56,9 @@ func TestResolve(t *testing.T) {
 			wantFound: true,
 		},
 		{
-			name:      "non-string key value is encoded as JSON",
-			config:    `{"port":"${aws-sm:olake/pg#port}"}`,
-			want:      `{"port":"5432"}`,
+			name:      "key value keeps its JSON type",
+			config:    `{"port":"${aws-sm:olake/pg#port}","ssl":"${aws-sm:olake/pg#ssl}","db_port":"${aws-sm:olake/pg#db_port}"}`,
+			want:      `{"db_port":"5433","port":5432,"ssl":true}`,
 			wantFound: true,
 		},
 		{
