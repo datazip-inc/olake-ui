@@ -1,7 +1,7 @@
 import { GitCommitIcon, PlusIcon } from "@phosphor-icons/react"
 import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router"
 
 import { CommunityHelpBanner } from "@/common/components"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
@@ -177,9 +177,10 @@ const Jobs: React.FC = () => {
 				A list of all your jobs stacked at one place for you to see
 			</p>
 
-			{jobs.some(job => job?.activate === true) && (
-				<CommunityHelpBanner source="jobs" />
-			)}
+			<CommunityHelpBanner
+				source="jobs"
+				variant="help"
+			/>
 
 			{showEmpty ? (
 				<JobEmptyState />

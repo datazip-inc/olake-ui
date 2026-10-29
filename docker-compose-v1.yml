@@ -19,18 +19,26 @@ x-encryption:
   key: &encryptionKey ""
 
 x-images:
-  curl: &curlImage ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/curlimages/curl:8.21.0
+  curl: &curlImage ${CONTAINER_REGISTRY_BASE:-docker.io}/curlimages/curl:8.21.0
 
 x-envs:
   shared: &sharedEnvs
-    CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
+    CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-docker.io}
     OLAKE_SECRET_KEY: *encryptionKey
     PERSISTENT_DIR: *hostPersistencePath
     ENABLE_OPTIMIZATION: ${ENABLE_OPTIMIZATION:-false}
+    # S3 log file storage — uncomment and fill values below to enable
+    # OLAKE_STORAGE_MODE: s3
+    # OLAKE_S3_BUCKET: ""
+    # OLAKE_S3_REGION: ""
+    # OLAKE_S3_PREFIX: ""          # optional key prefix
+    # OLAKE_S3_ENDPOINT: ""        # required for non-AWS S3 (MinIO, GCS S3 API, etc.)
+    # OLAKE_S3_ACCESS_KEY_ID: ""
+    # OLAKE_S3_SECRET_ACCESS_KEY: ""
 
 services:
   olake-ui:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/olakego/ui:latest
     pull_policy: always
     container_name: olake-ui
     environment:
@@ -115,7 +123,7 @@ services:
     restart: "no"
 
   temporal-worker:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui-worker:latest
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/olakego/ui-worker:latest
     pull_policy: always
     container_name: olake-temporal-worker
     networks:
@@ -141,7 +149,7 @@ services:
 
   postgresql:
     container_name: temporal-postgresql
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/postgres:13
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/library/postgres:13
     environment:
       POSTGRES_USER: temporal
       POSTGRES_PASSWORD: temporal
@@ -158,7 +166,7 @@ services:
 
   temporal:
     container_name: temporal
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/server:1.32.0
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/temporalio/server:1.32.0
     depends_on:
       temporal-schema-migrate:
         condition: service_completed_successfully
@@ -185,7 +193,7 @@ services:
 
   temporal-schema-migrate:
     container_name: temporal-schema-migrate
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/admin-tools:1.32.0
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/temporalio/admin-tools:1.32.0
     depends_on:
       postgresql:
         condition: service_healthy
@@ -208,7 +216,7 @@ services:
 
   temporal-create-namespace:
     container_name: temporal-create-namespace
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/admin-tools:1.32.0
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/temporalio/admin-tools:1.32.0
     depends_on:
       temporal:
         condition: service_healthy
@@ -224,7 +232,7 @@ services:
 
   temporal-ui:
     container_name: temporal-ui
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/ui:2.54.1
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/temporalio/ui:2.54.1
     profiles:
       - debug
     depends_on:
@@ -239,7 +247,7 @@ services:
     restart: unless-stopped
 
   fusion-db-init:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/postgres:13
+    image: ${CONTAINER_REGISTRY_BASE:-docker.io}/library/postgres:13
     container_name: fusion-db-init
     profiles:
       - fusion
@@ -274,11 +282,14 @@ services:
               for (k in ENVIRON) {
                 v = ENVIRON[k]
                 gsub(/"/, "\\\"", v)
-                env_lines = env_lines sprintf("      spark-conf.spark.kubernetes.driverEnv.%s: \"%s\"\n", k, v)
-                env_lines = env_lines sprintf("      spark-conf.spark.executorEnv.%s: \"%s\"\n", k, v)
+                # Driver: the optimizer pod is the driver, so these are plain pod env entries.
+                driver_lines = driver_lines sprintf("            - name: %s\n              value: \"%s\"\n", k, v)
+                # Executors: created by the driver, so these are spark-submit arguments.
+                executor_lines = executor_lines sprintf("            - --conf\n            - spark.executorEnv.%s=%s\n", k, v)
               }
             }
-            /SPARK_POD_ENVS_PLACEHOLDER/ { printf "%s", env_lines; next }
+            /OPTIMIZER_POD_ENVS_PLACEHOLDER/ { printf "%s", driver_lines; next }
+            /SPARK_EXECUTOR_ENVS_PLACEHOLDER/ { printf "%s", executor_lines; next }
             { print }
           ' "$$src" > "$$dst"
         }
@@ -288,16 +299,18 @@ services:
 
         echo "==> Fetching Fusion config files from GitHub..."
         BASE="https://raw.githubusercontent.com/datazip-inc/olake-ui/master/optimization"
-        curl -fsSL "$${BASE}/config.yaml"      -o /tmp/config.yaml
-        curl -fsSL "$${BASE}/kind-config.yaml" -o /fusion-config/kind-config.yaml
-        curl -fsSL "$${BASE}/spark-rbac.yaml"  -o /fusion-config/spark-rbac.yaml
-        inject_pod_envs /tmp/config.yaml /fusion-config/config.yaml
+        curl -fsSL "$${BASE}/config.yaml"           -o /fusion-config/config.yaml
+        curl -fsSL "$${BASE}/kind-config.yaml"      -o /fusion-config/kind-config.yaml
+        curl -fsSL "$${BASE}/spark-rbac.yaml"       -o /fusion-config/spark-rbac.yaml
+        curl -fsSL "$${BASE}/spark-optimizer.yaml"  -o /tmp/spark-optimizer.yaml
+        inject_pod_envs /tmp/spark-optimizer.yaml /fusion-config/spark-optimizer.yaml
 
         echo "==> fusion-db-init complete."
     restart: "no"
 
   fusion:
     image: olakego/fusion:latest
+    pull_policy: always
     container_name: olake-fusion
     profiles:
       - fusion
@@ -365,43 +378,6 @@ services:
           -d '{"user":"admin","password":"password"}'
         echo ""
 
-        # ---- Optimizer Group (Spark on Kubernetes) ----
-        echo "Checking optimizer group..."
-        GROUPS=$$(curl -s -b /tmp/cookies.txt \
-          -H "X-Request-Source: Web" \
-          http://fusion:1630/api/ams/v1/optimize/resourceGroups)
-
-        if echo "$$GROUPS" | grep -q '"name":"spark-container"'; then
-          echo "  Optimizer group 'spark-container' already exists — skipping."
-        else
-          echo "  Creating optimizer group 'spark-container' (Spark on K8s)..."
-          curl -s -b /tmp/cookies.txt \
-            -X POST http://fusion:1630/api/ams/v1/optimize/resourceGroups \
-            -H "Content-Type: application/json" \
-            -H "X-Request-Source: Web" \
-            -d '{"name":"spark-container","container":"sparkContainer","properties":{}}'
-          echo ""
-          sleep 5
-        fi
-
-        # ---- Optimizer (always ensure at least 1 is running) ----
-        echo "Checking optimizers..."
-        OPTIMIZERS=$$(curl -s -b /tmp/cookies.txt \
-          -H "X-Request-Source: Web" \
-          "http://fusion:1630/api/ams/v1/optimize/optimizerGroups/spark-container/optimizers?page=1&pageSize=10")
-
-        if echo "$$OPTIMIZERS" | grep -q '"jobStatus":"RUNNING"'; then
-          echo "  Spark optimizer already running — skipping."
-        else
-          echo "  Scaling out Spark optimizer (parallelism=1)..."
-          curl -s -b /tmp/cookies.txt \
-            -X POST http://fusion:1630/api/ams/v1/optimize/optimizerGroups/spark-container/optimizers \
-            -H "Content-Type: application/json" \
-            -H "X-Request-Source: Web" \
-            -d '{"parallelism":1}'
-          echo ""
-          sleep 5
-        fi
 
         echo ""
         echo "============================================"
@@ -458,6 +434,10 @@ services:
 
         echo "==> Applying Spark RBAC (namespace + service account)..."
         cat /fusion-config/spark-rbac.yaml | docker exec -i fusion-cluster-control-plane \
+          kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
+
+        echo "==> Deploying the Spark optimizer..."
+        cat /fusion-config/spark-optimizer.yaml | docker exec -i fusion-cluster-control-plane \
           kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
 
         echo "==> Generating kubeconfig for Fusion..."
@@ -533,6 +513,7 @@ services:
 
   spark-copy:
     image: olakego/fusion-spark:latest
+    pull_policy: always
     container_name: fusion-spark-copy
     profiles:
       - fusion

@@ -5,17 +5,20 @@ import {
 	NotebookIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
-import validator from "@rjsf/validator-ajv8"
 import { useQueryClient } from "@tanstack/react-query"
 import { Input, Button, Select, Switch, Spin, Table, Tooltip } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { formatDistanceToNow } from "date-fns"
 import React, { useState, useEffect, useRef } from "react"
-import { useParams, Link, useNavigate } from "react-router-dom"
+import { useParams, Link, useNavigate } from "react-router"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import {
+	formValidator,
+	notifyFirstFormError,
+} from "@/common/components/form/validation"
 import { widgets } from "@/common/components/form/widgets"
 import {
 	ErrorLogsModal,
@@ -38,6 +41,7 @@ import { trimFormDataStrings } from "@/common/utils"
 import {
 	DeleteModal,
 	EntityEditModal,
+	OpenDocsButton,
 } from "@/modules/ingestion/common/components"
 import { destinationConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
@@ -521,9 +525,10 @@ const DestinationEdit: React.FC = () => {
 							setAuthType(trimmedData?.writer?.rest_auth_type ?? null)
 						}}
 						transformErrors={transformErrors}
+						onError={notifyFirstFormError}
 						onSubmit={handleSaveChanges}
 						uiSchema={uiSchema}
-						validator={validator}
+						validator={formValidator}
 						showErrorList={false}
 						omitExtraData
 						liveOmit
@@ -576,6 +581,8 @@ const DestinationEdit: React.FC = () => {
 		)
 	}
 
+	const docUrl = `https://olake.io/docs/writers/${getConnectorDocumentationPath(connector || "", catalog ? catalog : "glue", authType)}`
+
 	return (
 		<div className="flex h-full">
 			<div className="flex flex-1 flex-col">
@@ -587,6 +594,13 @@ const DestinationEdit: React.FC = () => {
 						<ArrowLeftIcon className="size-5" />
 					</Link>
 					<div className="text-lg font-bold">{destinationName}</div>
+					{/* the collapsed docs panel shows its own open-in-new-tab icon */}
+					{!docsMinimized && (
+						<OpenDocsButton
+							docUrl={docUrl}
+							className="ml-auto"
+						/>
+					)}
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
@@ -649,7 +663,7 @@ const DestinationEdit: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector || "", catalog ? catalog : "glue", authType)}`}
+						docUrl={docUrl}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}

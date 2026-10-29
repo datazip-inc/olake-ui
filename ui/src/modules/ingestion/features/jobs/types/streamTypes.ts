@@ -39,6 +39,7 @@ export interface SchemaConfigurationProps {
 export interface GroupedStreamsCollapsibleListProps {
 	groupedStreams: { [namespace: string]: StreamData[] }
 	sourceType?: string
+	sourceVersion?: string
 	destinationType?: string
 }
 

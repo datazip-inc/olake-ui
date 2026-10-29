@@ -2,14 +2,17 @@ package etl
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
+	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 )
@@ -154,6 +157,7 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 		return fmt.Errorf("failed to get source: %s", err)
 	}
 
+	prevVersion := existing.Version
 	existing.Name = req.Name
 	existing.Config = req.Config
 	existing.Type = req.Type
@@ -168,15 +172,47 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 		return fmt.Errorf("failed to fetch jobs for source update: %s", err)
 	}
 
+	if err := validateSourceDowngrade(existing.Version, jobs); err != nil {
+		return err
+	}
+
+	// A version upgrade migrates the source's legacy jobs: if any job fails to migrate, nothing is
+	// migrated and the source is not updated.
+	var catalogs []database.ConvertedCatalog
+	if utils.SupportsStreamsV2(existing.Version) && existing.Version != prevVersion {
+		catalogs, err = s.migrateForSourceUpgrade(ctx, existing, jobs)
+		if err != nil {
+			return err
+		}
+	}
+
 	if err := cancelAllJobWorkflows(ctx, s.temporal, jobs, projectID); err != nil {
 		return fmt.Errorf("failed to cancel workflows for source update: %s", err)
 	}
 
-	if err := s.db.UpdateSource(existing); err != nil {
+	if err := s.db.UpdateSource(existing, catalogs); err != nil {
+		if len(catalogs) > 0 {
+			telemetry.TrackStreamsMigrationFailure(ctx, telemetry.MigrationTriggerSourceUpgrade, existing, len(catalogs), err)
+		}
 		return fmt.Errorf("failed to update source: %s", err)
 	}
 
 	telemetry.TrackSourcesStatus(ctx)
+	return nil
+}
+
+// validateSourceDowngrade rejects a source version that cannot run the source's split-format jobs:
+// such a job stores only the split catalog, which drivers below MinStreamsV2Version cannot read.
+func validateSourceDowngrade(version string, jobs []*models.Job) error {
+	if utils.SupportsStreamsV2(version) {
+		return nil
+	}
+	for _, job := range jobs {
+		if job.StreamsCatalog().IsSplit() {
+			return fmt.Errorf("%w: source version %s is below %s and job_id[%d] uses the split format",
+				constants.ErrStreamsFormat, version, constants.MinStreamsV2Version, job.ID)
+		}
+	}
 	return nil
 }
 
@@ -208,70 +244,54 @@ func (s Service) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceRes
 	return &dto.DeleteSourceResponse{Name: src.Name}, nil
 }
 
-func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s Service) TestSourceConnection(ctx context.Context, projectID string, req *dto.SourceTestConnectionRequest) (string, error) {
 	if s.temporal == nil {
-		return nil, nil, fmt.Errorf("temporal client not available")
+		return "", fmt.Errorf("temporal client not available")
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
-	}
-	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
-	result, err := s.temporal.VerifyDriverCredentials(ctx, workflowID, "config", req.Type, req.Version, encryptedConfig)
-	// TODO: handle from frontend
-	if result == nil {
-		result = map[string]interface{}{
-			"message": err.Error(),
-			"status":  "failed",
-		}
+		return "", fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}
 
-	if err != nil {
-		return result, nil, fmt.Errorf("connection test failed: %s", err)
-	}
-	homeDir := constants.DefaultConfigDir
-	mainLogDir := filepath.Join(homeDir, workflowID)
-	// Fetch the latest batch of logs by tailing from the end with default limit in the "older" direction.
-	logs, err := utils.ReadLogs(mainLogDir, -1, -1, "older")
-	if err != nil {
-		return result, nil, fmt.Errorf("failed to read logs source_type[%s] source_version[%s]: %s",
-			req.Type, req.Version, err)
-	}
-
-	return result, logs.Logs, nil
+	return s.temporal.StartVerifyDriverCredentials(ctx, projectID, "config", req.Type, req.Version, encryptedConfig)
 }
 
-func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) (map[string]interface{}, error) {
-	oldStreams := ""
+// DiscoverCatalog starts discover and returns the operation ID. An existing job discovers from its
+// stored catalog. The result is read with discoverCatalogResult once the operation has succeeded.
+func (s Service) DiscoverCatalog(ctx context.Context, projectID string, req *dto.StreamsRequest) (string, error) {
+	var stored types.StreamsCatalog
 	if req.JobID >= 0 {
 		job, err := s.db.GetJobByID(req.JobID, true)
 		if err != nil {
-			return nil, fmt.Errorf("failed to find job for catalog: %s", err)
+			return "", fmt.Errorf("failed to find job for catalog: %s", err)
 		}
-		oldStreams = job.StreamsConfig
+		stored = job.StreamsCatalog()
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt config for catalog: %s", err)
+		return "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 
-	newStreams, err := s.temporal.DiscoverStreams(
-		ctx,
-		req.Type,
-		req.Version,
-		encryptedConfig,
-		oldStreams,
-		req.JobName,
-		req.MaxDiscoverThreads,
-		req.TargetQueryEngines,
-	)
+	return s.temporal.StartDiscoverStreams(ctx, projectID, req.Type, req.Version, encryptedConfig, stored,
+		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines)
+}
+
+// discoverCatalogResult returns a succeeded discover operation's catalog in one format:
+// available_streams + selected_streams when the driver wrote the split catalog, otherwise
+// streams_config. A legacy job gets streams_config even from a driver that also wrote the split
+// files, because it keeps its format until it is converted.
+func discoverCatalogResult(ctx context.Context, operationID string) (*dto.DiscoverCatalogResponse, error) {
+	catalog, legacyJob, err := temporal.ReadDiscoverOutput(ctx, operationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get catalog: %s", err)
 	}
 
-	return newStreams, nil
+	if catalog.IsSplit() && !legacyJob {
+		return &dto.DiscoverCatalogResponse{AvailableStreams: json.RawMessage(catalog.Available), SelectedStreams: json.RawMessage(catalog.Selected)}, nil
+	}
+	return &dto.DiscoverCatalogResponse{StreamsConfig: json.RawMessage(catalog.Streams)}, nil
 }
 
 func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {
@@ -285,15 +305,6 @@ func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.
 }
 
 // TODO: cache spec in db for each version
-func (s Service) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
-	specOut, err := s.temporal.GetDriverSpecs(ctx, "", req.Type, req.Version, req.AvailableQueryEngines)
-	if err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)
-	}
-
-	return dto.SpecResponse{
-		Version: req.Version,
-		Type:    req.Type,
-		Spec:    specOut.Spec,
-	}, nil
+func (s Service) GetSourceSpec(ctx context.Context, projectID string, req *dto.SpecRequest) (string, error) {
+	return s.temporal.StartDriverSpecs(ctx, projectID, "", req.Type, req.Version, req.AvailableQueryEngines)
 }

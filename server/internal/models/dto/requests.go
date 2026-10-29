@@ -105,28 +105,36 @@ type AdvancedSettings struct {
 }
 
 type CreateJobRequest struct {
-	Name             string            `json:"name" binding:"required" example:"my-sync-job"`
-	Source           *DriverConfig     `json:"source" binding:"required"`
-	Destination      *DriverConfig     `json:"destination" binding:"required"`
-	Frequency        string            `json:"frequency" binding:"required" example:"0 */6 * * *"`
-	StreamsConfig    string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
-	Activate         bool              `json:"activate,omitempty" example:"true"`
-	AdvancedSettings *AdvancedSettings `json:"advanced_settings,omitempty"`
+	Name                   string            `json:"name" binding:"required" example:"my-sync-job"`
+	Source                 *DriverConfig     `json:"source" binding:"required"`
+	Destination            *DriverConfig     `json:"destination" binding:"required"`
+	Frequency              string            `json:"frequency" binding:"required" example:"0 */6 * * *"`
+	StreamsConfig          string            `json:"streams_config,omitempty" orm:"type(jsonb)"`
+	AvailableStreamsConfig string            `json:"available_streams_config,omitempty" orm:"type(jsonb)"`
+	SelectedStreamsConfig  string            `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
+	Activate               bool              `json:"activate,omitempty" example:"true"`
+	AdvancedSettings       *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
 type UpdateJobRequest struct {
-	Name              string            `json:"name" binding:"required" example:"my-sync-job-updated"`
-	Source            *DriverConfig     `json:"source" binding:"required"`
-	Destination       *DriverConfig     `json:"destination" binding:"required"`
-	Frequency         string            `json:"frequency" binding:"required" example:"0 */12 * * *"`
-	StreamsConfig     string            `json:"streams_config" orm:"type(jsonb)" binding:"required"`
-	DifferenceStreams string            `json:"difference_streams,omitempty" example:"[]"`
-	Activate          bool              `json:"activate,omitempty" example:"true"`
-	AdvancedSettings  *AdvancedSettings `json:"advanced_settings,omitempty"`
+	Name                   string            `json:"name" binding:"required" example:"my-sync-job-updated"`
+	Source                 *DriverConfig     `json:"source" binding:"required"`
+	Destination            *DriverConfig     `json:"destination" binding:"required"`
+	Frequency              string            `json:"frequency" binding:"required" example:"0 */12 * * *"`
+	StreamsConfig          string            `json:"streams_config,omitempty" orm:"type(jsonb)"`
+	AvailableStreamsConfig string            `json:"available_streams_config,omitempty" orm:"type(jsonb)"`
+	SelectedStreamsConfig  string            `json:"selected_streams_config,omitempty" orm:"type(jsonb)"`
+	DifferenceStreams      string            `json:"difference_streams,omitempty" example:"[]"`
+	Activate               bool              `json:"activate,omitempty" example:"true"`
+	AdvancedSettings       *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
+// StreamDifferenceRequest carries the edited catalog in one format: updated_streams_config, or
+// updated_available_streams_config + updated_selected_streams_config.
 type StreamDifferenceRequest struct {
-	UpdatedStreamsConfig string `json:"updated_streams_config" binding:"required"`
+	UpdatedStreamsConfig          string `json:"updated_streams_config,omitempty"`
+	UpdatedAvailableStreamsConfig string `json:"updated_available_streams_config,omitempty"`
+	UpdatedSelectedStreamsConfig  string `json:"updated_selected_streams_config,omitempty"`
 }
 
 type JobTaskRequest struct {

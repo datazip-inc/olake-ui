@@ -1,5 +1,5 @@
 # Stage 1: Go Builder (Backend)
-FROM golang:1.26.8-alpine AS go-builder
+FROM --platform=$BUILDPLATFORM golang:1.26.10-alpine AS go-builder
 
 
 # Install git, as it might be needed by go mod download or go build
@@ -14,12 +14,13 @@ RUN go mod download
 # Copy the entire server source code
 COPY server/ ./server/
 
+ARG TARGETARCH
 # Build backend (assuming main package is at the root of 'server/' content)
 # Using -ldflags to create smaller binaries
-RUN cd server && go build -ldflags="-w -s" -o /app/olake-server .
+RUN cd server && CGO_ENABLED=0 GOARCH=${TARGETARCH} go build -ldflags="-w -s" -o /app/olake-server .
 
 # Stage 2: Frontend Builder
-FROM node:22-alpine AS node-builder
+FROM --platform=$BUILDPLATFORM node:22-alpine AS node-builder
 
 # Reuse build-time arguments during UI build if needed
 WORKDIR /app/ui

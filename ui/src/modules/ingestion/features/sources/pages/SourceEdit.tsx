@@ -6,29 +6,30 @@ import {
 	ArrowSquareOutIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
-import validator from "@rjsf/validator-ajv8"
 import { useQueryClient } from "@tanstack/react-query"
 import { Input, Button, Select, Switch, Table, Spin, Tooltip } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { formatDistanceToNow } from "date-fns"
-import { useState, useEffect, useRef } from "react"
-import { useParams, useNavigate, Link } from "react-router-dom"
+import { useState, useEffect, useRef, useMemo } from "react"
+import { useParams, useNavigate, Link } from "react-router"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
+import { withCdcToggle } from "@/common/components/form/cdc"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
-import { widgets } from "@/common/components/form/widgets"
+import {
+	formValidator,
+	notifyFirstFormError,
+} from "@/common/components/form/validation"
+import { sourceFields, widgets } from "@/common/components/form/widgets"
 import {
 	ErrorLogsModal,
+	SourceTestConnectionModal,
 	TestConnectionFailureModal,
 	TestConnectionModal,
 	TestConnectionSuccessModal,
 } from "@/common/components/modals"
-import {
-	transformErrors,
-	TEST_CONNECTION_STATUS,
-	OLAKE_LATEST_VERSION_URL,
-} from "@/common/constants"
+import { transformErrors, OLAKE_LATEST_VERSION_URL } from "@/common/constants"
 import type { TestConnectionError } from "@/common/types"
 import {
 	getStatusClass,
@@ -39,14 +40,19 @@ import {
 import {
 	DeleteModal,
 	EntityEditModal,
+	OpenDocsButton,
 } from "@/modules/ingestion/common/components"
 import { sourceConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
 import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
-import { DISPLAYED_JOBS_COUNT } from "@/modules/ingestion/common/constants"
+import {
+	DISPLAYED_JOBS_COUNT,
+	SOURCE_SECTION_DOC_ANCHORS,
+} from "@/modules/ingestion/common/constants"
 import {
 	getConnectorImage,
 	getConnectorInLowerCase,
+	getSourceDocUrl,
 } from "@/modules/ingestion/common/utils"
 import { useActivateJob } from "@/modules/ingestion/features/jobs/hooks"
 
@@ -57,7 +63,7 @@ import {
 	useSourceSpec,
 	useUpdateSource,
 	useDeleteSource,
-	useTestSourceConnection,
+	useSourceConnectionTest,
 } from "../hooks"
 import { useSourceStore } from "../stores"
 import { SourceJob } from "../types"
@@ -79,12 +85,11 @@ const SourceEdit: React.FC = () => {
 	const [showEditModal, setShowEditModal] = useState(false)
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
+	const uiSchemaWithCdc = useMemo(() => withCdcToggle(uiSchema), [uiSchema])
 	const [specError, setSpecError] = useState<string | null>(null)
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
-	const [showTestingModal, setShowTestingModal] = useState(false)
-	const [showSuccessModal, setShowSuccessModal] = useState(false)
 	const [showFailureModal, setShowFailureModal] = useState(false)
 	const [showSpecFailedModal, setShowSpecFailedModal] = useState(false)
 
@@ -106,7 +111,8 @@ const SourceEdit: React.FC = () => {
 
 	const updateSourceMutation = useUpdateSource(sourceId ?? "")
 	const deleteSourceMutation = useDeleteSource()
-	const testSourceMutation = useTestSourceConnection()
+	const sourceConnectionTest = useSourceConnectionTest()
+	const [docAnchor, setDocAnchor] = useState<string>()
 	const { mutate: activateJob } = useActivateJob()
 
 	useEffect(() => {
@@ -193,34 +199,19 @@ const SourceEdit: React.FC = () => {
 		return sourceData
 	}
 
-	const handleConfirmEdit = async () => {
-		setShowEditModal(false)
-		setShowTestingModal(true)
-		const testResult = await testSourceMutation.mutateAsync({
-			source: getSourceData(),
-		})
-		if (
-			testResult.data?.connection_result.status ===
-			TEST_CONNECTION_STATUS.SUCCEEDED
-		) {
-			setTimeout(() => {
-				setShowTestingModal(false)
-			}, 1000)
-			setTimeout(() => {
-				setShowSuccessModal(true)
-			}, 1200)
-			setTimeout(() => {
-				setShowSuccessModal(false)
-				saveSource()
-			}, 2200)
-		} else {
-			setShowTestingModal(false)
-			setTestConnectionError({
-				message: testResult.data?.connection_result.message || "",
-				logs: testResult.data?.logs || [],
-			})
+	const testAndSave = async () => {
+		const result = await sourceConnectionTest.run(getSourceData())
+		if (result.outcome === "passed") {
+			saveSource()
+		} else if (result.outcome === "connection_failed") {
+			setTestConnectionError(result.error)
 			setShowFailureModal(true)
 		}
+	}
+
+	const handleConfirmEdit = async () => {
+		setShowEditModal(false)
+		await testAndSave()
 	}
 
 	const handleSave = async () => {
@@ -231,34 +222,7 @@ const SourceEdit: React.FC = () => {
 			return
 		}
 
-		setShowTestingModal(true)
-		const testResult = await testSourceMutation.mutateAsync({
-			source: getSourceData(),
-		})
-		if (
-			testResult.data?.connection_result.status ===
-			TEST_CONNECTION_STATUS.SUCCEEDED
-		) {
-			setTimeout(() => {
-				setShowTestingModal(false)
-			}, 1000)
-
-			setTimeout(() => {
-				setShowSuccessModal(true)
-			}, 1200)
-
-			setTimeout(() => {
-				setShowSuccessModal(false)
-				saveSource()
-			}, 2200)
-		} else {
-			setShowTestingModal(false)
-			setTestConnectionError({
-				message: testResult.data?.connection_result.message || "",
-				logs: testResult.data?.logs || [],
-			})
-			setShowFailureModal(true)
-		}
+		await testAndSave()
 	}
 
 	const saveSource = () => {
@@ -389,6 +353,8 @@ const SourceEdit: React.FC = () => {
 		)
 	}
 
+	const docUrl = getSourceDocUrl(connector || source?.type)
+
 	return (
 		<div className="flex h-full">
 			<div className="flex flex-1 flex-col">
@@ -400,6 +366,13 @@ const SourceEdit: React.FC = () => {
 						<ArrowLeftIcon className="size-5" />
 					</Link>
 					<div className="text-lg font-bold">{sourceName}</div>
+					{/* the collapsed docs panel shows its own open-in-new-tab icon */}
+					{!docsMinimized && (
+						<OpenDocsButton
+							docUrl={docUrl}
+							className="ml-auto"
+						/>
+					)}
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
@@ -542,15 +515,23 @@ const SourceEdit: React.FC = () => {
 														},
 													}}
 													widgets={widgets}
+													fields={sourceFields}
 													formData={formData}
 													onChange={e => {
 														const trimmedData = trimFormDataStrings(e.formData)
 														setFormData(trimmedData)
 													}}
 													transformErrors={transformErrors}
+													onError={notifyFirstFormError}
+													formContext={{
+														onSectionFocus: (sectionId: string) =>
+															setDocAnchor(
+																SOURCE_SECTION_DOC_ANCHORS[sectionId],
+															),
+													}}
 													onSubmit={() => handleSave()}
-													uiSchema={uiSchema}
-													validator={validator}
+													uiSchema={uiSchemaWithCdc}
+													validator={formValidator}
 													showErrorList={false}
 													omitExtraData
 													liveOmit
@@ -615,7 +596,8 @@ const SourceEdit: React.FC = () => {
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${getConnectorInLowerCase(connector)}`}
+						docUrl={docUrl}
+						anchor={docAnchor}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}
@@ -624,11 +606,12 @@ const SourceEdit: React.FC = () => {
 			</div>
 
 			<TestConnectionModal
-				open={showTestingModal}
+				open={sourceConnectionTest.testing}
 				connectionType="source"
 			/>
+			<SourceTestConnectionModal {...sourceConnectionTest.modalProps} />
 			<TestConnectionSuccessModal
-				open={showSuccessModal}
+				open={sourceConnectionTest.showSuccess}
 				connectionType="source"
 			/>
 			<TestConnectionFailureModal

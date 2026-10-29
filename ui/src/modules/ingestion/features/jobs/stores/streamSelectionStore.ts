@@ -1,6 +1,7 @@
 import { create } from "zustand"
 
 import {
+	CatalogFormat,
 	StreamsDataStructure,
 	StreamData,
 	SelectedStream,
@@ -11,9 +12,7 @@ import {
 	FilterConfig,
 	UpsertType,
 } from "@/modules/ingestion/common/types"
-import { IngestionMode } from "@/modules/ingestion/features/jobs/enums"
 
-import { STREAM_DEFAULTS } from "../constants"
 import { extractNamespaceFromDestination } from "../utils"
 import { getDefaultUpsertTypeFor } from "../utils/streams"
 
@@ -21,6 +20,7 @@ export interface BulkStreamConfig {
 	syncMode?: SyncMode
 	cursorField?: string
 	appendMode?: boolean
+	dedupKeys?: string[]
 	upsertType?: UpsertType
 	normalization?: boolean
 	partitionRegex?: string
@@ -31,6 +31,9 @@ export interface BulkStreamConfig {
 
 interface StreamSelectionState {
 	streamsData: StreamsDataStructure | null
+
+	// Format the discover response came in; decides the save payload shape.
+	catalogFormat: CatalogFormat
 
 	// Frozen snapshot from initial discovery; used by DestinationDatabaseModal.
 	initialStreamsSnapshot: StreamsDataStructure | null
@@ -48,19 +51,17 @@ interface StreamSelectionState {
 	// used to trigger a re-sort only after bulk apply.
 	bulkApplyVersion: number
 
-	initializeFromDiscovery: (data: StreamsDataStructure) => void
+	initializeFromDiscovery: (
+		data: StreamsDataStructure,
+		format: CatalogFormat,
+	) => void
 	setDiscovering: (loading: boolean) => void
 	setDiscoverError: (message: string | null) => void
 
 	// Toggles a stream on (disabled:false) or off (disabled:true).
-	// Inserts a default entry if the stream has never been in selected_streams.
-	toggleStream: (
-		stream: StreamIdentifier,
-		checked: boolean,
-		ingestionMode: IngestionMode,
-	) => void
+	toggleStream: (stream: StreamIdentifier, checked: boolean) => void
 
-	// Updates sync_mode and optional cursor_field; no-op if unchanged.
+	// Updates sync_mode and optional cursor_field.
 	updateSyncMode: (
 		stream: StreamIdentifier,
 		syncMode: SyncMode,
@@ -91,6 +92,8 @@ interface StreamSelectionState {
 
 	updateIngestionMode: (stream: StreamIdentifier, appendMode: boolean) => void
 
+	updateDedupKeys: (stream: StreamIdentifier, keys: string[]) => void
+
 	// Only meaningful for streams in upsert mode (append_mode falsy).
 	updateUpsertType: (stream: StreamIdentifier, upsertType: UpsertType) => void
 
@@ -117,6 +120,7 @@ interface StreamSelectionState {
 
 const initialState = {
 	streamsData: null,
+	catalogFormat: CatalogFormat.LEGACY,
 	initialStreamsSnapshot: null,
 	isDiscovering: false,
 	discoverError: null,
@@ -126,7 +130,7 @@ const initialState = {
 	bulkApplyVersion: 0,
 }
 
-// update_type is only carried by streams running in upsert mode.
+// update_type and dedup_keys are only carried by streams running in upsert mode.
 // Mutates and returns the same object so callers can use it inline.
 const withUpsertTypeSynced = (
 	stream: SelectedStream,
@@ -134,18 +138,33 @@ const withUpsertTypeSynced = (
 ): SelectedStream => {
 	if (stream.append_mode) {
 		delete stream.update_type
+		delete stream.dedup_keys
 	} else if (!stream.update_type && defaultUpsertType) {
 		stream.update_type = defaultUpsertType
 	}
 	return stream
 }
 
+const withDedupKeys = (
+	stream: SelectedStream,
+	keys: string[],
+): SelectedStream => {
+	const next = { ...stream }
+	if (keys.length > 0) {
+		next.dedup_keys = [...keys].sort()
+	} else {
+		delete next.dedup_keys
+	}
+	return next
+}
+
 export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 	...initialState,
 
-	initializeFromDiscovery: data =>
+	initializeFromDiscovery: (data, format) =>
 		set(state => ({
 			streamsData: data,
+			catalogFormat: format,
 			initialStreamsSnapshot: state.initialStreamsSnapshot ?? data,
 			isDiscovering: false,
 			discoverError: null,
@@ -154,7 +173,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 	setDiscovering: loading => set({ isDiscovering: loading }),
 	setDiscoverError: error => set({ discoverError: error }),
 
-	toggleStream: (stream, checked, ingestionMode) =>
+	toggleStream: (stream, checked) =>
 		set(state => {
 			if (!state.streamsData) return state
 			const { streamName, namespace } = stream
@@ -174,21 +193,10 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 				if (!updated.selected_streams[namespace]) {
 					updated.selected_streams[namespace] = []
 				}
-				if (!existingStream) {
-					updated.selected_streams[namespace] = [
-						...updated.selected_streams[namespace],
-						{
-							...STREAM_DEFAULTS,
-							stream_name: streamName,
-							disabled: false,
-							append_mode: ingestionMode === IngestionMode.APPEND,
-							...(ingestionMode !== IngestionMode.APPEND && {
-								update_type: getDefaultUpsertTypeFor(prev.streams, stream),
-							}),
-						},
-					]
-					changed = true
-				} else if (existingStream.disabled) {
+				// No insert branch: getStreamsDataFromSourceStreamsResponse creates an
+				// entry (disabled when not selected) for every discovered stream, so a
+				// missing entry cannot happen; toggling only flips `disabled`.
+				if (existingStream?.disabled) {
 					updated.selected_streams[namespace] = updated.selected_streams[
 						namespace
 					].map(s =>
@@ -216,41 +224,28 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
-			const streamIndex = prev.streams.findIndex(
-				s => s.stream.name === streamName && s.stream.namespace === namespace,
+			const streamExists = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
 			)
-
-			if (
-				streamIndex !== -1 &&
-				prev.streams[streamIndex].stream.sync_mode === newSyncMode &&
-				(prev.streams[streamIndex].stream.cursor_field || "") ===
-					(cursorField || "")
-			) {
-				return state
-			}
-
-			if (streamIndex === -1) return state
-
-			const updatedStreams = [...prev.streams]
-			const nextStream: StreamData = {
-				...updatedStreams[streamIndex],
-				stream: {
-					...updatedStreams[streamIndex].stream,
-					sync_mode: newSyncMode,
-				},
-			}
-
-			if (cursorField !== undefined && newSyncMode === SyncMode.INCREMENTAL) {
-				nextStream.stream.cursor_field = cursorField
-			}
-			if (newSyncMode !== SyncMode.INCREMENTAL) {
-				delete nextStream.stream.cursor_field
-			}
-
-			updatedStreams[streamIndex] = nextStream
+			if (!streamExists) return state
 
 			return {
-				streamsData: { ...prev, streams: updatedStreams },
+				streamsData: {
+					...prev,
+					selected_streams: {
+						...prev.selected_streams,
+						[namespace]: prev.selected_streams[namespace].map(s => {
+							if (s.stream_name !== streamName) return s
+							const updated = { ...s, sync_mode: newSyncMode }
+							if (newSyncMode !== SyncMode.INCREMENTAL) {
+								delete updated.cursor_field
+							} else if (cursorField !== undefined) {
+								updated.cursor_field = cursorField
+							}
+							return updated
+						}),
+					},
+				},
 			}
 		}),
 
@@ -448,55 +443,62 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
+	updateDedupKeys: (stream, keys) =>
+		set(state => {
+			if (!state.streamsData) return state
+			const { streamName, namespace } = stream
+
+			const prev = state.streamsData
+			const streamExists = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+			if (!streamExists) return state
+
+			return {
+				streamsData: {
+					...prev,
+					selected_streams: {
+						...prev.selected_streams,
+						[namespace]: prev.selected_streams[namespace].map(s =>
+							s.stream_name === streamName ? withDedupKeys(s, keys) : s,
+						),
+					},
+				},
+			}
+		}),
+
 	bulkUpdateStreams: (streamsToUpdate, config) =>
 		set(state => {
 			if (!state.streamsData) return state
 
 			const prev = state.streamsData
-			const updatedStreams = [...prev.streams]
 			const updatedSelected = { ...prev.selected_streams }
 			const updatedFilterStates = { ...state.streamFilterStates }
 			let changed = false
 
 			streamsToUpdate.forEach(({ streamName, namespace }) => {
-				// Update generic stream data (sync_mode, cursor_field)
-				const globalStreamIndex = updatedStreams.findIndex(
-					s => s.stream.name === streamName && s.stream.namespace === namespace,
-				)
-
-				if (globalStreamIndex !== -1 && config.syncMode !== undefined) {
-					const nextStream: StreamData = {
-						...updatedStreams[globalStreamIndex],
-						stream: {
-							...updatedStreams[globalStreamIndex].stream,
-							sync_mode: config.syncMode,
-						},
-					}
-
-					if (
-						config.cursorField !== undefined &&
-						config.syncMode === SyncMode.INCREMENTAL
-					) {
-						nextStream.stream.cursor_field = config.cursorField
-					} else if (config.syncMode !== SyncMode.INCREMENTAL) {
-						delete nextStream.stream.cursor_field
-					}
-
-					updatedStreams[globalStreamIndex] = nextStream
-					changed = true
-				}
-
-				// Update selected properties (append_mode, normalization, filtering)
 				const streamList = updatedSelected[namespace] || []
 				const streamIndex = streamList.findIndex(
 					s => s.stream_name === streamName,
 				)
 
 				if (streamIndex !== -1) {
-					const newStream = { ...streamList[streamIndex] }
+					let newStream = { ...streamList[streamIndex] }
 
-					if (config.appendMode !== undefined)
+					if (config.syncMode !== undefined) {
+						newStream.sync_mode = config.syncMode
+						if (config.syncMode !== SyncMode.INCREMENTAL) {
+							delete newStream.cursor_field
+						} else if (config.cursorField !== undefined) {
+							newStream.cursor_field = config.cursorField
+						}
+					}
+					if (config.appendMode !== undefined) {
 						newStream.append_mode = config.appendMode
+					}
+					if (config.dedupKeys !== undefined) {
+						newStream = withDedupKeys(newStream, config.dedupKeys)
+					}
 					if (config.upsertType !== undefined)
 						newStream.update_type = config.upsertType
 					if (
@@ -505,7 +507,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 					)
 						withUpsertTypeSynced(
 							newStream,
-							getDefaultUpsertTypeFor(updatedStreams, {
+							getDefaultUpsertTypeFor(prev.streams, {
 								streamName,
 								namespace,
 							}),
@@ -552,7 +554,6 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 				? {
 						streamsData: {
 							...prev,
-							streams: updatedStreams,
 							selected_streams: updatedSelected,
 						},
 						streamFilterStates: updatedFilterStates,
@@ -593,57 +594,53 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 
 			const prev = state.streamsData
-			const firstStreamDestDb = prev.streams[0].stream.destination_database
+			const firstStreamDestDb = Object.values(prev.selected_streams).flat()[0]
+				?.destination_database
 			const hasColonFormat =
 				firstStreamDestDb && firstStreamDestDb.includes(":")
 
-			const updatedStreams = prev.streams.map(stream => {
-				const currentDestDb = stream.stream.destination_database
-				const currentNamespace = stream.stream.namespace
+			// Applies to every entry, deselected ones included, so a stream enabled
+			// later lands in the chosen database.
+			const updatedSelected = Object.fromEntries(
+				Object.entries(prev.selected_streams).map(([ns, streams]) => [
+					ns,
+					streams.map(stream => {
+						const currentDestDb = stream.destination_database
 
-				if (format === "dynamic") {
-					if (hasColonFormat && currentDestDb) {
-						// "a:b" → "databaseName:b"
-						const parts = currentDestDb.split(":")
-						return {
-							...stream,
-							stream: {
-								...stream.stream,
-								destination_database: `${databaseName}:${parts[1]}`,
-							},
+						if (format === "dynamic") {
+							if (hasColonFormat && currentDestDb) {
+								// "a:b" → "databaseName:b"
+								const parts = currentDestDb.split(":")
+								return {
+									...stream,
+									destination_database: `${databaseName}:${parts[1]}`,
+								}
+							} else {
+								// No colon — derive namespace from initialStreamsSnapshot
+								const initialStream =
+									state.initialStreamsSnapshot?.streams.find(
+										s =>
+											s.stream.name === stream.stream_name &&
+											(s.stream.namespace || "") === ns,
+									)
+								const namespace = extractNamespaceFromDestination(
+									initialStream?.stream.destination_database,
+									ns,
+								)
+								return {
+									...stream,
+									destination_database: `${databaseName}:${namespace}`,
+								}
+							}
+						} else {
+							return { ...stream, destination_database: databaseName }
 						}
-					} else {
-						// No colon — derive namespace from initialStreamsSnapshot
-						const initialStream = state.initialStreamsSnapshot?.streams.find(
-							s =>
-								s.stream.name === stream.stream.name &&
-								s.stream.namespace === stream.stream.namespace,
-						)
-						const namespace = extractNamespaceFromDestination(
-							initialStream?.stream.destination_database,
-							currentNamespace || "",
-						)
-						return {
-							...stream,
-							stream: {
-								...stream.stream,
-								destination_database: `${databaseName}:${namespace}`,
-							},
-						}
-					}
-				} else {
-					return {
-						...stream,
-						stream: {
-							...stream.stream,
-							destination_database: databaseName,
-						},
-					}
-				}
-			})
+					}),
+				]),
+			)
 
 			return {
-				streamsData: { ...prev, streams: updatedStreams },
+				streamsData: { ...prev, selected_streams: updatedSelected },
 			}
 		}),
 
@@ -730,16 +727,14 @@ export const selectActiveSelectedStream = (
 	)
 }
 
-// Derives destination database display values from the first stream.
+// Derives destination database display values from the first stream entry.
 export const selectDestinationDatabase = (
 	state: StreamSelectionState,
 ): { display: string | null; forModal: string | null } => {
-	if (!state.streamsData?.streams || state.streamsData.streams.length === 0) {
-		return { display: null, forModal: null }
-	}
-
-	const firstStream = state.streamsData.streams[0]
-	const destDb = firstStream.stream?.destination_database
+	const firstStream = Object.values(
+		state.streamsData?.selected_streams ?? {},
+	).flat()[0]
+	const destDb = firstStream?.destination_database
 
 	if (!destDb) return { display: null, forModal: null }
 

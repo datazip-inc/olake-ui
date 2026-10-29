@@ -1,9 +1,12 @@
+import { CpuIcon, DatabaseIcon } from "@phosphor-icons/react"
+
 import {
 	DESTINATION_INTERNAL_TYPES,
 	SOURCE_INTERNAL_TYPES,
 } from "@/modules/ingestion/common/constants"
 
 import { IngestionMode } from "../enums"
+import type { TaskLogSource } from "../types"
 
 /**
  * Matches a single or compound filter expression of the form:
@@ -35,7 +38,7 @@ export const SOURCE_SUPPORTED_INGESTION_MODES = {
 	[SOURCE_INTERNAL_TYPES.ORACLE]: DB_STANDARD_MODES,
 	[SOURCE_INTERNAL_TYPES.DB2]: DB_STANDARD_MODES,
 	[SOURCE_INTERNAL_TYPES.MSSQL]: DB_STANDARD_MODES,
-	[SOURCE_INTERNAL_TYPES.KAFKA]: APPEND_ONLY_MODE,
+	[SOURCE_INTERNAL_TYPES.KAFKA]: DB_STANDARD_MODES,
 	[SOURCE_INTERNAL_TYPES.S3]: APPEND_ONLY_MODE,
 } as const
 
@@ -55,10 +58,35 @@ export const operatorOptions = [
 
 // Logs pagination configuration
 export const LOGS_CONFIG = {
-	DEFAULT_CURSOR: -1, // -1 means start from end of file
+	DEFAULT_CURSOR: "", // empty cursor means start from the end of the logs
 	INITIAL_BATCH_SIZE: 1000, // First load
 	SUBSEQUENT_BATCH_SIZE: 500, // Subsequent loads
 	MAX_LOGS_IN_MEMORY: 10000, // Maximum logs to keep in memory
 	VIRTUAL_LIST_START_INDEX: 1000000, // High starting index for virtualized log list
 	OVERSCAN: 1000, // Number of items to render outside visible area
 } as const
+
+// Task log sources: per-source styling (badge, short accent bar, row tint)
+// and the tabs of the logs page.
+export const LOG_SOURCE_STYLES = {
+	sync: {
+		label: "SYNC",
+		Icon: DatabaseIcon,
+		badgeClass: "border-indigo-300 bg-indigo-50 text-indigo-700",
+		accentClass: "bg-indigo-400",
+		rowClass: "",
+	},
+	worker: {
+		label: "WORKER",
+		Icon: CpuIcon,
+		badgeClass: "border-teal-300 bg-teal-50 text-teal-700",
+		accentClass: "bg-teal-600",
+		rowClass: "bg-teal-50/30",
+	},
+} as const
+
+export const LOG_SOURCE_TABS: { value: TaskLogSource; label: string }[] = [
+	{ value: "all", label: "All logs" },
+	{ value: "sync", label: "Sync logs" },
+	{ value: "worker", label: "Worker logs" },
+]
