@@ -15,7 +15,7 @@ import (
 // GITOPS_MODE values.
 const (
 	ModeKubernetes = "kubernetes" // labelled ConfigMaps/Secrets in the pod's namespace
-	ModeFile       = "file"       // JSON manifests in GITOPS_FILE_DIR
+	ModeFile       = "file"       // JSON manifests in OLAKE_GITOPS_FILE_DIR
 )
 
 type runner interface {
@@ -55,7 +55,7 @@ func newRunner(mode, fileDir, stateFile string, app *services.AppService) (runne
 		return ctrlr, nil
 	case ModeFile:
 		if fileDir == "" {
-			return nil, fmt.Errorf("GITOPS_FILE_DIR is empty")
+			return nil, fmt.Errorf("OLAKE_GITOPS_FILE_DIR is empty")
 		}
 		fw := newFileWatcher(fileDir, stateFile, app.ETL(), app.ETL().Temporal())
 		if err := fw.setup(); err != nil {
