@@ -3,8 +3,6 @@ package gitops
 import (
 	"context"
 	"fmt"
-	"os"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,58 +34,54 @@ func init() {
 // hands them to the reconcilers.
 type Controller struct {
 	mgr ctrl.Manager
-	app *services.AppService
 }
 
-// Setup validates GitOps prerequisites synchronously.
-func Setup(app *services.AppService, restConfig *rest.Config) (*Controller, error) {
-	managed := labels.SelectorFromSet(labels.Set{LabelManaged: LabelManagedValue})
-
-	cacheOpts := cache.Options{
-		ByObject: map[client.Object]cache.ByObject{
-			&corev1.ConfigMap{}: {Label: managed},
-			&corev1.Secret{}:    {Label: managed},
-		},
-	}
-	ns := strings.TrimSpace(os.Getenv("POD_NAMESPACE"))
-	if ns == "" {
+// Setup creates the controller manager and registers the reconcilers, so a wiring error fails
+// startup instead of leaving olake-ui running without GitOps.
+func Setup(app *services.AppService, restConfig *rest.Config, namespace string) (*Controller, error) {
+	if namespace == "" {
 		return nil, fmt.Errorf("POD_NAMESPACE is required for in-cluster GitOps (namespace-scoped RBAC)")
 	}
-	cacheOpts.DefaultNamespaces = map[string]cache.Config{ns: {}}
-
+	managed := labels.SelectorFromSet(labels.Set{LabelManaged: LabelManagedValue})
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme: scheme,
-		Cache:  cacheOpts,
+		Cache: cache.Options{
+			ByObject: map[client.Object]cache.ByObject{
+				&corev1.ConfigMap{}: {Label: managed},
+				&corev1.Secret{}:    {Label: managed},
+			},
+			DefaultNamespaces: map[string]cache.Config{namespace: {}},
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create controller manager: %w", err)
 	}
 
-	logger.Info("GitOps controller manager configured for labelled ConfigMap/Secret watch in namespace scope")
-	return &Controller{mgr: mgr, app: app}, nil
-}
-
-// Run registers reconcilers and blocks until ctx is cancelled.
-func (c *Controller) Run(ctx context.Context) error {
-	etlSvc := c.app.ETL()
-	k8sClient := c.mgr.GetClient()
-	sink := NewK8sSink(k8sClient, c.mgr.GetEventRecorderFor("olake-gitops"), etlSvc.Temporal())
+	etlSvc := app.ETL()
+	k8sClient := mgr.GetClient()
+	sink := NewK8sSink(k8sClient, mgr.GetEventRecorderFor("olake-gitops"), etlSvc.Temporal())
 
 	source := &SourceReconciler{ETL: etlSvc, Sink: sink}
-	if err := setupResourceController(c.mgr, "gitops-source", KindSource, &resourceController{client: k8sClient, reconcile: source.reconcile}); err != nil {
-		return fmt.Errorf("setup source controller: %w", err)
+	if err := setupResourceController(mgr, "gitops-source", KindSource, &resourceController{client: k8sClient, reconcile: source.reconcile}); err != nil {
+		return nil, fmt.Errorf("setup source controller: %w", err)
 	}
 
 	dest := &DestinationReconciler{ETL: etlSvc, Sink: sink}
-	if err := setupResourceController(c.mgr, "gitops-destination", KindDestination, &resourceController{client: k8sClient, reconcile: dest.reconcile}); err != nil {
-		return fmt.Errorf("setup destination controller: %w", err)
+	if err := setupResourceController(mgr, "gitops-destination", KindDestination, &resourceController{client: k8sClient, reconcile: dest.reconcile}); err != nil {
+		return nil, fmt.Errorf("setup destination controller: %w", err)
 	}
 
 	job := &jobController{client: k8sClient, job: &JobReconciler{ETL: etlSvc, Sink: sink}}
-	if err := job.setup(c.mgr); err != nil {
-		return fmt.Errorf("setup job controller: %w", err)
+	if err := job.setup(mgr); err != nil {
+		return nil, fmt.Errorf("setup job controller: %w", err)
 	}
 
+	logger.Infof("GitOps controller manager configured for labelled ConfigMap/Secret watch in namespace %s", namespace)
+	return &Controller{mgr: mgr}, nil
+}
+
+// Run blocks until ctx is cancelled.
+func (c *Controller) Run(ctx context.Context) error {
 	logger.Info("starting GitOps controller manager")
 	return c.mgr.Start(ctx)
 }
@@ -110,7 +104,7 @@ func setupResourceController(mgr ctrl.Manager, name, kind string, rec reconcile.
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		For(&corev1.ConfigMap{}).
-		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(identityEnqueue)).
+		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}).
 		WithEventFilter(kindPredicate(kind)).
 		Complete(rec)
 }
@@ -243,11 +237,6 @@ func newManagedObject(objectKind string) client.Object {
 		return &corev1.Secret{}
 	}
 	return &corev1.ConfigMap{}
-}
-
-// identityEnqueue re-queues the very object that triggered the watch
-func identityEnqueue(_ context.Context, obj client.Object) []reconcile.Request {
-	return []reconcile.Request{{NamespacedName: client.ObjectKeyFromObject(obj)}}
 }
 
 // fetchManaged loads a Source/Destination resource that may be backed by

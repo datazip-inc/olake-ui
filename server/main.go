@@ -91,7 +91,7 @@ func main() {
 		}
 	}()
 
-	if err := gitops.InitGitOps(ctx, cfg.GitOpsMode, appSvc); err != nil {
+	if err := gitops.InitGitOps(ctx, cfg.GitOpsMode, cfg.PodNamespace, appSvc); err != nil {
 		logger.Fatalf("gitops initialization failed: %s", err)
 	}
 

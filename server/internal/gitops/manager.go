@@ -21,14 +21,15 @@ type runner interface {
 	Run(ctx context.Context) error
 }
 
-// InitGitOps sets up the GitOps mode named by mode and runs it in the background.
-func InitGitOps(ctx context.Context, mode string, app *services.AppService) error {
+// InitGitOps sets up the GitOps mode named by mode and runs it in the background. namespace is the
+// pod's namespace, which Kubernetes mode watches.
+func InitGitOps(ctx context.Context, mode, namespace string, app *services.AppService) error {
 	if mode == "" {
 		return nil
 	}
 
 	ctrl.SetLogger(logger.Logr())
-	r, err := newRunner(mode, app)
+	r, err := newRunner(mode, namespace, app)
 	if err != nil {
 		return fmt.Errorf("gitops %s mode: %w", mode, err)
 	}
@@ -40,14 +41,14 @@ func InitGitOps(ctx context.Context, mode string, app *services.AppService) erro
 	return nil
 }
 
-func newRunner(mode string, app *services.AppService) (runner, error) {
+func newRunner(mode, namespace string, app *services.AppService) (runner, error) {
 	switch mode {
 	case ModeKubernetes:
 		restConfig, err := rest.InClusterConfig()
 		if err != nil {
 			return nil, fmt.Errorf("load in-cluster config: %w", err)
 		}
-		ctrlr, err := Setup(app, restConfig)
+		ctrlr, err := Setup(app, restConfig, namespace)
 		if err != nil {
 			return nil, err
 		}

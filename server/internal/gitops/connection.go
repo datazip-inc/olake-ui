@@ -18,8 +18,10 @@ func testSourceConnection(ctx context.Context, etlSvc *etl.Service, projectID, s
 		Version: version,
 		Config:  config,
 	})
-	result, err := awaitConnectionStatus(ctx, etlSvc, operationID, err)
-	if err := connectionError(result, err); err != nil {
+	if err == nil {
+		err = awaitConnection(ctx, etlSvc, operationID)
+	}
+	if err != nil {
 		return workflowError(fmt.Errorf("source connection test failed: %w", err))
 	}
 	return nil
@@ -33,28 +35,24 @@ func testDestinationConnection(ctx context.Context, etlSvc *etl.Service, project
 		SourceType:    sourceType,
 		SourceVersion: sourceVersion,
 	})
-	result, err := awaitConnectionStatus(ctx, etlSvc, operationID, err)
-	if err := connectionError(result, err); err != nil {
+	if err == nil {
+		err = awaitConnection(ctx, etlSvc, operationID)
+	}
+	if err != nil {
 		return workflowError(fmt.Errorf("destination connection test failed: %w", err))
 	}
 	return nil
 }
 
-// awaitConnectionStatus waits for a started connection test and returns its {message, status}.
-func awaitConnectionStatus(ctx context.Context, etlSvc *etl.Service, operationID string, startErr error) (map[string]interface{}, error) {
-	if startErr != nil {
-		return nil, fmt.Errorf("connection test failed: %w", startErr)
-	}
+// awaitConnection waits for a started connection test. It returns an error when the test did not
+// run, or when it ran and reported the connection as failed: the check returns no error in that
+// case, only a FAILED status.
+func awaitConnection(ctx context.Context, etlSvc *etl.Service, operationID string) error {
 	output, err := etlSvc.AwaitOperationOutput(ctx, operationID)
 	if err != nil {
-		return nil, fmt.Errorf("connection test failed: %w", err)
+		return err
 	}
-	return temporal.DecodeConnectionStatus(output)
-}
-
-// connectionError returns the test's error, or an error when the check ran but reported the
-// connection as failed: the test returns no error in that case, only a FAILED status.
-func connectionError(result map[string]interface{}, err error) error {
+	result, err := temporal.DecodeConnectionStatus(output)
 	if err != nil {
 		return err
 	}
