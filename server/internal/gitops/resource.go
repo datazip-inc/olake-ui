@@ -84,6 +84,16 @@ func (r *ResourceData) EntityID() int {
 	return n
 }
 
+// bindEntity records the OLake entity r manages once a reconcile has found it, so every status
+// written afterwards carries its id: a Failed or Pending phase means the entity exists but the
+// latest data is not applied, not that there is no entity.
+func (r *ResourceData) bindEntity(id int) {
+	if r.Annotations == nil {
+		r.Annotations = map[string]string{}
+	}
+	r.Annotations[AnnotationEntityID] = strconv.Itoa(id)
+}
+
 // StatusSink writes phase and failure indicators.
 type StatusSink interface {
 	Indicator(ctx context.Context, r *ResourceData, action, errMsg string)
@@ -205,6 +215,9 @@ func reconcileResource(ctx context.Context, sink StatusSink, r resource, res *Re
 	if err != nil && !errors.Is(err, r.notFoundErr()) {
 		logger.Error(err, "lookup "+r.kind()+" failed")
 		return requeueTransient(ctx, sink, res, err, observedHash)
+	}
+	if existing != nil {
+		res.bindEntity(existing.ID)
 	}
 
 	changed := existing != nil && !resourceMatches(existing, spec)

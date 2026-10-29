@@ -93,6 +93,10 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res, streamsRes *Resou
 		logger.Error(err, "lookup job failed")
 		return requeueTransient(ctx, r.Sink, res, err, observed)
 	}
+	if existingJob != nil {
+		res.bindEntity(existingJob.ID)
+		streamsRes.bindEntity(existingJob.ID)
+	}
 
 	cmCatalog, err := parseStreamsCM(streamsRes.Config())
 	if err != nil {
