@@ -224,10 +224,10 @@ With `GITOPS_MODE=file`, olake-ui watches a directory of JSON files instead of C
 There are no annotations, so status (phase, message, entity ID, observed hash) is kept in `.olake-gitops-state.json` in the directory and written to the olake-ui log on each change. The file plays the role of the annotations: it keeps a restart from re-applying every job, which would cancel running syncs.
 
 - Keep it on persistent storage, and add it to `.gitignore` if the directory is a git checkout.
-- If the directory is read-only (for example a git-sync mount), set `GITOPS_STATE_FILE` to a writable path. olake-ui fails at startup if it cannot write the file.
+- If the directory is read-only (for example a git-sync mount), set `OLAKE_GITOPS_STATE_FILE` to a writable path. olake-ui fails at startup if it cannot write the file.
 - Deleting the state file, or a manifest, makes the next start reconcile those entities from scratch.
 
-`GITOPS_FILE_DIR` changes the directory, for example when running the server outside Docker.
+`OLAKE_GITOPS_FILE_DIR` changes the directory, for example when running the server outside Docker.
 File mode also works inside Kubernetes, for example with manifests mounted from a volume: set `GITOPS_MODE=file` instead of `kubernetes`.
 
 ## Failure indicators

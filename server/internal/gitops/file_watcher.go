@@ -21,7 +21,7 @@ import (
 
 const (
 	fileDebounce = 5 * time.Second
-	// stateFileName is the default state file, kept in GITOPS_FILE_DIR. It is hidden, so the
+	// stateFileName is the default state file, kept in OLAKE_GITOPS_FILE_DIR. It is hidden, so the
 	// watcher does not read it as a manifest.
 	stateFileName = ".olake-gitops-state.json"
 )
