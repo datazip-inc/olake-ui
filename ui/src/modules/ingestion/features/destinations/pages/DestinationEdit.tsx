@@ -81,6 +81,7 @@ const DestinationEdit: React.FC = () => {
 	const [connector, setConnector] = useState<string | null>(null)
 	const [catalog, setCatalog] = useState<string | null>(null)
 	const [authType, setAuthType] = useState<string | null>(null)
+	const [storageType, setStorageType] = useState<string | null>(null)
 	const [destinationName, setDestinationName] = useState("")
 	const [selectedVersion, setSelectedVersion] = useState("")
 	const [showAllJobs, setShowAllJobs] = useState(false)
@@ -185,7 +186,12 @@ const DestinationEdit: React.FC = () => {
 					: destination.config
 			setFormData(config)
 			setCatalog(config?.writer?.catalog_type ?? null)
-			setAuthType(config?.writer?.rest_auth_type ?? null)
+			setAuthType(
+				config?.writer?.rest_auth_type ??
+					config?.writer?.azure_auth_type ??
+					null,
+			)
+			setStorageType(config?.writer?.storage_type ?? null)
 		}
 	}, [destination, destinationId])
 
@@ -522,7 +528,12 @@ const DestinationEdit: React.FC = () => {
 							setFormData(trimmedData)
 							const catalogValue = trimmedData?.writer?.catalog_type
 							if (catalogValue) setCatalog(catalogValue)
-							setAuthType(trimmedData?.writer?.rest_auth_type ?? null)
+							setAuthType(
+								trimmedData?.writer?.rest_auth_type ??
+									trimmedData?.writer?.azure_auth_type ??
+									null,
+							)
+							setStorageType(trimmedData?.writer?.storage_type ?? null)
 						}}
 						transformErrors={transformErrors}
 						onError={notifyFirstFormError}
@@ -581,7 +592,8 @@ const DestinationEdit: React.FC = () => {
 		)
 	}
 
-	const docUrl = `https://olake.io/docs/writers/${getConnectorDocumentationPath(connector || "", catalog ? catalog : "glue", authType)}`
+	const hasStorageType = !!schema?.properties?.writer?.properties?.storage_type
+	const docUrl = `https://olake.io/docs/writers/${getConnectorDocumentationPath(connector || "", catalog ? catalog : "glue", authType, hasStorageType ? storageType : null)}`
 
 	return (
 		<div className="flex h-full">
