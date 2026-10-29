@@ -30,7 +30,7 @@ type azureProvider struct {
 	clients map[string]*azsecrets.Client // different vaults have different endpoints, so one client per vault
 }
 
-func newAzureProvider(_ context.Context, cfg Config) (Provider, error) {
+func newAzureProvider(_ context.Context, cfg *Config) (Provider, error) {
 	var credential azcore.TokenCredential
 	var err error
 	// for key based auth, all three must be set; otherwise use the managed identity

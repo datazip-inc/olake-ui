@@ -30,7 +30,7 @@ type awsProvider struct {
 	region string
 }
 
-func newAWSProvider(ctx context.Context, cfg Config) (Provider, error) {
+func newAWSProvider(ctx context.Context, cfg *Config) (Provider, error) {
 	var opts []func(*config.LoadOptions) error
 	if cfg.AWS.Region != "" {
 		opts = append(opts, config.WithRegion(cfg.AWS.Region))

@@ -74,7 +74,8 @@ func newFileWatcher(dir, stateFile string, etlSvc *etl.Service, t *temporal.Temp
 		stop:           make(chan struct{}),
 	}
 	sink := StatusSink(fw)
-	secrets := newSecretRefs(appconfig.Load(), secretref.K8sConfig{}) // no cluster: ${secrets:...} is refused
+	cfg := appconfig.Load()
+	secrets := newSecretRefs(&cfg, secretref.K8sConfig{}) // no cluster: ${secrets:...} is refused
 	fw.source = &SourceReconciler{ETL: etlSvc, Sink: sink, Secrets: secrets}
 	fw.dest = &DestinationReconciler{ETL: etlSvc, Sink: sink, Secrets: secrets}
 	fw.job = &JobReconciler{ETL: etlSvc, Sink: sink}

@@ -25,7 +25,7 @@ type gcpProvider struct {
 	project string
 }
 
-func newGCPProvider(ctx context.Context, cfg Config) (Provider, error) {
+func newGCPProvider(ctx context.Context, cfg *Config) (Provider, error) {
 	client, err := secretmanager.NewClient(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("create Secret Manager client: %w", err)

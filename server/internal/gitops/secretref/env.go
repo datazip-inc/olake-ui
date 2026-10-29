@@ -13,7 +13,7 @@ const envPrefix = "GITOPS_SECRET_"
 // envProvider reads olake-ui's environment, for file mode where there are no cluster Secrets.
 type envProvider struct{}
 
-func newEnvProvider(context.Context, Config) (Provider, error) {
+func newEnvProvider(context.Context, *Config) (Provider, error) {
 	return envProvider{}, nil
 }
 

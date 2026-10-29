@@ -34,7 +34,7 @@ type Provider interface {
 	Fetch(ctx context.Context, path string) (string, error)
 }
 
-type newProviderFunc func(ctx context.Context, cfg Config) (Provider, error)
+type newProviderFunc func(ctx context.Context, cfg *Config) (Provider, error)
 
 var supportedProviders = map[string]newProviderFunc{
 	"aws-sm":   newAWSProvider,
@@ -61,13 +61,13 @@ type Resolver struct {
 	providers map[string]Provider
 }
 
-func New(cfg Config) *Resolver {
-	return &Resolver{cfg: cfg, providers: map[string]Provider{}}
+func New(cfg *Config) *Resolver {
+	return &Resolver{cfg: *cfg, providers: map[string]Provider{}}
 }
 
 // NewWithProviders is for tests: it resolves references without a cloud account.
 func NewWithProviders(providers map[string]Provider) *Resolver {
-	r := New(Config{})
+	r := New(&Config{})
 	maps.Copy(r.providers, providers)
 	return r
 }
@@ -175,7 +175,7 @@ func (r *Resolver) loadProvider(ctx context.Context, name string) (Provider, err
 		return nil, unresolvable("unsupported secret provider %q (supported: %s)", name,
 			strings.Join(slices.Sorted(maps.Keys(supportedProviders)), ", "))
 	}
-	provider, err := newProvider(ctx, r.cfg)
+	provider, err := newProvider(ctx, &r.cfg)
 	if err != nil {
 		return nil, fmt.Errorf("create %s provider: %w", name, err)
 	}

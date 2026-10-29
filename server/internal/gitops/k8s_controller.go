@@ -75,7 +75,8 @@ func (c *Controller) Run(ctx context.Context) error {
 	etlSvc := c.app.ETL()
 	k8sClient := c.mgr.GetClient()
 	sink := NewK8sSink(k8sClient, c.mgr.GetEventRecorderFor("olake-gitops"), etlSvc.Temporal())
-	secrets := newSecretRefs(appconfig.Load(), secretref.K8sConfig{Client: k8sClient, Namespace: c.namespace})
+	cfg := appconfig.Load()
+	secrets := newSecretRefs(&cfg, secretref.K8sConfig{Client: k8sClient, Namespace: c.namespace})
 
 	source := &SourceReconciler{ETL: etlSvc, Sink: sink, Secrets: secrets}
 	if err := setupResourceController(c.mgr, "gitops-source", KindSource, &resourceController{client: k8sClient, reconcile: source.reconcile}); err != nil {

@@ -157,7 +157,7 @@ func TestNewSecretRefs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			refs := newSecretRefs(appconfig.Config{GitOpsSecretsRefreshInterval: tc.refresh}, secretref.K8sConfig{})
+			refs := newSecretRefs(&appconfig.Config{GitOpsSecretsRefreshInterval: tc.refresh}, secretref.K8sConfig{})
 			if refs.refresh != tc.want {
 				t.Fatalf("refresh = %s, want %s", refs.refresh, tc.want)
 			}

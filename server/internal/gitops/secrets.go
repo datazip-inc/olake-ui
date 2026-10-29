@@ -31,14 +31,14 @@ type secretRefs struct {
 	encrypted bool
 }
 
-func newSecretRefs(cfg appconfig.Config, k8s secretref.K8sConfig) *secretRefs {
+func newSecretRefs(cfg *appconfig.Config, k8s secretref.K8sConfig) *secretRefs {
 	refresh := cfg.GitOpsSecretsRefreshInterval
 	if refresh > 0 && refresh < minSecretRefresh {
 		logger.Warnf("GITOPS_SECRETS_REFRESH_INTERVAL %s is below %s (a value needs a unit, such as 15m); using %s", refresh, minSecretRefresh, minSecretRefresh)
 		refresh = minSecretRefresh
 	}
 	return &secretRefs{
-		resolver: secretref.New(secretref.Config{
+		resolver: secretref.New(&secretref.Config{
 			AWS: secretref.AWSConfig{
 				Region:          cfg.GitOpsSecretsAWSRegion,
 				AccessKeyID:     cfg.GitOpsSecretsAWSAccessKeyID,

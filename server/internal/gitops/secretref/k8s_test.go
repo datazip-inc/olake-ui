@@ -22,7 +22,7 @@ func TestNewK8sProvider(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := newK8sProvider(context.Background(), Config{K8s: tc.cfg})
+			_, err := newK8sProvider(context.Background(), &Config{K8s: tc.cfg})
 			if tc.wantErr != errors.Is(err, ErrUnresolvable) {
 				t.Fatalf("err = %v, want unresolvable error: %v", err, tc.wantErr)
 			}

@@ -22,7 +22,7 @@ type k8sProvider struct {
 	K8sConfig
 }
 
-func newK8sProvider(_ context.Context, cfg Config) (Provider, error) {
+func newK8sProvider(_ context.Context, cfg *Config) (Provider, error) {
 	if cfg.K8s.Client == nil {
 		return nil, unresolvable("secrets references need GITOPS_MODE=kubernetes; in file mode use ${env:...}")
 	}
