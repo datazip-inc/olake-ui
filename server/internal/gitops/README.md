@@ -6,8 +6,10 @@ Manage OLake sources, destinations, jobs, and stream selections as labelled **Co
 
 - Kubernetes: OLake UI deployed **inside** the cluster (in-cluster kubeconfig), or Docker Compose with file-based manifests mounted at `/etc/olake/gitops`.
 - Source drivers at **v1.0.0 or later**. A job whose source is older fails reconcile until the Source is upgraded.
-- `GITOPS_ENABLED=true` on the `olake-ui` Deployment (Helm `gitops.enabled: true`).
-- GitOps RBAC: namespace `Role` on `configmaps` and `secrets` (get/list/watch/update/patch) and `events` (create/patch). **No `pods` permission on olake-ui.**
+- `GITOPS_MODE` on `olake-ui`: `kubernetes` for ConfigMaps/Secrets (Helm `gitops.enabled: true` sets it), or `file` for a directory of JSON manifests.
+  Unset or empty disables GitOps.
+  Any other value fails startup.
+- GitOps RBAC: namespace `Role` on `configmaps` and `secrets` (get/list/watch/update/patch each), and `events` (create/patch). **No `pods` permission on olake-ui.**
 
 **Secrets RBAC note:** granting `update`/`patch` on Secrets (needed because the operator writes `olake.io/*` status annotations back onto whichever object type a Source/Destination uses) applies to **every** Secret in the release namespace, not only ones managed by GitOps. Deploy OLake GitOps in a dedicated namespace, or accept that trust boundary.
 
@@ -28,7 +30,7 @@ See [olake-helm/docs/gitops.md](https://github.com/datazip-inc/olake-helm/blob/m
 
 ```yaml
 environment:
-  GITOPS_ENABLED: "true"
+  GITOPS_MODE: file
 volumes:
   - ./olake-gitops:/etc/olake/gitops
 ```
@@ -130,7 +132,7 @@ Do **not** put `olake.io/phase` or other status annotations in git — the opera
 
 ## Docker Compose (file mode)
 
-Outside Kubernetes, olake-ui watches a directory of JSON files instead of ConfigMaps. Each file describes one entity with the same fields the OLake API takes, plus `kind`, `projectId`, `userId` and, for streams, `job`. There are no Kubernetes fields (`apiVersion`, `metadata`, labels, annotations).
+With `GITOPS_MODE=file`, olake-ui watches a directory of JSON files instead of ConfigMaps. Each file describes one entity with the same fields the OLake API takes, plus `kind`, `projectId`, `userId` and, for streams, `job`. There are no Kubernetes fields (`apiVersion`, `metadata`, labels, annotations).
 
 ### Files
 
@@ -211,6 +213,7 @@ There are no annotations, so status (phase, message, entity ID, observed hash) i
 - Deleting the state file, or a manifest, makes the next start reconcile those entities from scratch.
 
 `GITOPS_FILE_DIR` changes the directory, for example when running the server outside Docker.
+File mode also works inside Kubernetes, for example with manifests mounted from a volume: set `GITOPS_MODE=file` instead of `kubernetes`.
 
 ## Secret references
 
@@ -235,7 +238,7 @@ Format: `${<provider>:<path>[#<key>]}`
 | AWS Secrets Manager | `${aws-sm:<name or ARN>[#key]}` | Kubernetes, Docker |
 | GCP Secret Manager | `${gcp-sm:<secret-id>[#key]}` or `${gcp-sm:projects/<project>/secrets/<id>[/versions/<v>][#key]}` | Kubernetes, Docker |
 | Azure Key Vault | `${azure-kv:<vault-name>/<secret-name>[/<version>][#key]}` | Kubernetes, Docker |
-| Kubernetes Secret | `${secrets:<secret-name>#<key>}` | Kubernetes |
+| Kubernetes Secret | `${secrets:<secret-name>#<key>}` | Kubernetes mode only |
 | Environment variable | `${env:GITOPS_SECRET_<NAME>}` | Kubernetes, Docker |
 
 **Requirements and behaviour**
@@ -360,7 +363,7 @@ Configure alerts on failed Pods with that label. olake-ui never creates Pods dir
 | Pending, waiting for source | Ensure source ConfigMap reaches Ready first |
 | Failed, validation | Fix `data.config` JSON |
 | Failed, no indicator Pod | Check worker logs and Temporal; worker needs `pods` create |
-| Argo synced but phase empty | Operator may be disabled; check `GITOPS_ENABLED` |
+| Argo synced but phase empty | Operator may be disabled; check `GITOPS_MODE=kubernetes` |
 
 ```bash
 kubectl describe configmap my-postgres

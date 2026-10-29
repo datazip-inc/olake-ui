@@ -10,7 +10,7 @@ import (
 // TODO[BEFORE_MERGE]: check if we need this prefix check
 const envPrefix = "GITOPS_SECRET_"
 
-// envProvider reads olake-ui's environment, for Docker mode where there are no cluster Secrets.
+// envProvider reads olake-ui's environment, for file mode where there are no cluster Secrets.
 type envProvider struct{}
 
 func newEnvProvider(context.Context, Config) (Provider, error) {

@@ -11,7 +11,7 @@ import (
 
 // K8sConfig configures the secrets provider, which reads Secrets in olake-ui's namespace. The
 // client is the GitOps cache, which holds only Secrets labelled olake.io/managed=true, so a
-// reference cannot read any other Secret in the namespace. It is empty in Docker mode.
+// reference cannot read any other Secret in the namespace. It is empty in file mode.
 type K8sConfig struct {
 	Client    client.Reader
 	Namespace string
@@ -24,7 +24,7 @@ type k8sProvider struct {
 
 func newK8sProvider(_ context.Context, cfg Config) (Provider, error) {
 	if cfg.K8s.Client == nil {
-		return nil, unresolvable("secrets references need Kubernetes mode; in Docker mode use ${env:...}")
+		return nil, unresolvable("secrets references need GITOPS_MODE=kubernetes; in file mode use ${env:...}")
 	}
 	return &k8sProvider{cfg.K8s}, nil
 }

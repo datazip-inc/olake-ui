@@ -17,7 +17,7 @@ func TestNewK8sProvider(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "Kubernetes mode", cfg: K8sConfig{Client: fake.NewClientBuilder().Build(), Namespace: "olake"}},
-		{name: "Docker mode has no client", cfg: K8sConfig{}, wantErr: true},
+		{name: "file mode has no client", cfg: K8sConfig{}, wantErr: true},
 	}
 
 	for _, tc := range testCases {

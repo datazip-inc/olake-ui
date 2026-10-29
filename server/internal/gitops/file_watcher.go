@@ -77,7 +77,7 @@ func newFileWatcher(dir, stateFile string, etlSvc *etl.Service, t *temporal.Temp
 	secrets := newSecretRefs(appconfig.Load(), secretref.K8sConfig{}) // no cluster: ${secrets:...} is refused
 	fw.source = &SourceReconciler{ETL: etlSvc, Sink: sink, Secrets: secrets}
 	fw.dest = &DestinationReconciler{ETL: etlSvc, Sink: sink, Secrets: secrets}
-	fw.job = &JobReconciler{ETL: etlSvc, Sink: sink, findStreams: fw.findStreams}
+	fw.job = &JobReconciler{ETL: etlSvc, Sink: sink}
 	return fw
 }
 
@@ -103,7 +103,8 @@ func (fw *FileWatcher) setup() error {
 	return nil
 }
 
-func (fw *FileWatcher) run(ctx context.Context) error {
+// Run reconciles every manifest, then watches the directory until ctx is cancelled.
+func (fw *FileWatcher) Run(ctx context.Context) error {
 	defer fw.watcher.Close()
 	defer close(fw.stop)
 	if err := fw.walk(fw.Dir, 0); err != nil {
@@ -263,42 +264,17 @@ func (fw *FileWatcher) scheduleRetry(path string, after time.Duration) {
 // Pending/transient requeues.
 func (fw *FileWatcher) enqueueDependentJobs(changed *ResourceData) {
 	fw.mu.Lock()
-	changedRes := *changed
-	changedRes.Annotations = fw.annotationsFor(&changedRes) // entity ID may be set by this reconcile
-
-	var match func(job *ResourceData) bool
-	switch changed.Kind {
-	case KindStreams:
-		match = func(job *ResourceData) bool {
-			return matchesNameOrID(changedRes.JobRef(), job.Name, job.EntityID())
-		}
-	case KindSource, KindDestination:
-		// a job refers to the OLake entity name from the object's config, not the object's name
-		name := configName(changedRes.Config())
-		match = func(job *ResourceData) bool {
-			cfg, err := ParseAndValidateJobConfig(job.Config())
-			if err != nil {
-				return false
-			}
-			ref := cfg.Source
-			if changed.Kind == KindDestination {
-				ref = cfg.Destination
-			}
-			return matchesNameOrID(ref, name, changedRes.EntityID())
-		}
-	default:
-		fw.mu.Unlock()
-		return
-	}
+	dep := *changed
+	dep.Annotations = fw.annotationsFor(&dep) // entity ID may be set by this reconcile
 
 	var paths []string
 	for key, r := range fw.resources {
-		if r.Kind != KindJob || r.Namespace != changed.Namespace {
+		if r.Kind != KindJob {
 			continue
 		}
 		job := r
 		job.Annotations = fw.annotationsFor(&job)
-		if match(&job) {
+		if jobDependsOn(&job, &dep) {
 			paths = append(paths, fw.paths[key])
 		}
 	}
@@ -312,11 +288,11 @@ func (fw *FileWatcher) enqueueDependentJobs(changed *ResourceData) {
 func (fw *FileWatcher) sync(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
 	switch res.Kind {
 	case KindSource:
-		return reconcileResource(ctx, fw, fw.source.Secrets, fw.source, res)
+		return fw.source.reconcile(ctx, res)
 	case KindDestination:
-		return reconcileResource(ctx, fw, fw.dest.Secrets, fw.dest, res)
+		return fw.dest.reconcile(ctx, res)
 	case KindJob:
-		return fw.job.reconcileJob(ctx, res)
+		return fw.job.reconcileJob(ctx, res, fw.findStreams(res))
 	case KindStreams:
 		// no standalone reconciler; the job owns streams status (enqueueDependentJobs)
 		return ctrl.Result{}, nil
@@ -325,23 +301,18 @@ func (fw *FileWatcher) sync(ctx context.Context, res *ResourceData) (ctrl.Result
 	}
 }
 
-func (fw *FileWatcher) findStreams(_ context.Context, job *ResourceData, projectID string, entityID int) (*ResourceData, error) {
+// findStreams returns the streams manifest of job, with its status, or nil when there is none yet.
+func (fw *FileWatcher) findStreams(job *ResourceData) *ResourceData {
 	fw.mu.Lock()
 	defer fw.mu.Unlock()
 	for _, r := range fw.resources {
-		if r.Kind != KindStreams || r.Namespace != job.Namespace {
-			continue
-		}
-		if r.ProjectID() != projectID {
-			continue
-		}
-		if matchesNameOrID(r.JobRef(), job.Name, entityID) {
-			cp := r
-			cp.Annotations = fw.annotationsFor(&cp)
-			return &cp, nil
+		if streamsBelongTo(&r, job) {
+			streams := r
+			streams.Annotations = fw.annotationsFor(&streams)
+			return &streams
 		}
 	}
-	return nil, ErrStreamsNotFound
+	return nil
 }
 
 // annotationsFor reads fw.state. Caller must hold fw.mu.

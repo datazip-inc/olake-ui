@@ -4,30 +4,21 @@ import (
 	"context"
 
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 )
 
+// DestinationReconciler applies a destination manifest to OLake.
 type DestinationReconciler struct {
-	client.Client
 	ETL     *etl.Service
 	Sink    StatusSink
 	Secrets *secretRefs
 }
 
-func (r *DestinationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	res, err := fetchManaged(ctx, r.Client, req.NamespacedName)
-	if err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
+func (r *DestinationReconciler) reconcile(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
 	return reconcileResource(ctx, r.Sink, r.Secrets, r, res)
-}
-
-func (r *DestinationReconciler) Setup(mgr ctrl.Manager) error {
-	return setupResourceController(mgr, "gitops-destination", KindDestination, r)
 }
 
 func (r *DestinationReconciler) kind() string { return KindDestination }
