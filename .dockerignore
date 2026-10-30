@@ -22,3 +22,10 @@ server/logger/logs
 server/.idea
 server/.vscode
 server/*.log 
+# Job state of local OLake runs
+olake-data
+# Tests: the image does not use them, so a change to them alone keeps the build cache
+server/tests
+ui/tests
+ui/playwright.config.ts
+ui/test-results
