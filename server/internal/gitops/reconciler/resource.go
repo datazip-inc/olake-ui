@@ -140,11 +140,7 @@ func reconcileResource(ctx context.Context, sink StatusSink, secrets *SecretRefs
 	logger := log.FromContext(ctx)
 
 	observedHash := ContentHash(res.Data)
-	// A synced resource is skipped, except a Ready one whose config has secret references: it is
-	// re-checked so a rotated secret reaches OLake without a change in git.
-	synced := skipReconcile(res.Annotations, observedHash)
-	refreshing := synced && res.Annotations[AnnotationPhase] == PhaseReady && secrets.mayRefresh(res.Config())
-	if synced && !refreshing {
+	if skipResource(res, observedHash, secrets) {
 		return ctrl.Result{}, nil
 	}
 
@@ -177,10 +173,6 @@ func reconcileResource(ctx context.Context, sink StatusSink, secrets *SecretRefs
 	}
 
 	changed := existing != nil && !resourceMatches(existing, spec)
-	if refreshing && existing != nil && !changed {
-		// Secrets unchanged: nothing to write, so status and indicators are left as they are.
-		return secrets.next(hasRefs), nil
-	}
 	if existing == nil || changed {
 		if err := r.test(ctx, res.ProjectID(), spec); err != nil {
 			logger.Error(err, r.kind()+" connection test failed")
@@ -213,5 +205,16 @@ func reconcileResource(ctx context.Context, sink StatusSink, secrets *SecretRefs
 		logger.Error(err, "update "+r.kind()+" status failed")
 		return requeueTransient(ctx, sink, res, err, observedHash)
 	}
-	return secrets.next(hasRefs), nil
+	return ctrl.Result{RequeueAfter: secrets.next(hasRefs)}, nil
+}
+
+// skipResource: true when a source/destination needs no reconcile. A synced one is skipped, except
+// a Ready one whose config may hold secret references: it is re-checked every refresh interval so a
+// rotated secret reaches OLake without a change in git. mayRefresh only looks for "${" in the raw
+// config, so a synced resource without references is skipped without parsing or resolving it.
+func skipResource(res *ResourceData, observedHash string, secrets *SecretRefs) bool {
+	if !skipReconcile(res.Annotations, observedHash) {
+		return false
+	}
+	return res.Annotations[AnnotationPhase] != PhaseReady || !secrets.mayRefresh(res.Config())
 }

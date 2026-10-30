@@ -219,7 +219,7 @@ File mode also works inside Kubernetes, for example with manifests mounted from 
 
 ## Secret references
 
-Keep credentials out of git: set a string field in a source or destination `config` to a reference instead of the value. olake-ui fetches the value when it reconciles, and stores the resolved config encrypted in its database. The value is never written back to the ConfigMap or file.
+Keep credentials out of git: set a string field in a source or destination `config` to a reference instead of the value. olake-ui fetches the value when it reconciles, and stores the resolved config in its database. The value is never written back to the ConfigMap or file.
 
 ```json
 "config": {
@@ -245,7 +245,7 @@ Format: `${<provider>:<path>[#<key>]}`
 
 **Requirements and behaviour**
 
-- **`OLAKE_SECRET_KEY`** must be set on olake-ui and the worker, because resolved values are stored in the database. Without it, a resource with references fails. On AWS, prefer a KMS key ARN as its value.
+- **Encryption:** resolved values are stored in the database like any other config, encrypted only when `OLAKE_SECRET_KEY` is set on olake-ui and the worker.
 - **Rotation:** a `Ready` resource with references is re-checked every `GITOPS_SECRETS_REFRESH_INTERVAL` (a duration with a unit, such as `15m`; default `1h`, minimum `1m`, `0` turns it off). A changed secret is connection-tested and applied without any change in git. To re-check now, edit the object, for example `kubectl annotate cm <name> olake.io/refresh="$(date +%s)" --overwrite`.
 - **Errors:** a missing secret or key, or access denied, makes the resource `Failed` with the reason. Network errors and throttling are retried like other transient errors.
 - **Settings** go on olake-ui as environment variables. In Helm use `olakeUI.env`; in Docker Compose use the olake-ui service's `environment`.

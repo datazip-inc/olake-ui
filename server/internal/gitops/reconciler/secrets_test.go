@@ -27,7 +27,6 @@ func TestSecretRefsResolve(t *testing.T) {
 		name            string
 		config          string
 		provider        *fakeProvider
-		encrypted       bool
 		want            string
 		wantFound       bool
 		wantErr         string
@@ -37,45 +36,34 @@ func TestSecretRefsResolve(t *testing.T) {
 			name:      "resolves a reference",
 			config:    withRef,
 			provider:  &fakeProvider{secret: "p"},
-			encrypted: true,
 			want:      `{"host":"pg","password":"p"}`,
 			wantFound: true,
 		},
 		{
-			name:     "config without references needs no key",
+			name:     "config without references",
 			config:   `{"host":"pg"}`,
 			provider: &fakeProvider{},
 			want:     `{"host":"pg"}`,
 		},
 		{
-			name:            "references without OLAKE_SECRET_KEY",
-			config:          withRef,
-			provider:        &fakeProvider{secret: "p"},
-			wantErr:         "OLAKE_SECRET_KEY",
-			wantNonRetrying: true,
-		},
-		{
 			name:            "unresolvable reference is non-retryable",
 			config:          withRef,
 			provider:        &fakeProvider{err: errors.Join(secretref.ErrUnresolvable, errors.New("access denied"))},
-			encrypted:       true,
 			wantErr:         "access denied",
 			wantNonRetrying: true,
 		},
 		{
-			name:      "transient error is retried",
-			config:    withRef,
-			provider:  &fakeProvider{err: errors.New("connection reset")},
-			encrypted: true,
-			wantErr:   "connection reset",
+			name:     "transient error is retried",
+			config:   withRef,
+			provider: &fakeProvider{err: errors.New("connection reset")},
+			wantErr:  "connection reset",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			refs := &SecretRefs{
-				resolver:  secretref.NewWithProviders(map[string]secretref.Provider{"aws-sm": tc.provider}),
-				encrypted: tc.encrypted,
+				resolver: secretref.NewWithProviders(map[string]secretref.Provider{"aws-sm": tc.provider}),
 			}
 
 			got, found, err := refs.resolve(context.Background(), tc.config)
@@ -136,9 +124,9 @@ func TestSecretRefsNext(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			refs := &SecretRefs{refresh: tc.refresh}
-			got := refs.next(tc.hasRefs).RequeueAfter
+			got := refs.next(tc.hasRefs)
 			if got < tc.wantMin || got > tc.wantMax {
-				t.Fatalf("RequeueAfter = %s, want between %s and %s", got, tc.wantMin, tc.wantMax)
+				t.Fatalf("next = %s, want between %s and %s", got, tc.wantMin, tc.wantMax)
 			}
 		})
 	}

@@ -76,11 +76,21 @@ func requeueTransient(ctx context.Context, sink StatusSink, r *ResourceData, err
 	return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
 }
 
+// successResource marks r Ready. When r is already Ready with the same status, it writes nothing:
+// a re-check, such as a secret refresh, would otherwise emit a Synced event and start an indicator
+// delete workflow every time.
 func successResource(ctx context.Context, sink StatusSink, r *ResourceData, entityID int, observedHash string) error {
 	retryMap.Delete(r.key())
-	sink.Indicator(ctx, r, indicatorDelete, "")
 	hash := observedHashForResource(r, observedHash)
-	return sink.SetPhase(ctx, r, PhaseReady, "", strconvEntityID(entityID), hash)
+	id := strconvEntityID(entityID)
+	if r.Annotations[AnnotationPhase] == PhaseReady &&
+		r.Annotations[AnnotationMessage] == "" &&
+		r.Annotations[AnnotationEntityID] == id &&
+		r.Annotations[AnnotationObservedHash] == hash {
+		return nil
+	}
+	sink.Indicator(ctx, r, indicatorDelete, "")
+	return sink.SetPhase(ctx, r, PhaseReady, "", id, hash)
 }
 
 func strconvEntityID(id int) string {

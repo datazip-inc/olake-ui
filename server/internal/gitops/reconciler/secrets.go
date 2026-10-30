@@ -3,12 +3,9 @@ package reconciler
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/rand/v2"
 	"strings"
 	"time"
-
-	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/secretref"
@@ -27,9 +24,6 @@ type SecretRefs struct {
 	resolver *secretref.Resolver
 	// refresh is how often a Ready resource with references is re-checked; 0 turns this off.
 	refresh time.Duration
-	// encrypted is true when OLAKE_SECRET_KEY is set. Resolved values are stored in the
-	// database, so references are refused without it rather than stored as plaintext.
-	encrypted bool
 }
 
 // NewSecretRefs builds the resolver from the GITOPS_SECRETS_* settings. k8s is the cluster that
@@ -57,8 +51,7 @@ func NewSecretRefs(cfg *appconfig.Config, k8s secretref.K8sConfig) *SecretRefs {
 			},
 			K8s: k8s,
 		}),
-		refresh:   refresh,
-		encrypted: cfg.EncryptionKey != "",
+		refresh: refresh,
 	}
 }
 
@@ -78,18 +71,14 @@ func (s *SecretRefs) resolve(ctx context.Context, config string) (string, bool, 
 		}
 		return "", false, err
 	}
-	// TODO[BEFORE_MERGE]: check if OLAKE_SECRET_KEY is coupled with secret reference.
-	if found && !s.encrypted {
-		return "", false, NonRetryableError(fmt.Errorf("secret references require OLAKE_SECRET_KEY, so resolved secrets are encrypted in the database"))
-	}
 	return resolved, found, nil
 }
 
-// next schedules the next re-check of a resource with references, with up to 10% jitter so
-// resources synced together do not call the secret managers at the same moment.
-func (s *SecretRefs) next(hasRefs bool) ctrl.Result {
+// next is the delay to the next re-check of a resource with references, with up to 10% jitter so
+// resources synced together do not call the secret managers at the same moment. 0 means no re-check.
+func (s *SecretRefs) next(hasRefs bool) time.Duration {
 	if !hasRefs || s.refresh <= 0 {
-		return ctrl.Result{}
+		return 0
 	}
-	return ctrl.Result{RequeueAfter: s.refresh + rand.N(s.refresh/10)}
+	return s.refresh + rand.N(s.refresh/10)
 }
