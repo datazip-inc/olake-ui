@@ -3,6 +3,7 @@ package appconfig
 import (
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/viper"
@@ -58,10 +59,12 @@ type Config struct {
 	OlakeS3Endpoint                string
 }
 
-var cfg = loadConfig()
+// load reads config/app.yaml and the environment once, on first use, so importing this package
+// has no side effects.
+var load = sync.OnceValue(loadConfig)
 
 func Load() Config {
-	return cfg
+	return load()
 }
 
 func loadConfig() Config {

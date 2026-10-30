@@ -6,13 +6,21 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 )
+
+// sourceService is the part of the ETL service the source reconciler calls.
+type sourceService interface {
+	connectionService
+	GetSourceByName(ctx context.Context, projectID, name string) (*models.Source, error)
+	CreateSource(ctx context.Context, req *dto.CreateSourceRequest, projectID string, userID *int) error
+	UpdateSource(ctx context.Context, projectID string, id int, req *dto.UpdateSourceRequest, userID *int) error
+}
 
 // SourceReconciler applies a source manifest to OLake, in every GitOps mode.
 type SourceReconciler struct {
-	ETL  *etl.Service
+	ETL  sourceService
 	Sink StatusSink
 }
 

@@ -5,21 +5,27 @@ import (
 	"fmt"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 )
 
 // connectionSucceeded is the status the CLI check command reports for a working connection.
 const connectionSucceeded = "SUCCEEDED"
 
-func testSourceConnection(ctx context.Context, etlSvc *etl.Service, projectID, sourceType, version string, config dto.JSONConfig) error {
-	operationID, err := etlSvc.TestSourceConnection(ctx, projectID, &dto.SourceTestConnectionRequest{
+// connectionService is the part of the ETL service that runs connection tests.
+type connectionService interface {
+	TestSourceConnection(ctx context.Context, projectID string, req *dto.SourceTestConnectionRequest) (string, error)
+	TestDestinationConnection(ctx context.Context, projectID string, req *dto.DestinationTestConnectionRequest) (string, error)
+	AwaitOperationOutput(ctx context.Context, operationID string) (map[string]interface{}, error)
+}
+
+func testSourceConnection(ctx context.Context, svc connectionService, projectID, sourceType, version string, config dto.JSONConfig) error {
+	operationID, err := svc.TestSourceConnection(ctx, projectID, &dto.SourceTestConnectionRequest{
 		Type:    sourceType,
 		Version: version,
 		Config:  config,
 	})
 	if err == nil {
-		err = awaitConnection(ctx, etlSvc, operationID)
+		err = awaitConnection(ctx, svc, operationID)
 	}
 	if err != nil {
 		return workflowError(fmt.Errorf("source connection test failed: %w", err))
@@ -27,8 +33,8 @@ func testSourceConnection(ctx context.Context, etlSvc *etl.Service, projectID, s
 	return nil
 }
 
-func testDestinationConnection(ctx context.Context, etlSvc *etl.Service, projectID, destType, version string, config dto.JSONConfig, sourceType, sourceVersion string) error {
-	operationID, err := etlSvc.TestDestinationConnection(ctx, projectID, &dto.DestinationTestConnectionRequest{
+func testDestinationConnection(ctx context.Context, svc connectionService, projectID, destType, version string, config dto.JSONConfig, sourceType, sourceVersion string) error {
+	operationID, err := svc.TestDestinationConnection(ctx, projectID, &dto.DestinationTestConnectionRequest{
 		Type:          destType,
 		Version:       version,
 		Config:        config,
@@ -36,7 +42,7 @@ func testDestinationConnection(ctx context.Context, etlSvc *etl.Service, project
 		SourceVersion: sourceVersion,
 	})
 	if err == nil {
-		err = awaitConnection(ctx, etlSvc, operationID)
+		err = awaitConnection(ctx, svc, operationID)
 	}
 	if err != nil {
 		return workflowError(fmt.Errorf("destination connection test failed: %w", err))
@@ -47,8 +53,8 @@ func testDestinationConnection(ctx context.Context, etlSvc *etl.Service, project
 // awaitConnection waits for a started connection test. It returns an error when the test did not
 // run, or when it ran and reported the connection as failed: the check returns no error in that
 // case, only a FAILED status.
-func awaitConnection(ctx context.Context, etlSvc *etl.Service, operationID string) error {
-	output, err := etlSvc.AwaitOperationOutput(ctx, operationID)
+func awaitConnection(ctx context.Context, svc connectionService, operationID string) error {
+	output, err := svc.AwaitOperationOutput(ctx, operationID)
 	if err != nil {
 		return err
 	}
