@@ -140,9 +140,11 @@ services:
       OLAKE_INDEX_DB_MAX_OPEN_FILES: 1000  # max open files
       # Mount host paths into connector containers.
       # Format: JSON list of {"source": "<host_path>", "target": "<container_absolute_path>", "readOnly": true}.
+      # `source` is the path on the host machine.
+      # `target` is the path inside the connector container where the host path is mounted.
       # `readOnly: true` is used for certificates and key files. If you want a writable mount, omit the `readOnly` field.
       # Example: Mount custom certificates and client keys.
-      # OLAKE_JOB_BIND_MOUNTS: '[{"source":"/etc/olake/certs","target":"/etc/ssl/custom-certs","readOnly":true},{"source":"/etc/olake/client-keys","target":"/etc/ssl/client-keys","readOnly":true}]'
+      # OLAKE_JOB_BIND_MOUNTS: '[{"source":"${PWD}/olake-certs","target":"/etc/ssl/custom-certs","readOnly":true},{"source":"${PWD}/olake-client-keys","target":"/etc/ssl/client-keys","readOnly":true}]'
     depends_on:
       temporal:
         condition: service_healthy
