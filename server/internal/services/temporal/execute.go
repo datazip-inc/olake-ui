@@ -57,6 +57,10 @@ const (
 
 // TODO: check if we can add command args as constants for all the methods
 
+// ErrWorkflowStart means Temporal did not start the workflow (for example, it is unreachable), so
+// the command never ran. Unlike a workflow that ran and failed, a retry can succeed.
+var ErrWorkflowStart = errors.New("failed to start workflow")
+
 // Scheduled Process (sync, clear-destination):
 // For scheduled/triggered workflows, configs are written in the worker-side.
 // This is because the BFF doesn't know the actual execution workflowID that
@@ -71,10 +75,6 @@ const (
 // files to the correct directory, avoiding large payloads in Temporal.
 //
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
-// ErrWorkflowStart means Temporal did not start the workflow (for example, it is unreachable), so
-// the command never ran. Unlike a workflow that ran and failed, a retry can succeed.
-var ErrWorkflowStart = errors.New("failed to start workflow")
-
 // StartDiscoverStreams starts discover with the job's stored catalog as input and returns the
 // operation ID; with an empty catalog, discover runs fresh. The result is read with
 // ReadDiscoverOutput once the operation has succeeded.

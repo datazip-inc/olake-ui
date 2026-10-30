@@ -13,14 +13,27 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
+// jobService is the part of the ETL service the job reconciler calls.
+type jobService interface {
+	catalogService
+	connectionService
+	GetSourceByName(ctx context.Context, projectID, name string) (*models.Source, error)
+	GetSourceByID(ctx context.Context, projectID string, id int) (*models.Source, error)
+	GetDestinationByName(ctx context.Context, projectID, name string) (*models.Destination, error)
+	GetDestinationByID(ctx context.Context, projectID string, id int) (*models.Destination, error)
+	GetJobByName(ctx context.Context, projectID, name string) (*models.Job, error)
+	CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error
+	UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error
+	ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRequest, userID *int) error
+}
+
 // JobReconciler applies a job manifest and its streams manifest to OLake.
 type JobReconciler struct {
-	ETL  *etl.Service
+	ETL  jobService
 	Sink StatusSink
 }
 
@@ -92,6 +105,10 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res, streamsRes *Resou
 	if err != nil && !errors.Is(err, constants.ErrJobNotFound) {
 		logger.Error(err, "lookup job failed")
 		return requeueTransient(ctx, r.Sink, res, err, observed)
+	}
+	if existingJob != nil {
+		res.bindEntity(existingJob.ID)
+		streamsRes.bindEntity(existingJob.ID)
 	}
 
 	cmCatalog, err := parseStreamsCM(streamsRes.Config())

@@ -3,6 +3,7 @@ package appconfig
 import (
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/viper"
@@ -48,6 +49,7 @@ type Config struct {
 	OptimizationPassword           string
 	OptimizationRequestTimeout     time.Duration
 	GitOpsMode                     string // "kubernetes" or "file"; empty disables GitOps
+	PodNamespace                   string // namespace Kubernetes mode watches
 	GitOpsFileDir                  string // file based configuration for olake; defaults to /etc/olake/gitops
 	GitOpsStateFile                string // file mode status; defaults to OLAKE_GITOPS_FILE_DIR/.olake-gitops-state.json
 	OlakeStorageMode               string
@@ -59,10 +61,12 @@ type Config struct {
 	OlakeS3Endpoint                string
 }
 
-var cfg = loadConfig()
+// load reads config/app.yaml and the environment once, on first use, so importing this package
+// has no side effects.
+var load = sync.OnceValue(loadConfig)
 
 func Load() Config {
-	return cfg
+	return load()
 }
 
 func loadConfig() Config {
@@ -136,6 +140,7 @@ func loadConfig() Config {
 		OptimizationRequestTimeout: v.GetDuration("OPTIMIZATION_REQUEST_TIMEOUT"),
 
 		GitOpsMode:             strings.ToLower(strings.TrimSpace(v.GetString("GITOPS_MODE"))),
+		PodNamespace:           strings.TrimSpace(v.GetString("POD_NAMESPACE")),
 		GitOpsFileDir:          strings.TrimSpace(v.GetString("OLAKE_GITOPS_FILE_DIR")),
 		GitOpsStateFile:        strings.TrimSpace(v.GetString("OLAKE_GITOPS_STATE_FILE")),
 		OlakeStorageMode:       strings.TrimSpace(v.GetString("OLAKE_STORAGE_MODE")),

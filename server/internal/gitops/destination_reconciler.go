@@ -6,13 +6,21 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 )
+
+// destinationService is the part of the ETL service the destination reconciler calls.
+type destinationService interface {
+	connectionService
+	GetDestinationByName(ctx context.Context, projectID, name string) (*models.Destination, error)
+	CreateDestination(ctx context.Context, req *dto.CreateDestinationRequest, projectID string, userID *int) error
+	UpdateDestination(ctx context.Context, id int, projectID string, req *dto.UpdateDestinationRequest, userID *int) error
+}
 
 // DestinationReconciler applies a destination manifest to OLake.
 type DestinationReconciler struct {
-	ETL  *etl.Service
+	ETL  destinationService
 	Sink StatusSink
 }
 

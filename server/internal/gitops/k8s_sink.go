@@ -67,17 +67,15 @@ func (s *K8sSink) SetPhase(ctx context.Context, r *ResourceData, phase, message,
 		return err
 	}
 
-	if s.recorder != nil {
-		eventType := corev1.EventTypeNormal
-		reason, eventMsg := "Pending", message
-		switch phase {
-		case PhaseReady:
-			reason, eventMsg = "Synced", "resource synced to OLake"
-		case PhaseFailed:
-			eventType = corev1.EventTypeWarning
-			reason, eventMsg = "SyncFailed", message
-		}
-		s.recorder.Event(obj, eventType, reason, eventMsg)
+	eventType := corev1.EventTypeNormal
+	reason, eventMsg := "Pending", message
+	switch phase {
+	case PhaseReady:
+		reason, eventMsg = "Synced", "resource synced to OLake"
+	case PhaseFailed:
+		eventType = corev1.EventTypeWarning
+		reason, eventMsg = "SyncFailed", message
 	}
+	s.recorder.Event(obj, eventType, reason, eventMsg)
 	return nil
 }

@@ -17,10 +17,8 @@ func (s *K8sSink) Indicator(ctx context.Context, r *ResourceData, action, errMsg
 	startIndicator(ctx, s.temporal, r, action, errMsg)
 }
 
+// startIndicator is shared by the Kubernetes and file mode sinks.
 func startIndicator(ctx context.Context, t *temporal.Temporal, r *ResourceData, action, errMsg string) {
-	if t == nil {
-		return
-	}
 	req := temporal.IndicatorRequest{
 		Action:       action,
 		Name:         indicatorName(r.Name, r.Kind),
