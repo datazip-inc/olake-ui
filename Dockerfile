@@ -47,8 +47,8 @@ ARG APP_VERSION=unknown
 # Make version available at runtime
 ENV APP_VERSION=${APP_VERSION}
 
-# Install docker-cli
-RUN apk update && apk add --no-cache docker-cli
+# Install ca-certificates and docker-cli
+RUN apk update && apk add --no-cache ca-certificates docker-cli && update-ca-certificates
 
 # Set working directory
 WORKDIR /app/olake-ui
@@ -61,9 +61,12 @@ COPY --from=go-builder /app/olake-server ./olake-server
 COPY server/conf/app.yaml ./config/app.yaml
 COPY server/internal/services/optimization/resources/spec.json ./server/internal/services/optimization/resources/spec.json
 COPY --from=node-builder /app/ui/dist /opt/frontend/dist
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 # Expose the Go backend port (which serves both API and frontend)
 EXPOSE 8000
 
 # Run the olake-ui app
+ENTRYPOINT ["./entrypoint.sh"]
 CMD ["./olake-server"]
