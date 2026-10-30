@@ -7,8 +7,7 @@ import (
 )
 
 func TestEnvProviderFetch(t *testing.T) {
-	t.Setenv("GITOPS_SECRET_PG_PASSWORD", "P@ss")
-	t.Setenv("OLAKE_SECRET_KEY", "server-key")
+	t.Setenv("PG_PASSWORD", "P@ss")
 
 	testCases := []struct {
 		name    string
@@ -16,9 +15,8 @@ func TestEnvProviderFetch(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{name: "variable with the prefix", env: "GITOPS_SECRET_PG_PASSWORD", want: "P@ss"},
-		{name: "variable without the prefix is refused", env: "OLAKE_SECRET_KEY", wantErr: true},
-		{name: "variable not set", env: "GITOPS_SECRET_MISSING", wantErr: true},
+		{name: "any variable", env: "PG_PASSWORD", want: "P@ss"},
+		{name: "variable not set", env: "PG_MISSING", wantErr: true},
 	}
 
 	for _, tc := range testCases {

@@ -241,7 +241,7 @@ Format: `${<provider>:<path>[#<key>]}`
 | GCP Secret Manager | `${gcp-sm:<secret-id>[#key]}` or `${gcp-sm:projects/<project>/secrets/<id>[/versions/<v>][#key]}` | Kubernetes, Docker |
 | Azure Key Vault | `${azure-kv:<vault-name>/<secret-name>[/<version>][#key]}` | Kubernetes, Docker |
 | Kubernetes Secret | `${secrets:<secret-name>#<key>}` | Kubernetes mode only |
-| Environment variable | `${env:GITOPS_SECRET_<NAME>}` | Kubernetes, Docker |
+| Environment variable | `${env:<NAME>}` | Kubernetes, Docker |
 
 **Requirements and behaviour**
 
@@ -327,16 +327,16 @@ The Helm chart's GitOps Role lets olake-ui read Secrets in its namespace. The Se
 
 ### Environment variable
 
-Only variables whose name starts with `GITOPS_SECRET_` can be read, so a config cannot read olake-ui's own settings such as `OLAKE_SECRET_KEY`. Docker Compose, with the values in an uncommitted `.env` file:
+Any variable in olake-ui's environment can be read. Docker Compose, with the values in an uncommitted `.env` file:
 
 ```yaml
 olake-ui:
   environment:
-    GITOPS_SECRET_PG_PASSWORD: ${GITOPS_SECRET_PG_PASSWORD}
+    PG_PASSWORD: ${PG_PASSWORD}
 ```
 
 ```json
-"password": "${env:GITOPS_SECRET_PG_PASSWORD}"
+"password": "${env:PG_PASSWORD}"
 ```
 
 A changed value takes effect after olake-ui restarts.
@@ -379,7 +379,7 @@ kubectl logs -l app.kubernetes.io/name=olake-ui | grep -i gitops
 
 - olake-ui GitOps RBAC: ConfigMaps and Secrets (read/write status annotations on both), Events in the release namespace. **No pods create/delete.**
 - Secret `update`/`patch` (needed for status annotations) applies to all Secrets in the namespace, not only GitOps-managed ones — use a dedicated namespace for OLake GitOps.
-- Secret references: olake-ui reads only Secrets labelled `olake.io/managed=true` and environment variables starting with `GITOPS_SECRET_`. For cloud secret managers, scope olake-ui's IAM permission to the secrets it needs, because anyone who can write a config can reference any secret that identity can read.
+- Secret references: a config can read only Secrets labelled `olake.io/managed=true`, but any variable in olake-ui's environment, including olake-ui's own credentials (`OLAKE_SECRET_KEY`, the metadata database, `GITOPS_SECRETS_*`). A resolved value can reach a host the config names, for example through a connection test, so treat write access to GitOps manifests like admin access to olake-ui. For cloud secret managers, scope olake-ui's IAM permission to the secrets it needs, because anyone who can write a config can reference any secret that identity can read.
 - Failure indicators use worker SA (already has `pods` create for connector jobs).
 
 ## Code layout
