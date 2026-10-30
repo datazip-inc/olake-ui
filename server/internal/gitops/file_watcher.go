@@ -14,7 +14,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -32,6 +31,13 @@ type resourceState struct {
 	Phase    string `json:"phase"`
 	Message  string `json:"message,omitempty"`
 	EntityID string `json:"entityId,omitempty"`
+}
+
+// etlService is the ETL service the file watcher's reconcilers share; *etl.Service in production.
+type etlService interface {
+	sourceService
+	destinationService
+	jobService
 }
 
 // FileWatcher watches a directory of JSON manifests (file_manifest.go) and runs the same
@@ -55,7 +61,7 @@ type FileWatcher struct {
 	watcher   *fsnotify.Watcher
 }
 
-func newFileWatcher(dir, stateFile string, etlSvc *etl.Service, t *temporal.Temporal) *FileWatcher {
+func newFileWatcher(dir, stateFile string, etlSvc etlService, t *temporal.Temporal) *FileWatcher {
 	if stateFile == "" {
 		stateFile = filepath.Join(dir, stateFileName)
 	}

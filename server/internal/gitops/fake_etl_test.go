@@ -23,11 +23,7 @@ const (
 )
 
 // fakeETL serves every service interface the reconcilers depend on.
-var (
-	_ sourceService      = (*fakeETL)(nil)
-	_ destinationService = (*fakeETL)(nil)
-	_ jobService         = (*fakeETL)(nil)
-)
+var _ etlService = (*fakeETL)(nil)
 
 // fakeETL is an in-memory ETL service. Unlike a stub, it keeps state: a create is visible to the
 // next lookup, so a test can run several reconciles in a row (create, then edit, then retry) and

@@ -194,17 +194,19 @@ With `GITOPS_MODE=file`, olake-ui watches a directory of JSON files instead of C
 }
 ```
 
-**Streams**: the stream selection of one job, in the `selected_streams.json` shape (see [Streams catalog format](#streams-catalog-format)). `job` is the job's OLake name or numeric id.
+**Streams**: the stream selection of one job. `streams` is the `selected_streams.json` that discover writes, pasted as is (see [Streams catalog format](#streams-catalog-format)). `job` is the job's OLake name or numeric id.
 
 ```json
 {
   "kind": "streams",
   "projectId": "123",
   "job": "orders_sync",
-  "selected_streams": {
-    "public": [
-      { "stream_name": "orders", "sync_mode": "cdc", "normalization": true }
-    ]
+  "streams": {
+    "selected_streams": {
+      "public": [
+        { "stream_name": "orders", "sync_mode": "cdc", "normalization": true }
+      ]
+    }
   }
 }
 ```

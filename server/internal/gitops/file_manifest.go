@@ -58,15 +58,32 @@ func parseFileManifest(raw []byte) (*ResourceData, error) {
 		delete(data, DataJob)
 	}
 
+	if data[DataConfig], err = resolveConfig(kind, doc); err != nil {
+		return nil, err
+	}
+	return &ResourceData{Kind: kind, Name: name, Data: data}, nil
+}
+
+// resolveConfig returns the entity's config as compact JSON with sorted keys, so equal content
+// gives equal bytes. For streams it is the "streams" object: the CLI's selected_streams.json, pasted
+// as is. For the other kinds it is every field besides kind, projectId, userId and job.
+func resolveConfig(kind string, doc map[string]any) (string, error) {
 	for _, key := range fileKeys {
 		delete(doc, key)
 	}
-	config, err := json.Marshal(doc) // map keys are sorted, so equal content gives equal bytes
-	if err != nil {
-		return nil, fmt.Errorf("encode config: %w", err)
+	var config any = doc
+	if kind == KindStreams {
+		streams, ok := doc["streams"].(map[string]any)
+		if !ok {
+			return "", fmt.Errorf(`streams needs "streams": the content of the selected_streams.json written by discover`)
+		}
+		config = streams
 	}
-	data[DataConfig] = string(config)
-	return &ResourceData{Kind: kind, Name: name, Data: data}, nil
+	b, err := json.Marshal(config)
+	if err != nil {
+		return "", fmt.Errorf("encode config: %w", err)
+	}
+	return string(b), nil
 }
 
 // stringField returns doc[key] as a string. Numbers are accepted, so "userId": 1 and "userId": "1"
