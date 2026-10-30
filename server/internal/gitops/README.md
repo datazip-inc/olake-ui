@@ -138,6 +138,8 @@ Do **not** put `olake.io/phase` or other status annotations in git — the opera
 
 On permanent reconcile failure, olake-ui starts Temporal **`IndicatorWorkflow`** (fire-and-forget). **olake-worker** creates a short-lived busybox Pod (K8s) or container (Docker) labelled `olake.io/indicator=true`. The container writes the error to `/dev/termination-log` and exits 1.
 
+The pod or container is named `olake-failed-<kind>-<name>` (for example `olake-failed-source-pg-cm`; `<name>` is the ConfigMap or Secret name made DNS-1123 safe and cut to fit 63 characters). In Kubernetes the worker also records a `Warning` event with reason `SyncFailed` and the error on the pod, so event-based alerting and `kubectl describe pod` show it. The pod is deleted when the resource syncs again.
+
 Configure alerts on failed Pods with that label. olake-ui never creates Pods directly.
 
 ## Reconciliation behavior

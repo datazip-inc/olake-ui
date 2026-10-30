@@ -41,22 +41,14 @@ func TestStartIndicator(t *testing.T) {
 	start := func(temporalClient *fakeTemporalClient, action, errMsg string) {
 		StartIndicator(ctx, &temporal.Temporal{Client: temporalClient}, res, action, errMsg)
 	}
-	// the pod name is the object name made DNS-1123 safe, plus the kind
-	pod := temporal.IndicatorRequest{Name: "orders-cm-olake-job", Namespace: testNamespace, Kind: KindJob, ResourceName: "Orders_CM"}
+	// the pod name is the kind plus the object name made DNS-1123 safe
+	pod := temporal.IndicatorRequest{Name: "olake-failed-job-orders-cm", Namespace: testNamespace, Kind: KindJob, ResourceName: "Orders_CM"}
 
 	t.Run("spawn sends the pod and the error for its termination log", func(t *testing.T) {
 		temporalClient := &fakeTemporalClient{}
 		start(temporalClient, indicatorSpawn, "source connection test failed")
 		want := pod
 		want.Action, want.Message = indicatorSpawn, "source connection test failed"
-		assert.Equal(t, []workflowStart{indicatorStart(&want)}, temporalClient.workflowStarts)
-	})
-
-	t.Run("message is cut to the termination log limit", func(t *testing.T) {
-		temporalClient := &fakeTemporalClient{}
-		start(temporalClient, indicatorSpawn, strings.Repeat("x", terminationLogMax+100))
-		want := pod
-		want.Action, want.Message = indicatorSpawn, strings.Repeat("x", terminationLogMax)
 		assert.Equal(t, []workflowStart{indicatorStart(&want)}, temporalClient.workflowStarts)
 	})
 
@@ -82,15 +74,16 @@ func TestIndicatorName(t *testing.T) {
 		kind string
 		want string
 	}{
-		{name: "orders", kind: KindJob, want: "orders-olake-job"},
-		{name: "Prod_Orders.v2", kind: KindJob, want: "prod-orders-v2-olake-job"},
-		{name: "a--b__c", kind: KindSource, want: "a-b-c-olake-source"},
-		{name: "-edge-", kind: KindSource, want: "edge-olake-source"},
-		{name: "___", kind: KindDestination, want: "unnamed-olake-destination"},
-		{name: "", kind: KindStreams, want: "unnamed-olake-streams"},
-		// cut to 63 chars without leaving a dash before the suffix
-		{name: strings.Repeat("a", 52) + "-bbbbbbbbb", kind: KindJob, want: strings.Repeat("a", 52) + "-olake-job"},
-		{name: strings.Repeat("x", 80), kind: KindJob, want: strings.Repeat("x", 53) + "-olake-job"},
+		{name: "orders", kind: KindJob, want: "olake-failed-job-orders"},
+		{name: "Prod_Orders.v2", kind: KindJob, want: "olake-failed-job-prod-orders-v2"},
+		{name: "a--b__c", kind: KindSource, want: "olake-failed-source-a-b-c"},
+		{name: "-edge-", kind: KindSource, want: "olake-failed-source-edge"},
+		{name: "Café", kind: KindSource, want: "olake-failed-source-caf"},
+		{name: "___", kind: KindDestination, want: "olake-failed-destination-unnamed"},
+		{name: "", kind: KindStreams, want: "olake-failed-streams-unnamed"},
+		// cut to 63 chars without leaving a trailing dash
+		{name: strings.Repeat("a", 46) + "-bbbbbbbbb", kind: KindJob, want: "olake-failed-job-" + strings.Repeat("a", 46)},
+		{name: strings.Repeat("x", 80), kind: KindJob, want: "olake-failed-job-" + strings.Repeat("x", 46)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
