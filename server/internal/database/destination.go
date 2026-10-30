@@ -73,6 +73,28 @@ func (db *Database) ListDestinationsByProjectID(projectID string) ([]*models.Des
 	return destinations, nil
 }
 
+func (db *Database) GetDestinationByName(projectID, name string) (*models.Destination, error) {
+	var destination models.Destination
+	err := db.conn.
+		Where("project_id = ? AND name = ?", projectID, name).
+		Preload("CreatedBy").
+		Preload("UpdatedBy").
+		First(&destination).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: destination not found name[%s] project_id[%s]", constants.ErrDestinationNotFound, name, projectID)
+		}
+		return nil, fmt.Errorf("failed to get destination name[%s] project_id[%s]: %s", name, projectID, err)
+	}
+
+	dConfig, err := utils.Decrypt(destination.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt destination config id[%d]: %s", destination.ID, err)
+	}
+	destination.Config = dConfig
+	return &destination, nil
+}
+
 func (db *Database) GetDestinationByID(id int) (*models.Destination, error) {
 	var destination models.Destination
 	err := db.conn.

@@ -57,6 +57,10 @@ const (
 
 // TODO: check if we can add command args as constants for all the methods
 
+// ErrWorkflowStart means Temporal did not start the workflow (for example, it is unreachable), so
+// the command never ran. Unlike a workflow that ran and failed, a retry can succeed.
+var ErrWorkflowStart = errors.New("failed to start workflow")
+
 // Scheduled Process (sync, clear-destination):
 // For scheduled/triggered workflows, configs are written in the worker-side.
 // This is because the BFF doesn't know the actual execution workflowID that
@@ -208,7 +212,7 @@ func (t *Temporal) startDiscoverWorkflow(ctx context.Context, sourceType, versio
 	}
 	run, err := t.Client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{ID: workflowID, TaskQueue: t.taskQueue}, ExecuteWorkflow, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute discover workflow: %s", err)
+		return nil, fmt.Errorf("%w: discover: %s", ErrWorkflowStart, err)
 	}
 	return run, nil
 }
@@ -340,7 +344,7 @@ func (t *Temporal) StartVerifyDriverCredentials(ctx context.Context, projectID, 
 	}
 
 	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
-		return "", fmt.Errorf("failed to execute test connection workflow: %s", err)
+		return "", fmt.Errorf("%w: test connection: %s", ErrWorkflowStart, err)
 	}
 
 	return workflowID, nil
@@ -458,7 +462,7 @@ func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, o
 	}
 
 	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
-		return "", fmt.Errorf("failed to execute stream difference workflow: %s", err)
+		return "", fmt.Errorf("%w: stream difference: %s", ErrWorkflowStart, err)
 	}
 
 	return workflowID, nil
