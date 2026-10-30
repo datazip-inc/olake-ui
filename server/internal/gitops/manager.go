@@ -8,6 +8,8 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	"github.com/datazip-inc/olake-ui/server/internal/gitops/file"
+	"github.com/datazip-inc/olake-ui/server/internal/gitops/kubernetes"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -56,20 +58,16 @@ func newRunner(cfg Config, app *services.AppService) (runner, error) {
 		if err != nil {
 			return nil, fmt.Errorf("load in-cluster config: %w", err)
 		}
-		ctrlr, err := Setup(app, restConfig, cfg.Namespace)
+		ctrlr, err := kubernetes.Setup(app, restConfig, cfg.Namespace)
 		if err != nil {
 			return nil, err
 		}
 		return ctrlr, nil
 	case ModeFile:
-		if cfg.FileDir == "" {
-			return nil, fmt.Errorf("OLAKE_GITOPS_FILE_DIR is empty")
-		}
-		fw := newFileWatcher(cfg.FileDir, cfg.StateFile, app.ETL(), app.ETL().Temporal())
-		if err := fw.setup(); err != nil {
+		fw, err := file.Setup(app, cfg.FileDir, cfg.StateFile)
+		if err != nil {
 			return nil, err
 		}
-		logger.Infof("GitOps file watcher watching %s", cfg.FileDir)
 		return fw, nil
 	default:
 		return nil, fmt.Errorf("unknown GITOPS_MODE %s, want %s or %s", cfg.Mode, ModeKubernetes, ModeFile)

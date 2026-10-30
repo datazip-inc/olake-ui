@@ -236,6 +236,8 @@ File mode also works inside Kubernetes, for example with manifests mounted from 
 
 On permanent reconcile failure, olake-ui starts Temporal **`IndicatorWorkflow`** (fire-and-forget). **olake-worker** creates a short-lived busybox Pod (K8s) or container (Docker) labelled `olake.io/indicator=true`. The container writes the error to `/dev/termination-log` and exits 1.
 
+The pod or container is named `olake-failed-<kind>-<name>` (for example `olake-failed-source-pg-cm`; `<name>` is the ConfigMap or Secret name made DNS-1123 safe and cut to fit 63 characters). In Kubernetes the worker also records a `Warning` event with reason `SyncFailed` and the error on the pod, so event-based alerting and `kubectl describe pod` show it. The pod is deleted when the resource syncs again.
+
 Configure alerts on failed Pods with that label. olake-ui never creates Pods directly.
 
 ## Reconciliation behavior
@@ -269,3 +271,12 @@ kubectl logs -l app.kubernetes.io/name=olake-ui | grep -i gitops
 - olake-ui GitOps RBAC: ConfigMaps and Secrets (read/write status annotations on both), Events in the release namespace. **No pods create/delete.**
 - Secret `update`/`patch` (needed for status annotations) applies to all Secrets in the namespace, not only GitOps-managed ones — use a dedicated namespace for GitOps-managed OLake when possible.
 - Failure indicators use worker SA (already has `pods` create for connector jobs).
+
+## Code layout
+
+- `manager.go`: `InitGitOps` starts the mode named by `GITOPS_MODE`.
+- `reconciler/`: the mode-agnostic core. `Source`, `Destination` and `Job` apply one manifest (a `ResourceData`) to OLake and report the result through a `StatusSink`. Validation, the streams format, status rules (skip, retry window, failure indicators) and connection tests live here.
+- `kubernetes/`: Kubernetes mode. The controllers load labelled ConfigMaps and Secrets into `ResourceData`, re-queue jobs when their dependencies change, and `Sink` writes status as annotations and Events.
+- `file/`: file mode. `Watcher` reads JSON manifests from the watched directory into `ResourceData`, re-queues jobs when their dependencies change, and keeps status in the state file.
+
+Each package's tests sit next to it: the reconcile rules are tested in `reconciler/` against an in-memory object store and a fake ETL service; `kubernetes/` tests loading, watching and status writing on a fake cluster, and `file/` the same on a temp directory.
