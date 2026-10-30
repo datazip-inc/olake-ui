@@ -1,4 +1,4 @@
-package gitops
+package file
 
 import (
 	"bytes"
@@ -6,13 +6,15 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/datazip-inc/olake-ui/server/internal/gitops/reconciler"
 )
 
 // fileKeys are the manifest fields that are not part of the entity's config.
-var fileKeys = []string{"kind", DataProjectID, DataUserID, DataJob}
+var fileKeys = []string{"kind", reconciler.DataProjectID, reconciler.DataUserID, reconciler.DataJob}
 
-// parseFileManifest parses one JSON manifest (a source, destination, job or streams) into a ResourceData.
-func parseFileManifest(raw []byte) (*ResourceData, error) {
+// parseFileManifest parses one JSON manifest (a source, destination, job or streams) into a reconciler.ResourceData.
+func parseFileManifest(raw []byte) (*reconciler.ResourceData, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber() // keep numbers as written, so the config and its hash do not change on re-read
 	var doc map[string]any
@@ -34,7 +36,7 @@ func parseFileManifest(raw []byte) (*ResourceData, error) {
 		return nil, fmt.Errorf("invalid kind %q (want source, destination, job, or streams)", kind)
 	}
 	data := map[string]string{}
-	for _, key := range []string{DataProjectID, DataUserID, DataJob} {
+	for _, key := range []string{reconciler.DataProjectID, reconciler.DataUserID, reconciler.DataJob} {
 		if v, err := stringField(doc, key); err != nil {
 			return nil, err
 		} else if v != "" {
@@ -43,11 +45,11 @@ func parseFileManifest(raw []byte) (*ResourceData, error) {
 	}
 
 	var name string
-	if kind == KindStreams {
-		if name = data[DataJob]; name == "" {
+	if kind == reconciler.KindStreams {
+		if name = data[reconciler.DataJob]; name == "" {
 			return nil, fmt.Errorf("streams needs job (the name or id of the job it belongs to)")
 		}
-		delete(data, DataUserID) // streams have no userId
+		delete(data, reconciler.DataUserID) // streams have no userId
 	} else {
 		if name, err = stringField(doc, "name"); err != nil {
 			return nil, err
@@ -55,18 +57,35 @@ func parseFileManifest(raw []byte) (*ResourceData, error) {
 		if name == "" {
 			return nil, fmt.Errorf("%s needs name", kind)
 		}
-		delete(data, DataJob)
+		delete(data, reconciler.DataJob)
 	}
 
+	if data[reconciler.DataConfig], err = resolveConfig(kind, doc); err != nil {
+		return nil, err
+	}
+	return &reconciler.ResourceData{Kind: kind, Name: name, Data: data}, nil
+}
+
+// resolveConfig returns the entity's config as compact JSON with sorted keys, so equal content
+// gives equal bytes. For streams it is the "streams" object: the CLI's selected_streams.json, pasted
+// as is. For the other kinds it is every field besides kind, projectId, userId and job.
+func resolveConfig(kind string, doc map[string]any) (string, error) {
 	for _, key := range fileKeys {
 		delete(doc, key)
 	}
-	config, err := json.Marshal(doc) // map keys are sorted, so equal content gives equal bytes
-	if err != nil {
-		return nil, fmt.Errorf("encode config: %w", err)
+	var config any = doc
+	if kind == reconciler.KindStreams {
+		streams, ok := doc["streams"].(map[string]any)
+		if !ok {
+			return "", fmt.Errorf(`streams needs "streams": the content of the selected_streams.json written by discover`)
+		}
+		config = streams
 	}
-	data[DataConfig] = string(config)
-	return &ResourceData{Kind: kind, Name: name, Data: data}, nil
+	b, err := json.Marshal(config)
+	if err != nil {
+		return "", fmt.Errorf("encode config: %w", err)
+	}
+	return string(b), nil
 }
 
 // stringField returns doc[key] as a string. Numbers are accepted, so "userId": 1 and "userId": "1"
@@ -86,7 +105,7 @@ func stringField(doc map[string]any, key string) (string, error) {
 
 func isValidManagedKind(kind string) bool {
 	switch kind {
-	case KindSource, KindDestination, KindJob, KindStreams:
+	case reconciler.KindSource, reconciler.KindDestination, reconciler.KindJob, reconciler.KindStreams:
 		return true
 	default:
 		return false

@@ -1,12 +1,10 @@
-package gitops
+package reconciler
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"strconv"
-	"strings"
-	"unicode"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -25,14 +23,11 @@ const (
 	KindJob         = "job"
 	KindStreams     = "streams"
 
-	LabelManaged = "olake.io/managed"
-	LabelKind    = "olake.io/kind"
-
 	// Status annotations (operator-owned). Git/Argo manifests should only set
 	// metadata.labels and data — not these keys. Unlike a CRD status subresource,
 	// ConfigMap has no API split between user fields and operator fields; if a
 	// sync replaces metadata or clears annotations, skipReconcile sees a fresh
-	// object and may re-run reconcile (see k8s_sink.go). Safe with normal
+	// object and may re-run reconcile (see kubernetes/sink.go). Safe with normal
 	// kubectl apply / Argo merge sync; risky with Replace, force SSA, or
 	// manifests that set metadata.annotations explicitly (including {}).
 	AnnotationPhase        = "olake.io/phase"
@@ -44,20 +39,11 @@ const (
 	DataUserID    = "userId"
 	DataConfig    = "config"
 	DataJob       = "job"
-
-	LabelManagedValue = "true"
-
-	// ObjectKind identifies which Kubernetes type backs a ResourceData, so
-	// StatusSink implementations know whether to Get/Patch a ConfigMap or a
-	// Secret for the same managed resource.
-	ObjectKindConfigMap = "ConfigMap"
-	ObjectKindSecret    = "Secret"
-
-	indicatorNameMax  = 63
-	terminationLogMax = 4096
 )
 
-// ResourceData is the view of an OLake-managed resource.
+// ResourceData is the view of an OLake-managed resource, whatever the GitOps mode stores it in.
+// ObjectKind is set and read by the mode only: in Kubernetes mode it says whether a ConfigMap or a
+// Secret backs the resource.
 type ResourceData struct {
 	Kind        string
 	ObjectKind  string
@@ -81,7 +67,18 @@ func (r *ResourceData) EntityID() int {
 	return n
 }
 
-// StatusSink writes phase and failure indicators.
+// bindEntity records the OLake entity r manages once a reconcile has found it, so every status
+// written afterwards carries its id: a Failed or Pending phase means the entity exists but the
+// latest data is not applied, not that there is no entity.
+func (r *ResourceData) bindEntity(id int) {
+	if r.Annotations == nil {
+		r.Annotations = map[string]string{}
+	}
+	r.Annotations[AnnotationEntityID] = strconv.Itoa(id)
+}
+
+// StatusSink writes phase and failure indicators. SetPhase always gets the observed hash to store;
+// the reconcilers resolve it (observedHashForResource), so a sink never computes one.
 type StatusSink interface {
 	Indicator(ctx context.Context, r *ResourceData, action, errMsg string)
 	SetPhase(ctx context.Context, r *ResourceData, phase, message, entityID, observedHash string) error
@@ -113,48 +110,6 @@ func matchesNameOrID(ref, name string, entityID int) bool {
 	return ref == name || (entityID > 0 && ref == strconv.Itoa(entityID))
 }
 
-// indicatorName returns "<name>-olake-<kind>" truncated to 63 chars.
-func indicatorName(name, kind string) string {
-	suffix := "-olake-" + kind
-	n := sanitizeDNS1123(name)
-	if n == "" {
-		n = "unnamed"
-	}
-	if len(n)+len(suffix) > indicatorNameMax {
-		n = strings.TrimRight(n[:indicatorNameMax-len(suffix)], "-")
-	}
-	return n + suffix
-}
-
-func sanitizeDNS1123(s string) string {
-	s = strings.ToLower(s)
-	var b strings.Builder
-	prevDash := false
-	for _, r := range s {
-		ok := unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-'
-		if !ok {
-			r = '-'
-		}
-		if r == '-' {
-			if prevDash {
-				continue
-			}
-			prevDash = true
-		} else {
-			prevDash = false
-		}
-		b.WriteRune(r)
-	}
-	return strings.Trim(b.String(), "-")
-}
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n]
-}
-
 type resourceSpec struct {
 	ID      int
 	Name    string
@@ -181,7 +136,7 @@ func resourceMatches(existing, spec *resourceSpec) bool {
 		utils.EqualJSON(existing.Config.String(), spec.Config.String())
 }
 
-func reconcileResource(ctx context.Context, sink StatusSink, secrets *secretRefs, r resource, res *ResourceData) (ctrl.Result, error) {
+func reconcileResource(ctx context.Context, sink StatusSink, secrets *SecretRefs, r resource, res *ResourceData) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	observedHash := ContentHash(res.Data)
@@ -216,6 +171,9 @@ func reconcileResource(ctx context.Context, sink StatusSink, secrets *secretRefs
 	if err != nil && !errors.Is(err, r.notFoundErr()) {
 		logger.Error(err, "lookup "+r.kind()+" failed")
 		return requeueTransient(ctx, sink, res, err, observedHash)
+	}
+	if existing != nil {
+		res.bindEntity(existing.ID)
 	}
 
 	changed := existing != nil && !resourceMatches(existing, spec)

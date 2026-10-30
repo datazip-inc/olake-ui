@@ -1,4 +1,4 @@
-package gitops
+package reconciler
 
 import (
 	"context"
@@ -73,7 +73,7 @@ func TestSecretRefsResolve(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			refs := &secretRefs{
+			refs := &SecretRefs{
 				resolver:  secretref.NewWithProviders(map[string]secretref.Provider{"aws-sm": tc.provider}),
 				encrypted: tc.encrypted,
 			}
@@ -112,7 +112,7 @@ func TestSecretRefsMayRefresh(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			refs := &secretRefs{refresh: tc.refresh}
+			refs := &SecretRefs{refresh: tc.refresh}
 			if got := refs.mayRefresh(tc.config); got != tc.want {
 				t.Fatalf("got %v, want %v", got, tc.want)
 			}
@@ -135,7 +135,7 @@ func TestSecretRefsNext(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			refs := &secretRefs{refresh: tc.refresh}
+			refs := &SecretRefs{refresh: tc.refresh}
 			got := refs.next(tc.hasRefs).RequeueAfter
 			if got < tc.wantMin || got > tc.wantMax {
 				t.Fatalf("RequeueAfter = %s, want between %s and %s", got, tc.wantMin, tc.wantMax)
@@ -157,7 +157,7 @@ func TestNewSecretRefs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			refs := newSecretRefs(&appconfig.Config{GitOpsSecretsRefreshInterval: tc.refresh}, secretref.K8sConfig{})
+			refs := NewSecretRefs(&appconfig.Config{GitOpsSecretsRefreshInterval: tc.refresh}, secretref.K8sConfig{})
 			if refs.refresh != tc.want {
 				t.Fatalf("refresh = %s, want %s", refs.refresh, tc.want)
 			}

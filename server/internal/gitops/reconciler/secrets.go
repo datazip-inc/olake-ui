@@ -1,4 +1,4 @@
-package gitops
+package reconciler
 
 import (
 	"context"
@@ -20,9 +20,10 @@ import (
 // in a tight loop.
 const minSecretRefresh = time.Minute
 
-// secretRefs resolves secret references in source/destination configs, and re-checks resources
+// SecretRefs resolves secret references in source/destination configs, and re-checks resources
 // that use them every refresh interval so a rotated secret reaches OLake without a change in git.
-type secretRefs struct {
+// Each GitOps mode builds one with NewSecretRefs and gives it to the Source and Destination reconcilers.
+type SecretRefs struct {
 	resolver *secretref.Resolver
 	// refresh is how often a Ready resource with references is re-checked; 0 turns this off.
 	refresh time.Duration
@@ -31,13 +32,15 @@ type secretRefs struct {
 	encrypted bool
 }
 
-func newSecretRefs(cfg *appconfig.Config, k8s secretref.K8sConfig) *secretRefs {
+// NewSecretRefs builds the resolver from the GITOPS_SECRETS_* settings. k8s is the cluster that
+// ${secrets:...} references read from; its zero value refuses them (file mode without a cluster).
+func NewSecretRefs(cfg *appconfig.Config, k8s secretref.K8sConfig) *SecretRefs {
 	refresh := cfg.GitOpsSecretsRefreshInterval
 	if refresh > 0 && refresh < minSecretRefresh {
 		logger.Warnf("GITOPS_SECRETS_REFRESH_INTERVAL %s is below %s (a value needs a unit, such as 15m); using %s", refresh, minSecretRefresh, minSecretRefresh)
 		refresh = minSecretRefresh
 	}
-	return &secretRefs{
+	return &SecretRefs{
 		resolver: secretref.New(&secretref.Config{
 			AWS: secretref.AWSConfig{
 				Region:          cfg.GitOpsSecretsAWSRegion,
@@ -61,13 +64,13 @@ func newSecretRefs(cfg *appconfig.Config, k8s secretref.K8sConfig) *secretRefs {
 
 // mayRefresh is a cheap check of the raw config: false means it cannot hold a reference, so a
 // synced resource can be skipped without parsing it.
-func (s *secretRefs) mayRefresh(config string) bool {
+func (s *SecretRefs) mayRefresh(config string) bool {
 	return s.refresh > 0 && strings.Contains(config, "${")
 }
 
 // resolve returns config with every reference replaced and whether it had any. Errors that will
 // not go away on retry are marked non-retryable.
-func (s *secretRefs) resolve(ctx context.Context, config string) (string, bool, error) {
+func (s *SecretRefs) resolve(ctx context.Context, config string) (string, bool, error) {
 	resolved, found, err := s.resolver.Resolve(ctx, config)
 	if err != nil {
 		if errors.Is(err, secretref.ErrUnresolvable) {
@@ -84,7 +87,7 @@ func (s *secretRefs) resolve(ctx context.Context, config string) (string, bool, 
 
 // next schedules the next re-check of a resource with references, with up to 10% jitter so
 // resources synced together do not call the secret managers at the same moment.
-func (s *secretRefs) next(hasRefs bool) ctrl.Result {
+func (s *SecretRefs) next(hasRefs bool) ctrl.Result {
 	if !hasRefs || s.refresh <= 0 {
 		return ctrl.Result{}
 	}

@@ -1,4 +1,4 @@
-package gitops
+package reconciler
 
 import (
 	"context"
@@ -13,14 +13,27 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/types"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
-// JobReconciler applies a job manifest and its streams manifest to OLake.
-type JobReconciler struct {
-	ETL  *etl.Service
+// jobService is the part of the ETL service the job reconciler calls.
+type jobService interface {
+	catalogService
+	connectionService
+	GetSourceByName(ctx context.Context, projectID, name string) (*models.Source, error)
+	GetSourceByID(ctx context.Context, projectID string, id int) (*models.Source, error)
+	GetDestinationByName(ctx context.Context, projectID, name string) (*models.Destination, error)
+	GetDestinationByID(ctx context.Context, projectID string, id int) (*models.Destination, error)
+	GetJobByName(ctx context.Context, projectID, name string) (*models.Job, error)
+	CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error
+	UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error
+	ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRequest, userID *int) error
+}
+
+// Job applies a job manifest and its streams manifest to OLake, in every GitOps mode.
+type Job struct {
+	ETL  jobService
 	Sink StatusSink
 }
 
@@ -48,8 +61,9 @@ Why discover here:
     the source (sync_new_columns, new tables in schema, etc.).
 */
 
-// reconcileJob applies job res. streamsRes is its streams manifest, or nil when there is none yet.
-func (r *JobReconciler) reconcileJob(ctx context.Context, res, streamsRes *ResourceData) (ctrl.Result, error) {
+// Reconcile applies job res. streamsRes is its streams manifest (see StreamsBelongTo), or nil when
+// there is none yet.
+func (r *Job) Reconcile(ctx context.Context, res, streamsRes *ResourceData) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	projectID := res.ProjectID()
 
@@ -92,6 +106,10 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res, streamsRes *Resou
 	if err != nil && !errors.Is(err, constants.ErrJobNotFound) {
 		logger.Error(err, "lookup job failed")
 		return requeueTransient(ctx, r.Sink, res, err, observed)
+	}
+	if existingJob != nil {
+		res.bindEntity(existingJob.ID)
+		streamsRes.bindEntity(existingJob.ID)
 	}
 
 	cmCatalog, err := parseStreamsCM(streamsRes.Config())
@@ -185,7 +203,7 @@ func (r *JobReconciler) reconcileJob(ctx context.Context, res, streamsRes *Resou
 	return ctrl.Result{}, nil
 }
 
-func (r *JobReconciler) failJob(ctx context.Context, job, streams *ResourceData, err error, observedHash string) (ctrl.Result, error) {
+func (r *Job) failJob(ctx context.Context, job, streams *ResourceData, err error, observedHash string) (ctrl.Result, error) {
 	result, _ := failResource(ctx, r.Sink, job, err, observedHash)
 	if streams != nil {
 		_, _ = failResource(ctx, r.Sink, streams, err, "")
@@ -206,7 +224,7 @@ type jobRefs struct {
 	destErr   error
 }
 
-func (r *JobReconciler) loadJobRefs(ctx context.Context, res *ResourceData) jobRefs {
+func (r *Job) loadJobRefs(ctx context.Context, res *ResourceData) jobRefs {
 	var refs jobRefs
 	refs.cfg, refs.cfgErr = ParseAndValidateJobConfig(res.Config())
 	if refs.cfgErr != nil {
@@ -244,7 +262,7 @@ func reconcileHash(res *ResourceData, source *models.Source, dest *models.Destin
 	})
 }
 
-func (r *JobReconciler) testConnectors(ctx context.Context, source *models.Source, dest *models.Destination) error {
+func (r *Job) testConnectors(ctx context.Context, source *models.Source, dest *models.Destination) error {
 	if err := testSourceConnection(ctx, r.ETL, source.ProjectID, source.Type, source.Version, dto.JSONConfig(source.Config)); err != nil {
 		return err
 	}
@@ -259,9 +277,9 @@ func streamsSettled(streams *ResourceData) bool {
 	return streams != nil && skipReconcile(streams.Annotations, ContentHash(streams.Data))
 }
 
-// streamsBelongTo reports whether streams is the streams manifest of job: same namespace and
+// StreamsBelongTo reports whether streams is the streams manifest of job: same namespace and
 // project, and its job ref names the job or its entity ID.
-func streamsBelongTo(streams, job *ResourceData) bool {
+func StreamsBelongTo(streams, job *ResourceData) bool {
 	projectID := job.ProjectID()
 	return streams.Kind == KindStreams &&
 		streams.Namespace == job.Namespace &&
@@ -269,12 +287,12 @@ func streamsBelongTo(streams, job *ResourceData) bool {
 		matchesNameOrID(streams.JobRef(), job.Name, job.EntityID())
 }
 
-// jobDependsOn reports whether a change to dep can change the reconcile result of job: dep is the
+// JobDependsOn reports whether a change to dep can change the reconcile result of job: dep is the
 // job's streams manifest, or the source/destination its config refers to.
-func jobDependsOn(job, dep *ResourceData) bool {
+func JobDependsOn(job, dep *ResourceData) bool {
 	switch dep.Kind {
 	case KindStreams:
-		return streamsBelongTo(dep, job)
+		return StreamsBelongTo(dep, job)
 	case KindSource, KindDestination:
 		if dep.Namespace != job.Namespace {
 			return false
@@ -375,14 +393,14 @@ func streamDifferenceJSON(ctx context.Context, svc catalogService, job *models.J
 	return string(diffBytes), nil
 }
 
-func (r *JobReconciler) resolveSource(ctx context.Context, projectID, ref string) (*models.Source, error) {
+func (r *Job) resolveSource(ctx context.Context, projectID, ref string) (*models.Source, error) {
 	if id, ok := parseResourceID(ref); ok {
 		return r.ETL.GetSourceByID(ctx, projectID, id)
 	}
 	return r.ETL.GetSourceByName(ctx, projectID, ref)
 }
 
-func (r *JobReconciler) resolveDestination(ctx context.Context, projectID, ref string) (*models.Destination, error) {
+func (r *Job) resolveDestination(ctx context.Context, projectID, ref string) (*models.Destination, error) {
 	if id, ok := parseResourceID(ref); ok {
 		return r.ETL.GetDestinationByID(ctx, projectID, id)
 	}
