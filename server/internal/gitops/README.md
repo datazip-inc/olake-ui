@@ -4,9 +4,9 @@ Manage OLake sources, destinations, jobs, and stream selections as labelled **Co
 
 ## Prerequisites
 
-- Kubernetes: OLake UI deployed **inside** the cluster (in-cluster kubeconfig).
+- Kubernetes: OLake UI deployed **inside** the cluster (in-cluster kubeconfig), or Docker Compose with file-based manifests mounted at `/etc/olake/gitops`.
 - Source drivers at **v1.0.0 or later**. A job whose source is older fails reconcile until the Source is upgraded.
-- `GITOPS_MODE=kubernetes` on the `olake-ui` Deployment (Helm `gitops.enabled: true` sets it).
+- `GITOPS_MODE` on `olake-ui`: `kubernetes` for ConfigMaps/Secrets (Helm `gitops.enabled: true` sets it), or `file` for a directory of JSON manifests.
   Unset or empty disables GitOps.
   Any other value fails startup.
 - GitOps RBAC: namespace `Role` on `configmaps` and `secrets` (get/list/watch/update/patch each), and `events` (create/patch). **No `pods` permission on olake-ui.**
@@ -25,6 +25,17 @@ gitops:
 ```
 
 See [olake-helm/docs/gitops.md](https://github.com/datazip-inc/olake-helm/blob/master/helm/olake/docs/gitops.md).
+
+**Docker Compose:**
+
+```yaml
+environment:
+  GITOPS_MODE: file
+volumes:
+  - ./olake-gitops:/etc/olake/gitops
+```
+
+olake-ui reads plain JSON files from `/etc/olake/gitops` — no ConfigMaps, labels or annotations. See [Docker Compose (file mode)](#docker-compose-file-mode).
 
 ### 2. Apply sample manifests
 
@@ -134,6 +145,93 @@ Rotating the Secret's `data.config` re-triggers reconcile the same way editing t
 
 Do **not** put `olake.io/phase` or other status annotations in git — the operator writes them.
 
+## Docker Compose (file mode)
+
+With `GITOPS_MODE=file`, olake-ui watches a directory of JSON files instead of ConfigMaps. Each file describes one entity with the same fields the OLake API takes, plus `kind`, `projectId`, `userId` and, for streams, `job`. There are no Kubernetes fields (`apiVersion`, `metadata`, labels, annotations).
+
+### Files
+
+**Source**
+
+```json
+{
+  "kind": "source",
+  "projectId": "123",
+  "userId": 1,
+  "name": "pg_prod",
+  "type": "postgres",
+  "version": "v1.0.0",
+  "config": { "host": "postgres", "port": 5432, "database": "app", "username": "olake", "password": "..." }
+}
+```
+
+**Destination**
+
+```json
+{
+  "kind": "destination",
+  "projectId": "123",
+  "userId": 1,
+  "name": "lake",
+  "type": "iceberg",
+  "version": "v1.0.0",
+  "config": { "type": "ICEBERG", "writer": { "type": "glue", "iceberg_s3_path": "s3://bucket/warehouse", "aws_region": "ap-south-1" } }
+}
+```
+
+**Job**: `source` and `destination` are the OLake name or numeric id (as a string) of the source and destination. `activate` defaults to `true`; `advanced_settings` is optional.
+
+```json
+{
+  "kind": "job",
+  "projectId": "123",
+  "userId": 1,
+  "name": "orders_sync",
+  "source": "pg_prod",
+  "destination": "lake",
+  "frequency": "0 */6 * * *",
+  "activate": true
+}
+```
+
+**Streams**: the stream selection of one job. `streams` is the `selected_streams.json` that discover writes, pasted as is (see [Streams catalog format](#streams-catalog-format)). `job` is the job's OLake name or numeric id.
+
+```json
+{
+  "kind": "streams",
+  "projectId": "123",
+  "job": "orders_sync",
+  "streams": {
+    "selected_streams": {
+      "public": [
+        { "stream_name": "orders", "sync_mode": "cdc", "normalization": true }
+      ]
+    }
+  }
+}
+```
+
+### Rules
+
+- **Kind:** `kind` is `source`, `destination`, `job` or `streams`.
+- **Required fields:** `projectId` is required on every file. `userId` is required on source, destination and job files. Both may be a string or a number.
+- **Identity:** a source, destination or job is identified by `kind` + `name` (the OLake name), and streams by their `job`. The file name and directory do not matter.
+- **Files read:** every `*.json` file, at the root of the directory or in a directory under it (for example one directory per job). The directory holds only these files and the state file.
+- **Editing:** a file is reconciled 5 s after its last change.
+- **Deleting:** deleting a file drops the entity from GitOps, but the OLake entity is kept, as in Kubernetes mode.
+- **Credentials:** there is no Secret equivalent; credentials are written in the source/destination file. Keep the directory private.
+
+### Status
+
+There are no annotations, so status (phase, message, entity ID, observed hash) is kept in `.olake-gitops-state.json` in the directory and written to the olake-ui log on each change. The file plays the role of the annotations: it keeps a restart from re-applying every job, which would cancel running syncs.
+
+- Keep it on persistent storage, and add it to `.gitignore` if the directory is a git checkout.
+- If the directory is read-only (for example a git-sync mount), set `OLAKE_GITOPS_STATE_FILE` to a writable path. olake-ui fails at startup if it cannot write the file.
+- Deleting the state file, or a manifest, makes the next start reconcile those entities from scratch.
+
+`OLAKE_GITOPS_FILE_DIR` changes the directory, for example when running the server outside Docker.
+File mode also works inside Kubernetes, for example with manifests mounted from a volume: set `GITOPS_MODE=file` instead of `kubernetes`.
+
 ## Failure indicators
 
 On permanent reconcile failure, olake-ui starts Temporal **`IndicatorWorkflow`** (fire-and-forget). **olake-worker** creates a short-lived busybox Pod (K8s) or container (Docker) labelled `olake.io/indicator=true`. The container writes the error to `/dev/termination-log` and exits 1.
@@ -179,5 +277,6 @@ kubectl logs -l app.kubernetes.io/name=olake-ui | grep -i gitops
 - `manager.go`: `InitGitOps` starts the mode named by `GITOPS_MODE`.
 - `reconciler/`: the mode-agnostic core. `Source`, `Destination` and `Job` apply one manifest (a `ResourceData`) to OLake and report the result through a `StatusSink`. Validation, the streams format, status rules (skip, retry window, failure indicators) and connection tests live here.
 - `kubernetes/`: Kubernetes mode. The controllers load labelled ConfigMaps and Secrets into `ResourceData`, re-queue jobs when their dependencies change, and `Sink` writes status as annotations and Events.
+- `file/`: file mode. `Watcher` reads JSON manifests from the watched directory into `ResourceData`, re-queues jobs when their dependencies change, and keeps status in the state file.
 
-Each package's tests sit next to it: the reconcile rules are tested in `reconciler/` against an in-memory object store and a fake ETL service; `kubernetes/` tests loading, watching and status writing on a fake cluster.
+Each package's tests sit next to it: the reconcile rules are tested in `reconciler/` against an in-memory object store and a fake ETL service; `kubernetes/` tests loading, watching and status writing on a fake cluster, and `file/` the same on a temp directory.
