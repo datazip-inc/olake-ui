@@ -1,15 +1,12 @@
-package gitops
+package reconciler
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
@@ -18,7 +15,7 @@ import (
 const sourceConfigJSON = `{"name":"pg","type":"postgres","version":"v1.0.0","config":{"host":"pg","port":5432}}`
 
 func TestSourceReconcileCreate(t *testing.T) {
-	e := newTestEnv(t, managedConfigMap(KindSource, "pg-cm", manifestData(sourceConfigJSON)))
+	e := newTestEnv(t, newObject(KindSource, "pg-cm", manifestData(sourceConfigJSON)))
 	e.reconcileSource("pg-cm")
 
 	assert.Equal(t, []string{"CreateSource"}, e.etl.writeCalls())
@@ -41,7 +38,7 @@ func TestSourceReconcileCreate(t *testing.T) {
 
 func TestSourceReconcileExisting(t *testing.T) {
 	t.Run("equal config is adopted without a test or an update", func(t *testing.T) {
-		e := newTestEnv(t, managedConfigMap(KindSource, "pg-cm", manifestData(`{"name":"pg","type":"postgres","version":"v1.0.0","config":{"port":5432,"host":"pg"}}`)))
+		e := newTestEnv(t, newObject(KindSource, "pg-cm", manifestData(`{"name":"pg","type":"postgres","version":"v1.0.0","config":{"port":5432,"host":"pg"}}`)))
 		src := e.etl.addSource("pg", "v1.0.0")
 		e.reconcileSource("pg-cm")
 		assert.Empty(t, e.etl.writeCalls())
@@ -50,7 +47,7 @@ func TestSourceReconcileExisting(t *testing.T) {
 	})
 
 	t.Run("changed config is tested then updated", func(t *testing.T) {
-		e := newTestEnv(t, managedConfigMap(KindSource, "pg-cm", manifestData(`{"name":"pg","type":"postgres","version":"v1.1.0","config":{"host":"pg","port":5432}}`)))
+		e := newTestEnv(t, newObject(KindSource, "pg-cm", manifestData(`{"name":"pg","type":"postgres","version":"v1.1.0","config":{"host":"pg","port":5432}}`)))
 		src := e.etl.addSource("pg", "v1.0.0")
 		e.reconcileSource("pg-cm")
 		assert.Equal(t, []string{"UpdateSource"}, e.etl.writeCalls())
@@ -62,7 +59,7 @@ func TestSourceReconcileExisting(t *testing.T) {
 	})
 
 	t.Run("rejected update fails and keeps the stored source", func(t *testing.T) {
-		e := newTestEnv(t, managedConfigMap(KindSource, "pg-cm", manifestData(`{"name":"pg","type":"postgres","version":"v1.1.0","config":{"host":"pg","port":5432}}`)))
+		e := newTestEnv(t, newObject(KindSource, "pg-cm", manifestData(`{"name":"pg","type":"postgres","version":"v1.1.0","config":{"host":"pg","port":5432}}`)))
 		src := e.etl.addSource("pg", "v1.0.0")
 		e.etl.failingMethods["UpdateSource"] = errors.New("version not found")
 		e.reconcileSource("pg-cm")
@@ -73,7 +70,7 @@ func TestSourceReconcileExisting(t *testing.T) {
 	})
 
 	t.Run("failed test keeps the stored source", func(t *testing.T) {
-		e := newTestEnv(t, managedConfigMap(KindSource, "pg-cm", manifestData(`{"name":"pg","type":"postgres","version":"v1.0.0","config":{"host":"pg","password":"wrong"}}`)))
+		e := newTestEnv(t, newObject(KindSource, "pg-cm", manifestData(`{"name":"pg","type":"postgres","version":"v1.0.0","config":{"host":"pg","password":"wrong"}}`)))
 		e.etl.addSource("pg", "v1.0.0")
 		e.etl.operationResults[testSourceOperationID] = operationResult{output: connectionCheckOutput("FAILED", "password authentication failed")}
 		e.reconcileSource("pg-cm")
@@ -117,7 +114,7 @@ func TestSourceReconcileFailures(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := newTestEnv(t, managedConfigMap(KindSource, "pg-cm", tt.data))
+			e := newTestEnv(t, newObject(KindSource, "pg-cm", tt.data))
 			if tt.setup != nil {
 				tt.setup(e.etl)
 			}
@@ -136,7 +133,7 @@ func TestSourceReconcileFailures(t *testing.T) {
 }
 
 func TestSourceReconcileFailedRetriesOnlyOnChange(t *testing.T) {
-	e := newTestEnv(t, managedConfigMap(KindSource, "pg-cm", manifestData(`{"name":"pg","type":"nope","version":"v1.0.0","config":{}}`)))
+	e := newTestEnv(t, newObject(KindSource, "pg-cm", manifestData(`{"name":"pg","type":"nope","version":"v1.0.0","config":{}}`)))
 	e.reconcileSource("pg-cm")
 	require.Equal(t, PhaseFailed, e.phaseOf("pg-cm"))
 
@@ -144,14 +141,14 @@ func TestSourceReconcileFailedRetriesOnlyOnChange(t *testing.T) {
 	e.reconcileSource("pg-cm")
 	assert.Empty(t, e.status.statusUpdates, "a failure for unchanged data is not retried")
 
-	e.setConfigMapData("pg-cm", manifestData(sourceConfigJSON))
+	e.setData("pg-cm", manifestData(sourceConfigJSON))
 	e.reconcileSource("pg-cm")
 	assert.Equal(t, PhaseReady, e.phaseOf("pg-cm"))
 	assert.Equal(t, []string{indicatorDelete}, e.status.indicatorActionsFor("pg-cm"), "fixing the data removes the indicator")
 }
 
 func TestSourceReconcileCreatedButReloadFailed(t *testing.T) {
-	e := newTestEnv(t, managedConfigMap(KindSource, "pg-cm", manifestData(sourceConfigJSON)))
+	e := newTestEnv(t, newObject(KindSource, "pg-cm", manifestData(sourceConfigJSON)))
 	// the DB drops right after the insert, so the reload of the new source fails
 	e.etl.failCall = func(method string) error {
 		if method == "GetSourceByName" && e.etl.callCount("CreateSource") == 1 && e.etl.callCount("GetSourceByName") == 2 {
@@ -171,7 +168,7 @@ func TestSourceReconcileCreatedButReloadFailed(t *testing.T) {
 }
 
 func TestSourceReconcileStatusWriteFails(t *testing.T) {
-	e := newTestEnv(t, managedConfigMap(KindSource, "pg-cm", manifestData(sourceConfigJSON)))
+	e := newTestEnv(t, newObject(KindSource, "pg-cm", manifestData(sourceConfigJSON)))
 	e.status.failStatusUpdates = errors.New("the object has been modified")
 	result := e.reconcileSource("pg-cm")
 	assert.Equal(t, syncRequeueAfter, result.RequeueAfter, "the source is retried until its status is written")
@@ -182,27 +179,4 @@ func TestSourceReconcileStatusWriteFails(t *testing.T) {
 	e.reconcileSource("pg-cm")
 	assert.Equal(t, 1, e.etl.callCount("CreateSource"))
 	assert.Equal(t, PhaseReady, e.phaseOf("pg-cm"))
-}
-
-func TestSourceReconcileFromSecret(t *testing.T) {
-	e := newTestEnv(t, managedSecret(KindSource, "pg-secret", manifestData(sourceConfigJSON)))
-	e.reconcileSource("pg-secret")
-	assert.Equal(t, []string{"CreateSource"}, e.etl.writeCalls())
-
-	var secret corev1.Secret
-	require.NoError(t, e.client.Get(context.Background(), client.ObjectKey{Namespace: testNamespace, Name: "pg-secret"}, &secret))
-	assert.Equal(t, PhaseReady, secret.Annotations[AnnotationPhase], "status is written on the Secret itself")
-	assert.Equal(t, sourceConfigJSON, string(secret.Data[DataConfig]), "status writes never touch the data")
-
-	// the observed hash on the Secret matches its decoded data, so the same data is skipped
-	e.resetRecordings()
-	e.reconcileSource("pg-secret")
-	assert.Empty(t, e.etl.calls)
-}
-
-func TestSourceReconcileDeleted(t *testing.T) {
-	e := newTestEnv(t)
-	e.reconcileSource("gone")
-	assert.Empty(t, e.etl.calls)
-	assert.Empty(t, e.status.statusUpdates)
 }

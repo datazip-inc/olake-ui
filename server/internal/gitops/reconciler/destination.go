@@ -1,4 +1,4 @@
-package gitops
+package reconciler
 
 import (
 	"context"
@@ -18,21 +18,22 @@ type destinationService interface {
 	UpdateDestination(ctx context.Context, id int, projectID string, req *dto.UpdateDestinationRequest, userID *int) error
 }
 
-// DestinationReconciler applies a destination manifest to OLake.
-type DestinationReconciler struct {
+// Destination applies a destination manifest to OLake, in every GitOps mode.
+type Destination struct {
 	ETL  destinationService
 	Sink StatusSink
 }
 
-func (r *DestinationReconciler) reconcile(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
+// Reconcile applies res and records its status through r.Sink.
+func (r *Destination) Reconcile(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
 	return reconcileResource(ctx, r.Sink, r, res)
 }
 
-func (r *DestinationReconciler) kind() string { return KindDestination }
+func (r *Destination) kind() string { return KindDestination }
 
-func (r *DestinationReconciler) notFoundErr() error { return constants.ErrDestinationNotFound }
+func (r *Destination) notFoundErr() error { return constants.ErrDestinationNotFound }
 
-func (r *DestinationReconciler) parse(config string) (*resourceSpec, error) {
+func (r *Destination) parse(config string) (*resourceSpec, error) {
 	req, err := ParseAndValidateDestination(config)
 	if err != nil {
 		return nil, err
@@ -40,7 +41,7 @@ func (r *DestinationReconciler) parse(config string) (*resourceSpec, error) {
 	return &resourceSpec{Name: req.Name, Type: req.Type, Version: req.Version, Config: req.Config}, nil
 }
 
-func (r *DestinationReconciler) get(ctx context.Context, projectID, name string) (*resourceSpec, error) {
+func (r *Destination) get(ctx context.Context, projectID, name string) (*resourceSpec, error) {
 	dest, err := r.ETL.GetDestinationByName(ctx, projectID, name)
 	if err != nil {
 		return nil, err
@@ -48,11 +49,11 @@ func (r *DestinationReconciler) get(ctx context.Context, projectID, name string)
 	return &resourceSpec{ID: dest.ID, Name: dest.Name, Type: dest.DestType, Version: dest.Version, Config: dto.JSONConfig(dest.Config)}, nil
 }
 
-func (r *DestinationReconciler) test(ctx context.Context, projectID string, spec *resourceSpec) error {
+func (r *Destination) test(ctx context.Context, projectID string, spec *resourceSpec) error {
 	return testDestinationConnection(ctx, r.ETL, projectID, spec.Type, spec.Version, spec.Config, "", "")
 }
 
-func (r *DestinationReconciler) create(ctx context.Context, spec *resourceSpec, projectID string, userID *int) error {
+func (r *Destination) create(ctx context.Context, spec *resourceSpec, projectID string, userID *int) error {
 	return r.ETL.CreateDestination(ctx, &dto.CreateDestinationRequest{
 		Name:    spec.Name,
 		Type:    spec.Type,
@@ -61,7 +62,7 @@ func (r *DestinationReconciler) create(ctx context.Context, spec *resourceSpec, 
 	}, projectID, userID)
 }
 
-func (r *DestinationReconciler) update(ctx context.Context, id int, spec *resourceSpec, projectID string, userID *int) error {
+func (r *Destination) update(ctx context.Context, id int, spec *resourceSpec, projectID string, userID *int) error {
 	return r.ETL.UpdateDestination(ctx, id, projectID, &dto.UpdateDestinationRequest{
 		Name:    spec.Name,
 		Type:    spec.Type,

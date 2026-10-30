@@ -1,32 +1,29 @@
-package gitops
+package reconciler
 
 // Shared setup for the reconcile tests.
 //
-// A reconcile test builds a testEnv, puts ConfigMaps or Secrets in it, runs the real controller's
-// Reconcile, and then checks the outcome: the status annotations on the objects, the rows in the
-// fake OLake, and what the reconcilers reported. Three stand-ins make that possible without a
-// cluster, a database or Temporal:
-//   - a fake cluster: controller-runtime's in-memory client, holding the ConfigMaps and Secrets;
+// A reconcile test builds a testEnv, puts manifest objects in it, runs a reconciler on one, and
+// then checks the outcome: the status annotations on the objects, the rows in the fake OLake, and
+// what the reconcilers reported. Three stand-ins make that possible without a cluster, a database
+// or Temporal:
+//   - objects: the stored manifests, as a GitOps mode holds them (ConfigMaps and Secrets in
+//     Kubernetes mode). How a mode loads and watches them is tested in that mode's package;
 //   - fakeETL (fake_etl_test.go): an in-memory OLake ETL service;
-//   - statusRecorder (below): remembers the status and indicator actions the reconcilers report.
+//   - statusRecorder (below): the StatusSink. It remembers the status and indicator actions the
+//     reconcilers report, and writes the status onto the stored object.
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strconv"
 	"testing"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -43,28 +40,29 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// testEnv is everything one test runs against: a fake cluster holding the ConfigMaps and Secrets,
-// a fake OLake (the ETL service), and a recorder of the status the reconcilers report.
+// testEnv is everything one test runs against: the stored manifest objects, a fake OLake (the ETL
+// service), and a recorder of the status the reconcilers report.
 type testEnv struct {
-	t      *testing.T
-	client client.Client   // the fake cluster
-	etl    *fakeETL        // the fake ETL service
-	status *statusRecorder // what the reconcilers reported
+	t       *testing.T
+	objects map[string]*ResourceData // objectKey -> the stored object
+	etl     *fakeETL                 // the fake ETL service
+	status  *statusRecorder          // what the reconcilers reported
 }
 
-// newTestEnv starts a test with the given ConfigMaps and Secrets already in the fake cluster.
-func newTestEnv(t *testing.T, objs ...client.Object) *testEnv {
+// newTestEnv starts a test with the given objects already stored.
+func newTestEnv(t *testing.T, objs ...*ResourceData) *testEnv {
 	t.Helper()
 	// retryMap is package state: a retry window left by one test must not leak into the next
 	t.Cleanup(func() { retryMap.Clear() })
-	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
-	return &testEnv{
-		t:      t,
-		client: k8sClient,
-		etl:    newFakeETL(),
-		status: &statusRecorder{realSink: NewK8sSink(k8sClient, record.NewFakeRecorder(100), nil)},
+	e := &testEnv{t: t, objects: map[string]*ResourceData{}, etl: newFakeETL()}
+	e.status = &statusRecorder{objects: e.objects}
+	for _, obj := range objs {
+		e.createObject(obj)
 	}
+	return e
 }
+
+func objectKey(namespace, name string) string { return namespace + "/" + name }
 
 // resetRecordings forgets the recorded ETL calls, status updates and indicator actions, so the
 // next assertions see only what the next reconcile does. Stored data (objects, OLake rows) stays.
@@ -73,70 +71,103 @@ func (e *testEnv) resetRecordings() {
 	e.status.statusUpdates, e.status.indicatorActions = nil, nil
 }
 
-// reconcileSource, reconcileDestination and reconcileJob run the real controller once for the named
-// object, as Kubernetes would after a change, and return its result (for example a requeue).
+// reconcileSource, reconcileDestination and reconcileJob run the reconciler once for the named
+// object, as a GitOps mode does after a change, and return its result (for example a requeue).
 func (e *testEnv) reconcileSource(name string) ctrl.Result {
-	source := &SourceReconciler{ETL: e.etl, Sink: e.status}
-	return e.runReconcile(&resourceController{client: e.client, reconcile: source.reconcile}, name)
+	e.t.Helper()
+	source := &Source{ETL: e.etl, Sink: e.status}
+	return e.checkResult(source.Reconcile(context.Background(), e.load(name)))
 }
 
 func (e *testEnv) reconcileDestination(name string) ctrl.Result {
-	destination := &DestinationReconciler{ETL: e.etl, Sink: e.status}
-	return e.runReconcile(&resourceController{client: e.client, reconcile: destination.reconcile}, name)
-}
-
-func (e *testEnv) reconcileJob(name string) ctrl.Result {
-	return e.runReconcile(e.jobController(), name)
-}
-
-// jobController is the real job controller wired to this test's fakes.
-func (e *testEnv) jobController() *jobController {
-	return &jobController{client: e.client, job: &JobReconciler{ETL: e.etl, Sink: e.status}}
-}
-
-// runReconcile calls controller.Reconcile for the named object and fails the test if it returns an
-// error: the reconcilers report failures as status, so an error here is a bug in the test or code.
-func (e *testEnv) runReconcile(controller reconcile.Reconciler, name string) ctrl.Result {
 	e.t.Helper()
-	result, err := controller.Reconcile(context.Background(), requestFor(name))
+	destination := &Destination{ETL: e.etl, Sink: e.status}
+	return e.checkResult(destination.Reconcile(context.Background(), e.load(name)))
+}
+
+// reconcileJob hands the job its Streams object as a mode finds it: the stored object
+// StreamsBelongTo matches, or none.
+func (e *testEnv) reconcileJob(name string) ctrl.Result {
+	e.t.Helper()
+	job := e.load(name)
+	var streams *ResourceData
+	for _, obj := range e.objects {
+		if candidate := cloneObject(obj); StreamsBelongTo(candidate, job) {
+			streams = candidate
+		}
+	}
+	jobReconciler := &Job{ETL: e.etl, Sink: e.status}
+	return e.checkResult(jobReconciler.Reconcile(context.Background(), job, streams))
+}
+
+// checkResult fails the test if a reconcile returned an error: the reconcilers report failures as
+// status, so an error here is a bug in the test or code.
+func (e *testEnv) checkResult(result ctrl.Result, err error) ctrl.Result {
+	e.t.Helper()
 	require.NoError(e.t, err)
 	return result
 }
 
-// createObject adds a ConfigMap or Secret to the fake cluster, as kubectl create does.
-func (e *testEnv) createObject(obj client.Object) {
+// load is a copy of the named object in testNamespace, as a mode reads it before a reconcile.
+func (e *testEnv) load(name string) *ResourceData {
 	e.t.Helper()
-	require.NoError(e.t, e.client.Create(context.Background(), obj))
+	obj, ok := e.objects[objectKey(testNamespace, name)]
+	require.True(e.t, ok, "no object %s", name)
+	return cloneObject(obj)
 }
 
-// setConfigMapData replaces a ConfigMap's data and keeps its annotations, as kubectl apply does.
-func (e *testEnv) setConfigMapData(name string, data map[string]string) {
-	e.t.Helper()
-	cm := e.getConfigMap(name)
-	cm.Data = data
-	require.NoError(e.t, e.client.Update(context.Background(), cm))
+func cloneObject(obj *ResourceData) *ResourceData {
+	out := *obj
+	out.Data = map[string]string{}
+	for k, v := range obj.Data {
+		out.Data[k] = v
+	}
+	out.Annotations = map[string]string{}
+	for k, v := range obj.Annotations {
+		out.Annotations[k] = v
+	}
+	return &out
 }
 
-// clearConfigMapAnnotations drops a ConfigMap's annotations, as kubectl replace or a forced sync does.
-func (e *testEnv) clearConfigMapAnnotations(name string) {
+// createObject stores an object, as kubectl create does.
+func (e *testEnv) createObject(obj *ResourceData) {
 	e.t.Helper()
-	cm := e.getConfigMap(name)
-	cm.Annotations = nil
-	require.NoError(e.t, e.client.Update(context.Background(), cm))
+	key := objectKey(obj.Namespace, obj.Name)
+	require.NotContains(e.t, e.objects, key)
+	e.objects[key] = cloneObject(obj)
 }
 
-// getConfigMap reads the named ConfigMap from the fake cluster.
-func (e *testEnv) getConfigMap(name string) *corev1.ConfigMap {
+// deleteObject removes the named object.
+func (e *testEnv) deleteObject(name string) {
 	e.t.Helper()
-	var cm corev1.ConfigMap
-	require.NoError(e.t, e.client.Get(context.Background(), client.ObjectKey{Namespace: testNamespace, Name: name}, &cm))
-	return &cm
+	e.object(name)
+	delete(e.objects, objectKey(testNamespace, name))
 }
 
-// annotationsOf, phaseOf and messageOf read the status a reconcile wrote on the named ConfigMap.
+// setData replaces an object's data and keeps its annotations, as kubectl apply does.
+func (e *testEnv) setData(name string, data map[string]string) {
+	e.t.Helper()
+	e.object(name).Data = data
+}
+
+// clearAnnotations drops an object's annotations, as kubectl replace or a forced sync does.
+func (e *testEnv) clearAnnotations(name string) {
+	e.t.Helper()
+	e.object(name).Annotations = map[string]string{}
+}
+
+// object is the stored object with the given name in testNamespace.
+func (e *testEnv) object(name string) *ResourceData {
+	e.t.Helper()
+	obj, ok := e.objects[objectKey(testNamespace, name)]
+	require.True(e.t, ok, "no object %s", name)
+	return obj
+}
+
+// annotationsOf, phaseOf and messageOf read the status a reconcile wrote on the named object.
 func (e *testEnv) annotationsOf(name string) map[string]string {
 	e.t.Helper()
-	return e.getConfigMap(name).Annotations
+	return e.object(name).Annotations
 }
 
 func (e *testEnv) phaseOf(name string) string {
@@ -152,18 +183,17 @@ func (e *testEnv) messageOf(name string) string {
 // statusRecorder stands in for the reconcilers' StatusSink, the object they report results through.
 // A reconcile reports two things:
 //   - its status (phase, message, entity id), which ends up as olake.io/* annotations on the
-//     ConfigMap or Secret;
+//     object;
 //   - a failure indicator action: "spawn" a pod showing the error when a sync fails, "delete" it
 //     when the sync succeeds again.
 //
 // statusRecorder remembers every status update and indicator action, so a test can assert on them.
-// Status updates are also passed on to the real K8sSink, so the annotations are really written and
-// the next reconcile in the same test sees them. Indicator actions are only remembered: starting
-// the indicator workflow needs Temporal, and the indicator itself is tested in
-// indicator_client_test.go.
+// Status updates are also written onto the stored object, as Kubernetes mode's sink does, so the
+// next reconcile in the same test sees them. Indicator actions are only remembered: starting the
+// indicator workflow needs Temporal, and StartIndicator is tested in indicator_test.go.
 type statusRecorder struct {
-	// realSink writes status updates to the ConfigMap or Secret in the fake cluster.
-	realSink *K8sSink
+	// objects are the testEnv's stored objects, which status updates are written onto.
+	objects map[string]*ResourceData
 
 	// failStatusUpdates, when set, makes every status update fail with it, to test a reconcile
 	// whose status write is rejected (for example a conflict with another writer).
@@ -177,7 +207,7 @@ type statusRecorder struct {
 
 // statusUpdate is one status a reconcile wrote for an object.
 type statusUpdate struct {
-	objectName string // the ConfigMap or Secret name
+	objectName string
 	phase      string // PhasePending, PhaseReady or PhaseFailed
 	message    string
 	entityID   string // the OLake entity id, "" when there is none
@@ -189,13 +219,21 @@ type indicatorAction struct {
 	action     string // indicatorSpawn or indicatorDelete
 }
 
-// SetPhase remembers the status update, then writes it through the real sink.
-func (s *statusRecorder) SetPhase(ctx context.Context, r *ResourceData, phase, message, entityID, observedHash string) error {
+// SetPhase remembers the status update, then writes it onto the stored object.
+func (s *statusRecorder) SetPhase(_ context.Context, r *ResourceData, phase, message, entityID, observedHash string) error {
 	s.statusUpdates = append(s.statusUpdates, statusUpdate{objectName: r.Name, phase: phase, message: message, entityID: entityID})
 	if s.failStatusUpdates != nil {
 		return s.failStatusUpdates
 	}
-	return s.realSink.SetPhase(ctx, r, phase, message, entityID, observedHash)
+	obj, ok := s.objects[objectKey(r.Namespace, r.Name)]
+	if !ok {
+		return fmt.Errorf("object %s/%s not found", r.Namespace, r.Name)
+	}
+	obj.Annotations[AnnotationPhase] = phase
+	obj.Annotations[AnnotationMessage] = message
+	obj.Annotations[AnnotationEntityID] = entityID
+	obj.Annotations[AnnotationObservedHash] = observedHash
+	return nil
 }
 
 // Indicator remembers the indicator action.
@@ -227,29 +265,9 @@ func (s *statusRecorder) indicatorActionsFor(objectName string) []string {
 	return actions
 }
 
-// requestFor is the reconcile request Kubernetes sends for the named object in testNamespace.
-func requestFor(name string) ctrl.Request {
-	return ctrl.Request{NamespacedName: client.ObjectKey{Namespace: testNamespace, Name: name}}
-}
-
-// managedConfigMap and managedSecret build an object labelled for GitOps (olake.io/managed and
-// olake.io/kind), so the controllers pick it up.
-func managedConfigMap(kind, name string, data map[string]string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: testNamespace, Labels: managedLabels(kind)},
-		Data:       data,
-	}
-}
-
-func managedSecret(kind, name string, data map[string]string) *corev1.Secret {
-	bytes := map[string][]byte{}
-	for k, v := range data {
-		bytes[k] = []byte(v)
-	}
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: testNamespace, Labels: managedLabels(kind)},
-		Data:       bytes,
-	}
+// newObject builds a manifest object of the given kind in testNamespace.
+func newObject(kind, name string, data map[string]string) *ResourceData {
+	return &ResourceData{Kind: kind, Name: name, Namespace: testNamespace, Data: data, Annotations: map[string]string{}}
 }
 
 // manifestData is the data of a Source, Destination or Job object: the test project and user, and

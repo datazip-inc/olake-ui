@@ -1,4 +1,4 @@
-package gitops
+package kubernetes
 
 import (
 	"context"
@@ -20,8 +20,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/datazip-inc/olake-ui/server/internal/gitops/reconciler"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
+)
+
+const (
+	LabelManaged      = "olake.io/managed"
+	LabelKind         = "olake.io/kind"
+	LabelManagedValue = "true"
+
+	// ObjectKind values: which Kubernetes type backs a ResourceData, so the sink patches the right one.
+	// Source and Destination may be a Secret, so credentials stay out of git-tracked ConfigMap data;
+	// Job and Streams are ConfigMap-only (no credentials).
+	ObjectKindConfigMap = "ConfigMap"
+	ObjectKindSecret    = "Secret"
 )
 
 var scheme = runtime.NewScheme()
@@ -59,19 +72,19 @@ func Setup(app *services.AppService, restConfig *rest.Config, namespace string) 
 
 	etlSvc := app.ETL()
 	k8sClient := mgr.GetClient()
-	sink := NewK8sSink(k8sClient, mgr.GetEventRecorderFor("olake-gitops"), etlSvc.Temporal())
+	sink := NewSink(k8sClient, mgr.GetEventRecorderFor("olake-gitops"), etlSvc.Temporal())
 
-	source := &SourceReconciler{ETL: etlSvc, Sink: sink}
-	if err := setupResourceController(mgr, "gitops-source", KindSource, &resourceController{client: k8sClient, reconcile: source.reconcile}); err != nil {
+	source := &reconciler.Source{ETL: etlSvc, Sink: sink}
+	if err := setupResourceController(mgr, "gitops-source", reconciler.KindSource, &resourceController{client: k8sClient, reconcile: source.Reconcile}); err != nil {
 		return nil, fmt.Errorf("setup source controller: %w", err)
 	}
 
-	dest := &DestinationReconciler{ETL: etlSvc, Sink: sink}
-	if err := setupResourceController(mgr, "gitops-destination", KindDestination, &resourceController{client: k8sClient, reconcile: dest.reconcile}); err != nil {
+	dest := &reconciler.Destination{ETL: etlSvc, Sink: sink}
+	if err := setupResourceController(mgr, "gitops-destination", reconciler.KindDestination, &resourceController{client: k8sClient, reconcile: dest.Reconcile}); err != nil {
 		return nil, fmt.Errorf("setup destination controller: %w", err)
 	}
 
-	job := &jobController{client: k8sClient, job: &JobReconciler{ETL: etlSvc, Sink: sink}}
+	job := &jobController{client: k8sClient, reconcile: (&reconciler.Job{ETL: etlSvc, Sink: sink}).Reconcile}
 	if err := job.setup(mgr); err != nil {
 		return nil, fmt.Errorf("setup job controller: %w", err)
 	}
@@ -89,7 +102,7 @@ func (c *Controller) Run(ctx context.Context) error {
 // resourceController loads the Source/Destination object a watch event names and reconciles it.
 type resourceController struct {
 	client    client.Client
-	reconcile func(ctx context.Context, res *ResourceData) (ctrl.Result, error)
+	reconcile func(ctx context.Context, res *reconciler.ResourceData) (ctrl.Result, error)
 }
 
 func (c *resourceController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -112,8 +125,8 @@ func setupResourceController(mgr ctrl.Manager, name, kind string, rec reconcile.
 // jobController loads a Job ConfigMap and its Streams ConfigMap and reconciles them. It also
 // re-queues jobs when the Source, Destination or Streams object they depend on changes.
 type jobController struct {
-	client client.Client
-	job    *JobReconciler
+	client    client.Client
+	reconcile func(ctx context.Context, job, streams *reconciler.ResourceData) (ctrl.Result, error)
 }
 
 func (c *jobController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -124,17 +137,17 @@ func (c *jobController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	job := resourceFromCM(&cm)
 
 	var streamsList corev1.ConfigMapList
-	if err := c.client.List(ctx, &streamsList, client.InNamespace(job.Namespace), client.MatchingLabels(managedLabels(KindStreams))); err != nil {
+	if err := c.client.List(ctx, &streamsList, client.InNamespace(job.Namespace), client.MatchingLabels(managedLabels(reconciler.KindStreams))); err != nil {
 		return ctrl.Result{}, fmt.Errorf("list streams: %w", err)
 	}
-	return c.job.reconcileJob(ctx, &job, findStreams(&streamsList, &job))
+	return c.reconcile(ctx, &job, findStreams(&streamsList, &job))
 }
 
 // findStreams returns the Streams ConfigMap of job, or nil when there is none yet.
-func findStreams(list *corev1.ConfigMapList, job *ResourceData) *ResourceData {
+func findStreams(list *corev1.ConfigMapList, job *reconciler.ResourceData) *reconciler.ResourceData {
 	for i := range list.Items {
 		streams := resourceFromCM(&list.Items[i])
-		if streamsBelongTo(&streams, job) {
+		if reconciler.StreamsBelongTo(&streams, job) {
 			return &streams
 		}
 	}
@@ -148,14 +161,14 @@ func (c *jobController) enqueueDependentJobs(ctx context.Context, obj client.Obj
 		return nil
 	}
 	var list corev1.ConfigMapList
-	if err := c.client.List(ctx, &list, client.InNamespace(dep.Namespace), client.MatchingLabels(managedLabels(KindJob))); err != nil {
+	if err := c.client.List(ctx, &list, client.InNamespace(dep.Namespace), client.MatchingLabels(managedLabels(reconciler.KindJob))); err != nil {
 		log.FromContext(ctx).Error(err, "list jobs failed")
 		return nil
 	}
 	var reqs []reconcile.Request
 	for i := range list.Items {
 		job := resourceFromCM(&list.Items[i])
-		if jobDependsOn(&job, &dep) {
+		if reconciler.JobDependsOn(&job, &dep) {
 			reqs = append(reqs, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&list.Items[i])})
 		}
 	}
@@ -168,16 +181,16 @@ func (c *jobController) setup(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("gitops-job").
-		For(&corev1.ConfigMap{}, builder.WithPredicates(kindPredicate(KindJob))).
-		Watches(&corev1.ConfigMap{}, dependents, builder.WithPredicates(kindPredicate(KindSource))).
-		Watches(&corev1.ConfigMap{}, dependents, builder.WithPredicates(kindPredicate(KindDestination))).
-		Watches(&corev1.ConfigMap{}, dependents, builder.WithPredicates(kindPredicate(KindStreams), dataChanged)).
-		Watches(&corev1.Secret{}, dependents, builder.WithPredicates(kindPredicate(KindSource))).
-		Watches(&corev1.Secret{}, dependents, builder.WithPredicates(kindPredicate(KindDestination))).
+		For(&corev1.ConfigMap{}, builder.WithPredicates(kindPredicate(reconciler.KindJob))).
+		Watches(&corev1.ConfigMap{}, dependents, builder.WithPredicates(kindPredicate(reconciler.KindSource))).
+		Watches(&corev1.ConfigMap{}, dependents, builder.WithPredicates(kindPredicate(reconciler.KindDestination))).
+		Watches(&corev1.ConfigMap{}, dependents, builder.WithPredicates(kindPredicate(reconciler.KindStreams), dataChanged)).
+		Watches(&corev1.Secret{}, dependents, builder.WithPredicates(kindPredicate(reconciler.KindSource))).
+		Watches(&corev1.Secret{}, dependents, builder.WithPredicates(kindPredicate(reconciler.KindDestination))).
 		Complete(c)
 }
 
-func resourceFromCM(cm *corev1.ConfigMap) ResourceData {
+func resourceFromCM(cm *corev1.ConfigMap) reconciler.ResourceData {
 	ann := cm.Annotations
 	if ann == nil {
 		ann = map[string]string{}
@@ -186,7 +199,7 @@ func resourceFromCM(cm *corev1.ConfigMap) ResourceData {
 	if data == nil {
 		data = map[string]string{}
 	}
-	return ResourceData{
+	return reconciler.ResourceData{
 		Kind:        cm.Labels[LabelKind],
 		ObjectKind:  ObjectKindConfigMap,
 		Name:        cm.Name,
@@ -198,7 +211,7 @@ func resourceFromCM(cm *corev1.ConfigMap) ResourceData {
 
 // resourceFromSecret mirrors resourceFromCM for Secret-backed Source/Destination
 // resources. Secret.Data values are already base64-decoded []byte by client-go.
-func resourceFromSecret(secret *corev1.Secret) ResourceData {
+func resourceFromSecret(secret *corev1.Secret) reconciler.ResourceData {
 	ann := secret.Annotations
 	if ann == nil {
 		ann = map[string]string{}
@@ -207,7 +220,7 @@ func resourceFromSecret(secret *corev1.Secret) ResourceData {
 	for k, v := range secret.Data {
 		data[k] = string(v)
 	}
-	return ResourceData{
+	return reconciler.ResourceData{
 		Kind:        secret.Labels[LabelKind],
 		ObjectKind:  ObjectKindSecret,
 		Name:        secret.Name,
@@ -217,16 +230,16 @@ func resourceFromSecret(secret *corev1.Secret) ResourceData {
 	}
 }
 
-// resourceFromObject builds a ResourceData from whichever managed type triggered
+// resourceFromObject builds a reconciler.ResourceData from whichever managed type triggered
 // a watch event. ok is false for any other object type.
-func resourceFromObject(obj client.Object) (ResourceData, bool) {
+func resourceFromObject(obj client.Object) (reconciler.ResourceData, bool) {
 	switch o := obj.(type) {
 	case *corev1.ConfigMap:
 		return resourceFromCM(o), true
 	case *corev1.Secret:
 		return resourceFromSecret(o), true
 	default:
-		return ResourceData{}, false
+		return reconciler.ResourceData{}, false
 	}
 }
 
@@ -242,7 +255,7 @@ func newManagedObject(objectKind string) client.Object {
 // fetchManaged loads a Source/Destination resource that may be backed by
 // either a ConfigMap or a Secret with the same name. A ConfigMap takes
 // precedence if both somehow exist. Returns a NotFound error if neither exists.
-func fetchManaged(ctx context.Context, c client.Client, key client.ObjectKey) (*ResourceData, error) {
+func fetchManaged(ctx context.Context, c client.Client, key client.ObjectKey) (*reconciler.ResourceData, error) {
 	var cm corev1.ConfigMap
 	err := c.Get(ctx, key, &cm)
 	if err == nil {

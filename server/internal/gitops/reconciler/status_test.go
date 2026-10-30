@@ -1,4 +1,4 @@
-package gitops
+package reconciler
 
 import (
 	"context"
@@ -37,7 +37,7 @@ func TestRequeueTransient(t *testing.T) {
 	cause := errors.New("db unreachable")
 
 	t.Run("within the retry window it is pending and requeued", func(t *testing.T) {
-		e := newTestEnv(t, managedConfigMap(KindSource, "pg", nil))
+		e := newTestEnv(t, newObject(KindSource, "pg", nil))
 		result, err := requeueTransient(ctx, e.status, res, cause, "h")
 		require.NoError(t, err)
 		assert.Equal(t, syncRequeueAfter, result.RequeueAfter)
@@ -53,7 +53,7 @@ func TestRequeueTransient(t *testing.T) {
 	})
 
 	t.Run("after the retry window it fails with an indicator", func(t *testing.T) {
-		e := newTestEnv(t, managedConfigMap(KindSource, "pg", nil))
+		e := newTestEnv(t, newObject(KindSource, "pg", nil))
 		retryMap.Store(res.key(), time.Now().Add(-syncRetryTimeout))
 		result, err := requeueTransient(ctx, e.status, res, cause, "h")
 		require.NoError(t, err)
@@ -67,7 +67,7 @@ func TestRequeueTransient(t *testing.T) {
 	})
 
 	t.Run("a success or a wait resets the retry window", func(t *testing.T) {
-		e := newTestEnv(t, managedConfigMap(KindSource, "pg", nil))
+		e := newTestEnv(t, newObject(KindSource, "pg", nil))
 		retryMap.Store(res.key(), time.Now().Add(-time.Hour))
 		require.NoError(t, successResource(ctx, e.status, res, 5, "h"))
 		_, ok := retryMap.Load(res.key())

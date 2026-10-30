@@ -1,4 +1,4 @@
-package gitops
+package reconciler
 
 import (
 	"testing"
@@ -9,12 +9,12 @@ import (
 )
 
 // The create, skip and failure rules are shared with sources (reconcileResource) and tested in
-// source_reconciler_test.go; these tests cover the destination wiring.
+// source_test.go; these tests cover the destination wiring.
 func TestDestinationReconcile(t *testing.T) {
 	const spec = `{"name":"lake","type":"iceberg","version":"v1.0.0","config":{"catalog_type":"glue"}}`
 
 	t.Run("create", func(t *testing.T) {
-		e := newTestEnv(t, managedConfigMap(KindDestination, "lake-cm", manifestData(spec)))
+		e := newTestEnv(t, newObject(KindDestination, "lake-cm", manifestData(spec)))
 		e.reconcileDestination("lake-cm")
 		assert.Equal(t, []*dto.CreateDestinationRequest{{Name: "lake", Type: "iceberg", Version: "v1.0.0", Config: `{"catalog_type":"glue"}`}},
 			callArgs[*dto.CreateDestinationRequest](e.etl, "CreateDestination"))
@@ -25,7 +25,7 @@ func TestDestinationReconcile(t *testing.T) {
 	})
 
 	t.Run("changed config is updated", func(t *testing.T) {
-		e := newTestEnv(t, managedConfigMap(KindDestination, "lake-cm", manifestData(`{"name":"lake","type":"iceberg","version":"v1.0.0","config":{"catalog_type":"rest"}}`)))
+		e := newTestEnv(t, newObject(KindDestination, "lake-cm", manifestData(`{"name":"lake","type":"iceberg","version":"v1.0.0","config":{"catalog_type":"rest"}}`)))
 		dest := e.etl.addDestination("lake")
 		e.reconcileDestination("lake-cm")
 		assert.Equal(t, []int{dest.ID}, callArgs[int](e.etl, "UpdateDestination"))
@@ -34,7 +34,7 @@ func TestDestinationReconcile(t *testing.T) {
 	})
 
 	t.Run("type compares against the stored dest_type", func(t *testing.T) {
-		e := newTestEnv(t, managedConfigMap(KindDestination, "lake-cm", manifestData(`{"name":"lake","type":"iceberg","version":"v1.0.0","config":{"catalog_type":"glue"}}`)))
+		e := newTestEnv(t, newObject(KindDestination, "lake-cm", manifestData(`{"name":"lake","type":"iceberg","version":"v1.0.0","config":{"catalog_type":"glue"}}`)))
 		e.etl.addDestination("lake")
 		e.reconcileDestination("lake-cm")
 		assert.Empty(t, e.etl.writeCalls())

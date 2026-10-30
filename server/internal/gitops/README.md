@@ -171,3 +171,11 @@ kubectl logs -l app.kubernetes.io/name=olake-ui | grep -i gitops
 - olake-ui GitOps RBAC: ConfigMaps and Secrets (read/write status annotations on both), Events in the release namespace. **No pods create/delete.**
 - Secret `update`/`patch` (needed for status annotations) applies to all Secrets in the namespace, not only GitOps-managed ones — use a dedicated namespace for GitOps-managed OLake when possible.
 - Failure indicators use worker SA (already has `pods` create for connector jobs).
+
+## Code layout
+
+- `manager.go`: `InitGitOps` starts the mode named by `GITOPS_MODE`.
+- `reconciler/`: the mode-agnostic core. `Source`, `Destination` and `Job` apply one manifest (a `ResourceData`) to OLake and report the result through a `StatusSink`. Validation, the streams format, status rules (skip, retry window, failure indicators) and connection tests live here.
+- `kubernetes/`: Kubernetes mode. The controllers load labelled ConfigMaps and Secrets into `ResourceData`, re-queue jobs when their dependencies change, and `Sink` writes status as annotations and Events.
+
+Each package's tests sit next to it: the reconcile rules are tested in `reconciler/` against an in-memory object store and a fake ETL service; `kubernetes/` tests loading, watching and status writing on a fake cluster.

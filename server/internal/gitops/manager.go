@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	"github.com/datazip-inc/olake-ui/server/internal/gitops/kubernetes"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -48,7 +49,7 @@ func newRunner(mode, namespace string, app *services.AppService) (runner, error)
 		if err != nil {
 			return nil, fmt.Errorf("load in-cluster config: %w", err)
 		}
-		ctrlr, err := Setup(app, restConfig, namespace)
+		ctrlr, err := kubernetes.Setup(app, restConfig, namespace)
 		if err != nil {
 			return nil, err
 		}

@@ -1,4 +1,4 @@
-package gitops
+package reconciler
 
 import (
 	"crypto/sha256"

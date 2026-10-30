@@ -1,7 +1,6 @@
-package gitops
+package reconciler
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -32,8 +31,8 @@ var errTemporalDown = fmt.Errorf("%w: dial tcp temporal:7233: connection refused
 func newJobTestEnv(t *testing.T, jobFields map[string]interface{}) (*testEnv, *models.Source, *models.Destination) {
 	t.Helper()
 	e := newTestEnv(t,
-		managedConfigMap(KindJob, jobConfigMap, manifestData(jobConfigJSON(jobFields))),
-		managedConfigMap(KindStreams, streamsConfigMap, streamsManifestData(jobConfigMap, userSelectedStreams)),
+		newObject(KindJob, jobConfigMap, manifestData(jobConfigJSON(jobFields))),
+		newObject(KindStreams, streamsConfigMap, streamsManifestData(jobConfigMap, userSelectedStreams)),
 	)
 	return e, e.etl.addSource("pg", "v1.0.0"), e.etl.addDestination("lake")
 }
@@ -145,16 +144,6 @@ func TestJobReconcileCreate(t *testing.T) {
 	assert.Empty(t, e.status.statusUpdates)
 }
 
-// TestJobReconcileDeleted checks that reconciling an object that no longer exists is a no-op:
-// no ETL call, no status write, no requeue.
-func TestJobReconcileDeleted(t *testing.T) {
-	e := newTestEnv(t)
-	result := e.reconcileJob("gone")
-	assert.Zero(t, result.RequeueAfter)
-	assert.Empty(t, e.etl.calls)
-	assert.Empty(t, e.status.statusUpdates)
-}
-
 // TestJobReconcileCreateInactive checks that a new job with activate=false is created inactive by CreateJob alone.
 func TestJobReconcileCreateInactive(t *testing.T) {
 	e, _, _ := newJobTestEnv(t, map[string]interface{}{"activate": false})
@@ -189,11 +178,11 @@ func TestJobReconcileWaitsForDependencies(t *testing.T) {
 		{
 			name: "streams",
 			setup: func(e *testEnv) {
-				require.NoError(t, e.client.Delete(context.Background(), managedConfigMap(KindStreams, streamsConfigMap, nil)))
+				e.deleteObject(streamsConfigMap)
 			},
 			wantMessage: `waiting for Streams referencing job "orders-cm"`,
 			resolve: func(e *testEnv) {
-				e.createObject(managedConfigMap(KindStreams, streamsConfigMap, streamsManifestData(jobConfigMap, userSelectedStreams)))
+				e.createObject(newObject(KindStreams, streamsConfigMap, streamsManifestData(jobConfigMap, userSelectedStreams)))
 			},
 		},
 		{
@@ -201,24 +190,24 @@ func TestJobReconcileWaitsForDependencies(t *testing.T) {
 			setup: func(e *testEnv) {
 				data := streamsManifestData(jobConfigMap, userSelectedStreams)
 				data[DataProjectID] = "999"
-				e.setConfigMapData(streamsConfigMap, data)
+				e.setData(streamsConfigMap, data)
 			},
 			wantMessage: `waiting for Streams referencing job "orders-cm"`,
 			resolve: func(e *testEnv) {
-				e.setConfigMapData(streamsConfigMap, streamsManifestData(jobConfigMap, userSelectedStreams))
+				e.setData(streamsConfigMap, streamsManifestData(jobConfigMap, userSelectedStreams))
 			},
 		},
 		{
 			name: "streams in another namespace",
 			setup: func(e *testEnv) {
-				require.NoError(t, e.client.Delete(context.Background(), managedConfigMap(KindStreams, streamsConfigMap, nil)))
-				other := managedConfigMap(KindStreams, streamsConfigMap, streamsManifestData(jobConfigMap, userSelectedStreams))
+				e.deleteObject(streamsConfigMap)
+				other := newObject(KindStreams, streamsConfigMap, streamsManifestData(jobConfigMap, userSelectedStreams))
 				other.Namespace = "other"
 				e.createObject(other)
 			},
 			wantMessage: `waiting for Streams referencing job "orders-cm"`,
 			resolve: func(e *testEnv) {
-				e.createObject(managedConfigMap(KindStreams, streamsConfigMap, streamsManifestData(jobConfigMap, userSelectedStreams)))
+				e.createObject(newObject(KindStreams, streamsConfigMap, streamsManifestData(jobConfigMap, userSelectedStreams)))
 			},
 		},
 	}
@@ -265,14 +254,14 @@ func TestJobReconcileFailures(t *testing.T) {
 			setup: func(e *testEnv) {
 				data := manifestData(jobConfigJSON(nil))
 				delete(data, DataUserID)
-				e.setConfigMapData(jobConfigMap, data)
+				e.setData(jobConfigMap, data)
 			},
 			wantMessage: "data.userId must be a positive integer",
 		},
 		{
 			name: "legacy streams ConfigMap",
 			setup: func(e *testEnv) {
-				e.setConfigMapData(streamsConfigMap, streamsManifestData(jobConfigMap, `{"streams":[{"stream":{"name":"users"}}],"selected_streams":{}}`))
+				e.setData(streamsConfigMap, streamsManifestData(jobConfigMap, `{"streams":[{"stream":{"name":"users"}}],"selected_streams":{}}`))
 			},
 			wantMessage:   "legacy streams config (streams[]) is not supported",
 			streamsFailed: true,
@@ -402,7 +391,7 @@ func TestJobReconcileRetriesWhenSourceIsFixed(t *testing.T) {
 // Fixing the Streams data lets both ConfigMaps reach Ready.
 func TestJobReconcileFailedStreamsWaitForAChange(t *testing.T) {
 	e, _ := newSyncedJobTestEnv(t, nil)
-	e.setConfigMapData(streamsConfigMap, streamsManifestData(jobConfigMap, `{"selected_streams":{}}`))
+	e.setData(streamsConfigMap, streamsManifestData(jobConfigMap, `{"selected_streams":{}}`))
 	e.reconcileJob(jobConfigMap)
 	require.Equal(t, PhaseFailed, e.phaseOf(streamsConfigMap))
 
@@ -411,7 +400,7 @@ func TestJobReconcileFailedStreamsWaitForAChange(t *testing.T) {
 	e.reconcileJob(jobConfigMap)
 	assert.Empty(t, e.status.statusUpdates)
 
-	e.setConfigMapData(streamsConfigMap, streamsManifestData(jobConfigMap, ordersSelection))
+	e.setData(streamsConfigMap, streamsManifestData(jobConfigMap, ordersSelection))
 	e.reconcileJob(jobConfigMap)
 	assert.Equal(t, PhaseReady, e.phaseOf(jobConfigMap))
 	assert.Equal(t, PhaseReady, e.phaseOf(streamsConfigMap))
@@ -423,7 +412,7 @@ func TestJobReconcileFailedStreamsWaitForAChange(t *testing.T) {
 func TestJobReconcileUpdate(t *testing.T) {
 	t.Run("job field change updates with the stored catalog", func(t *testing.T) {
 		e, job := newSyncedJobTestEnv(t, nil)
-		e.setConfigMapData(jobConfigMap, manifestData(jobConfigJSON(map[string]interface{}{"frequency": "*/5 * * * *"})))
+		e.setData(jobConfigMap, manifestData(jobConfigJSON(map[string]interface{}{"frequency": "*/5 * * * *"})))
 		e.reconcileJob(jobConfigMap)
 
 		assert.Equal(t, []string{"UpdateJob"}, e.etl.writeCalls())
@@ -444,7 +433,7 @@ func TestJobReconcileUpdate(t *testing.T) {
 
 	t.Run("advanced settings change updates the job", func(t *testing.T) {
 		e, _ := newSyncedJobTestEnv(t, map[string]interface{}{"advanced_settings": map[string]interface{}{"max_discover_threads": 8}})
-		e.setConfigMapData(jobConfigMap, manifestData(jobConfigJSON(nil)))
+		e.setData(jobConfigMap, manifestData(jobConfigJSON(nil)))
 		e.reconcileJob(jobConfigMap)
 		require.Equal(t, []string{"UpdateJob"}, e.etl.writeCalls(), "removing advanced_settings from the ConfigMap is a change")
 		assert.Nil(t, updateJobRequests(e.etl)[0].AdvancedSettings)
@@ -452,7 +441,7 @@ func TestJobReconcileUpdate(t *testing.T) {
 
 	t.Run("streams change runs discover and the stream difference", func(t *testing.T) {
 		e, job := newSyncedJobTestEnv(t, nil)
-		e.setConfigMapData(streamsConfigMap, streamsManifestData(jobConfigMap, ordersSelection))
+		e.setData(streamsConfigMap, streamsManifestData(jobConfigMap, ordersSelection))
 		e.reconcileJob(jobConfigMap)
 
 		assert.Zero(t, e.etl.callCount("TestSourceConnection"), "connectors did not change")
@@ -478,7 +467,7 @@ func TestJobReconcileUpdate(t *testing.T) {
 	t.Run("destination change tests connectors and re-merges", func(t *testing.T) {
 		e, job := newSyncedJobTestEnv(t, nil)
 		otherDestination := e.etl.addDestination("otherDestination")
-		e.setConfigMapData(jobConfigMap, manifestData(jobConfigJSON(map[string]interface{}{"destination": "otherDestination"})))
+		e.setData(jobConfigMap, manifestData(jobConfigJSON(map[string]interface{}{"destination": "otherDestination"})))
 		e.reconcileJob(jobConfigMap)
 
 		assert.Equal(t, 1, e.etl.callCount("TestSourceConnection"))
@@ -491,7 +480,7 @@ func TestJobReconcileUpdate(t *testing.T) {
 
 	t.Run("activation change alone goes through ActivateJob", func(t *testing.T) {
 		e, job := newSyncedJobTestEnv(t, nil)
-		e.setConfigMapData(jobConfigMap, manifestData(jobConfigJSON(map[string]interface{}{"activate": false})))
+		e.setData(jobConfigMap, manifestData(jobConfigJSON(map[string]interface{}{"activate": false})))
 		e.reconcileJob(jobConfigMap)
 		assert.Equal(t, []string{"ActivateJob"}, e.etl.writeCalls())
 		assert.Equal(t, []dto.JobStatusRequest{{Activate: false}}, activateJobRequests(e.etl))
@@ -501,7 +490,7 @@ func TestJobReconcileUpdate(t *testing.T) {
 
 	t.Run("activation and field change keep UpdateJob on the current activation", func(t *testing.T) {
 		e, _ := newSyncedJobTestEnv(t, nil)
-		e.setConfigMapData(jobConfigMap, manifestData(jobConfigJSON(map[string]interface{}{"activate": false, "frequency": "*/5 * * * *"})))
+		e.setData(jobConfigMap, manifestData(jobConfigJSON(map[string]interface{}{"activate": false, "frequency": "*/5 * * * *"})))
 		e.reconcileJob(jobConfigMap)
 		// UpdateJob stores activation without pausing the schedule, so it must not carry the change
 		require.Equal(t, []string{"UpdateJob", "ActivateJob"}, e.etl.writeCalls())
@@ -515,7 +504,7 @@ func TestJobReconcileUpdate(t *testing.T) {
 // When the clear ends, the next reconcile diffs again and applies the update.
 func TestJobReconcileUpdateWhileClearDestinationRuns(t *testing.T) {
 	e, job := newSyncedJobTestEnv(t, nil)
-	e.setConfigMapData(streamsConfigMap, streamsManifestData(jobConfigMap, ordersSelection))
+	e.setData(streamsConfigMap, streamsManifestData(jobConfigMap, ordersSelection))
 	e.etl.failingMethods["UpdateJob"] = fmt.Errorf("%w: job %d", constants.ErrClearDestinationRunning, job.ID)
 
 	result := e.reconcileJob(jobConfigMap)
@@ -574,10 +563,10 @@ func TestJobReconcileUpdateErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e, _ := newSyncedJobTestEnv(t, nil)
 			if tt.jobFields != nil {
-				e.setConfigMapData(jobConfigMap, manifestData(jobConfigJSON(tt.jobFields)))
+				e.setData(jobConfigMap, manifestData(jobConfigJSON(tt.jobFields)))
 			}
 			if tt.streams != "" {
-				e.setConfigMapData(streamsConfigMap, streamsManifestData(jobConfigMap, tt.streams))
+				e.setData(streamsConfigMap, streamsManifestData(jobConfigMap, tt.streams))
 			}
 			tt.setup(e)
 			e.reconcileJob(jobConfigMap)
@@ -629,8 +618,8 @@ func TestJobReconcileCreatedButReloadFailed(t *testing.T) {
 func TestJobReconcileAfterStatusLost(t *testing.T) {
 	// kubectl replace or a forced sync drops the status annotations of both objects
 	e, job := newSyncedJobTestEnv(t, nil)
-	e.clearConfigMapAnnotations(jobConfigMap)
-	e.clearConfigMapAnnotations(streamsConfigMap)
+	e.clearAnnotations(jobConfigMap)
+	e.clearAnnotations(streamsConfigMap)
 	e.reconcileJob(jobConfigMap)
 
 	assert.Zero(t, e.etl.callCount("CreateJob"), "the job is found by name, not recreated")
@@ -668,7 +657,7 @@ func TestJobReconcileAdoptedJobFailureKeepsEntityID(t *testing.T) {
 // ID refs must not trigger name lookups for the source or destination.
 func TestJobReconcileRefsByID(t *testing.T) {
 	e, src, dest := newJobTestEnv(t, nil)
-	e.setConfigMapData(jobConfigMap, manifestData(jobConfigJSON(map[string]interface{}{"source": idString(src.ID), "destination": idString(dest.ID)})))
+	e.setData(jobConfigMap, manifestData(jobConfigJSON(map[string]interface{}{"source": idString(src.ID), "destination": idString(dest.ID)})))
 	e.reconcileJob(jobConfigMap)
 	require.Equal(t, PhaseReady, e.phaseOf(jobConfigMap), e.messageOf(jobConfigMap))
 	assert.Zero(t, e.etl.callCount("GetSourceByName"))
@@ -678,7 +667,7 @@ func TestJobReconcileRefsByID(t *testing.T) {
 
 	// the Streams ConfigMap may point at the synced job by its entity id
 	job := e.etl.jobs["orders"]
-	e.setConfigMapData(streamsConfigMap, streamsManifestData(idString(job.ID), ordersSelection))
+	e.setData(streamsConfigMap, streamsManifestData(idString(job.ID), ordersSelection))
 	e.reconcileJob(jobConfigMap)
 	assert.Equal(t, PhaseReady, e.phaseOf(streamsConfigMap), e.messageOf(jobConfigMap))
 	assert.Equal(t, ordersSelection, *e.etl.jobs["orders"].SelectedStreamsConfig)
