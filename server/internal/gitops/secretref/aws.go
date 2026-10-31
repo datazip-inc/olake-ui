@@ -56,7 +56,7 @@ func (p *awsProvider) Fetch(ctx context.Context, path string) (string, error) {
 		region = p.region
 	}
 	if region == "" {
-		return "", unresolvable("AWS region is not set: set GITOPS_SECRETS_AWS_REGION or reference the secret by ARN")
+		return "", unresolvable("AWS region is not set: set OLAKE_GITOPS_SECRETS_AWS_REGION or reference the secret by ARN")
 	}
 
 	out, err := p.client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: aws.String(path)},

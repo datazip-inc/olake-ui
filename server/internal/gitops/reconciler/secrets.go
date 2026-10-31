@@ -13,7 +13,7 @@ import (
 )
 
 // minSecretRefresh is the shortest refresh interval used. A value without a unit, such as
-// GITOPS_SECRETS_REFRESH_INTERVAL=60, is parsed as nanoseconds and would call the secret managers
+// OLAKE_GITOPS_SECRETS_REFRESH_INTERVAL=60, is parsed as nanoseconds and would call the secret managers
 // in a tight loop.
 const minSecretRefresh = time.Minute
 
@@ -26,7 +26,7 @@ type SecretRefs struct {
 	refresh time.Duration
 }
 
-// NewSecretRefs builds the resolver from the GITOPS_SECRETS_* settings. k8s is the cluster that
+// NewSecretRefs builds the resolver from the OLAKE_GITOPS_SECRETS_* settings. k8s is the cluster that
 // ${secrets:...} references read from; its zero value refuses them (file mode without a cluster).
 func NewSecretRefs(k8s secretref.K8sConfig) *SecretRefs {
 	cfg := appconfig.Load()
@@ -51,10 +51,10 @@ func NewSecretRefs(k8s secretref.K8sConfig) *SecretRefs {
 	}
 }
 
-// refreshInterval raises a GITOPS_SECRETS_REFRESH_INTERVAL below minSecretRefresh to it; 0 stays 0.
+// refreshInterval raises a OLAKE_GITOPS_SECRETS_REFRESH_INTERVAL below minSecretRefresh to it; 0 stays 0.
 func refreshInterval(refresh time.Duration) time.Duration {
 	if refresh > 0 && refresh < minSecretRefresh {
-		logger.Warnf("GITOPS_SECRETS_REFRESH_INTERVAL %s is below %s (a value needs a unit, such as 15m); using %s", refresh, minSecretRefresh, minSecretRefresh)
+		logger.Warnf("OLAKE_GITOPS_SECRETS_REFRESH_INTERVAL %s is below %s (a value needs a unit, such as 15m); using %s", refresh, minSecretRefresh, minSecretRefresh)
 		return minSecretRefresh
 	}
 	return refresh

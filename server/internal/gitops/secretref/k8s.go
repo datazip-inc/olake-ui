@@ -26,7 +26,7 @@ type k8sProvider struct {
 
 func newK8sProvider(_ context.Context, cfg *Config) (Provider, error) {
 	if cfg.K8s.Client == nil || cfg.K8s.Selector == nil {
-		return nil, unresolvable("secrets references need GITOPS_MODE=kubernetes; in file mode use ${env:...}")
+		return nil, unresolvable("secrets references need OLAKE_GITOPS_MODE=kubernetes; in file mode use ${env:...}")
 	}
 	return &k8sProvider{cfg.K8s}, nil
 }

@@ -59,7 +59,7 @@ func (p *gcpProvider) Fetch(ctx context.Context, path string) (string, error) {
 func gcpVersionName(path, project string) (string, error) {
 	if !strings.HasPrefix(path, "projects/") {
 		if project == "" {
-			return "", unresolvable("GCP project is not set: set GITOPS_SECRETS_GCP_PROJECT or use projects/<project>/secrets/%s", path)
+			return "", unresolvable("GCP project is not set: set OLAKE_GITOPS_SECRETS_GCP_PROJECT or use projects/<project>/secrets/%s", path)
 		}
 		path = fmt.Sprintf("projects/%s/secrets/%s", project, path)
 	}
