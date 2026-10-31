@@ -30,7 +30,7 @@ func NewSink(c client.Client, recorder k8srecord.EventRecorder, t *temporal.Temp
 	return &Sink{client: c, recorder: recorder, temporal: t}
 }
 
-func (s *Sink) SetPhase(ctx context.Context, r *reconciler.ResourceData, phase, message, entityID, observedHash string) error {
+func (s *Sink) SetPhase(ctx context.Context, r *reconciler.ResourceData, st *reconciler.Status) error {
 	key := client.ObjectKey{Name: r.Name, Namespace: r.Namespace}
 
 	// Patch annotations only; does not touch data. A concurrent Argo sync that
@@ -46,20 +46,22 @@ func (s *Sink) SetPhase(ctx context.Context, r *reconciler.ResourceData, phase, 
 		if ann == nil {
 			ann = map[string]string{}
 		}
-		if ann[reconciler.AnnotationPhase] == phase &&
-			ann[reconciler.AnnotationMessage] == message &&
-			ann[reconciler.AnnotationEntityID] == entityID &&
-			ann[reconciler.AnnotationObservedHash] == observedHash {
+		if ann[reconciler.AnnotationPhase] == st.Phase &&
+			ann[reconciler.AnnotationMessage] == st.Message &&
+			ann[reconciler.AnnotationEntityID] == st.EntityID &&
+			ann[reconciler.AnnotationObservedHash] == st.ObservedHash &&
+			ann[reconciler.AnnotationReconcileHandled] == st.ReconcileHandled {
 			return nil
 		}
 		original, ok := obj.DeepCopyObject().(client.Object)
 		if !ok {
 			return fmt.Errorf("deep copy %T: not a client.Object", obj)
 		}
-		ann[reconciler.AnnotationPhase] = phase
-		ann[reconciler.AnnotationMessage] = message
-		ann[reconciler.AnnotationEntityID] = entityID
-		ann[reconciler.AnnotationObservedHash] = observedHash
+		ann[reconciler.AnnotationPhase] = st.Phase
+		ann[reconciler.AnnotationMessage] = st.Message
+		ann[reconciler.AnnotationEntityID] = st.EntityID
+		ann[reconciler.AnnotationObservedHash] = st.ObservedHash
+		ann[reconciler.AnnotationReconcileHandled] = st.ReconcileHandled
 		obj.SetAnnotations(ann)
 		return s.client.Patch(ctx, obj, client.MergeFrom(original))
 	})
@@ -68,13 +70,13 @@ func (s *Sink) SetPhase(ctx context.Context, r *reconciler.ResourceData, phase, 
 	}
 
 	eventType := corev1.EventTypeNormal
-	reason, eventMsg := "Pending", message
-	switch phase {
+	reason, eventMsg := "Pending", st.Message
+	switch st.Phase {
 	case reconciler.PhaseReady:
 		reason, eventMsg = "Synced", "resource synced to OLake"
 	case reconciler.PhaseFailed:
 		eventType = corev1.EventTypeWarning
-		reason, eventMsg = "SyncFailed", message
+		reason, eventMsg = "SyncFailed", st.Message
 	}
 	s.recorder.Event(obj, eventType, reason, eventMsg)
 	return nil

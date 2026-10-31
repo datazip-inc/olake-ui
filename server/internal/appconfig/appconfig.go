@@ -52,6 +52,14 @@ type Config struct {
 	PodNamespace                   string // namespace Kubernetes mode watches
 	GitOpsFileDir                  string // file based configuration for olake; defaults to /etc/olake/gitops
 	GitOpsStateFile                string // file mode status; defaults to OLAKE_GITOPS_FILE_DIR/.olake-gitops-state.json
+	GitOpsSecretsRefreshInterval   time.Duration
+	GitOpsSecretsAWSRegion         string
+	GitOpsSecretsAWSAccessKeyID    string
+	GitOpsSecretsAWSSecretKey      string
+	GitOpsSecretsGCPProject        string
+	GitOpsSecretsAzureTenantID     string
+	GitOpsSecretsAzureClientID     string
+	GitOpsSecretsAzureClientSecret string
 	OlakeStorageMode               string
 	OlakeS3Bucket                  string
 	OlakeS3Region                  string
@@ -86,6 +94,9 @@ func loadConfig() Config {
 
 	// GitOps file mode reads manifests from here; mount them at this path.
 	v.SetDefault("OLAKE_GITOPS_FILE_DIR", "/etc/olake/gitops")
+
+	// Resources whose config has secret references are re-checked this often for rotated secrets.
+	v.SetDefault("OLAKE_GITOPS_SECRETS_REFRESH_INTERVAL", "1h")
 
 	// Note: config priority: env variables -> file (app.yaml)
 	v.SetConfigFile("./config/app.yaml")
@@ -139,7 +150,7 @@ func loadConfig() Config {
 		OptimizationPassword:       strings.TrimSpace(v.GetString("PASSWORD")),
 		OptimizationRequestTimeout: v.GetDuration("OPTIMIZATION_REQUEST_TIMEOUT"),
 
-		GitOpsMode:             strings.ToLower(strings.TrimSpace(v.GetString("GITOPS_MODE"))),
+		GitOpsMode:             strings.ToLower(strings.TrimSpace(v.GetString("OLAKE_GITOPS_MODE"))),
 		PodNamespace:           strings.TrimSpace(v.GetString("POD_NAMESPACE")),
 		GitOpsFileDir:          strings.TrimSpace(v.GetString("OLAKE_GITOPS_FILE_DIR")),
 		GitOpsStateFile:        strings.TrimSpace(v.GetString("OLAKE_GITOPS_STATE_FILE")),
@@ -150,5 +161,14 @@ func loadConfig() Config {
 		OlakeS3AccessKeyID:     strings.TrimSpace(v.GetString("OLAKE_S3_ACCESS_KEY_ID")),
 		OlakeS3SecretAccessKey: strings.TrimSpace(v.GetString("OLAKE_S3_SECRET_ACCESS_KEY")),
 		OlakeS3Endpoint:        strings.TrimSpace(v.GetString("OLAKE_S3_ENDPOINT")),
+
+		GitOpsSecretsRefreshInterval:   v.GetDuration("OLAKE_GITOPS_SECRETS_REFRESH_INTERVAL"),
+		GitOpsSecretsAWSRegion:         strings.TrimSpace(v.GetString("OLAKE_GITOPS_SECRETS_AWS_REGION")),
+		GitOpsSecretsAWSAccessKeyID:    strings.TrimSpace(v.GetString("OLAKE_GITOPS_SECRETS_AWS_ACCESS_KEY_ID")),
+		GitOpsSecretsAWSSecretKey:      strings.TrimSpace(v.GetString("OLAKE_GITOPS_SECRETS_AWS_SECRET_ACCESS_KEY")),
+		GitOpsSecretsGCPProject:        strings.TrimSpace(v.GetString("OLAKE_GITOPS_SECRETS_GCP_PROJECT")),
+		GitOpsSecretsAzureTenantID:     strings.TrimSpace(v.GetString("OLAKE_GITOPS_SECRETS_AZURE_TENANT_ID")),
+		GitOpsSecretsAzureClientID:     strings.TrimSpace(v.GetString("OLAKE_GITOPS_SECRETS_AZURE_CLIENT_ID")),
+		GitOpsSecretsAzureClientSecret: strings.TrimSpace(v.GetString("OLAKE_GITOPS_SECRETS_AZURE_CLIENT_SECRET")),
 	}
 }

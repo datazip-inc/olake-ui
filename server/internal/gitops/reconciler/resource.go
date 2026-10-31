@@ -34,6 +34,16 @@ const (
 	AnnotationMessage      = "olake.io/message"
 	AnnotationEntityID     = "olake.io/entity-id"
 	AnnotationObservedHash = "olake.io/observed-hash"
+	// AnnotationReconcileHandled is the last reconcile request a status answered
+	AnnotationReconcileHandled = "olake.io/reconcile-handled"
+
+	// AnnotationReconcileRequest (user-owned, unlike the status annotations) asks for a reconcile
+	// now: setting it to any new value, such as the current time or the next number, re-runs a
+	// synced resource in any phase, which fetches its secret references again and retries a Failed
+	// one. The reconcile echoes the value into AnnotationReconcileHandled, so a script knows it ran.
+	// In file mode the request is the manifest's reconcileRequest field and the handled value is
+	// kept in the state file.
+	AnnotationReconcileRequest = "olake.io/reconcile-request"
 
 	DataProjectID = "projectId"
 	DataUserID    = "userId"
@@ -77,11 +87,21 @@ func (r *ResourceData) bindEntity(id int) {
 	r.Annotations[AnnotationEntityID] = strconv.Itoa(id)
 }
 
-// StatusSink writes phase and failure indicators. SetPhase always gets the observed hash to store;
-// the reconcilers resolve it (observedHashForResource), so a sink never computes one.
+// Status is what a reconcile reports for a resource: the olake.io/* status annotations in Kubernetes
+// mode, an entry of the state file in file mode. The reconcilers fill every field (writeStatus), so
+// a sink never computes one.
+type Status struct {
+	Phase            string
+	Message          string
+	EntityID         string
+	ObservedHash     string
+	ReconcileHandled string
+}
+
+// StatusSink writes status and failure indicators.
 type StatusSink interface {
 	Indicator(ctx context.Context, r *ResourceData, action, errMsg string)
-	SetPhase(ctx context.Context, r *ResourceData, phase, message, entityID, observedHash string) error
+	SetPhase(ctx context.Context, r *ResourceData, st *Status) error
 }
 
 // parseResourceID treats a pure positive integer ref as a DB entity id.
@@ -136,11 +156,11 @@ func resourceMatches(existing, spec *resourceSpec) bool {
 		utils.EqualJSON(existing.Config.String(), spec.Config.String())
 }
 
-func reconcileResource(ctx context.Context, sink StatusSink, r resource, res *ResourceData) (ctrl.Result, error) {
+func reconcileResource(ctx context.Context, sink StatusSink, secrets *SecretRefs, r resource, res *ResourceData) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	observedHash := ContentHash(res.Data)
-	if skipReconcile(res.Annotations, observedHash) {
+	if skipResource(res, observedHash, secrets) {
 		return ctrl.Result{}, nil
 	}
 
@@ -152,6 +172,13 @@ func reconcileResource(ctx context.Context, sink StatusSink, r resource, res *Re
 	if err != nil {
 		return failResource(ctx, sink, res, err, observedHash)
 	}
+
+	resolved, hasRefs, err := secrets.resolve(ctx, spec.Config.String())
+	if err != nil {
+		logger.Error(err, "resolve "+r.kind()+" secret references failed")
+		return failOrRequeue(ctx, sink, res, err, observedHash)
+	}
+	spec.Config = dto.JSONConfig(resolved)
 
 	existing, err := r.get(ctx, res.ProjectID(), spec.Name)
 	if err != nil && !errors.Is(err, r.notFoundErr()) {
@@ -166,10 +193,7 @@ func reconcileResource(ctx context.Context, sink StatusSink, r resource, res *Re
 	if existing == nil || changed {
 		if err := r.test(ctx, res.ProjectID(), spec); err != nil {
 			logger.Error(err, r.kind()+" connection test failed")
-			if !errors.Is(err, ErrNonRetryable) {
-				return requeueTransient(ctx, sink, res, err, observedHash)
-			}
-			return failResource(ctx, sink, res, err, observedHash)
+			return failOrRequeue(ctx, sink, res, err, observedHash)
 		}
 	}
 
@@ -195,5 +219,16 @@ func reconcileResource(ctx context.Context, sink StatusSink, r resource, res *Re
 		logger.Error(err, "update "+r.kind()+" status failed")
 		return requeueTransient(ctx, sink, res, err, observedHash)
 	}
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: secrets.next(hasRefs)}, nil
+}
+
+// skipResource: true when a source/destination needs no reconcile. A synced one is skipped, except
+// a Ready one whose config may hold secret references: it is re-checked every refresh interval so a
+// rotated secret reaches OLake without a change in git. mayRefresh only looks for "${" in the raw
+// config, so a synced resource without references is skipped without parsing or resolving it.
+func skipResource(res *ResourceData, observedHash string, secrets *SecretRefs) bool {
+	if !skipReconcile(res.Annotations, observedHash) {
+		return false
+	}
+	return res.Annotations[AnnotationPhase] != PhaseReady || !secrets.mayRefresh(res.Config())
 }

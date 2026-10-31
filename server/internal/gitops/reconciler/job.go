@@ -132,20 +132,14 @@ func (r *Job) Reconcile(ctx context.Context, res, streamsRes *ResourceData) (ctr
 	if existingJob == nil || drift.connectors {
 		if err := r.testConnectors(ctx, source, dest); err != nil {
 			logger.Error(err, "job connection test failed")
-			if !errors.Is(err, ErrNonRetryable) {
-				return requeueTransient(ctx, r.Sink, res, err, observed)
-			}
-			return r.failJob(ctx, res, streamsRes, err, observed)
+			return r.failOrRequeue(ctx, res, streamsRes, err, observed)
 		}
 	}
 
 	catalog, err := resolveCatalog(ctx, r.ETL, source, jobCfg, existingJob, cmCatalog, drift)
 	if err != nil {
 		logger.Error(err, "discover schema failed")
-		if err = workflowError(err); !errors.Is(err, ErrNonRetryable) {
-			return requeueTransient(ctx, r.Sink, res, err, observed)
-		}
-		return r.failJob(ctx, res, streamsRes, err, observed)
+		return r.failOrRequeue(ctx, res, streamsRes, workflowError(err), observed)
 	}
 
 	switch {
@@ -166,10 +160,7 @@ func (r *Job) Reconcile(ctx context.Context, res, streamsRes *ResourceData) (ctr
 			diffStreams, err = streamDifferenceJSON(ctx, r.ETL, existingJob, catalog)
 			if err != nil {
 				logger.Error(err, "stream difference failed")
-				if err = workflowError(err); !errors.Is(err, ErrNonRetryable) {
-					return requeueTransient(ctx, r.Sink, res, err, observed)
-				}
-				return r.failJob(ctx, res, streamsRes, err, observed)
+				return r.failOrRequeue(ctx, res, streamsRes, workflowError(err), observed)
 			}
 		}
 		req := jobCfg.updateRequest(source.ID, source.Version, dest.ID, existingJob.Active, catalog, diffStreams)
@@ -201,6 +192,15 @@ func (r *Job) Reconcile(ctx context.Context, res, streamsRes *ResourceData) (ctr
 		return requeueTransient(ctx, r.Sink, res, err, observed)
 	}
 	return ctrl.Result{}, nil
+}
+
+// failOrRequeue fails the job and its streams on a non-retryable error and retries any other
+// error as Pending.
+func (r *Job) failOrRequeue(ctx context.Context, job, streams *ResourceData, err error, observedHash string) (ctrl.Result, error) {
+	if errors.Is(err, ErrNonRetryable) {
+		return r.failJob(ctx, job, streams, err, observedHash)
+	}
+	return requeueTransient(ctx, r.Sink, job, err, observedHash)
 }
 
 func (r *Job) failJob(ctx context.Context, job, streams *ResourceData, err error, observedHash string) (ctrl.Result, error) {

@@ -20,13 +20,14 @@ type sourceService interface {
 
 // Source applies a source manifest to OLake, in every GitOps mode.
 type Source struct {
-	ETL  sourceService
-	Sink StatusSink
+	ETL     sourceService
+	Sink    StatusSink
+	Secrets *SecretRefs // resolves secret references in the config
 }
 
 // Reconcile applies res and records its status through r.Sink.
 func (r *Source) Reconcile(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
-	return reconcileResource(ctx, r.Sink, r, res)
+	return reconcileResource(ctx, r.Sink, r.Secrets, r, res)
 }
 
 func (r *Source) kind() string { return KindSource }

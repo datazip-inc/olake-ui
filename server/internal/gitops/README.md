@@ -6,7 +6,7 @@ Manage OLake sources, destinations, jobs, and stream selections as labelled **Co
 
 - Kubernetes: OLake UI deployed **inside** the cluster (in-cluster kubeconfig), or Docker Compose with file-based manifests mounted at `/etc/olake/gitops`.
 - Source drivers at **v1.0.0 or later**. A job whose source is older fails reconcile until the Source is upgraded.
-- `GITOPS_MODE` on `olake-ui`: `kubernetes` for ConfigMaps/Secrets (Helm `gitops.enabled: true` sets it), or `file` for a directory of JSON manifests.
+- `OLAKE_GITOPS_MODE` on `olake-ui`: `kubernetes` for ConfigMaps/Secrets (Helm `gitops.enabled: true` sets it), or `file` for a directory of JSON manifests.
   Unset or empty disables GitOps.
   Any other value fails startup.
 - GitOps RBAC: namespace `Role` on `configmaps` and `secrets` (get/list/watch/update/patch each), and `events` (create/patch). **No `pods` permission on olake-ui.**
@@ -30,7 +30,7 @@ See [olake-helm/docs/gitops.md](https://github.com/datazip-inc/olake-helm/blob/m
 
 ```yaml
 environment:
-  GITOPS_MODE: file
+  OLAKE_GITOPS_MODE: file
 volumes:
   - ./olake-gitops:/etc/olake/gitops
 ```
@@ -51,6 +51,7 @@ Status is written to **annotations** on the managed object (ConfigMap or Secret;
 | `olake.io/message` | Human-readable detail |
 | `olake.io/entity-id` | OLake entity ID after sync |
 | `olake.io/observed-hash` | Content hash for skip logic |
+| `olake.io/reconcile-handled` | Last [reconcile request](#force-a-re-sync) handled |
 
 Kubernetes Events: reason `Synced` (normal) or `SyncFailed` (warning).
 
@@ -103,14 +104,11 @@ The Streams ConfigMap `data.config` JSON holds the user's choices only, in the `
 }
 ```
 
-The job runs in the split format: the catalog is stored as `available_streams_config` + `selected_streams_config` (`streams_config` stays NULL) and passed with `--available-streams` / `--selected-streams`.
-
-- A CM in the legacy `streams.json` shape (with `streams[]`) is rejected. Remove `streams[]` and keep `selected_streams`.
-- On create the operator runs discover against the source for `available_streams_config`, then discover again against it and the CM's `selected_streams`, so the stored selection comes from the CLI's merge (same as on update).
-- On update with a changed CM (or a changed source/destination), discover merges against the stored `available_streams_config` and the CM's `selected_streams`; the CLI's merge drops selections whose stream no longer exists, updates `selected_columns` when `sync_new_columns` is true, and refreshes `streams[]` when the source schema changes.
-- An update that does not change the CM (a Job CM edit, or a changed source/destination) starts from the job's stored catalog, not the CM's. A changed source/destination runs discover against that stored catalog.
-- `selected_streams` must be non-empty (deselect-all fails reconcile).
-- A changed CM triggers a stream difference between the stored catalog and the newly merged one, and clear-destination for the streams that differ.
+- The source driver must be **v1.0.0 or later**. Older sources fail the job.
+- A full legacy catalog (with a `streams[]` array) is rejected. Keep only `selected_streams`.
+- `selected_streams` must be non-empty.
+- When the selection changes, OLake clears the destination for the streams that differ.
+- Selections for streams that no longer exist in the source are dropped.
 
 ### Credentials via Secrets (Source and Destination only)
 
@@ -141,13 +139,14 @@ stringData:
     }
 ```
 
-Rotating the Secret's `data.config` re-triggers reconcile the same way editing the ConfigMap would (both are watched).
+Rotating the Secret's `data.config` re-triggers reconcile the same way editing the ConfigMap would (both are watched). To keep the config in git and only the credentials out of it, use [secret references](#secret-references) instead.
 
 Do **not** put `olake.io/phase` or other status annotations in git — the operator writes them.
+The exception is `olake.io/reconcile-request`, which is yours to set (see [Force a re-sync](#force-a-re-sync)).
 
 ## Docker Compose (file mode)
 
-With `GITOPS_MODE=file`, olake-ui watches a directory of JSON files instead of ConfigMaps. Each file describes one entity with the same fields the OLake API takes, plus `kind`, `projectId`, `userId` and, for streams, `job`. There are no Kubernetes fields (`apiVersion`, `metadata`, labels, annotations).
+With `OLAKE_GITOPS_MODE=file`, olake-ui watches a directory of JSON files instead of ConfigMaps. Each file describes one entity with the same fields the OLake API takes, plus `kind`, `projectId`, `userId` and, for streams, `job`. There are no Kubernetes fields (`apiVersion`, `metadata`, labels, annotations).
 
 ### Files
 
@@ -218,19 +217,144 @@ With `GITOPS_MODE=file`, olake-ui watches a directory of JSON files instead of C
 - **Identity:** a source, destination or job is identified by `kind` + `name` (the OLake name), and streams by their `job`. The file name and directory do not matter.
 - **Files read:** every `*.json` file, at the root of the directory or in a directory under it (for example one directory per job). The directory holds only these files and the state file.
 - **Editing:** a file is reconciled 5 s after its last change.
+- **Re-sync:** an optional top-level `reconcileRequest` (a string or a number) re-runs the file when you change it, without changing anything else. See [Force a re-sync](#force-a-re-sync).
 - **Deleting:** deleting a file drops the entity from GitOps, but the OLake entity is kept, as in Kubernetes mode.
-- **Credentials:** there is no Secret equivalent; credentials are written in the source/destination file. Keep the directory private.
+- **Credentials:** use [secret references](#secret-references) (`${env:...}` or a cloud secret manager) instead of writing credentials in the file.
 
 ### Status
 
-There are no annotations, so status (phase, message, entity ID, observed hash) is kept in `.olake-gitops-state.json` in the directory and written to the olake-ui log on each change. The file plays the role of the annotations: it keeps a restart from re-applying every job, which would cancel running syncs.
+There are no annotations, so status (phase, message, entity ID, observed hash, last handled `reconcileRequest`) is kept in `.olake-gitops-state.json` in the directory and written to the olake-ui log on each change. The file plays the role of the annotations: it keeps a restart from re-applying every job, which would cancel running syncs.
 
 - Keep it on persistent storage, and add it to `.gitignore` if the directory is a git checkout.
 - If the directory is read-only (for example a git-sync mount), set `OLAKE_GITOPS_STATE_FILE` to a writable path. olake-ui fails at startup if it cannot write the file.
 - Deleting the state file, or a manifest, makes the next start reconcile those entities from scratch.
 
 `OLAKE_GITOPS_FILE_DIR` changes the directory, for example when running the server outside Docker.
-File mode also works inside Kubernetes, for example with manifests mounted from a volume: set `GITOPS_MODE=file` instead of `kubernetes`.
+File mode also works inside Kubernetes, for example with manifests mounted from a volume: set `OLAKE_GITOPS_MODE=file` instead of `kubernetes`.
+
+## Secret references
+
+Keep credentials out of git: set a string field in a source or destination `config` to a reference instead of the value. olake-ui fetches the value when it reconciles, and stores the resolved config in its database. The value is never written back to the ConfigMap or file.
+
+```json
+"config": {
+  "host": "pg.prod.internal",
+  "username": "${aws-sm:olake/prod/pg#username}",
+  "password": "${aws-sm:olake/prod/pg#password}"
+}
+```
+
+Format: `${<provider>:<path>[#<key>]}`
+
+- The reference must be the whole value. `"x${...}"` is a plain string.
+- `#key` reads one key of a secret that holds a JSON object, such as `{"username":"...","password":"..."}`. The value keeps its JSON type: with `{"port":5432}`, `"port": "${...#port}"` becomes the number `5432`, while `{"port":"5432"}` gives the string `"5432"`. Without `#key`, the whole secret value is used as a string.
+- References work in nested objects too, such as `ssh_config.password` or `writer.aws_secret_key`.
+
+| Provider | Reference | Works in |
+|----------|-----------|----------|
+| AWS Secrets Manager | `${aws-sm:<name or ARN>[#key]}` | Kubernetes, Docker |
+| GCP Secret Manager | `${gcp-sm:<secret-id>[#key]}` or `${gcp-sm:projects/<project>/secrets/<id>[/versions/<v>][#key]}` | Kubernetes, Docker |
+| Azure Key Vault | `${azure-kv:<vault-name>/<secret-name>[/<version>][#key]}` | Kubernetes, Docker |
+| Kubernetes Secret | `${secrets:<secret-name>#<key>}` | Kubernetes mode only |
+| Environment variable | `${env:<NAME>}` | Kubernetes, Docker |
+
+**Requirements and behaviour**
+
+- **Encryption:** resolved values are stored in the database like any other config, encrypted only when `OLAKE_SECRET_KEY` is set on olake-ui and the worker.
+- **Rotation:** a `Ready` resource with references is re-checked every `OLAKE_GITOPS_SECRETS_REFRESH_INTERVAL` (a duration with a unit, such as `15m`; default `1h`, minimum `1m`, `0` turns it off). A changed secret is connection-tested and applied without any change in git. To re-check now, [force a re-sync](#force-a-re-sync).
+- **Errors:** a missing secret or key, or access denied, makes the resource `Failed` with the reason. A `Failed` resource is not re-checked on the refresh interval: fix the secret, then [force a re-sync](#force-a-re-sync). Network errors and throttling are retried like other transient errors.
+- **Settings** go on olake-ui as environment variables. In Helm use `olakeUI.env`; in Docker Compose use the olake-ui service's `environment`.
+
+### AWS Secrets Manager
+
+Authentication, preferred first:
+
+1. **EKS Pod Identity.** Associate the role with olake-ui's ServiceAccount:
+   ```bash
+   kubectl -n <namespace> get deploy olake-ui -o jsonpath='{.spec.template.spec.serviceAccountName}'
+   aws eks create-pod-identity-association --cluster-name <cluster> \
+     --namespace <namespace> --service-account <service-account> --role-arn <role-arn>
+   ```
+2. **IRSA.** Annotate olake-ui's ServiceAccount with `eks.amazonaws.com/role-arn: <role-arn>`. By default olake-ui runs as the job ServiceAccount, so set it in `global.jobServiceAccount.annotations`. A ServiceAccount has one role: if S3 log storage also uses IRSA, give one role both permissions.
+3. **EC2 instance profile or ECS task role** (Docker on AWS).
+4. **Access keys** (testing only): `OLAKE_GITOPS_SECRETS_AWS_ACCESS_KEY_ID` and `OLAKE_GITOPS_SECRETS_AWS_SECRET_ACCESS_KEY`.
+
+Role permission:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": "secretsmanager:GetSecretValue",
+  "Resource": "arn:aws:secretsmanager:<region>:<account>:secret:olake/*"
+}
+```
+
+Add `kms:Decrypt` on the key if the secret uses a customer-managed KMS key.
+
+Settings: `OLAKE_GITOPS_SECRETS_AWS_REGION` is needed when references use secret names. An ARN carries its own region.
+
+### GCP Secret Manager
+
+Authentication, preferred first:
+
+1. **GKE Workload Identity.** Grant the role on the secret to olake-ui's ServiceAccount:
+   ```bash
+   gcloud secrets add-iam-policy-binding <secret-id> --role=roles/secretmanager.secretAccessor \
+     --member="principal://iam.googleapis.com/projects/<project-number>/locations/global/workloadIdentityPools/<project-id>.svc.id.goog/subject/ns/<namespace>/sa/<service-account>"
+   ```
+2. **Attached service account** (Docker on a GCE VM).
+3. **Workload Identity Federation** from a non-GKE cluster (EKS, AKS): mount the credential configuration file and set `GOOGLE_APPLICATION_CREDENTIALS` to its path.
+4. **Service account JSON key** (testing only): mount the key file and set `GOOGLE_APPLICATION_CREDENTIALS` to its path. Many organisations block key creation.
+
+Permission: `roles/secretmanager.secretAccessor` on each secret.
+
+Settings: `OLAKE_GITOPS_SECRETS_GCP_PROJECT` is needed for short secret ids outside GKE or GCE. On GKE and GCE the project comes from the metadata server.
+
+The latest version is read unless the reference pins one. To rotate, add a new version.
+
+### Azure Key Vault
+
+Authentication, preferred first:
+
+1. **AKS Workload Identity.** Create a user-assigned managed identity and a federated credential for `system:serviceaccount:<namespace>:<service-account>`. Then annotate olake-ui's ServiceAccount with `azure.workload.identity/client-id: <client-id>`, and add the pod label `azure.workload.identity/use: "true"` with `olakeUI.podLabels`.
+2. **Managed identity** (Docker on an Azure VM).
+3. **Service principal client secret** (testing only): `OLAKE_GITOPS_SECRETS_AZURE_TENANT_ID`, `OLAKE_GITOPS_SECRETS_AZURE_CLIENT_ID` and `OLAKE_GITOPS_SECRETS_AZURE_CLIENT_SECRET`.
+
+Permission: the **Key Vault Secrets User** role on the vault, which must use the Azure RBAC permission model.
+
+The vault URL is `https://<vault-name>.vault.azure.net`. The latest version is read unless the reference pins one. To rotate, add a new version.
+
+### Kubernetes Secret
+
+Kubernetes mode only. The Secret must be in olake-ui's namespace and labelled `olake.io/managed=true`. Other Secrets cannot be read.
+
+```bash
+kubectl -n <namespace> create secret generic pg-creds \
+  --from-literal=username=olake --from-literal=password='<password>'
+kubectl -n <namespace> label secret pg-creds olake.io/managed=true
+```
+
+```json
+"password": "${secrets:pg-creds#password}"
+```
+
+The Helm chart's GitOps Role lets olake-ui read Secrets in its namespace. The Secret can come from External Secrets Operator, Sealed Secrets or the Vault Secrets Operator; add the label to the Secret they create.
+
+### Environment variable
+
+Any variable in olake-ui's environment can be read. Docker Compose, with the values in an uncommitted `.env` file:
+
+```yaml
+olake-ui:
+  environment:
+    PG_PASSWORD: ${PG_PASSWORD}
+```
+
+```json
+"password": "${env:PG_PASSWORD}"
+```
+
+A changed value takes effect after olake-ui restarts.
 
 ## Failure indicators
 
@@ -243,13 +367,82 @@ Configure alerts on failed Pods with that label. olake-ui never creates Pods dir
 ## Reconciliation behavior
 
 - **Create/update only** — deleting a ConfigMap or Secret from git does **not** delete the OLake entity (v1).
-- **Validation errors** → `phase=Failed`, indicator spawned, no requeue until content changes.
+- **Validation errors** → `phase=Failed`, indicator spawned, no requeue until content changes or a [reconcile request](#force-a-re-sync).
 - **Failed job + source/destination fix** → retrying a Failed job does **not** require editing the job file. Changing the referenced source or destination (ConfigMap or Secret data) invalidates the skip hash and re-runs the job. Streams are not part of that hash (catalogs are large); the job checks the Streams CM's own hash instead, so editing its data also re-runs a Failed job. A failed discover or connection test is `Failed` too: it retries on one of these edits, not on a timer.
 - **Missing dependencies** → `phase=Pending`, requeue every 30s, no indicator.
-- **Transient errors** → requeue, stay non-terminal.
+- **Transient errors** → requeue, stay non-terminal. After 30 minutes the resource becomes `Failed`; once the cause is fixed, [force a re-sync](#force-a-re-sync).
 - **Streams** — no standalone reconciler; Job controller owns streams status and drift detection.
 
 `userId` must be an existing OLake user ID (string in `data.userId`).
+
+## Force a re-sync
+
+A synced resource (`Ready` or `Failed` for its current data) is skipped until its data changes.
+To re-run one now, set its reconcile request to a new value.
+Typical reasons are a secret you fixed or rotated in a secret manager, or a resource left `Failed` by an outage.
+
+The value can be anything that differs from the last one: a timestamp, or a number you increase by one.
+olake-ui then reconciles the resource as if its data had changed.
+It fetches the secret references again, re-tests the connection when the resolved config differs from what OLake holds, and applies it.
+This works in every phase and for every kind: source, destination, job and streams (a request on a Streams object re-runs its job).
+When the reconcile is done, olake-ui records the value it handled, so the request runs once.
+
+### Kubernetes mode
+
+Set the `olake.io/reconcile-request` annotation (use `secret` instead of `cm` for a source or destination stored as a Secret):
+
+```bash
+kubectl annotate cm <name> olake.io/reconcile-request="$(date +%s)" --overwrite
+```
+
+olake-ui copies the value into `olake.io/reconcile-handled` when it has handled the request.
+The re-sync is done when the two annotations are equal, and `olake.io/phase` then holds the result.
+A script can wait for it:
+
+```bash
+req="$(date +%s)"
+kubectl annotate cm <name> olake.io/reconcile-request="$req" --overwrite
+until [ "$(kubectl get cm <name> -o jsonpath='{.metadata.annotations.olake\.io/reconcile-handled}')" = "$req" ]; do sleep 2; done
+kubectl get cm <name> -o jsonpath='{.metadata.annotations.olake\.io/phase} {.metadata.annotations.olake\.io/message}{"\n"}'
+```
+
+The annotation can also live in git: committing a new value re-runs the resource on the next Argo CD or Flux sync.
+
+### File mode
+
+Files have no annotations, so the request is a top-level `reconcileRequest` field in the manifest.
+Add it, or change its value, and save the file:
+
+```json
+{
+  "kind": "source",
+  "reconcileRequest": 1,
+  "projectId": "123",
+  "userId": 1,
+  "name": "pg",
+  "type": "postgres",
+  "version": "v1.0.0",
+  "config": { "host": "pg", "password": "${aws-sm:olake/prod/pg#password}" }
+}
+```
+
+To re-sync again later, change `1` to `2`, and so on; no date is needed.
+The field is not part of the config: it is not sent to OLake, and changing it changes nothing but the request.
+The file is reconciled 5 s after it is saved, the result is written to the olake-ui log, and the handled value is kept as `reconcileHandled` in the state file.
+If the directory is a git-sync mount, commit the new value instead.
+
+From a script, with [jq](https://jqlang.org/) (the temporary file does not end in `.json`, so it is not read as a manifest):
+
+```bash
+jq --arg r "$(date +%s)" '.reconcileRequest = $r' pg.json > pg.json.tmp && mv pg.json.tmp pg.json
+jq '."source//pg"' .olake-gitops-state.json   # state key: <kind>//<name>
+```
+
+### Notes
+
+- Setting a value that was already handled does nothing, so always use a new value.
+- A request made while a reconcile runs is handled by the next one.
+- `${env:...}` values come from olake-ui's environment, which changes only when olake-ui restarts. Restart it first, then re-sync.
 
 ## Troubleshooting
 
@@ -257,8 +450,9 @@ Configure alerts on failed Pods with that label. olake-ui never creates Pods dir
 |---------|--------|
 | Pending, waiting for source | Ensure source ConfigMap reaches Ready first |
 | Failed, validation | Fix `data.config` JSON |
+| Failed after you fixed a secret, or after an outage | [Force a re-sync](#force-a-re-sync) |
 | Failed, no indicator Pod | Check worker logs and Temporal; worker needs `pods` create |
-| Argo synced but phase empty | Operator may be disabled; check `GITOPS_MODE=kubernetes` |
+| Argo synced but phase empty | Operator may be disabled; check `OLAKE_GITOPS_MODE=kubernetes` |
 
 ```bash
 kubectl describe configmap my-postgres
@@ -270,13 +464,15 @@ kubectl logs -l app.kubernetes.io/name=olake-ui | grep -i gitops
 
 - olake-ui GitOps RBAC: ConfigMaps and Secrets (read/write status annotations on both), Events in the release namespace. **No pods create/delete.**
 - Secret `update`/`patch` (needed for status annotations) applies to all Secrets in the namespace, not only GitOps-managed ones — use a dedicated namespace for GitOps-managed OLake when possible.
+- Secret references: a config can read only Secrets labelled `olake.io/managed=true`, but any variable in olake-ui's environment, including olake-ui's own credentials (`OLAKE_SECRET_KEY`, the metadata database, `OLAKE_GITOPS_SECRETS_*`). A resolved value can reach a host the config names, for example through a connection test, so treat write access to GitOps manifests like admin access to olake-ui. For cloud secret managers, scope olake-ui's IAM permission to the secrets it needs, because anyone who can write a config can reference any secret that identity can read.
 - Failure indicators use worker SA (already has `pods` create for connector jobs).
 
 ## Code layout
 
-- `manager.go`: `InitGitOps` starts the mode named by `GITOPS_MODE`.
-- `reconciler/`: the mode-agnostic core. `Source`, `Destination` and `Job` apply one manifest (a `ResourceData`) to OLake and report the result through a `StatusSink`. Validation, the streams format, status rules (skip, retry window, failure indicators) and connection tests live here.
+- `manager.go`: `InitGitOps` starts the mode named by `OLAKE_GITOPS_MODE`.
+- `reconciler/`: the mode-agnostic core. `Source`, `Destination` and `Job` apply one manifest (a `ResourceData`) to OLake and report the result through a `StatusSink`. Validation, the streams format, secret references (`SecretRefs`), status rules (skip, retry window, failure indicators) and connection tests live here.
 - `kubernetes/`: Kubernetes mode. The controllers load labelled ConfigMaps and Secrets into `ResourceData`, re-queue jobs when their dependencies change, and `Sink` writes status as annotations and Events.
+- `secretref/`: resolves `${provider:path}` secret references against AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, Kubernetes Secrets and the environment.
 - `file/`: file mode. `Watcher` reads JSON manifests from the watched directory into `ResourceData`, re-queues jobs when their dependencies change, and keeps status in the state file.
 
 Each package's tests sit next to it: the reconcile rules are tested in `reconciler/` against an in-memory object store and a fake ETL service; `kubernetes/` tests loading, watching and status writing on a fake cluster, and `file/` the same on a temp directory.

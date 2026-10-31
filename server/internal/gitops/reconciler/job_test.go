@@ -672,3 +672,63 @@ func TestJobReconcileRefsByID(t *testing.T) {
 	assert.Equal(t, PhaseReady, e.phaseOf(streamsConfigMap), e.messageOf(jobConfigMap))
 	assert.Equal(t, ordersSelection, *e.etl.jobs["orders"].SelectedStreamsConfig)
 }
+
+// TestJobReconcileRequest covers olake.io/reconcile-request on the Job and Streams ConfigMaps: each
+// re-runs a synced job, and each object echoes its own request.
+func TestJobReconcileRequest(t *testing.T) {
+	t.Run("a job Failed after a long outage is retried on request", func(t *testing.T) {
+		e, _ := newSyncedJobTestEnv(t, nil)
+		e.setData(jobConfigMap, manifestData(jobConfigJSON(map[string]interface{}{"frequency": "*/5 * * * *"})))
+		e.etl.failingMethods["GetJobByName"] = errors.New("db: connection refused")
+		retryMap.Store(e.load(jobConfigMap).key(), time.Now().Add(-syncRetryTimeout))
+		e.reconcileJob(jobConfigMap)
+		require.Equal(t, PhaseFailed, e.phaseOf(jobConfigMap))
+
+		// the outage ends, but nothing in git changed, so the Failed job stays skipped
+		clear(e.etl.failingMethods)
+		e.resetRecordings()
+		e.reconcileJob(jobConfigMap)
+		assert.Zero(t, e.etl.callCount("GetJobByName"))
+		assert.Empty(t, e.status.statusUpdates)
+
+		e.object(jobConfigMap).Annotations[AnnotationReconcileRequest] = "1"
+		e.reconcileJob(jobConfigMap)
+		assert.Equal(t, []string{"UpdateJob"}, e.etl.writeCalls())
+		assert.Equal(t, PhaseReady, e.phaseOf(jobConfigMap))
+		assert.Equal(t, "1", e.annotationsOf(jobConfigMap)[AnnotationReconcileHandled])
+		assert.Empty(t, e.annotationsOf(streamsConfigMap)[AnnotationReconcileHandled], "streams had no request")
+
+		e.resetRecordings()
+		e.reconcileJob(jobConfigMap)
+		assert.Zero(t, e.etl.callCount("GetJobByName"), "the answered request is not run again")
+		assert.Empty(t, e.status.statusUpdates)
+	})
+
+	t.Run("a request on a Ready job re-checks it without changing OLake", func(t *testing.T) {
+		e, _ := newSyncedJobTestEnv(t, nil)
+		e.object(jobConfigMap).Annotations[AnnotationReconcileRequest] = "1"
+		e.reconcileJob(jobConfigMap)
+		assert.Equal(t, 1, e.etl.callCount("GetJobByName"))
+		assert.Empty(t, e.etl.writeCalls())
+		assert.Equal(t, PhaseReady, e.phaseOf(jobConfigMap))
+		assert.Equal(t, "1", e.annotationsOf(jobConfigMap)[AnnotationReconcileHandled])
+	})
+
+	t.Run("a request on Failed streams is answered and not looped", func(t *testing.T) {
+		e, _ := newSyncedJobTestEnv(t, nil)
+		e.setData(streamsConfigMap, streamsManifestData(jobConfigMap, `{"selected_streams":{}}`))
+		e.reconcileJob(jobConfigMap)
+		require.Equal(t, PhaseFailed, e.phaseOf(streamsConfigMap))
+
+		e.object(streamsConfigMap).Annotations[AnnotationReconcileRequest] = "1"
+		e.resetRecordings()
+		e.reconcileJob(jobConfigMap)
+		assert.NotEmpty(t, e.etl.calls, "the request re-runs the job")
+		assert.Equal(t, PhaseFailed, e.phaseOf(streamsConfigMap), "the selection is still invalid")
+		assert.Equal(t, "1", e.annotationsOf(streamsConfigMap)[AnnotationReconcileHandled])
+
+		e.resetRecordings()
+		e.reconcileJob(jobConfigMap)
+		assert.Empty(t, e.status.statusUpdates)
+	})
+}

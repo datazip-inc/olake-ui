@@ -20,13 +20,14 @@ type destinationService interface {
 
 // Destination applies a destination manifest to OLake, in every GitOps mode.
 type Destination struct {
-	ETL  destinationService
-	Sink StatusSink
+	ETL     destinationService
+	Sink    StatusSink
+	Secrets *SecretRefs // resolves secret references in the config
 }
 
 // Reconcile applies res and records its status through r.Sink.
 func (r *Destination) Reconcile(ctx context.Context, res *ResourceData) (ctrl.Result, error) {
-	return reconcileResource(ctx, r.Sink, r, res)
+	return reconcileResource(ctx, r.Sink, r.Secrets, r, res)
 }
 
 func (r *Destination) kind() string { return KindDestination }
