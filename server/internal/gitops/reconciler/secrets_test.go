@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/secretref"
 )
 
@@ -93,9 +92,24 @@ func TestSecretRefsMayRefresh(t *testing.T) {
 		config  string
 		want    bool
 	}{
-		{name: "config with a reference", refresh: time.Hour, config: `{"p":"${aws-sm:x}"}`, want: true},
-		{name: "config without a reference", refresh: time.Hour, config: `{"p":"plain"}`, want: false},
-		{name: "refresh turned off", refresh: 0, config: `{"p":"${aws-sm:x}"}`, want: false},
+		{
+			name:    "config with a reference",
+			refresh: time.Hour,
+			config:  `{"p":"${aws-sm:x}"}`,
+			want:    true,
+		},
+		{
+			name:    "config without a reference",
+			refresh: time.Hour,
+			config:  `{"p":"plain"}`,
+			want:    false,
+		},
+		{
+			name:    "refresh turned off",
+			refresh: 0,
+			config:  `{"p":"${aws-sm:x}"}`,
+			want:    false,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -116,9 +130,23 @@ func TestSecretRefsNext(t *testing.T) {
 		wantMin time.Duration
 		wantMax time.Duration
 	}{
-		{name: "resource with references is re-checked with jitter", refresh: time.Hour, hasRefs: true, wantMin: time.Hour, wantMax: time.Hour + 6*time.Minute},
-		{name: "resource without references is not re-checked", refresh: time.Hour, hasRefs: false},
-		{name: "refresh turned off", refresh: 0, hasRefs: true},
+		{
+			name:    "resource with references is re-checked with jitter",
+			refresh: time.Hour,
+			hasRefs: true,
+			wantMin: time.Hour,
+			wantMax: time.Hour + 6*time.Minute,
+		},
+		{
+			name:    "resource without references is not re-checked",
+			refresh: time.Hour,
+			hasRefs: false,
+		},
+		{
+			name:    "refresh turned off",
+			refresh: 0,
+			hasRefs: true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -132,22 +160,33 @@ func TestSecretRefsNext(t *testing.T) {
 	}
 }
 
-func TestNewSecretRefs(t *testing.T) {
+func TestRefreshInterval(t *testing.T) {
 	testCases := []struct {
 		name    string
 		refresh time.Duration
 		want    time.Duration
 	}{
-		{name: "interval is used as set", refresh: 15 * time.Minute, want: 15 * time.Minute},
-		{name: "zero turns refresh off", refresh: 0, want: 0},
-		{name: "value without a unit (60ns) is raised to the minimum", refresh: 60, want: minSecretRefresh},
+		{
+			name:    "interval is used as set",
+			refresh: 15 * time.Minute,
+			want:    15 * time.Minute,
+		},
+		{
+			name:    "zero turns refresh off",
+			refresh: 0,
+			want:    0,
+		},
+		{
+			name:    "value without a unit (60ns) is raised to the minimum",
+			refresh: 60,
+			want:    minSecretRefresh,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			refs := NewSecretRefs(&appconfig.Config{GitOpsSecretsRefreshInterval: tc.refresh}, secretref.K8sConfig{})
-			if refs.refresh != tc.want {
-				t.Fatalf("refresh = %s, want %s", refs.refresh, tc.want)
+			if got := refreshInterval(tc.refresh); got != tc.want {
+				t.Fatalf("got %s, want %s", got, tc.want)
 			}
 		})
 	}

@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/reconciler"
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/secretref"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
@@ -75,8 +74,7 @@ func Setup(app *services.AppService, restConfig *rest.Config, namespace string) 
 	etlSvc := app.ETL()
 	k8sClient := mgr.GetClient()
 	sink := NewSink(k8sClient, mgr.GetEventRecorderFor("olake-gitops"), etlSvc.Temporal())
-	cfg := appconfig.Load()
-	secrets := reconciler.NewSecretRefs(&cfg, secretref.K8sConfig{Client: k8sClient, Namespace: namespace})
+	secrets := reconciler.NewSecretRefs(secretref.K8sConfig{Client: k8sClient, Namespace: namespace, Selector: managed})
 
 	source := &reconciler.Source{ETL: etlSvc, Sink: sink, Secrets: secrets}
 	if err := setupResourceController(mgr, "gitops-source", reconciler.KindSource, &resourceController{client: k8sClient, reconcile: source.Reconcile}); err != nil {

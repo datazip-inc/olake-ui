@@ -15,8 +15,16 @@ func TestEnvProviderFetch(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{name: "any variable", env: "PG_PASSWORD", want: "P@ss"},
-		{name: "variable not set", env: "PG_MISSING", wantErr: true},
+		{
+			name: "any variable",
+			env:  "PG_PASSWORD",
+			want: "P@ss",
+		},
+		{
+			name:    "variable not set",
+			env:     "PG_MISSING",
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range testCases {

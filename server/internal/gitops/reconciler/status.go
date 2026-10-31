@@ -2,6 +2,7 @@ package reconciler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
@@ -56,6 +57,14 @@ func waitResource(ctx context.Context, sink StatusSink, r *ResourceData, msg, ob
 	hash := observedHashForResource(r, observedHash)
 	_ = sink.SetPhase(ctx, r, PhasePending, msg, r.Annotations[AnnotationEntityID], hash)
 	return ctrl.Result{RequeueAfter: syncRequeueAfter}, nil
+}
+
+// failOrRequeue fails r on a non-retryable error and retries any other error as Pending.
+func failOrRequeue(ctx context.Context, sink StatusSink, r *ResourceData, err error, observedHash string) (ctrl.Result, error) {
+	if errors.Is(err, ErrNonRetryable) {
+		return failResource(ctx, sink, r, err, observedHash)
+	}
+	return requeueTransient(ctx, sink, r, err, observedHash)
 }
 
 // requeueTransient retries a transient error as Pending. After syncRetryTimeout

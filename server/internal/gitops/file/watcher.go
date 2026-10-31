@@ -14,7 +14,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/reconciler"
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/secretref"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
@@ -68,8 +67,7 @@ func Setup(app *services.AppService, dir, stateFile string) (*Watcher, error) {
 	}
 	etlSvc := app.ETL()
 	fw := newWatcher(dir, stateFile, etlSvc.Temporal())
-	cfg := appconfig.Load()
-	secrets := reconciler.NewSecretRefs(&cfg, secretref.K8sConfig{}) // no cluster: ${secrets:...} is refused
+	secrets := reconciler.NewSecretRefs(secretref.K8sConfig{}) // no cluster: ${secrets:...} is refused
 	fw.reconcileSource = (&reconciler.Source{ETL: etlSvc, Sink: fw, Secrets: secrets}).Reconcile
 	fw.reconcileDestination = (&reconciler.Destination{ETL: etlSvc, Sink: fw, Secrets: secrets}).Reconcile
 	fw.reconcileJob = (&reconciler.Job{ETL: etlSvc, Sink: fw}).Reconcile

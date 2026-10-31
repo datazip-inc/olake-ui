@@ -28,12 +28,8 @@ type SecretRefs struct {
 
 // NewSecretRefs builds the resolver from the GITOPS_SECRETS_* settings. k8s is the cluster that
 // ${secrets:...} references read from; its zero value refuses them (file mode without a cluster).
-func NewSecretRefs(cfg *appconfig.Config, k8s secretref.K8sConfig) *SecretRefs {
-	refresh := cfg.GitOpsSecretsRefreshInterval
-	if refresh > 0 && refresh < minSecretRefresh {
-		logger.Warnf("GITOPS_SECRETS_REFRESH_INTERVAL %s is below %s (a value needs a unit, such as 15m); using %s", refresh, minSecretRefresh, minSecretRefresh)
-		refresh = minSecretRefresh
-	}
+func NewSecretRefs(k8s secretref.K8sConfig) *SecretRefs {
+	cfg := appconfig.Load()
 	return &SecretRefs{
 		resolver: secretref.New(&secretref.Config{
 			AWS: secretref.AWSConfig{
@@ -51,8 +47,17 @@ func NewSecretRefs(cfg *appconfig.Config, k8s secretref.K8sConfig) *SecretRefs {
 			},
 			K8s: k8s,
 		}),
-		refresh: refresh,
+		refresh: refreshInterval(cfg.GitOpsSecretsRefreshInterval),
 	}
+}
+
+// refreshInterval raises a GITOPS_SECRETS_REFRESH_INTERVAL below minSecretRefresh to it; 0 stays 0.
+func refreshInterval(refresh time.Duration) time.Duration {
+	if refresh > 0 && refresh < minSecretRefresh {
+		logger.Warnf("GITOPS_SECRETS_REFRESH_INTERVAL %s is below %s (a value needs a unit, such as 15m); using %s", refresh, minSecretRefresh, minSecretRefresh)
+		return minSecretRefresh
+	}
+	return refresh
 }
 
 // mayRefresh is a cheap check of the raw config: false means it cannot hold a reference, so a
@@ -80,5 +85,5 @@ func (s *SecretRefs) next(hasRefs bool) time.Duration {
 	if !hasRefs || s.refresh <= 0 {
 		return 0
 	}
-	return s.refresh + rand.N(s.refresh/10)
+	return s.refresh + rand.N(s.refresh/10) // #nosec G404 -- jitter only spreads load, it needs no crypto randomness
 }

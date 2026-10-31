@@ -15,9 +15,21 @@ func TestAzureSecretName(t *testing.T) {
 		wantVersion string
 		wantErr     bool
 	}{
-		{path: "olake-kv/pg-password", wantVault: "olake-kv", wantName: "pg-password"},
-		{path: "olake-kv/pg-password/0123abcd", wantVault: "olake-kv", wantName: "pg-password", wantVersion: "0123abcd"},
-		{path: "pg-password", wantErr: true},
+		{
+			path:      "olake-kv/pg-password",
+			wantVault: "olake-kv",
+			wantName:  "pg-password",
+		},
+		{
+			path:        "olake-kv/pg-password/0123abcd",
+			wantVault:   "olake-kv",
+			wantName:    "pg-password",
+			wantVersion: "0123abcd",
+		},
+		{
+			path:    "pg-password",
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -42,11 +54,28 @@ func TestClassifyAzureError(t *testing.T) {
 		err              error
 		wantUnresolvable bool
 	}{
-		{name: "forbidden", err: &azcore.ResponseError{StatusCode: 403}, wantUnresolvable: true},
-		{name: "secret not found", err: &azcore.ResponseError{StatusCode: 404}, wantUnresolvable: true},
-		{name: "throttling is retried", err: &azcore.ResponseError{StatusCode: 429}},
-		{name: "5xx is retried", err: &azcore.ResponseError{StatusCode: 503}},
-		{name: "network or token failure is retried", err: errors.New("dial tcp: no such host")},
+		{
+			name:             "forbidden",
+			err:              &azcore.ResponseError{StatusCode: 403},
+			wantUnresolvable: true,
+		},
+		{
+			name:             "secret not found",
+			err:              &azcore.ResponseError{StatusCode: 404},
+			wantUnresolvable: true,
+		},
+		{
+			name: "throttling is retried",
+			err:  &azcore.ResponseError{StatusCode: 429},
+		},
+		{
+			name: "5xx is retried",
+			err:  &azcore.ResponseError{StatusCode: 503},
+		},
+		{
+			name: "network or token failure is retried",
+			err:  errors.New("dial tcp: no such host"),
+		},
 	}
 
 	for _, tc := range testCases {

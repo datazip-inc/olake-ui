@@ -156,10 +156,7 @@ func reconcileResource(ctx context.Context, sink StatusSink, secrets *SecretRefs
 	resolved, hasRefs, err := secrets.resolve(ctx, spec.Config.String())
 	if err != nil {
 		logger.Error(err, "resolve "+r.kind()+" secret references failed")
-		if !errors.Is(err, ErrNonRetryable) {
-			return requeueTransient(ctx, sink, res, err, observedHash)
-		}
-		return failResource(ctx, sink, res, err, observedHash)
+		return failOrRequeue(ctx, sink, res, err, observedHash)
 	}
 	spec.Config = dto.JSONConfig(resolved)
 
@@ -176,10 +173,7 @@ func reconcileResource(ctx context.Context, sink StatusSink, secrets *SecretRefs
 	if existing == nil || changed {
 		if err := r.test(ctx, res.ProjectID(), spec); err != nil {
 			logger.Error(err, r.kind()+" connection test failed")
-			if !errors.Is(err, ErrNonRetryable) {
-				return requeueTransient(ctx, sink, res, err, observedHash)
-			}
-			return failResource(ctx, sink, res, err, observedHash)
+			return failOrRequeue(ctx, sink, res, err, observedHash)
 		}
 	}
 

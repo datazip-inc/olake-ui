@@ -32,8 +32,13 @@ func newGCPProvider(ctx context.Context, cfg *Config) (Provider, error) {
 	}
 	project := cfg.GCP.Project
 	if project == "" && metadata.OnGCE() {
-		// On GKE or GCE the metadata server knows the project the workload runs in.
-		project, _ = metadata.ProjectIDWithContext(ctx)
+		// On GKE or GCE the metadata server knows the project the workload runs in. A failed lookup
+		// fails the provider creation, which is retried, rather than caching a provider without one.
+		project, err = metadata.ProjectIDWithContext(ctx)
+		if err != nil {
+			_ = client.Close()
+			return nil, fmt.Errorf("read GCP project from the metadata server: %w", err)
+		}
 	}
 	return &gcpProvider{client: client, project: project}, nil
 }

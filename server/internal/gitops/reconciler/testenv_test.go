@@ -20,7 +20,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/secretref"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
@@ -57,7 +56,7 @@ func newTestEnv(t *testing.T, objs ...*ResourceData) *testEnv {
 	t.Helper()
 	// retryMap is package state: a retry window left by one test must not leak into the next
 	t.Cleanup(func() { retryMap.Clear() })
-	e := &testEnv{t: t, objects: map[string]*ResourceData{}, etl: newFakeETL(), secrets: NewSecretRefs(&appconfig.Config{}, secretref.K8sConfig{})}
+	e := &testEnv{t: t, objects: map[string]*ResourceData{}, etl: newFakeETL(), secrets: &SecretRefs{resolver: secretref.New(&secretref.Config{})}}
 	e.status = &statusRecorder{objects: e.objects}
 	for _, obj := range objs {
 		e.createObject(obj)
