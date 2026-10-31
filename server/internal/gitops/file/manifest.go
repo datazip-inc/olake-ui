@@ -10,8 +10,13 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/reconciler"
 )
 
+// fieldReconcileRequest is the manifest field that asks for a reconcile now, the file-mode
+// olake.io/reconcile-request annotation. It is not part of the config, so changing it leaves the
+// content hash as it is.
+const fieldReconcileRequest = "reconcileRequest"
+
 // fileKeys are the manifest fields that are not part of the entity's config.
-var fileKeys = []string{"kind", reconciler.DataProjectID, reconciler.DataUserID, reconciler.DataJob}
+var fileKeys = []string{"kind", reconciler.DataProjectID, reconciler.DataUserID, reconciler.DataJob, fieldReconcileRequest}
 
 // parseFileManifest parses one JSON manifest (a source, destination, job or streams) into a reconciler.ResourceData.
 func parseFileManifest(raw []byte) (*reconciler.ResourceData, error) {
@@ -60,10 +65,20 @@ func parseFileManifest(raw []byte) (*reconciler.ResourceData, error) {
 		delete(data, reconciler.DataJob)
 	}
 
+	// a string or a number, so "reconcileRequest": 2 works and can be bumped by hand
+	request, err := stringField(doc, fieldReconcileRequest)
+	if err != nil {
+		return nil, err
+	}
 	if data[reconciler.DataConfig], err = resolveConfig(kind, doc); err != nil {
 		return nil, err
 	}
-	return &reconciler.ResourceData{Kind: kind, Name: name, Data: data}, nil
+	return &reconciler.ResourceData{
+		Kind:        kind,
+		Name:        name,
+		Data:        data,
+		Annotations: map[string]string{reconciler.AnnotationReconcileRequest: request},
+	}, nil
 }
 
 // resolveConfig returns the entity's config as compact JSON with sorted keys, so equal content

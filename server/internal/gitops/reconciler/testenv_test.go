@@ -222,8 +222,8 @@ type indicatorAction struct {
 }
 
 // SetPhase remembers the status update, then writes it onto the stored object.
-func (s *statusRecorder) SetPhase(_ context.Context, r *ResourceData, phase, message, entityID, observedHash string) error {
-	s.statusUpdates = append(s.statusUpdates, statusUpdate{objectName: r.Name, phase: phase, message: message, entityID: entityID})
+func (s *statusRecorder) SetPhase(_ context.Context, r *ResourceData, st *Status) error {
+	s.statusUpdates = append(s.statusUpdates, statusUpdate{objectName: r.Name, phase: st.Phase, message: st.Message, entityID: st.EntityID})
 	if s.failStatusUpdates != nil {
 		return s.failStatusUpdates
 	}
@@ -231,10 +231,11 @@ func (s *statusRecorder) SetPhase(_ context.Context, r *ResourceData, phase, mes
 	if !ok {
 		return fmt.Errorf("object %s/%s not found", r.Namespace, r.Name)
 	}
-	obj.Annotations[AnnotationPhase] = phase
-	obj.Annotations[AnnotationMessage] = message
-	obj.Annotations[AnnotationEntityID] = entityID
-	obj.Annotations[AnnotationObservedHash] = observedHash
+	obj.Annotations[AnnotationPhase] = st.Phase
+	obj.Annotations[AnnotationMessage] = st.Message
+	obj.Annotations[AnnotationEntityID] = st.EntityID
+	obj.Annotations[AnnotationObservedHash] = st.ObservedHash
+	obj.Annotations[AnnotationReconcileHandled] = st.ReconcileHandled
 	return nil
 }
 

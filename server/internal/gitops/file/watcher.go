@@ -34,6 +34,8 @@ type resourceState struct {
 	Phase    string `json:"phase"`
 	Message  string `json:"message,omitempty"`
 	EntityID string `json:"entityId,omitempty"`
+	// ReconcileHandled is the manifest's last reconcileRequest this status answered.
+	ReconcileHandled string `json:"reconcileHandled,omitempty"`
 }
 
 // Watcher runs GitOps in file mode: it watches a directory of JSON manifests (manifest.go), hands
@@ -337,18 +339,18 @@ func (fw *Watcher) findStreams(job *reconciler.ResourceData) *reconciler.Resourc
 	return nil
 }
 
-// annotationsFor reads fw.state. Caller must hold fw.mu.
+// annotationsFor is r's status from fw.state as olake.io/* annotations, plus the reconcile request
+// parseFileManifest read from its manifest. Caller must hold fw.mu.
 func (fw *Watcher) annotationsFor(r *reconciler.ResourceData) map[string]string {
-	st, ok := fw.state[resourceKey(r)]
-	if !ok {
-		return map[string]string{}
+	ann := map[string]string{reconciler.AnnotationReconcileRequest: r.Annotations[reconciler.AnnotationReconcileRequest]}
+	if st, ok := fw.state[resourceKey(r)]; ok {
+		ann[reconciler.AnnotationObservedHash] = st.Hash
+		ann[reconciler.AnnotationPhase] = st.Phase
+		ann[reconciler.AnnotationMessage] = st.Message
+		ann[reconciler.AnnotationEntityID] = st.EntityID
+		ann[reconciler.AnnotationReconcileHandled] = st.ReconcileHandled
 	}
-	return map[string]string{
-		reconciler.AnnotationObservedHash: st.Hash,
-		reconciler.AnnotationPhase:        st.Phase,
-		reconciler.AnnotationMessage:      st.Message,
-		reconciler.AnnotationEntityID:     st.EntityID,
-	}
+	return ann
 }
 
 func (fw *Watcher) Indicator(ctx context.Context, r *reconciler.ResourceData, action, errMsg string) {
@@ -358,13 +360,14 @@ func (fw *Watcher) Indicator(ctx context.Context, r *reconciler.ResourceData, ac
 // SetPhase records status in memory and in stateFile, and logs each change, standing in for the
 // annotation patch and Event of kubernetes.Sink. Unchanged status writes nothing, so a resource requeued
 // every syncRequeueAfter with the same message does not log again.
-func (fw *Watcher) SetPhase(_ context.Context, r *reconciler.ResourceData, phase, message, entityID, observedHash string) error {
+func (fw *Watcher) SetPhase(_ context.Context, r *reconciler.ResourceData, st *reconciler.Status) error {
 	key := resourceKey(r)
 	next := resourceState{
-		Hash:     observedHash,
-		Phase:    phase,
-		Message:  message,
-		EntityID: entityID,
+		Hash:             st.ObservedHash,
+		Phase:            st.Phase,
+		Message:          st.Message,
+		EntityID:         st.EntityID,
+		ReconcileHandled: st.ReconcileHandled,
 	}
 
 	fw.mu.Lock()
@@ -387,13 +390,13 @@ func (fw *Watcher) SetPhase(_ context.Context, r *reconciler.ResourceData, phase
 	}
 	fw.mu.Unlock()
 
-	switch phase {
+	switch st.Phase {
 	case reconciler.PhaseReady:
-		logger.Infof("gitops %s %q: synced to OLake (entity %s)", r.Kind, r.Name, entityID)
+		logger.Infof("gitops %s %q: synced to OLake (entity %s)", r.Kind, r.Name, st.EntityID)
 	case reconciler.PhaseFailed:
-		logger.Errorf("gitops %s %q: failed: %s", r.Kind, r.Name, message)
+		logger.Errorf("gitops %s %q: failed: %s", r.Kind, r.Name, st.Message)
 	default:
-		logger.Infof("gitops %s %q: %s: %s", r.Kind, r.Name, phase, message)
+		logger.Infof("gitops %s %q: %s: %s", r.Kind, r.Name, st.Phase, st.Message)
 	}
 	return nil
 }

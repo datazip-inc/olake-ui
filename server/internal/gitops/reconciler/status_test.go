@@ -21,6 +21,35 @@ func TestStreamsCMApplied(t *testing.T) {
 	assert.False(t, streamsCMApplied(map[string]string{AnnotationPhase: PhaseReady, AnnotationObservedHash: "old"}, data))
 }
 
+func TestSkipReconcile(t *testing.T) {
+	synced := func(phase string, extra map[string]string) map[string]string {
+		ann := map[string]string{AnnotationPhase: phase, AnnotationObservedHash: "h"}
+		for k, v := range extra {
+			ann[k] = v
+		}
+		return ann
+	}
+	testCases := []struct {
+		name        string
+		annotations map[string]string
+		want        bool
+	}{
+		{name: "no status", annotations: nil, want: false},
+		{name: "Ready for this data", annotations: synced(PhaseReady, nil), want: true},
+		{name: "Failed for this data", annotations: synced(PhaseFailed, nil), want: true},
+		{name: "Pending", annotations: synced(PhasePending, nil), want: false},
+		{name: "synced for other data", annotations: map[string]string{AnnotationPhase: PhaseReady, AnnotationObservedHash: "old"}, want: false},
+		{name: "Ready with a new request", annotations: synced(PhaseReady, map[string]string{AnnotationReconcileRequest: "1"}), want: false},
+		{name: "Failed with a new request", annotations: synced(PhaseFailed, map[string]string{AnnotationReconcileRequest: "2", AnnotationReconcileHandled: "1"}), want: false},
+		{name: "request answered", annotations: synced(PhaseFailed, map[string]string{AnnotationReconcileRequest: "1", AnnotationReconcileHandled: "1"}), want: true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, skipReconcile(tc.annotations, "h"))
+		})
+	}
+}
+
 func TestContentHash(t *testing.T) {
 	a := ContentHash(map[string]string{"projectId": "1", "config": "{}"})
 	assert.Equal(t, a, ContentHash(map[string]string{"config": "{}", "projectId": "1"}), "key order must not matter")

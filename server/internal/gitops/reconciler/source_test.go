@@ -1,13 +1,16 @@
 package reconciler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/datazip-inc/olake-ui/server/internal/gitops/secretref"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 )
@@ -179,4 +182,137 @@ func TestSourceReconcileStatusWriteFails(t *testing.T) {
 	e.reconcileSource("pg-cm")
 	assert.Equal(t, 1, e.etl.callCount("CreateSource"))
 	assert.Equal(t, PhaseReady, e.phaseOf("pg-cm"))
+}
+
+func TestSourceReconcileSecretRefresh(t *testing.T) {
+	const config = `{"name":"pg","type":"postgres","version":"v1.0.0","config":{"host":"pg","password":"${aws-sm:olake/pg}"}}`
+	e := newTestEnv(t, newObject(KindSource, "pg-cm", manifestData(config)))
+	provider := &fakeProvider{secret: "p1"}
+	e.secrets = &SecretRefs{
+		resolver: secretref.NewWithProviders(map[string]secretref.Provider{"aws-sm": provider}),
+		refresh:  time.Hour,
+	}
+
+	result := e.reconcileSource("pg-cm")
+	assert.Equal(t, []string{"CreateSource"}, e.etl.writeCalls())
+	assert.Equal(t, PhaseReady, e.phaseOf("pg-cm"))
+	assert.Equal(t, []string{indicatorDelete}, e.status.indicatorActionsFor("pg-cm"))
+	assert.GreaterOrEqual(t, result.RequeueAfter, time.Hour, "a source with references is re-checked")
+
+	// the re-check with the same secret writes nothing: no update, no status, no indicator
+	e.resetRecordings()
+	result = e.reconcileSource("pg-cm")
+	assert.Empty(t, e.etl.writeCalls())
+	assert.Zero(t, e.etl.callCount("TestSourceConnection"))
+	assert.Empty(t, e.status.statusUpdates)
+	assert.Empty(t, e.status.indicatorActions)
+	assert.GreaterOrEqual(t, result.RequeueAfter, time.Hour)
+
+	// a rotated secret is tested and updated in OLake; the status stays Ready, so it is not rewritten
+	provider.secret = "p2"
+	e.resetRecordings()
+	result = e.reconcileSource("pg-cm")
+	assert.Equal(t, []string{"UpdateSource"}, e.etl.writeCalls())
+	assert.Equal(t, 1, e.etl.callCount("TestSourceConnection"))
+	assert.Contains(t, callArgs[*dto.UpdateSourceRequest](e.etl, "UpdateSource")[0].Config, `"password":"p2"`)
+	assert.Empty(t, e.status.statusUpdates)
+	assert.Empty(t, e.status.indicatorActions)
+	assert.GreaterOrEqual(t, result.RequeueAfter, time.Hour)
+
+	// a Failed source is not re-checked: it waits for a change in git
+	e.object("pg-cm").Annotations[AnnotationPhase] = PhaseFailed
+	e.resetRecordings()
+	result = e.reconcileSource("pg-cm")
+	assert.Empty(t, e.etl.calls)
+	assert.Zero(t, result.RequeueAfter)
+}
+
+// TestSourceReconcileRequest covers olake.io/reconcile-request: a new value re-runs a synced source
+// in any phase, the reconcile echoes it into olake.io/reconcile-handled, and an answered request
+// leaves the source skipped.
+func TestSourceReconcileRequest(t *testing.T) {
+	const config = `{"name":"pg","type":"postgres","version":"v1.0.0","config":{"host":"pg","password":"${aws-sm:olake/pg}"}}`
+	newSecretSourceEnv := func(t *testing.T, provider *fakeProvider) *testEnv {
+		e := newTestEnv(t, newObject(KindSource, "pg-cm", manifestData(config)))
+		e.secrets = &SecretRefs{
+			resolver: secretref.NewWithProviders(map[string]secretref.Provider{"aws-sm": provider}),
+			refresh:  time.Hour,
+		}
+		return e
+	}
+	request := func(e *testEnv, value string) { e.object("pg-cm").Annotations[AnnotationReconcileRequest] = value }
+
+	t.Run("a Failed source is retried once its secret is fixed", func(t *testing.T) {
+		provider := &fakeProvider{err: errors.Join(secretref.ErrUnresolvable, errors.New("secret olake/pg not found"))}
+		e := newSecretSourceEnv(t, provider)
+		e.reconcileSource("pg-cm")
+		require.Equal(t, PhaseFailed, e.phaseOf("pg-cm"))
+
+		// fixing the secret alone changes nothing in git, so the Failed source stays skipped
+		provider.err, provider.secret = nil, "p1"
+		e.resetRecordings()
+		e.reconcileSource("pg-cm")
+		assert.Empty(t, e.etl.calls)
+
+		request(e, "1")
+		e.resetRecordings()
+		e.reconcileSource("pg-cm")
+		require.Equal(t, []string{"CreateSource"}, e.etl.writeCalls())
+		assert.Contains(t, callArgs[*dto.CreateSourceRequest](e.etl, "CreateSource")[0].Config, `"password":"p1"`)
+		assert.Equal(t, PhaseReady, e.phaseOf("pg-cm"))
+		assert.Equal(t, "1", e.annotationsOf("pg-cm")[AnnotationReconcileHandled])
+		assert.Equal(t, []string{indicatorDelete}, e.status.indicatorActionsFor("pg-cm"))
+
+		// the answered request is not run again: no loop on the status write it caused
+		e.resetRecordings()
+		e.reconcileSource("pg-cm")
+		assert.Empty(t, e.status.statusUpdates)
+	})
+
+	t.Run("a request that fails again is answered and not looped", func(t *testing.T) {
+		provider := &fakeProvider{err: errors.Join(secretref.ErrUnresolvable, errors.New("access denied"))}
+		e := newSecretSourceEnv(t, provider)
+		e.reconcileSource("pg-cm")
+		require.Equal(t, PhaseFailed, e.phaseOf("pg-cm"))
+
+		request(e, "1")
+		e.resetRecordings()
+		e.reconcileSource("pg-cm")
+		assert.Equal(t, PhaseFailed, e.phaseOf("pg-cm"))
+		assert.Equal(t, "1", e.annotationsOf("pg-cm")[AnnotationReconcileHandled])
+
+		e.resetRecordings()
+		e.reconcileSource("pg-cm")
+		assert.Empty(t, e.status.statusUpdates)
+	})
+
+	t.Run("a Ready source without references is re-checked", func(t *testing.T) {
+		e := newTestEnv(t, newObject(KindSource, "pg-cm", manifestData(sourceConfigJSON)))
+		e.reconcileSource("pg-cm")
+		require.Equal(t, PhaseReady, e.phaseOf("pg-cm"))
+
+		request(e, "2026-10-31T10:00:00Z")
+		e.resetRecordings()
+		e.reconcileSource("pg-cm")
+		assert.Equal(t, 1, e.etl.callCount("GetSourceByName"), "OLake is read again")
+		assert.Empty(t, e.etl.writeCalls(), "and matches, so nothing is written to it")
+		assert.Equal(t, []statusUpdate{{objectName: "pg-cm", phase: PhaseReady, entityID: idString(e.etl.sources["pg"].ID)}}, e.status.statusUpdates)
+		assert.Equal(t, "2026-10-31T10:00:00Z", e.annotationsOf("pg-cm")[AnnotationReconcileHandled])
+	})
+
+	t.Run("a request made during a reconcile runs next", func(t *testing.T) {
+		e := newTestEnv(t, newObject(KindSource, "pg-cm", manifestData(sourceConfigJSON)))
+		e.reconcileSource("pg-cm")
+		request(e, "1")
+		res := e.load("pg-cm")
+		request(e, "2") // the user annotates again while the reconcile of "1" runs
+		source := &Source{ETL: e.etl, Sink: e.status, Secrets: e.secrets}
+		e.checkResult(source.Reconcile(context.Background(), res))
+		assert.Equal(t, "1", e.annotationsOf("pg-cm")[AnnotationReconcileHandled], "the status answers the request it was read with")
+
+		e.resetRecordings()
+		e.reconcileSource("pg-cm")
+		assert.Equal(t, 1, e.etl.callCount("GetSourceByName"))
+		assert.Equal(t, "2", e.annotationsOf("pg-cm")[AnnotationReconcileHandled])
+	})
 }

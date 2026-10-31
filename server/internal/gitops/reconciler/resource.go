@@ -34,6 +34,16 @@ const (
 	AnnotationMessage      = "olake.io/message"
 	AnnotationEntityID     = "olake.io/entity-id"
 	AnnotationObservedHash = "olake.io/observed-hash"
+	// AnnotationReconcileHandled is the last reconcile request a status answered
+	AnnotationReconcileHandled = "olake.io/reconcile-handled"
+
+	// AnnotationReconcileRequest (user-owned, unlike the status annotations) asks for a reconcile
+	// now: setting it to any new value, such as the current time or the next number, re-runs a
+	// synced resource in any phase, which fetches its secret references again and retries a Failed
+	// one. The reconcile echoes the value into AnnotationReconcileHandled, so a script knows it ran.
+	// In file mode the request is the manifest's reconcileRequest field and the handled value is
+	// kept in the state file.
+	AnnotationReconcileRequest = "olake.io/reconcile-request"
 
 	DataProjectID = "projectId"
 	DataUserID    = "userId"
@@ -77,11 +87,21 @@ func (r *ResourceData) bindEntity(id int) {
 	r.Annotations[AnnotationEntityID] = strconv.Itoa(id)
 }
 
-// StatusSink writes phase and failure indicators. SetPhase always gets the observed hash to store;
-// the reconcilers resolve it (observedHashForResource), so a sink never computes one.
+// Status is what a reconcile reports for a resource: the olake.io/* status annotations in Kubernetes
+// mode, an entry of the state file in file mode. The reconcilers fill every field (writeStatus), so
+// a sink never computes one.
+type Status struct {
+	Phase            string
+	Message          string
+	EntityID         string
+	ObservedHash     string
+	ReconcileHandled string
+}
+
+// StatusSink writes status and failure indicators.
 type StatusSink interface {
 	Indicator(ctx context.Context, r *ResourceData, action, errMsg string)
-	SetPhase(ctx context.Context, r *ResourceData, phase, message, entityID, observedHash string) error
+	SetPhase(ctx context.Context, r *ResourceData, st *Status) error
 }
 
 // parseResourceID treats a pure positive integer ref as a DB entity id.
