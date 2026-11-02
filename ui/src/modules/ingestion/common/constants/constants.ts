@@ -64,6 +64,9 @@ export const MIN_SOURCE_NAMING_CONVENTION_VERSION = "v0.7.7"
 // Minimum Kafka source version that supports Upsert.
 export const MIN_KAFKA_UPSERT_SOURCE_VERSION = "v0.12.1"
 
+// Minimum Kafka source version that writes deletion vectors on Upsert; older ones always write positional deletes.
+export const MIN_KAFKA_DV_UPSERT_SOURCE_VERSION = "v1.1.1"
+
 export const KAFKA_KEY_COLUMN = "_kafka_key"
 
 export const KAFKA_META_COLUMNS = new Set([
