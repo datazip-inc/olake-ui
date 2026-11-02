@@ -532,6 +532,16 @@ export const getDedupKeyOptions = (
 		: fields
 }
 
+// Kafka upsert needs a dedup key; a topic with none left (schema or column selection) stays in append
+export const isKafkaUpsertBlocked = (
+	stream: StreamData | undefined,
+	selectedStream: SelectedStream,
+	sourceType?: string,
+): boolean =>
+	isKafkaSource(sourceType) &&
+	!!stream &&
+	getDedupKeyOptions(stream, selectedStream).length === 0
+
 export const getUpsertNotSupportedMessage = (
 	sourceType?: string,
 	sourceVersion?: string,

@@ -444,7 +444,7 @@ const StreamsCollapsibleList = ({
 				onConfirm={(mode: IngestionMode) => {
 					const appendMode = mode === IngestionMode.APPEND
 					setIngestionMode(mode)
-					updateAllIngestionMode(appendMode)
+					updateAllIngestionMode(appendMode, sourceType)
 				}}
 			/>
 		</>

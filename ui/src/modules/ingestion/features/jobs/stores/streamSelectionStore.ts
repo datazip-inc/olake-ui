@@ -14,7 +14,7 @@ import {
 } from "@/modules/ingestion/common/types"
 
 import { extractNamespaceFromDestination } from "../utils"
-import { getDefaultUpsertTypeFor } from "../utils/streams"
+import { getDefaultUpsertTypeFor, isKafkaUpsertBlocked } from "../utils/streams"
 
 export interface BulkStreamConfig {
 	syncMode?: SyncMode
@@ -103,7 +103,7 @@ interface StreamSelectionState {
 	) => void
 
 	// Applies append_mode to every stream in selected_streams.
-	updateAllIngestionMode: (appendMode: boolean) => void
+	updateAllIngestionMode: (appendMode: boolean, sourceType?: string) => void
 
 	// Updates destination_database on all streams.
 	updateDestinationDatabase: (format: string, databaseName: string) => void
@@ -111,6 +111,7 @@ interface StreamSelectionState {
 	updateSelectedColumns: (
 		stream: StreamIdentifier,
 		columns: SelectedColumns,
+		sourceType?: string,
 	) => void
 
 	setStreamFilterState: (streamKey: string, value: boolean) => void
@@ -562,7 +563,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 				: state
 		}),
 
-	updateAllIngestionMode: appendMode =>
+	updateAllIngestionMode: (appendMode, sourceType) =>
 		set(state => {
 			if (!state.streamsData) return state
 
@@ -572,7 +573,21 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 					ns,
 					streams.map(s =>
 						withUpsertTypeSynced(
-							{ ...s, append_mode: appendMode },
+							{
+								...s,
+								// a Kafka topic with no dedup key options can't upsert
+								append_mode:
+									appendMode ||
+									isKafkaUpsertBlocked(
+										prev.streams.find(
+											x =>
+												x.stream.name === s.stream_name &&
+												x.stream.namespace === ns,
+										),
+										s,
+										sourceType,
+									),
+							},
 							getDefaultUpsertTypeFor(prev.streams, {
 								streamName: s.stream_name,
 								namespace: ns,
@@ -644,22 +659,30 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
-	updateSelectedColumns: (stream, columns) =>
+	updateSelectedColumns: (stream, columns, sourceType) =>
 		set(state => {
 			if (!state.streamsData) return state
 			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
+			const streamData = prev.streams.find(
+				x => x.stream.name === streamName && x.stream.namespace === namespace,
+			)
 			return {
 				streamsData: {
 					...prev,
 					selected_streams: {
 						...prev.selected_streams,
-						[namespace]: prev.selected_streams[namespace]?.map(s =>
-							s.stream_name === streamName
-								? { ...s, selected_columns: columns }
-								: s,
-						),
+						[namespace]: prev.selected_streams[namespace]?.map(s => {
+							if (s.stream_name !== streamName) return s
+							const next = { ...s, selected_columns: columns }
+							// unticking every dedup key option leaves a Kafka topic unable to upsert
+							if (isKafkaUpsertBlocked(streamData, next, sourceType)) {
+								next.append_mode = true
+								withUpsertTypeSynced(next)
+							}
+							return next
+						}),
 					},
 				},
 			}
