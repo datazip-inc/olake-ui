@@ -85,31 +85,34 @@ func (r *Resolver) Resolve(ctx context.Context, config string) (string, bool, er
 	}
 
 	found := false
-	if err := r.resolveFields(ctx, fields, &found); err != nil {
+	resolved, err := r.resolveFields(ctx, fields, &found)
+	if err != nil {
 		return "", false, err
 	}
-	resolved, _ := json.Marshal(fields) // cannot fail: fields came from json decoding
-	return string(resolved), found, nil
+	encoded, _ := json.Marshal(resolved) // cannot fail: the tree came from json decoding
+	return string(encoded), found, nil
 }
 
-// resolveFields resolves references in fields and in nested objects, such as ssh_config.password
 // in a source or writer.aws_secret_key in a destination.
-func (r *Resolver) resolveFields(ctx context.Context, fields map[string]any, found *bool) error {
-	for key, value := range fields {
-		switch value := value.(type) {
-		case map[string]any:
-			if err := r.resolveFields(ctx, value, found); err != nil {
-				return err
+func (r *Resolver) resolveFields(ctx context.Context, node any, found *bool) (any, error) {
+	var err error
+	switch node := node.(type) {
+	case string:
+		return r.resolveValue(ctx, node, found)
+	case map[string]any:
+		for key, value := range node {
+			if node[key], err = r.resolveFields(ctx, value, found); err != nil {
+				return nil, err
 			}
-		case string:
-			resolved, err := r.resolveValue(ctx, value, found)
-			if err != nil {
-				return err
+		}
+	case []any:
+		for i, value := range node {
+			if node[i], err = r.resolveFields(ctx, value, found); err != nil {
+				return nil, err
 			}
-			fields[key] = resolved
 		}
 	}
-	return nil
+	return node, nil
 }
 
 // A #key value keeps its JSON type from the secret, so {"port":5432} gives the number 5432.

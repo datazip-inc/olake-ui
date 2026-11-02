@@ -56,6 +56,12 @@ func TestResolverResolve(t *testing.T) {
 			wantFound: true,
 		},
 		{
+			name:      "item in an array of hosts",
+			config:    `{"hosts":["mongo-0:27017","${aws-sm:olake/raw}"]}`,
+			want:      `{"hosts":["mongo-0:27017","Sup3rSecret"]}`,
+			wantFound: true,
+		},
+		{
 			name:      "key value keeps its JSON type",
 			config:    `{"port":"${aws-sm:olake/pg#port}","ssl":"${aws-sm:olake/pg#ssl}","db_port":"${aws-sm:olake/pg#db_port}"}`,
 			want:      `{"db_port":"5433","port":5432,"ssl":true}`,
