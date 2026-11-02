@@ -15,6 +15,7 @@ import {
 	useStreamSelectionStore,
 } from "../../stores"
 import {
+	INDEXED_UPSERT_TYPES,
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
 } from "../../utils/streams"
@@ -56,7 +57,7 @@ const UpsertTypeSectionView = ({
 
 	const upsertTypeOptions = UPSERT_TYPE_OPTIONS.filter(option => {
 		if (!availableUpdateTypes.includes(option.value)) return false
-		if (isKafka) return option.value === UpsertType.POSITIONAL
+		if (isKafka) return INDEXED_UPSERT_TYPES.includes(option.value)
 		return true
 	})
 	const selectedUpsertTypeOption = upsertTypeOptions.find(

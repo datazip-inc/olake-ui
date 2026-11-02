@@ -352,7 +352,7 @@ export const buildStreamDifferenceRequest = (
 }
 
 // Positional deletes and delete vectors need the destination row index; equality deletes don't.
-const INDEXED_UPSERT_TYPES: UpsertType[] = [
+export const INDEXED_UPSERT_TYPES: UpsertType[] = [
 	UpsertType.POSITIONAL,
 	UpsertType.DELETION_VECTOR,
 ]
@@ -523,7 +523,7 @@ export const getKafkaUpsertNotSupportedMessage = (
 
 	if (
 		availableUpdateTypes &&
-		!availableUpdateTypes.includes(UpsertType.POSITIONAL)
+		!INDEXED_UPSERT_TYPES.some(t => availableUpdateTypes.includes(t))
 	) {
 		return "Upsert is not supported for this query engine."
 	}
