@@ -8,11 +8,13 @@ import {
 
 interface UpsertTypeSectionSingleProps {
 	sourceType?: string
+	sourceVersion?: string
 	destinationType?: string
 }
 
 const UpsertTypeSectionSingle = ({
 	sourceType,
+	sourceVersion,
 	destinationType,
 }: UpsertTypeSectionSingleProps) => {
 	const updateUpsertType = useStreamSelectionStore(
@@ -31,6 +33,7 @@ const UpsertTypeSectionSingle = ({
 	return (
 		<UpsertTypeSectionView
 			sourceType={sourceType}
+			sourceVersion={sourceVersion}
 			destinationType={destinationType}
 			isSelected={storeIsSelected}
 			appendMode={!!storeSelectedStream.append_mode}

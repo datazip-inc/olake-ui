@@ -564,6 +564,7 @@ const BulkConfigureStreamsModal = ({
 													{dirtyFields[BulkDirtyFieldKey.UpsertType] && (
 														<UpsertTypeSectionBulk
 															sourceType={sourceType}
+															sourceVersion={sourceVersion}
 															destinationType={destinationType}
 															bulkAppendMode={bulkConfig.appendMode}
 															bulkUpsertType={bulkConfig.upsertType}
@@ -835,6 +836,7 @@ const BulkConfigureStreamsModal = ({
 																		dirtyFields[BulkDirtyFieldKey.UpsertType]
 																	}
 																	sourceType={sourceType}
+																	sourceVersion={sourceVersion}
 																	destinationType={destinationType}
 																	bulkAppendMode={bulkConfig.appendMode}
 																	bulkUpsertType={bulkConfig.upsertType}
