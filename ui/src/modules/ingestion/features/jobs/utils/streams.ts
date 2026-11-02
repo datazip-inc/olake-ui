@@ -5,6 +5,7 @@ import {
 	KAFKA_META_COLUMNS,
 	MIN_COLUMN_SELECTION_SOURCE_VERSION,
 	MIN_JSON_FILTER_VERSION,
+	MIN_KAFKA_DV_UPSERT_SOURCE_VERSION,
 	MIN_KAFKA_UPSERT_SOURCE_VERSION,
 	MIN_SOURCE_NAMING_CONVENTION_VERSION,
 } from "@/modules/ingestion/common/constants"
@@ -357,6 +358,15 @@ const INDEXED_UPSERT_TYPES: UpsertType[] = [
 	UpsertType.DELETION_VECTOR,
 ]
 
+// Kafka upsert needs an indexed delete format. Sources before
+// MIN_KAFKA_DV_UPSERT_SOURCE_VERSION still list dv but always write positional deletes.
+export const getKafkaUpsertTypes = (sourceVersion?: string): UpsertType[] =>
+	!sourceVersion ||
+	(semver.valid(sourceVersion) &&
+		semver.lt(sourceVersion, MIN_KAFKA_DV_UPSERT_SOURCE_VERSION))
+		? [UpsertType.POSITIONAL]
+		: INDEXED_UPSERT_TYPES
+
 const usesIndexedUpsert = (stream: SelectedStream): boolean =>
 	!stream.append_mode &&
 	!!stream.update_type &&
@@ -523,7 +533,9 @@ export const getKafkaUpsertNotSupportedMessage = (
 
 	if (
 		availableUpdateTypes &&
-		!availableUpdateTypes.includes(UpsertType.POSITIONAL)
+		!getKafkaUpsertTypes(sourceVersion).some(t =>
+			availableUpdateTypes.includes(t),
+		)
 	) {
 		return "Upsert is not supported for this query engine."
 	}
