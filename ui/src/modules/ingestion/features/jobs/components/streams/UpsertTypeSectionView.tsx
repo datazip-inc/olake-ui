@@ -15,13 +15,14 @@ import {
 	useStreamSelectionStore,
 } from "../../stores"
 import {
-	INDEXED_UPSERT_TYPES,
+	getKafkaUpsertTypes,
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
 } from "../../utils/streams"
 
 interface UpsertTypeSectionViewProps {
 	sourceType?: string
+	sourceVersion?: string
 	destinationType?: string
 	isSelected: boolean
 	isDirty?: boolean
@@ -32,6 +33,7 @@ interface UpsertTypeSectionViewProps {
 
 const UpsertTypeSectionView = ({
 	sourceType,
+	sourceVersion,
 	destinationType,
 	isSelected,
 	isDirty,
@@ -57,7 +59,8 @@ const UpsertTypeSectionView = ({
 
 	const upsertTypeOptions = UPSERT_TYPE_OPTIONS.filter(option => {
 		if (!availableUpdateTypes.includes(option.value)) return false
-		if (isKafka) return INDEXED_UPSERT_TYPES.includes(option.value)
+		if (isKafka)
+			return getKafkaUpsertTypes(sourceVersion).includes(option.value)
 		return true
 	})
 	const selectedUpsertTypeOption = upsertTypeOptions.find(
