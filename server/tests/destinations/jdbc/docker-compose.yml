@@ -1,0 +1,91 @@
+# No service keeps its data on the host, so taking the project down with -v clears it.
+services:
+  spark-iceberg:
+    image: olakego/spark-connect:v0.0.1
+    container_name: spark-iceberg
+    networks:
+      iceberg_net:
+    depends_on:
+      minio:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+    ports:
+      - 15002:15002
+    entrypoint: |
+          /bin/sh -c "
+          ./entrypoint.sh &&
+          echo 'Fetching the Spark Connect jar...' &&
+          (curl -fsS --retry 3 -o /tmp/spark-connect.jar https://maven-central.storage-download.googleapis.com/maven2/org/apache/spark/spark-connect_2.12/3.5.2/spark-connect_2.12-3.5.2.jar ||
+            curl -fsS --retry 3 -o /tmp/spark-connect.jar https://repo1.maven.org/maven2/org/apache/spark/spark-connect_2.12/3.5.2/spark-connect_2.12-3.5.2.jar ||
+            { echo 'failed to fetch the Spark Connect jar'; false; }) &&
+          echo 'Starting Spark Connect server...' &&
+          /opt/spark/sbin/start-connect-server.sh --conf spark.jars.packages= --jars /tmp/spark-connect.jar,/root/.ivy2/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar,/root/.ivy2/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar,/root/.ivy2/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem &
+          while true; do sleep 30; done
+          "
+
+  minio:
+    image: olakego/minio:RELEASE.2025-04-03T14-56-28Z
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+      - MINIO_DOMAIN=minio
+    networks:
+      iceberg_net:
+        aliases:
+          - warehouse.minio
+    ports:
+      - 9000:9000
+    command: [ "server", "/data" ]
+
+  mc:
+    depends_on:
+      - minio
+    image: olakego/mc:RELEASE.2025-04-03T17-07-56Z
+    container_name: mc
+    networks:
+      iceberg_net:
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+    entrypoint: |
+      /bin/sh -c "
+      until (/usr/bin/mc config host add minio http://minio:9000 admin password) do echo '...waiting...' && sleep 1; done;
+      if ! /usr/bin/mc ls minio/warehouse > /dev/null 2>&1; then
+        /usr/bin/mc mb minio/warehouse;
+        /usr/bin/mc policy set public minio/warehouse;
+      fi;
+      tail -f /dev/null
+      "
+
+  postgres:
+    image: postgres:15
+    container_name: iceberg-postgres
+    networks:
+      iceberg_net:
+    environment:
+      - POSTGRES_USER=iceberg
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=iceberg
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "iceberg", "-d", "iceberg" ]
+      interval: 2s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    ports:
+      - 5432:5432
+    # tmpfs, not a bind mount: Docker Desktop on macOS at times loses a bind-mounted data
+    # directory's owner, and Postgres then exits with "data directory ... has wrong ownership".
+    tmpfs:
+      - /var/lib/postgresql/data
+    command: postgres -c max_connections=300
+
+networks:
+  iceberg_net:

@@ -12,11 +12,6 @@ export enum DestinationConnector {
 	ApacheIceberg = "Apache Iceberg",
 }
 
-export enum ConnectorType {
-	SOURCE = "source",
-	DESTINATION = "destination",
-}
-
 export enum CatalogType {
 	Glue = "glue",
 	JDBC = "jdbc",

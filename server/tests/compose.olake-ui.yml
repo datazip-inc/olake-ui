@@ -1,0 +1,13 @@
+# Override for the integration test, used with the root docker-compose-v1.yml:
+#
+#   docker compose -f docker-compose-v1.yml -f server/tests/compose.olake-ui.yml ...
+#
+# olake-ui runs from olake-ui:ci, built from this checkout, instead of olakego/ui:latest.
+# Paths are relative to the first file, so the build context is the repository root.
+services:
+  olake-ui:
+    image: olake-ui:ci
+    pull_policy: never # the root file says "always", which would try to pull the local tag
+    build:
+      context: .
+      dockerfile: Dockerfile
