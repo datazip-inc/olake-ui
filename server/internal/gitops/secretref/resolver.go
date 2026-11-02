@@ -41,7 +41,7 @@ var supportedProviders = map[string]newProviderFunc{
 	"gcp-sm":   newGCPProvider,
 	"azure-kv": newAzureProvider,
 	"secrets":  newK8sProvider, // k8s secrets
-	"env":      newEnvProvider, // environment variables for docker environment
+	"env":      newEnvProvider, // olake-ui's environment variables, file mode only
 }
 
 type Config struct {

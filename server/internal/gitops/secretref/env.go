@@ -8,7 +8,10 @@ import (
 // envProvider reads any variable in olake-ui's environment
 type envProvider struct{}
 
-func newEnvProvider(context.Context, *Config) (Provider, error) {
+func newEnvProvider(_ context.Context, cfg *Config) (Provider, error) {
+	if cfg.K8s.Client != nil {
+		return nil, unresolvable("env references are not allowed with OLAKE_GITOPS_MODE=kubernetes; use ${secrets:<name>#<key>}")
+	}
 	return envProvider{}, nil
 }
 

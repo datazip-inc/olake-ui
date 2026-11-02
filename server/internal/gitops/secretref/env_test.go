@@ -4,7 +4,36 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+func TestNewEnvProvider(t *testing.T) {
+	testCases := []struct {
+		name    string
+		cfg     K8sConfig
+		wantErr bool
+	}{
+		{
+			name: "file mode",
+			cfg:  K8sConfig{},
+		},
+		{
+			name:    "Kubernetes mode",
+			cfg:     K8sConfig{Client: fake.NewClientBuilder().Build(), Namespace: "olake", Selector: managed},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := newEnvProvider(context.Background(), &Config{K8s: tc.cfg})
+			if tc.wantErr != errors.Is(err, ErrUnresolvable) {
+				t.Fatalf("err = %v, want unresolvable error: %v", err, tc.wantErr)
+			}
+		})
+	}
+}
 
 func TestEnvProviderFetch(t *testing.T) {
 	t.Setenv("PG_PASSWORD", "P@ss")
