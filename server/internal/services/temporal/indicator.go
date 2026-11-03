@@ -14,7 +14,6 @@ const IndicatorWorkflow = "IndicatorWorkflow"
 type IndicatorRequest struct {
 	Action       string `json:"action"`        // spawn | delete
 	Name         string `json:"name"`          // final pod/container name (DNS-1123)
-	Namespace    string `json:"namespace"`     // ignored in Docker mode
 	Kind         string `json:"kind"`          // source | destination | job | streams
 	ResourceName string `json:"resource_name"` // originating ConfigMap or Secret name
 	Message      string `json:"message"`       // error text for spawn
@@ -22,7 +21,7 @@ type IndicatorRequest struct {
 
 // StartIndicator submits IndicatorWorkflow fire-and-forget (no wait for result).
 func (t *Temporal) StartIndicator(ctx context.Context, req *IndicatorRequest) error {
-	workflowID := fmt.Sprintf("indicator-%s-%s-%s-%d", req.Namespace, req.Name, req.Action, time.Now().UnixNano())
+	workflowID := fmt.Sprintf("indicator-%s-%s-%d", req.Name, req.Action, time.Now().UnixNano())
 	_, err := t.Client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
 		ID:        workflowID,
 		TaskQueue: t.taskQueue,
