@@ -611,27 +611,62 @@ func TestJobReconcileCreatedButReloadFailed(t *testing.T) {
 	assert.Equal(t, PhaseReady, e.phaseOf(jobConfigMap))
 }
 
-// TestJobReconcileAfterStatusLost checks recovery when the status annotations are wiped (kubectl replace, forced sync).
-// The job is found by name, not recreated, and connectors are not retested.
-// Streams count as unapplied, so one stream difference runs; it is empty because the selection is unchanged.
-// Both ConfigMaps return to Ready and the entity ID annotation is restored.
-func TestJobReconcileAfterStatusLost(t *testing.T) {
+// TestJobReconcileUnappliedStreams checks that a Streams ConfigMap that is re-applied without a real change (status
+// annotations wiped, or a formatting-only edit) writes nothing when discover gives the stored catalog, since UpdateJob
+// would cancel the job's running syncs. A real change, such as a new source schema, still updates the job.
+func TestJobReconcileUnappliedStreams(t *testing.T) {
 	// kubectl replace or a forced sync drops the status annotations of both objects
-	e, job := newSyncedJobTestEnv(t, nil)
-	e.clearAnnotations(jobConfigMap)
-	e.clearAnnotations(streamsConfigMap)
-	e.reconcileJob(jobConfigMap)
+	wipeStatus := func(e *testEnv) {
+		e.clearAnnotations(jobConfigMap)
+		e.clearAnnotations(streamsConfigMap)
+	}
 
-	assert.Zero(t, e.etl.callCount("CreateJob"), "the job is found by name, not recreated")
-	assert.Zero(t, e.etl.callCount("TestSourceConnection"))
-	// the selection is unchanged, so the CLI's difference is empty and nothing is cleared
-	assert.Equal(t, []dto.StreamDifferenceRequest{{
-		UpdatedAvailableStreamsConfig: *job.AvailableStreamsConfig,
-		UpdatedSelectedStreamsConfig:  *job.SelectedStreamsConfig,
-	}}, streamDiffRequests(e.etl))
-	assert.Equal(t, PhaseReady, e.phaseOf(jobConfigMap))
-	assert.Equal(t, idString(job.ID), e.annotationsOf(jobConfigMap)[AnnotationEntityID])
-	assert.Equal(t, PhaseReady, e.phaseOf(streamsConfigMap))
+	t.Run("unchanged catalog writes nothing", func(t *testing.T) {
+		e, job := newSyncedJobTestEnv(t, nil)
+		wipeStatus(e)
+		e.reconcileJob(jobConfigMap)
+
+		assert.Zero(t, e.etl.callCount("TestSourceConnection"))
+		assert.Equal(t, 1, e.etl.callCount("DiscoverWithCatalog"), "streams count as unapplied, so they are merged again")
+		assert.Zero(t, e.etl.callCount("GetStreamDifference"), "the merge gives the stored catalog, so nothing differs")
+		assert.Empty(t, e.etl.writeCalls(), "the job is neither recreated nor updated, so its running syncs are not cancelled")
+		assert.Equal(t, PhaseReady, e.phaseOf(jobConfigMap))
+		assert.Equal(t, idString(job.ID), e.annotationsOf(jobConfigMap)[AnnotationEntityID])
+		assert.Equal(t, PhaseReady, e.phaseOf(streamsConfigMap))
+
+		// the restored status skips the next reconcile
+		e.resetRecordings()
+		e.reconcileJob(jobConfigMap)
+		assert.Zero(t, e.etl.callCount("DiscoverWithCatalog"))
+		assert.Empty(t, e.etl.writeCalls())
+	})
+
+	t.Run("a Streams ConfigMap edit that changes only formatting writes nothing", func(t *testing.T) {
+		e, _ := newSyncedJobTestEnv(t, nil)
+		e.setData(streamsConfigMap, streamsManifestData(jobConfigMap, `{
+  "selected_streams": { "public": [ { "normalization": true, "partition_regex": "", "stream_name": "users" } ] }
+}`))
+		e.reconcileJob(jobConfigMap)
+
+		assert.Equal(t, 1, e.etl.callCount("DiscoverWithCatalog"))
+		assert.Empty(t, e.etl.writeCalls())
+		assert.Equal(t, PhaseReady, e.phaseOf(streamsConfigMap))
+	})
+
+	t.Run("source schema changed since the last apply", func(t *testing.T) {
+		e, job := newSyncedJobTestEnv(t, nil)
+		wipeStatus(e)
+		e.etl.discoveredStreams = `{"streams":[{"stream":{"name":"users","namespace":"public"}},{"stream":{"name":"orders","namespace":"public"}}]}`
+		e.reconcileJob(jobConfigMap)
+
+		assert.Equal(t, []dto.StreamDifferenceRequest{{
+			UpdatedAvailableStreamsConfig: e.etl.discoveredStreams,
+			UpdatedSelectedStreamsConfig:  *job.SelectedStreamsConfig,
+		}}, streamDiffRequests(e.etl))
+		assert.Equal(t, []string{"UpdateJob"}, e.etl.writeCalls())
+		assert.Equal(t, e.etl.discoveredStreams, *e.etl.jobs["orders"].AvailableStreamsConfig)
+		assert.Equal(t, PhaseReady, e.phaseOf(jobConfigMap))
+	})
 }
 
 // TestJobReconcileAdoptedJobFailureKeepsEntityID checks that when the first update of an adopted job is rejected,
