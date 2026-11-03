@@ -152,6 +152,7 @@ Configure alerts on failed Pods with that label. olake-ui never creates Pods dir
 - **Failed job + source/destination fix** → retrying a Failed job does **not** require editing the job file. Changing the referenced source or destination (ConfigMap or Secret data) invalidates the skip hash and re-runs the job. Streams are not part of that hash (catalogs are large); the job checks the Streams CM's own hash instead, so editing its data also re-runs a Failed job. A failed discover or connection test is `Failed` too: it retries on one of these edits, not on a timer.
 - **Missing dependencies** → `phase=Pending`, requeue every 30s, no indicator.
 - **Transient errors** → requeue, stay non-terminal.
+- **Lost status annotations** (kubectl replace, force sync, manual removal) → every object reconciles again and finds its entity by name. Sources and destinations are unchanged. Each job runs discover again; it is updated only if the merged catalog differs from the stored one (for example the source schema changed), so unchanged jobs keep their running syncs.
 - **Streams** — no standalone reconciler; Job controller owns streams status and drift detection.
 
 `userId` must be an existing OLake user ID (string in `data.userId`).

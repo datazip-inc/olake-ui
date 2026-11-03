@@ -147,6 +147,11 @@ func (r *Job) Reconcile(ctx context.Context, res, streamsRes *ResourceData) (ctr
 		}
 		return r.failJob(ctx, res, streamsRes, err, observed)
 	}
+	// streams that merge to the stored catalog change nothing, for example after their status
+	// annotations were lost; an update would only cancel the job's running syncs
+	if existingJob != nil && drift.streams && sameCatalog(existingJob.StreamsCatalog(), catalog) {
+		drift.streams = false
+	}
 
 	switch {
 	case existingJob == nil:
@@ -371,6 +376,13 @@ func resolveCatalog(ctx context.Context, svc catalogService, source *models.Sour
 		base = discovered
 	}
 	return types.StreamsCatalog{Available: base.Available, Selected: base.Selected}, nil
+}
+
+// sameCatalog reports whether two catalogs hold the same JSON, whatever the key order.
+func sameCatalog(a, b types.StreamsCatalog) bool {
+	return utils.EqualJSON(a.Streams, b.Streams) &&
+		utils.EqualJSON(a.Available, b.Available) &&
+		utils.EqualJSON(a.Selected, b.Selected)
 }
 
 // streamDifferenceJSON diffs the job's stored catalog against the new one.
