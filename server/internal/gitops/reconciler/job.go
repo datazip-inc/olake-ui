@@ -418,8 +418,7 @@ func (d jobDrift) any() bool { return d.connectors || d.streams || d.other }
 func diffJob(existing *models.Job, cfg *JobConfig, sourceID, destID int) jobDrift {
 	return jobDrift{
 		connectors: existing.SourceID != sourceID || existing.DestID != destID,
-		other: existing.Name != cfg.Name ||
-			existing.Frequency != cfg.Frequency ||
+		other: existing.Frequency != cfg.Frequency ||
 			!advancedSettingsEqual(existing.AdvancedSettings, cfg.AdvancedSettings),
 	}
 }

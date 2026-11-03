@@ -73,6 +73,9 @@ metadata:
 | job | ConfigMap only | `projectId`, `userId`, `config` | Job metadata; `config.source` / `destination` by name or numeric ID; `config.activate` defaults to `true` (set `false` to keep the job's schedule paused) |
 | streams | ConfigMap only | `projectId`, `job`, `config` | Streams catalog; `job` matches Job ConfigMap name or job entity ID |
 
+Sources, destinations and jobs are matched to OLake entities by `config.name`.
+Do not rename them: a changed `config.name` creates a new entity and leaves the old one in OLake, unmanaged.
+
 ### Streams catalog format
 
 The Streams ConfigMap `data.config` JSON holds the user's choices only, in the `selected_streams.json` shape:
