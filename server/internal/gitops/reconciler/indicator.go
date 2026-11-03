@@ -21,7 +21,6 @@ func StartIndicator(ctx context.Context, t *temporal.Temporal, r *ResourceData, 
 	req := temporal.IndicatorRequest{
 		Action:       action,
 		Name:         indicatorName(r.Name, r.Kind),
-		Namespace:    r.Namespace,
 		Kind:         r.Kind,
 		ResourceName: r.Name,
 		Message:      errMsg,

@@ -42,7 +42,7 @@ func TestStartIndicator(t *testing.T) {
 		StartIndicator(ctx, &temporal.Temporal{Client: temporalClient}, res, action, errMsg)
 	}
 	// the pod name is the kind plus the object name made DNS-1123 safe
-	pod := temporal.IndicatorRequest{Name: "olake-failed-job-orders-cm", Namespace: testNamespace, Kind: KindJob, ResourceName: "Orders_CM"}
+	pod := temporal.IndicatorRequest{Name: "olake-failed-job-orders-cm", Kind: KindJob, ResourceName: "Orders_CM"}
 
 	t.Run("spawn sends the pod and the error for its termination log", func(t *testing.T) {
 		temporalClient := &fakeTemporalClient{}
