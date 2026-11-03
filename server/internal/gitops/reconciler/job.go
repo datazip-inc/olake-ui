@@ -141,6 +141,11 @@ func (r *Job) Reconcile(ctx context.Context, res, streamsRes *ResourceData) (ctr
 		logger.Error(err, "discover schema failed")
 		return r.failOrRequeue(ctx, res, streamsRes, workflowError(err), observed)
 	}
+	// streams that merge to the stored catalog change nothing, for example after their status
+	// annotations were lost; an update would only cancel the job's running syncs
+	if existingJob != nil && drift.streams && sameCatalog(existingJob.StreamsCatalog(), catalog) {
+		drift.streams = false
+	}
 
 	switch {
 	case existingJob == nil:
@@ -373,6 +378,13 @@ func resolveCatalog(ctx context.Context, svc catalogService, source *models.Sour
 	return types.StreamsCatalog{Available: base.Available, Selected: base.Selected}, nil
 }
 
+// sameCatalog reports whether two catalogs hold the same JSON, whatever the key order.
+func sameCatalog(a, b types.StreamsCatalog) bool {
+	return utils.EqualJSON(a.Streams, b.Streams) &&
+		utils.EqualJSON(a.Available, b.Available) &&
+		utils.EqualJSON(a.Selected, b.Selected)
+}
+
 // streamDifferenceJSON diffs the job's stored catalog against the new one.
 func streamDifferenceJSON(ctx context.Context, svc catalogService, job *models.Job, catalog types.StreamsCatalog) (string, error) {
 	operationID, err := svc.GetStreamDifference(ctx, job.ProjectID, job.ID, dto.StreamDifferenceRequest{
@@ -418,8 +430,7 @@ func (d jobDrift) any() bool { return d.connectors || d.streams || d.other }
 func diffJob(existing *models.Job, cfg *JobConfig, sourceID, destID int) jobDrift {
 	return jobDrift{
 		connectors: existing.SourceID != sourceID || existing.DestID != destID,
-		other: existing.Name != cfg.Name ||
-			existing.Frequency != cfg.Frequency ||
+		other: existing.Frequency != cfg.Frequency ||
 			!advancedSettingsEqual(existing.AdvancedSettings, cfg.AdvancedSettings),
 	}
 }
