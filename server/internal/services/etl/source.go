@@ -323,7 +323,6 @@ func (s Service) GetSourceSpec(ctx context.Context, projectID string, req *dto.S
 //   - CDC -> Standalone is allowed and drops the flag; going back to CDC then locks it to false.
 //   - Sources saved without the flag (older driver versions) can't turn it on later; recreate them.
 //   - Switching to a driver version without the field keeps true in the config, but that driver ignores it.
-
 func validatePreserveToastValues(storedConfig, incomingConfig string) error {
 	stored, _ := preserveToastValues(storedConfig)
 	incoming, isCDC := preserveToastValues(incomingConfig)

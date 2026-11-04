@@ -14,7 +14,7 @@ import { useState, useEffect, useRef, useMemo } from "react"
 import { useParams, useNavigate, Link } from "react-router"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
-import { withCdcToggle } from "@/common/components/form/cdc"
+import { UPDATE_METHOD_CDC, withCdcToggle } from "@/common/components/form/cdc"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import {
@@ -538,7 +538,7 @@ const SourceEdit: React.FC = () => {
 														// versions without the field get no key
 														if (
 															isPostgres &&
-															updateMethod?.type === "CDC" &&
+															updateMethod?.type === UPDATE_METHOD_CDC &&
 															(savedPreserveToast.current !== undefined ||
 																"preserve_toast_values" in updateMethod)
 														) {
