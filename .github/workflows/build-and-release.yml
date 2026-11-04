@@ -55,31 +55,31 @@ jobs:
     steps:
       - name: Checkout code from explicit ref
         if: ${{ inputs.ref != '' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
 
       - name: Checkout code for master
         if: ${{ inputs.ref == '' && inputs.environment == 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: master
 
       - name: Checkout code for staging
         if: ${{ inputs.ref == '' && inputs.environment == 'staging' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: staging
 
       - name: Checkout code for dev
         if: ${{ inputs.ref == '' && inputs.environment == 'dev' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ci/workerReleaseIssues
 
       - name: Checkout code for other environments
         if: ${{ inputs.ref == '' && inputs.environment != 'master' && inputs.environment != 'staging' && inputs.environment != 'dev' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: staging
 
