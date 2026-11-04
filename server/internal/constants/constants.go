@@ -187,6 +187,8 @@ var (
 	ProjectIDParam   = "projectid"
 )
 
+const SourceTypePostgres = "postgres"
+
 // Supported database/source types
 var SupportedSourceTypes = []string{
 	"mysql",
