@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -76,7 +77,7 @@ func (e *fileTestEnv) restart() {
 // and reports it Ready through the watcher, with the hash of its data as a reconciler does.
 func (e *fileTestEnv) reconcileConnector(ctx context.Context, res *reconciler.ResourceData) (ctrl.Result, error) {
 	e.reconciled = append(e.reconciled, *res)
-	return ctrl.Result{}, e.fw.SetPhase(ctx, res, reconciler.PhaseReady, "", sourceEntityID, reconciler.ContentHash(res.Data))
+	return ctrl.Result{}, e.fw.SetPhase(ctx, res, reportedStatus(res, reconciler.PhaseReady, "", sourceEntityID))
 }
 
 // reconcileJob stands in for the job reconciler: Pending without streams, else both Ready.
@@ -84,12 +85,24 @@ func (e *fileTestEnv) reconcileJob(ctx context.Context, job, streams *reconciler
 	e.reconciled = append(e.reconciled, *job)
 	e.jobStreams = streams
 	if streams == nil {
-		return ctrl.Result{}, e.fw.SetPhase(ctx, job, reconciler.PhasePending, "waiting for Streams", "", reconciler.ContentHash(job.Data))
+		return ctrl.Result{}, e.fw.SetPhase(ctx, job, reportedStatus(job, reconciler.PhasePending, "waiting for Streams", ""))
 	}
-	if err := e.fw.SetPhase(ctx, job, reconciler.PhaseReady, "", jobEntityID, reconciler.ContentHash(job.Data)); err != nil {
+	if err := e.fw.SetPhase(ctx, job, reportedStatus(job, reconciler.PhaseReady, "", jobEntityID)); err != nil {
 		return ctrl.Result{}, err
 	}
-	return ctrl.Result{}, e.fw.SetPhase(ctx, streams, reconciler.PhaseReady, "", jobEntityID, reconciler.ContentHash(streams.Data))
+	return ctrl.Result{}, e.fw.SetPhase(ctx, streams, reportedStatus(streams, reconciler.PhaseReady, "", jobEntityID))
+}
+
+// reportedStatus is the status a reconciler reports for res: the hash of its data, and the reconcile
+// request it was read with as the request it answers.
+func reportedStatus(res *reconciler.ResourceData, phase, message, entityID string) *reconciler.Status {
+	return &reconciler.Status{
+		Phase:            phase,
+		Message:          message,
+		EntityID:         entityID,
+		ObservedHash:     reconciler.ContentHash(res.Data),
+		ReconcileHandled: res.Annotations[reconciler.AnnotationReconcileRequest],
+	}
 }
 
 // writeFile writes a manifest and returns its path.
@@ -155,15 +168,15 @@ func TestWatcherStateFile(t *testing.T) {
 	t.Run("an unchanged status is not written again", func(t *testing.T) {
 		e := newFileTestEnv(t)
 		res := &reconciler.ResourceData{Kind: reconciler.KindSource, Name: "pg"}
-		require.NoError(t, e.fw.SetPhase(context.Background(), res, reconciler.PhasePending, "retrying: db down", "", "h1"))
+		require.NoError(t, e.fw.SetPhase(context.Background(), res, &reconciler.Status{Phase: reconciler.PhasePending, Message: "retrying: db down", ObservedHash: "h1"}))
 		stateFile := filepath.Join(e.dir, stateFileName)
 		require.NoError(t, os.Remove(stateFile))
 
 		// a transient error requeues every 30s with the same status
-		require.NoError(t, e.fw.SetPhase(context.Background(), res, reconciler.PhasePending, "retrying: db down", "", "h1"))
+		require.NoError(t, e.fw.SetPhase(context.Background(), res, &reconciler.Status{Phase: reconciler.PhasePending, Message: "retrying: db down", ObservedHash: "h1"}))
 		assert.NoFileExists(t, stateFile)
 
-		require.NoError(t, e.fw.SetPhase(context.Background(), res, reconciler.PhaseReady, "", "7", "h1"))
+		require.NoError(t, e.fw.SetPhase(context.Background(), res, &reconciler.Status{Phase: reconciler.PhaseReady, EntityID: "7", ObservedHash: "h1"}))
 		st, _ := e.stateOf(reconciler.KindSource, "pg")
 		assert.Equal(t, resourceState{Hash: "h1", Phase: reconciler.PhaseReady, EntityID: "7"}, st)
 	})
@@ -172,7 +185,7 @@ func TestWatcherStateFile(t *testing.T) {
 		dir := t.TempDir()
 		fw := newWatcher(dir, filepath.Join(dir, "missing", "state.json"), nil)
 		res := &reconciler.ResourceData{Kind: reconciler.KindSource, Name: "pg"}
-		err := fw.SetPhase(context.Background(), res, reconciler.PhaseReady, "", "7", "h")
+		err := fw.SetPhase(context.Background(), res, &reconciler.Status{Phase: reconciler.PhaseReady, EntityID: "7", ObservedHash: "h"})
 		require.Error(t, err)
 		assert.Empty(t, fw.state)
 	})
@@ -279,4 +292,41 @@ func TestWatcherSkipsUnparseableFile(t *testing.T) {
 	assert.Len(t, e.reconciled, 1)
 	st, _ := e.stateOf(reconciler.KindSource, "pg")
 	assert.Equal(t, reconciler.PhaseReady, st.Phase)
+}
+
+func TestWatcherReconcileRequest(t *testing.T) {
+	// the reconcile request is the manifest's reconcileRequest field; the reconciler gets it as the
+	// olake.io/reconcile-request annotation and the request it answered from the state file, which
+	// a restart keeps, so an answered request is not run again
+	e := newFileTestEnv(t)
+	path := e.writeFile("pg.json", fileSource)
+	e.process(path)
+	plainHash := reconciler.ContentHash(e.lastReconciled().Data)
+
+	withRequest := func(value string) string {
+		return strings.Replace(fileSource, `"kind":"source",`, `"kind":"source","reconcileRequest":`+value+`,`, 1)
+	}
+	e.writeFile("pg.json", withRequest("1"))
+	e.process(path)
+	res := e.lastReconciled()
+	assert.Equal(t, "1", res.Annotations[reconciler.AnnotationReconcileRequest])
+	assert.Empty(t, res.Annotations[reconciler.AnnotationReconcileHandled], "not answered yet")
+	assert.Equal(t, plainHash, reconciler.ContentHash(res.Data), "the request is not part of the data")
+	st, ok := e.stateOf(reconciler.KindSource, "pg")
+	require.True(t, ok)
+	assert.Equal(t, "1", st.ReconcileHandled)
+
+	e.restart()
+	e.process(path)
+	res = e.lastReconciled()
+	assert.Equal(t, "1", res.Annotations[reconciler.AnnotationReconcileHandled], "answered, so the reconciler skips it")
+	assert.Equal(t, reconciler.PhaseReady, res.Annotations[reconciler.AnnotationPhase])
+
+	e.writeFile("pg.json", withRequest("2"))
+	e.process(path)
+	res = e.lastReconciled()
+	assert.Equal(t, "2", res.Annotations[reconciler.AnnotationReconcileRequest])
+	assert.Equal(t, "1", res.Annotations[reconciler.AnnotationReconcileHandled], "a new request differs from the answered one")
+	st, _ = e.stateOf(reconciler.KindSource, "pg")
+	assert.Equal(t, "2", st.ReconcileHandled)
 }

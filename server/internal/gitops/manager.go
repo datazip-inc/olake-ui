@@ -14,7 +14,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
-// GITOPS_MODE values.
+// OLAKE_GITOPS_MODE values.
 const (
 	ModeKubernetes = "kubernetes" // labelled ConfigMaps/Secrets in the pod's namespace
 	ModeFile       = "file"       // JSON manifests in OLAKE_GITOPS_FILE_DIR
@@ -26,7 +26,7 @@ type runner interface {
 
 // Config selects and configures the GitOps mode.
 type Config struct {
-	Mode      string // GITOPS_MODE; empty disables GitOps
+	Mode      string // OLAKE_GITOPS_MODE; empty disables GitOps
 	Namespace string // Kubernetes mode: the pod's namespace, which it watches
 	FileDir   string // file mode: the manifest directory
 	StateFile string // file mode: the status file
@@ -70,6 +70,6 @@ func newRunner(cfg Config, app *services.AppService) (runner, error) {
 		}
 		return fw, nil
 	default:
-		return nil, fmt.Errorf("unknown GITOPS_MODE %s, want %s or %s", cfg.Mode, ModeKubernetes, ModeFile)
+		return nil, fmt.Errorf("unknown OLAKE_GITOPS_MODE %s, want %s or %s", cfg.Mode, ModeKubernetes, ModeFile)
 	}
 }

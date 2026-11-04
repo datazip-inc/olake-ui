@@ -1,6 +1,7 @@
 package file
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/reconciler"
@@ -40,6 +41,20 @@ func TestParseFileManifest(t *testing.T) {
 		assert.Equal(t, a.Data, b.Data)
 	})
 
+	t.Run("reconcileRequest is a request, not config", func(t *testing.T) {
+		plain, err := parseFileManifest([]byte(fileSource))
+		require.NoError(t, err)
+		assert.Empty(t, plain.Annotations[reconciler.AnnotationReconcileRequest])
+
+		for _, request := range []string{`2`, `"2026-10-31T10:00:00Z"`} {
+			raw := strings.Replace(fileSource, `"kind":"source",`, `"kind":"source","reconcileRequest":`+request+`,`, 1)
+			res, err := parseFileManifest([]byte(raw))
+			require.NoError(t, err)
+			assert.Equal(t, strings.Trim(request, `"`), res.Annotations[reconciler.AnnotationReconcileRequest])
+			assert.Equal(t, plain.Data, res.Data, "the config and its hash are unchanged, so it reaches OLake as before")
+		}
+	})
+
 	for _, tt := range []struct {
 		name, raw, wantErr string
 	}{
@@ -51,6 +66,7 @@ func TestParseFileManifest(t *testing.T) {
 		{name: "streams without job", raw: `{"kind":"streams","streams":{}}`, wantErr: "streams needs job"},
 		{name: "streams selection at the top level", raw: `{"kind":"streams","job":"orders","selected_streams":{}}`, wantErr: `streams needs "streams"`},
 		{name: "projectId of the wrong type", raw: `{"kind":"source","name":"pg","projectId":true}`, wantErr: "projectId must be a string"},
+		{name: "reconcileRequest of the wrong type", raw: `{"kind":"source","name":"pg","reconcileRequest":true}`, wantErr: "reconcileRequest must be a string"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := parseFileManifest([]byte(tt.raw))

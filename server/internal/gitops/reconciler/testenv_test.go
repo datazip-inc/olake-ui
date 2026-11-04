@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/datazip-inc/olake-ui/server/internal/gitops/secretref"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -47,6 +48,7 @@ type testEnv struct {
 	objects map[string]*ResourceData // objectKey -> the stored object
 	etl     *fakeETL                 // the fake ETL service
 	status  *statusRecorder          // what the reconcilers reported
+	secrets *SecretRefs              // no secret managers configured
 }
 
 // newTestEnv starts a test with the given objects already stored.
@@ -54,7 +56,7 @@ func newTestEnv(t *testing.T, objs ...*ResourceData) *testEnv {
 	t.Helper()
 	// retryMap is package state: a retry window left by one test must not leak into the next
 	t.Cleanup(func() { retryMap.Clear() })
-	e := &testEnv{t: t, objects: map[string]*ResourceData{}, etl: newFakeETL()}
+	e := &testEnv{t: t, objects: map[string]*ResourceData{}, etl: newFakeETL(), secrets: &SecretRefs{resolver: secretref.New(&secretref.Config{})}}
 	e.status = &statusRecorder{objects: e.objects}
 	for _, obj := range objs {
 		e.createObject(obj)
@@ -75,13 +77,13 @@ func (e *testEnv) resetRecordings() {
 // object, as a GitOps mode does after a change, and return its result (for example a requeue).
 func (e *testEnv) reconcileSource(name string) ctrl.Result {
 	e.t.Helper()
-	source := &Source{ETL: e.etl, Sink: e.status}
+	source := &Source{ETL: e.etl, Sink: e.status, Secrets: e.secrets}
 	return e.checkResult(source.Reconcile(context.Background(), e.load(name)))
 }
 
 func (e *testEnv) reconcileDestination(name string) ctrl.Result {
 	e.t.Helper()
-	destination := &Destination{ETL: e.etl, Sink: e.status}
+	destination := &Destination{ETL: e.etl, Sink: e.status, Secrets: e.secrets}
 	return e.checkResult(destination.Reconcile(context.Background(), e.load(name)))
 }
 
@@ -220,8 +222,8 @@ type indicatorAction struct {
 }
 
 // SetPhase remembers the status update, then writes it onto the stored object.
-func (s *statusRecorder) SetPhase(_ context.Context, r *ResourceData, phase, message, entityID, observedHash string) error {
-	s.statusUpdates = append(s.statusUpdates, statusUpdate{objectName: r.Name, phase: phase, message: message, entityID: entityID})
+func (s *statusRecorder) SetPhase(_ context.Context, r *ResourceData, st *Status) error {
+	s.statusUpdates = append(s.statusUpdates, statusUpdate{objectName: r.Name, phase: st.Phase, message: st.Message, entityID: st.EntityID})
 	if s.failStatusUpdates != nil {
 		return s.failStatusUpdates
 	}
@@ -229,10 +231,11 @@ func (s *statusRecorder) SetPhase(_ context.Context, r *ResourceData, phase, mes
 	if !ok {
 		return fmt.Errorf("object %s/%s not found", r.Namespace, r.Name)
 	}
-	obj.Annotations[AnnotationPhase] = phase
-	obj.Annotations[AnnotationMessage] = message
-	obj.Annotations[AnnotationEntityID] = entityID
-	obj.Annotations[AnnotationObservedHash] = observedHash
+	obj.Annotations[AnnotationPhase] = st.Phase
+	obj.Annotations[AnnotationMessage] = st.Message
+	obj.Annotations[AnnotationEntityID] = st.EntityID
+	obj.Annotations[AnnotationObservedHash] = st.ObservedHash
+	obj.Annotations[AnnotationReconcileHandled] = st.ReconcileHandled
 	return nil
 }
 

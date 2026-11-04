@@ -125,7 +125,7 @@ func TestSecretBackedSource(t *testing.T) {
 	controller := &resourceController{client: k8sClient, reconcile: func(ctx context.Context, res *reconciler.ResourceData) (ctrl.Result, error) {
 		loaded = append(loaded, *res)
 		// what a reconciler writes on success: the hash of the data it read
-		return ctrl.Result{}, sink.SetPhase(ctx, res, reconciler.PhaseReady, "", "7", reconciler.ContentHash(res.Data))
+		return ctrl.Result{}, sink.SetPhase(ctx, res, &reconciler.Status{Phase: reconciler.PhaseReady, EntityID: "7", ObservedHash: reconciler.ContentHash(res.Data)})
 	}}
 
 	reconcileOnce(t, controller, "pg-secret")

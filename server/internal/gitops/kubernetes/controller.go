@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/reconciler"
+	"github.com/datazip-inc/olake-ui/server/internal/gitops/secretref"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
@@ -73,13 +74,14 @@ func Setup(app *services.AppService, restConfig *rest.Config, namespace string) 
 	etlSvc := app.ETL()
 	k8sClient := mgr.GetClient()
 	sink := NewSink(k8sClient, mgr.GetEventRecorderFor("olake-gitops"), etlSvc.Temporal())
+	secrets := reconciler.NewSecretRefs(secretref.K8sConfig{Client: k8sClient, Namespace: namespace, Selector: managed})
 
-	source := &reconciler.Source{ETL: etlSvc, Sink: sink}
+	source := &reconciler.Source{ETL: etlSvc, Sink: sink, Secrets: secrets}
 	if err := setupResourceController(mgr, "gitops-source", reconciler.KindSource, &resourceController{client: k8sClient, reconcile: source.Reconcile}); err != nil {
 		return nil, fmt.Errorf("setup source controller: %w", err)
 	}
 
-	dest := &reconciler.Destination{ETL: etlSvc, Sink: sink}
+	dest := &reconciler.Destination{ETL: etlSvc, Sink: sink, Secrets: secrets}
 	if err := setupResourceController(mgr, "gitops-destination", reconciler.KindDestination, &resourceController{client: k8sClient, reconcile: dest.Reconcile}); err != nil {
 		return nil, fmt.Errorf("setup destination controller: %w", err)
 	}
