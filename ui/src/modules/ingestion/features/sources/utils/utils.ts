@@ -1,3 +1,5 @@
+import { UPDATE_METHOD_CDC } from "@/common/components/form/cdc"
+
 export const getConnectorLabel = (type: string): string => {
 	switch (type) {
 		case "mongodb":
@@ -44,5 +46,24 @@ export const lockPreserveToastValues = (uiSchema: any, jsonSchema: any) => {
 					`${description ?? ""} Can only be set when the source is created.`.trim(),
 			},
 		},
+	}
+}
+
+// Puts the saved preserve_toast_values back on every edit form change, since rjsf
+// resets it on CDC/Standalone switches. Spec versions without the field get no key.
+export const restorePreserveToastValues = (
+	formData: any,
+	saved: boolean | undefined,
+) => {
+	const updateMethod = formData?.update_method
+	if (
+		updateMethod?.type !== UPDATE_METHOD_CDC ||
+		(saved === undefined && !("preserve_toast_values" in updateMethod))
+	) {
+		return formData
+	}
+	return {
+		...formData,
+		update_method: { ...updateMethod, preserve_toast_values: saved ?? false },
 	}
 }

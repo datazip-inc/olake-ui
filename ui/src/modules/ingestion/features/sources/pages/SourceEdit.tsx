@@ -14,7 +14,7 @@ import { useState, useEffect, useRef, useMemo } from "react"
 import { useParams, useNavigate, Link } from "react-router"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
-import { UPDATE_METHOD_CDC, withCdcToggle } from "@/common/components/form/cdc"
+import { withCdcToggle } from "@/common/components/form/cdc"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import {
@@ -68,7 +68,11 @@ import {
 } from "../hooks"
 import { useSourceStore } from "../stores"
 import { SourceJob } from "../types"
-import { getConnectorLabel, lockPreserveToastValues } from "../utils"
+import {
+	getConnectorLabel,
+	lockPreserveToastValues,
+	restorePreserveToastValues,
+} from "../utils"
 
 const SourceEdit: React.FC = () => {
 	// Local component state.
@@ -535,19 +539,14 @@ const SourceEdit: React.FC = () => {
 													formData={formData}
 													onChange={e => {
 														const trimmedData = trimFormDataStrings(e.formData)
-														const updateMethod = trimmedData?.update_method
-														// rjsf resets the flag on CDC/Standalone switches; spec
-														// versions without the field get no key
-														if (
-															isPostgres &&
-															updateMethod?.type === UPDATE_METHOD_CDC &&
-															(savedPreserveToast.current !== undefined ||
-																"preserve_toast_values" in updateMethod)
-														) {
-															updateMethod.preserve_toast_values =
-																savedPreserveToast.current ?? false
-														}
-														setFormData(trimmedData)
+														setFormData(
+															isPostgres
+																? restorePreserveToastValues(
+																		trimmedData,
+																		savedPreserveToast.current,
+																	)
+																: trimmedData,
+														)
 													}}
 													transformErrors={transformErrors}
 													onError={notifyFirstFormError}
