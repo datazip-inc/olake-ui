@@ -17,11 +17,10 @@ import {
 import RenderTypeItems from "../RenderTypeItems"
 
 interface StreamsSchemaProps {
-	sourceType?: string
 	sourceVersion: string
 }
 
-const StreamsSchema = ({ sourceType, sourceVersion }: StreamsSchemaProps) => {
+const StreamsSchema = ({ sourceVersion }: StreamsSchemaProps) => {
 	const streamData = useStreamSelectionStore(selectActiveStreamData)
 	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
 	const updateSelectedColumns = useStreamSelectionStore(
@@ -87,7 +86,6 @@ const StreamsSchema = ({ sourceType, sourceVersion }: StreamsSchemaProps) => {
 				namespace: streamData.stream.namespace || "",
 			},
 			{ ...current, columns: newColumns },
-			sourceType,
 		)
 	}
 
@@ -112,7 +110,6 @@ const StreamsSchema = ({ sourceType, sourceVersion }: StreamsSchemaProps) => {
 				namespace: streamData.stream.namespace || "",
 			},
 			{ ...current, columns: newColumns },
-			sourceType,
 		)
 	}
 

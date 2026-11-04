@@ -111,7 +111,6 @@ interface StreamSelectionState {
 	updateSelectedColumns: (
 		stream: StreamIdentifier,
 		columns: SelectedColumns,
-		sourceType?: string,
 	) => void
 
 	setStreamFilterState: (streamKey: string, value: boolean) => void
@@ -659,30 +658,22 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
-	updateSelectedColumns: (stream, columns, sourceType) =>
+	updateSelectedColumns: (stream, columns) =>
 		set(state => {
 			if (!state.streamsData) return state
 			const { streamName, namespace } = stream
 
 			const prev = state.streamsData
-			const streamData = prev.streams.find(
-				x => x.stream.name === streamName && x.stream.namespace === namespace,
-			)
 			return {
 				streamsData: {
 					...prev,
 					selected_streams: {
 						...prev.selected_streams,
-						[namespace]: prev.selected_streams[namespace]?.map(s => {
-							if (s.stream_name !== streamName) return s
-							const next = { ...s, selected_columns: columns }
-							// unticking every dedup key option leaves a Kafka topic unable to upsert
-							if (isKafkaUpsertBlocked(streamData, next, sourceType)) {
-								next.append_mode = true
-								withUpsertTypeSynced(next)
-							}
-							return next
-						}),
+						[namespace]: prev.selected_streams[namespace]?.map(s =>
+							s.stream_name === streamName
+								? { ...s, selected_columns: columns }
+								: s,
+						),
 					},
 				},
 			}

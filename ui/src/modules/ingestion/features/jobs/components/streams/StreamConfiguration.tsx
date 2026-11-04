@@ -47,10 +47,7 @@ const StreamConfiguration = ({
 				/>
 			)}
 			{activeTab === "schema" && streamsData && (
-				<StreamsSchema
-					sourceType={sourceType}
-					sourceVersion={sourceVersion}
-				/>
+				<StreamsSchema sourceVersion={sourceVersion} />
 			)}
 			{activeTab === "partitioning" && (
 				<PartitionRegexSectionSingle destinationType={destinationType} />
