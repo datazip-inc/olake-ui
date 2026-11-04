@@ -3,6 +3,7 @@ package appconfig
 import (
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/viper"
@@ -47,6 +48,8 @@ type Config struct {
 	OptimizationUsername           string
 	OptimizationPassword           string
 	OptimizationRequestTimeout     time.Duration
+	GitOpsMode                     string
+	PodNamespace                   string
 	OlakeStorageMode               string
 	OlakeS3Bucket                  string
 	OlakeS3Region                  string
@@ -56,10 +59,12 @@ type Config struct {
 	OlakeS3Endpoint                string
 }
 
-var cfg = loadConfig()
+// load reads config/app.yaml and the environment once, on first use, so importing this package
+// has no side effects.
+var load = sync.OnceValue(loadConfig)
 
 func Load() Config {
-	return cfg
+	return load()
 }
 
 func loadConfig() Config {
@@ -129,6 +134,8 @@ func loadConfig() Config {
 		OptimizationPassword:       strings.TrimSpace(v.GetString("PASSWORD")),
 		OptimizationRequestTimeout: v.GetDuration("OPTIMIZATION_REQUEST_TIMEOUT"),
 
+		GitOpsMode:             strings.ToLower(strings.TrimSpace(v.GetString("GITOPS_MODE"))),
+		PodNamespace:           strings.TrimSpace(v.GetString("POD_NAMESPACE")),
 		OlakeStorageMode:       strings.TrimSpace(v.GetString("OLAKE_STORAGE_MODE")),
 		OlakeS3Bucket:          strings.TrimSpace(v.GetString("OLAKE_S3_BUCKET")),
 		OlakeS3Region:          strings.TrimSpace(v.GetString("OLAKE_S3_REGION")),

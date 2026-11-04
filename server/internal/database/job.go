@@ -101,6 +101,21 @@ func (db *Database) ListDistinctProjectIDs(ctx context.Context) ([]string, error
 	return projectIDs, nil
 }
 
+// GetJobByName retrieves a job by name within a project, without its relations
+func (db *Database) GetJobByName(projectID, name string) (*models.Job, error) {
+	job := &models.Job{}
+	err := db.conn.
+		Where("project_id = ? AND name = ?", projectID, name).
+		First(job).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: job not found name[%s] project_id[%s]", constants.ErrJobNotFound, name, projectID)
+		}
+		return nil, fmt.Errorf("failed to get job name[%s] project_id[%s]: %s", name, projectID, err)
+	}
+	return job, nil
+}
+
 // GetByID retrieves a job by ID
 func (db *Database) GetJobByID(id int, decrypt bool) (*models.Job, error) {
 	job := &models.Job{}
