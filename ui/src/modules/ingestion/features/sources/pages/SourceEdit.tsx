@@ -47,6 +47,7 @@ import DocumentationPanel from "@/modules/ingestion/common/components/Documentat
 import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
 import {
 	DISPLAYED_JOBS_COUNT,
+	SOURCE_INTERNAL_TYPES,
 	SOURCE_SECTION_DOC_ANCHORS,
 } from "@/modules/ingestion/common/constants"
 import {
@@ -95,7 +96,8 @@ const SourceEdit: React.FC = () => {
 
 	// Derived constants from current state.
 	const normalizedSourceConnector = getConnectorInLowerCase(connector)
-	const isPostgres = normalizedSourceConnector === "postgres"
+	const isPostgres =
+		normalizedSourceConnector === SOURCE_INTERNAL_TYPES.POSTGRES
 	// saved preserve_toast_values, put back on every change since edit can't change it
 	const savedPreserveToast = useRef<boolean | undefined>(undefined)
 
