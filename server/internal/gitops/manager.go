@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	"github.com/datazip-inc/olake-ui/server/internal/gitops/file"
 	"github.com/datazip-inc/olake-ui/server/internal/gitops/kubernetes"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
@@ -16,45 +17,59 @@ import (
 // GITOPS_MODE values.
 const (
 	ModeKubernetes = "kubernetes" // labelled ConfigMaps/Secrets in the pod's namespace
+	ModeFile       = "file"       // JSON manifests in OLAKE_GITOPS_FILE_DIR
 )
 
 type runner interface {
 	Run(ctx context.Context) error
 }
 
-// InitGitOps sets up the GitOps mode named by mode and runs it in the background. namespace is the
-// pod's namespace, which Kubernetes mode watches.
-func InitGitOps(ctx context.Context, mode, namespace string, app *services.AppService) error {
-	if mode == "" {
+// Config selects and configures the GitOps mode.
+type Config struct {
+	Mode      string // GITOPS_MODE; empty disables GitOps
+	Namespace string // Kubernetes mode: the pod's namespace, which it watches
+	FileDir   string // file mode: the manifest directory
+	StateFile string // file mode: the status file
+}
+
+// InitGitOps sets up the GitOps mode named by cfg.Mode and runs it in the background.
+func InitGitOps(ctx context.Context, cfg Config, app *services.AppService) error {
+	if cfg.Mode == "" {
 		return nil
 	}
 
 	ctrl.SetLogger(logger.Logr())
-	r, err := newRunner(mode, namespace, app)
+	r, err := newRunner(cfg, app)
 	if err != nil {
-		return fmt.Errorf("gitops %s mode: %w", mode, err)
+		return fmt.Errorf("gitops %s mode: %w", cfg.Mode, err)
 	}
 	go func() {
 		if err := r.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			logger.Errorf("GitOps %s mode stopped: %s", mode, err)
+			logger.Errorf("GitOps %s mode stopped: %s", cfg.Mode, err)
 		}
 	}()
 	return nil
 }
 
-func newRunner(mode, namespace string, app *services.AppService) (runner, error) {
-	switch mode {
+func newRunner(cfg Config, app *services.AppService) (runner, error) {
+	switch cfg.Mode {
 	case ModeKubernetes:
 		restConfig, err := rest.InClusterConfig()
 		if err != nil {
 			return nil, fmt.Errorf("load in-cluster config: %w", err)
 		}
-		ctrlr, err := kubernetes.Setup(app, restConfig, namespace)
+		ctrlr, err := kubernetes.Setup(app, restConfig, cfg.Namespace)
 		if err != nil {
 			return nil, err
 		}
 		return ctrlr, nil
+	case ModeFile:
+		fw, err := file.Setup(app, cfg.FileDir, cfg.StateFile)
+		if err != nil {
+			return nil, err
+		}
+		return fw, nil
 	default:
-		return nil, fmt.Errorf("unknown GITOPS_MODE %s, want %s", mode, ModeKubernetes)
+		return nil, fmt.Errorf("unknown GITOPS_MODE %s, want %s or %s", cfg.Mode, ModeKubernetes, ModeFile)
 	}
 }

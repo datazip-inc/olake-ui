@@ -48,8 +48,10 @@ type Config struct {
 	OptimizationUsername           string
 	OptimizationPassword           string
 	OptimizationRequestTimeout     time.Duration
-	GitOpsMode                     string
-	PodNamespace                   string
+	GitOpsMode                     string // "kubernetes" or "file"; empty disables GitOps
+	PodNamespace                   string // namespace Kubernetes mode watches
+	GitOpsFileDir                  string // file based configuration for olake; defaults to /etc/olake/gitops
+	GitOpsStateFile                string // file mode status; defaults to OLAKE_GITOPS_FILE_DIR/.olake-gitops-state.json
 	OlakeStorageMode               string
 	OlakeS3Bucket                  string
 	OlakeS3Region                  string
@@ -81,6 +83,9 @@ func loadConfig() Config {
 
 	// Prometheus /metrics is on by default; METRICS_ENABLED=false turns the route off.
 	v.SetDefault("METRICS_ENABLED", true)
+
+	// GitOps file mode reads manifests from here; mount them at this path.
+	v.SetDefault("OLAKE_GITOPS_FILE_DIR", "/etc/olake/gitops")
 
 	// Note: config priority: env variables -> file (app.yaml)
 	v.SetConfigFile("./config/app.yaml")
@@ -136,6 +141,8 @@ func loadConfig() Config {
 
 		GitOpsMode:             strings.ToLower(strings.TrimSpace(v.GetString("GITOPS_MODE"))),
 		PodNamespace:           strings.TrimSpace(v.GetString("POD_NAMESPACE")),
+		GitOpsFileDir:          strings.TrimSpace(v.GetString("OLAKE_GITOPS_FILE_DIR")),
+		GitOpsStateFile:        strings.TrimSpace(v.GetString("OLAKE_GITOPS_STATE_FILE")),
 		OlakeStorageMode:       strings.TrimSpace(v.GetString("OLAKE_STORAGE_MODE")),
 		OlakeS3Bucket:          strings.TrimSpace(v.GetString("OLAKE_S3_BUCKET")),
 		OlakeS3Region:          strings.TrimSpace(v.GetString("OLAKE_S3_REGION")),
