@@ -34,9 +34,11 @@ export const useTestSourceConnection = () => {
 		mutationFn: ({
 			source,
 			existing = false,
+			signal,
 		}: {
 			source: EntityTestRequest
 			existing?: boolean
-		}) => sourceService.testSourceConnection(source, existing),
+			signal?: AbortSignal
+		}) => sourceService.testSourceConnection(source, existing, signal),
 	})
 }

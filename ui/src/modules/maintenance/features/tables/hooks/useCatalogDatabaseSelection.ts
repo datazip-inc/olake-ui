@@ -1,6 +1,6 @@
 import { useIsFetching } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams } from "react-router"
 
 import { catalogKeys } from "@/modules/maintenance/features/catalogs/constants"
 import { useCatalogDatabases } from "@/modules/maintenance/features/catalogs/hooks"

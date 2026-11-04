@@ -36,6 +36,7 @@ import StreamConfiguration from "./streams/StreamConfiguration"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
 import {
 	getStreamsDataFromSourceStreamsResponse,
+	parseDiscoverResponse,
 	shouldUseFilterConfig,
 } from "../utils/streams"
 
@@ -125,15 +126,16 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			},
 			{
 				onSuccess: response => {
+					const parsed = parseDiscoverResponse(response)
 					const data: StreamsDataStructure =
 						getStreamsDataFromSourceStreamsResponse(
-							response,
+							parsed.response,
 							destinationType,
 							sourceConnector,
 							sourceVersion,
 						)
 
-					initializeFromDiscovery(data)
+					initializeFromDiscovery(data, parsed.format)
 				},
 				onError: error => {
 					setDiscovering(false)

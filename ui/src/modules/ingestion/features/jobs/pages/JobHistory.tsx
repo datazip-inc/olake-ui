@@ -7,7 +7,7 @@ import {
 import { Table, Button, Input, Spin, Pagination, Tooltip } from "antd"
 import clsx from "clsx"
 import { useState, useRef, useEffect } from "react"
-import { useParams, useNavigate, useLocation, Link } from "react-router-dom"
+import { useParams, useNavigate, useLocation, Link } from "react-router"
 
 import { CommunityHelpBanner } from "@/common/components"
 import {
@@ -229,7 +229,12 @@ const JobHistory: React.FC = () => {
 			<div className="flex flex-1 flex-col overflow-hidden border-t border-gray-200 p-6">
 				<h2 className="mb-4 text-xl font-bold">Job Logs & History</h2>
 
-				{hasFailedLastRun && <CommunityHelpBanner source="job_history" />}
+				{hasFailedLastRun && (
+					<CommunityHelpBanner
+						source="job_history"
+						variant="sync_failure"
+					/>
+				)}
 
 				<div className="mb-4 flex gap-2">
 					<Search

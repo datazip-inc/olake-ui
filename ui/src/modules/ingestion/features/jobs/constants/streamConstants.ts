@@ -64,6 +64,9 @@ export const DEFAULT_AVAILABLE_UPDATE_TYPES = [
 	UpsertType.POSITIONAL,
 ]
 
+export const NORMALIZATION_TOOLTIP_TEXT =
+	"Flattens nested JSON one level deep into separate columns, so the table can be queried with standard SQL"
+
 export const PartitioningRegexTooltip =
 	"Choose a column to partition your data for faster reads and better performance"
 

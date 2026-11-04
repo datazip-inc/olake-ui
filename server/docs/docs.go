@@ -303,8 +303,8 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "202": {
+                        "description": "Accepted",
                         "schema": {
                             "allOf": [
                                 {
@@ -314,7 +314,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.SpecResponse"
+                                            "$ref": "#/definitions/dto.OperationAcceptedResponse"
                                         }
                                     }
                                 }
@@ -374,8 +374,8 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "202": {
+                        "description": "Accepted",
                         "schema": {
                             "allOf": [
                                 {
@@ -385,7 +385,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.TestConnectionResponse"
+                                            "$ref": "#/definitions/dto.OperationAcceptedResponse"
                                         }
                                     }
                                 }
@@ -1323,7 +1323,7 @@ const docTemplate = `{
         },
         "/api/v1/project/{projectid}/jobs/{id}/stream-difference": {
             "post": {
-                "description": "Get difference between current streams.json and existing streams.json.",
+                "description": "Compares the job's stored catalog against a submitted edit.\nSend updated_streams_config, or updated_available_streams_config + updated_selected_streams_config.\nAn invalid catalog format returns 400 before any operation starts.\nPoll the returned operation; its result (GET /operations/{operationid}/result) is a dto.StreamDifferenceResponse.",
                 "tags": [
                     "Jobs"
                 ],
@@ -1354,8 +1354,8 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "202": {
+                        "description": "Accepted",
                         "schema": {
                             "allOf": [
                                 {
@@ -1365,7 +1365,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.StreamDifferenceResponse"
+                                            "$ref": "#/definitions/dto.OperationAcceptedResponse"
                                         }
                                     }
                                 }
@@ -1573,8 +1573,14 @@ const docTemplate = `{
                         }
                     },
                     {
-                        "type": "integer",
-                        "description": "log cursor",
+                        "type": "string",
+                        "description": "log source: all (default), sync or worker",
+                        "name": "source",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "opaque log cursor from a previous response; empty tails from the end",
                         "name": "cursor",
                         "in": "query"
                     },
@@ -1603,7 +1609,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.TaskLogsResponse"
+                                            "$ref": "#/definitions/dto.JobTaskLogsResponse"
                                         }
                                     }
                                 }
@@ -1636,6 +1642,156 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "failed to get task logs",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/operations/{operationid}": {
+            "get": {
+                "description": "Report whether a long-running operation is still running, and if not, how it ended. With ?wait=N the request is held server-side for up to N seconds (capped at 10) and returns as soon as the operation closes.",
+                "tags": [
+                    "Operations"
+                ],
+                "summary": "Get async operation status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "operation id returned by the submitting endpoint",
+                        "name": "operationid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "seconds to long-poll before answering",
+                        "name": "wait",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.OperationStatusResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "operation not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get operation status",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/operations/{operationid}/result": {
+            "get": {
+                "description": "Fetch a finished operation's payload, shaped exactly as the submitting endpoint used to return it synchronously. Returns 409 while the operation is still running.",
+                "tags": [
+                    "Operations"
+                ],
+                "summary": "Get async operation result",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "operation id returned by the submitting endpoint",
+                        "name": "operationid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "operation not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "409": {
+                        "description": "operation has not finished",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error409Response"
+                        }
+                    },
+                    "500": {
+                        "description": "operation failed",
                         "schema": {
                             "$ref": "#/definitions/dto.Error500Response"
                         }
@@ -1911,7 +2067,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "no workflow needed: query engines requested on an image that does not support them",
                         "schema": {
                             "allOf": [
                                 {
@@ -1922,6 +2078,24 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/dto.SpecResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.OperationAcceptedResponse"
                                         }
                                     }
                                 }
@@ -1957,7 +2131,7 @@ const docTemplate = `{
         },
         "/api/v1/project/{projectid}/sources/streams": {
             "post": {
-                "description": "Discover and list available data streams from a source.",
+                "description": "Start discovering the data streams of a source. Poll the returned operation; its result (GET /operations/{operationid}/result) is a dto.DiscoverCatalogResponse in one format: available_streams + selected_streams for a split catalog, otherwise streams_config.",
                 "tags": [
                     "Sources"
                 ],
@@ -1981,8 +2155,8 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "202": {
+                        "description": "Accepted",
                         "schema": {
                             "allOf": [
                                 {
@@ -1992,7 +2166,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "object"
+                                            "$ref": "#/definitions/dto.OperationAcceptedResponse"
                                         }
                                     }
                                 }
@@ -2052,8 +2226,8 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "202": {
+                        "description": "Accepted",
                         "schema": {
                             "allOf": [
                                 {
@@ -2063,7 +2237,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.TestConnectionResponse"
+                                            "$ref": "#/definitions/dto.OperationAcceptedResponse"
                                         }
                                     }
                                 }
@@ -2973,7 +3147,7 @@ const docTemplate = `{
                     "example": 50
                 },
                 "target_query_engines": {
-                    "description": "TargetQueryEngines are the engines expected to read the destination tables. OLake\nkeeps them nowhere, so they are stored here and resent on every discover; changing\nthem requires regenerating the catalog to recompute available_update_types.",
+                    "description": "TargetQueryEngines are stored here because OLake keeps none; changing them needs the catalog regenerated.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -3058,8 +3232,7 @@ const docTemplate = `{
                 "destination",
                 "frequency",
                 "name",
-                "source",
-                "streams_config"
+                "source"
             ],
             "properties": {
                 "activate": {
@@ -3068,6 +3241,9 @@ const docTemplate = `{
                 },
                 "advanced_settings": {
                     "$ref": "#/definitions/dto.AdvancedSettings"
+                },
+                "available_streams_config": {
+                    "type": "string"
                 },
                 "destination": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3079,6 +3255,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "my-sync-job"
+                },
+                "selected_streams_config": {
+                    "type": "string"
                 },
                 "source": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3400,6 +3579,9 @@ const docTemplate = `{
                 "advanced_settings": {
                     "$ref": "#/definitions/dto.AdvancedSettings"
                 },
+                "available_streams_config": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string",
                     "example": "2024-01-01T00:00:00Z"
@@ -3435,6 +3617,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "my-sync-job"
+                },
+                "selected_streams_config": {
+                    "type": "string"
                 },
                 "source": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3487,6 +3672,33 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.JobTaskLogsResponse": {
+            "type": "object",
+            "properties": {
+                "has_more_newer": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "has_more_older": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "logs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "newer_cursor": {
+                    "type": "string",
+                    "example": "eyJzeW5jIjoyMDQ4LCJ3b3JrZXIiOjEwMjR9"
+                },
+                "older_cursor": {
+                    "type": "string",
+                    "example": "eyJzeW5jIjoxMDI0LCJ3b3JrZXIiOjUxMn0"
+                }
+            }
+        },
         "dto.JobTaskRequest": {
             "type": "object",
             "required": [
@@ -3522,6 +3734,27 @@ const docTemplate = `{
                 "username": {
                     "type": "string",
                     "example": "admin"
+                }
+            }
+        },
+        "dto.OperationAcceptedResponse": {
+            "type": "object",
+            "properties": {
+                "operation_id": {
+                    "type": "string",
+                    "example": "discover-catalog-123-8f14e45fceea167a5a36dedd4bea2543"
+                }
+            }
+        },
+        "dto.OperationStatusResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "running"
                 }
             }
         },
@@ -3676,7 +3909,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "available_query_engines": {
-                    "description": "AvailableQueryEngines swaps the connector UI spec for the query engines the connector\nsupports and the delete formats each can read. The response carries a null spec on\nconnector versions that predate the feature.",
+                    "description": "AvailableQueryEngines swaps the UI spec for the engine matrix; the spec is null on older connectors.",
                     "type": "boolean",
                     "example": false
                 },
@@ -3709,20 +3942,15 @@ const docTemplate = `{
         },
         "dto.StreamDifferenceRequest": {
             "type": "object",
-            "required": [
-                "updated_streams_config"
-            ],
             "properties": {
+                "updated_available_streams_config": {
+                    "type": "string"
+                },
+                "updated_selected_streams_config": {
+                    "type": "string"
+                },
                 "updated_streams_config": {
                     "type": "string"
-                }
-            }
-        },
-        "dto.StreamDifferenceResponse": {
-            "type": "object",
-            "properties": {
-                "difference_streams": {
-                    "type": "object"
                 }
             }
         },
@@ -3758,7 +3986,7 @@ const docTemplate = `{
                     "example": "my-postgres-source"
                 },
                 "target_query_engines": {
-                    "description": "TargetQueryEngines are the engines expected to read the destination tables. OLake\nturns them into each stream's available_update_types; it stores nothing else, so the\nselection must be sent on every discover to stay applied.",
+                    "description": "TargetQueryEngines become each stream's available_update_types; OLake stores none, so resend every discover.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -3778,33 +4006,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.TaskLogsResponse": {
-            "type": "object",
-            "properties": {
-                "has_more_newer": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "has_more_older": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "logs": {
-                    "type": "array",
-                    "items": {
-                        "type": "object"
-                    }
-                },
-                "newer_cursor": {
-                    "type": "integer",
-                    "example": 1704805200000
-                },
-                "older_cursor": {
-                    "type": "integer",
-                    "example": 1704801600000
-                }
-            }
-        },
         "dto.TelemetryIDResponse": {
             "type": "object",
             "properties": {
@@ -3815,20 +4016,6 @@ const docTemplate = `{
                 "version": {
                     "type": "string",
                     "example": "v0.2.5"
-                }
-            }
-        },
-        "dto.TestConnectionResponse": {
-            "type": "object",
-            "properties": {
-                "connection_result": {
-                    "type": "object"
-                },
-                "logs": {
-                    "type": "array",
-                    "items": {
-                        "type": "object"
-                    }
                 }
             }
         },
@@ -3865,8 +4052,7 @@ const docTemplate = `{
                 "destination",
                 "frequency",
                 "name",
-                "source",
-                "streams_config"
+                "source"
             ],
             "properties": {
                 "activate": {
@@ -3875,6 +4061,9 @@ const docTemplate = `{
                 },
                 "advanced_settings": {
                     "$ref": "#/definitions/dto.AdvancedSettings"
+                },
+                "available_streams_config": {
+                    "type": "string"
                 },
                 "destination": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3890,6 +4079,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "my-sync-job-updated"
+                },
+                "selected_streams_config": {
+                    "type": "string"
                 },
                 "source": {
                     "$ref": "#/definitions/dto.DriverConfig"

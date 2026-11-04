@@ -2,7 +2,7 @@ import { CopySimpleIcon } from "@phosphor-icons/react"
 import { Modal } from "antd"
 import clsx from "clsx"
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router"
 
 import { ErrorIcon } from "@/assets"
 import { TestConnectionError } from "@/common/types"

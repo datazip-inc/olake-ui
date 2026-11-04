@@ -5,7 +5,7 @@ import {
 } from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
 import React from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router"
 
 interface EntityCancelModalProps {
 	open: boolean

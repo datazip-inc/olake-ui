@@ -6,8 +6,6 @@ export class SourcesPage extends BasePage {
 	readonly createSourceButton: Locator
 	readonly sourcesTitle: Locator
 	readonly sourcesLink: Locator
-	readonly activeTab: Locator
-	readonly inactiveTab: Locator
 	readonly sourceTable: Locator
 
 	constructor(page: Page) {
@@ -15,8 +13,6 @@ export class SourcesPage extends BasePage {
 		this.createSourceButton = page.getByTestId("create-source-button")
 		this.sourcesTitle = page.locator("h1", { hasText: "Sources" })
 		this.sourcesLink = page.getByRole("link", { name: "Sources" })
-		this.activeTab = page.getByRole("tab", { name: "Active" })
-		this.inactiveTab = page.getByRole("tab", { name: "Inactive" })
 		this.sourceTable = page.locator(".ant-table-tbody")
 	}
 
@@ -68,7 +64,6 @@ export class SourcesPage extends BasePage {
 	}
 
 	async expectSourceExists(sourceName: string) {
-		await this.switchToInactiveTab()
 		const sourceRow = await this.getSourceRow(sourceName)
 		await expect(sourceRow).toBeVisible()
 	}
@@ -76,13 +71,5 @@ export class SourcesPage extends BasePage {
 	async expectSourceNotExists(sourceName: string) {
 		const sourceRow = await this.getSourceRow(sourceName)
 		await expect(sourceRow).not.toBeVisible()
-	}
-
-	async switchToInactiveTab() {
-		await this.inactiveTab.click()
-	}
-
-	async switchToActiveTab() {
-		await this.activeTab.click()
 	}
 }

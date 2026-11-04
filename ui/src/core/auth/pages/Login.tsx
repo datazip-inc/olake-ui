@@ -1,7 +1,7 @@
 import { UserIcon, LockKeyIcon } from "@phosphor-icons/react"
 import { Form, Input, Button, Card, message } from "antd"
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router"
 
 import { useAuthStore } from "@/core/auth/stores/authStore"
 

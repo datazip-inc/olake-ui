@@ -17,6 +17,13 @@ var (
 	ErrConfigDecrypt       = errors.New("failed to decrypt config")
 
 	ErrPreserveToastValuesLocked = errors.New("preserve_toast_values can only be set when the source is created")
+
+	// ErrStreamsFormat rejects a catalog whose format does not fit the job or its driver
+	ErrStreamsFormat = errors.New("invalid streams format")
+
+	// Log related errors
+	ErrInvalidLogCursor   = errors.New("invalid log cursor")
+	ErrSyncFolderNotFound = errors.New("no sync folder found")
 )
 
 // Validation messages

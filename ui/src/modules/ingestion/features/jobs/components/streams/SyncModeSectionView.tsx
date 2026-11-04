@@ -175,7 +175,7 @@ const SyncModeSectionView = ({
 								<div className="flex w-1/2 flex-col">
 									<label className="mb-1 flex items-center gap-1 font-medium text-neutral-text">
 										Cursor field:
-										<Tooltip title="Column for identifying new/updated records ">
+										<Tooltip title="Column used to identify records that have changed since the last sync.">
 											<InfoIcon className="size-3.5 cursor-pointer" />
 										</Tooltip>
 									</label>

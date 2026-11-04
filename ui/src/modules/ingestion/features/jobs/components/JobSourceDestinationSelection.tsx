@@ -5,7 +5,7 @@ import {
 } from "@phosphor-icons/react"
 import { Select, Button, Spin, Tooltip } from "antd"
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router"
 
 import {
 	sourceConnectorOptions,

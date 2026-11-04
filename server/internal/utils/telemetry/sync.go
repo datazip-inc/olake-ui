@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/storage"
-	"github.com/datazip-inc/olake-ui/server/internal/storagemode"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
@@ -223,9 +223,16 @@ func addStatsProperties(ctx context.Context, properties map[string]interface{}, 
 }
 
 func addStreamsProperties(ctx context.Context, properties map[string]interface{}, mainSyncDir string) error {
-	streamsData, err := ReadSyncJobFile(ctx, mainSyncDir, "streams.json")
+	// a split catalog keeps its selection in selected_streams.json, a legacy one in streams.json;
+	// both hold the same selected_streams object
+	filename := constants.SelectedStreamsFile
+	streamsData, err := ReadSyncJobFile(ctx, mainSyncDir, filename)
+	if errors.Is(err, fs.ErrNotExist) {
+		filename = constants.StreamsFile
+		streamsData, err = ReadSyncJobFile(ctx, mainSyncDir, filename)
+	}
 	if err != nil {
-		return fmt.Errorf("failed to read streams.json: %s", err)
+		return fmt.Errorf("failed to read %s: %s", filename, err)
 	}
 
 	var streamsConfig struct {
@@ -236,7 +243,7 @@ func addStreamsProperties(ctx context.Context, properties map[string]interface{}
 	}
 
 	if err := json.Unmarshal(streamsData, &streamsConfig); err != nil {
-		return fmt.Errorf("error unmarshalling streams.json: %s", err)
+		return fmt.Errorf("error unmarshalling %s: %s", filename, err)
 	}
 
 	normalizedCount, partitionedCount := 0, 0
@@ -258,7 +265,7 @@ func addStreamsProperties(ctx context.Context, properties map[string]interface{}
 
 // ReadSyncJobFile reads a file from the job work dir (NFS) or the matching S3 key.
 func ReadSyncJobFile(ctx context.Context, mainSyncDir, filename string) ([]byte, error) {
-	switch storagemode.Get() {
+	switch storage.Mode() {
 	case constants.StorageModeS3:
 		body, _, err := storage.ReadFileFromS3(ctx, mainSyncDir, filename, false)
 		if err != nil {

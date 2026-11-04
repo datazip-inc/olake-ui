@@ -1,7 +1,7 @@
 import { useIsFetching } from "@tanstack/react-query"
 import { Button, message } from "antd"
 import { useEffect, useMemo, useState } from "react"
-import { useLocation, useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router"
 
 import { DataTable, PageErrorState } from "@/common/components"
 import { ErrorLogsModal } from "@/common/components/modals"

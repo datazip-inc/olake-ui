@@ -1,5 +1,5 @@
 import type { ComponentType } from "react"
-import type { RouteObject } from "react-router-dom"
+import type { RouteObject } from "react-router"
 
 import type { NavModule } from "@/core/layout/nav-config"
 

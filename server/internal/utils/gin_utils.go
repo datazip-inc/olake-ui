@@ -66,6 +66,14 @@ func SuccessResponse(c *gin.Context, message string, data interface{}) {
 	})
 }
 
+func AcceptedResponse(c *gin.Context, message string, data interface{}) {
+	c.JSON(http.StatusAccepted, dto.JSONResponse{
+		Success: true,
+		Message: message,
+		Data:    data,
+	})
+}
+
 func ErrorResponse(c *gin.Context, status int, message string, err error) {
 	if err != nil {
 		logger.Errorf("error in request %s: %s", c.Request.URL.Path, err)

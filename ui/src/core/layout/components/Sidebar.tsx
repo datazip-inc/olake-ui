@@ -2,7 +2,7 @@ import { InfoIcon, SidebarSimpleIcon, SignOutIcon } from "@phosphor-icons/react"
 import { Tooltip } from "antd"
 import clsx from "clsx"
 import { useEffect, useState } from "react"
-import { Link, NavLink, useLocation } from "react-router-dom"
+import { Link, NavLink, useLocation } from "react-router"
 
 import { OLake, OlakeLogo } from "@/assets"
 

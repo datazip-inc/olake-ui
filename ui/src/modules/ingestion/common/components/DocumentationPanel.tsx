@@ -6,12 +6,13 @@ import {
 } from "@phosphor-icons/react"
 import { Button, Tooltip } from "antd"
 import clsx from "clsx"
-import { useState, useRef, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { DocumentationPanelProps } from "@/modules/ingestion/common/types"
 
 const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 	docUrl,
+	anchor,
 	isMinimized = false,
 	onToggle,
 	showResizer = true,
@@ -24,6 +25,15 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 	const iframeRef = useRef<HTMLIFrameElement>(null)
 	const panelRef = useRef<HTMLDivElement>(null)
 
+	// Only the hash changes, so the docs page scrolls without reloading. Runs only when the
+	// anchor changes, so clicks inside the same section do not jump back to its heading.
+	// replace() keeps these jumps out of the browser history.
+	useEffect(() => {
+		if (anchor) {
+			iframeRef.current?.contentWindow?.location.replace(`${docUrl}#${anchor}`)
+		}
+	}, [anchor, docUrl])
+
 	// Sync collapsed state with isMinimized prop
 	useEffect(() => {
 		setIsDocPanelCollapsed(isMinimized)
@@ -33,9 +43,6 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 	useEffect(() => {
 		setIsLoading(true)
 		setIsReady(false)
-		if (iframeRef.current) {
-			iframeRef.current.src = docUrl
-		}
 	}, [docUrl])
 
 	// Handle iframe load event
@@ -140,24 +147,6 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					)}
 					style={{ transition: "opacity 0.3s ease" }}
 				>
-					{!isDocPanelCollapsed && (
-						<div className="absolute right-16 top-3.5 z-10">
-							<Button
-								type="default"
-								icon={
-									<ArrowSquareOutIcon
-										size={20}
-										weight="bold"
-										className="text-primary"
-									/>
-								}
-								onClick={openInNewTab}
-								className="flex items-center gap-2 border border-gray-200 px-2 py-3 hover:border-blue-600 hover:text-blue-600"
-							>
-								Open Docs
-							</Button>
-						</div>
-					)}
 					<iframe
 						ref={iframeRef}
 						src={docUrl}

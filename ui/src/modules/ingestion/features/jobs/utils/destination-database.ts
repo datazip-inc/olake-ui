@@ -1,4 +1,8 @@
-import { StreamsDataStructure } from "@/modules/ingestion/common/types"
+import {
+	SelectedStreamsByNamespace,
+	StreamData,
+	StreamsDataStructure,
+} from "@/modules/ingestion/common/types"
 
 import { FORMAT_OPTIONS, NAMESPACE_PLACEHOLDER } from "../constants"
 
@@ -86,6 +90,35 @@ export const extractNamespaceFromDestination = (
 	return destinationDatabase.includes(":")
 		? destinationDatabase.split(":")[1]
 		: fallbackNamespace
+}
+
+/**
+ * Destination database the selected entries use, if any. v2 persists
+ * destination_database only on selected entries; legacy entries carry none.
+ */
+export const configuredDestinationDatabase = (
+	selectedStreams: SelectedStreamsByNamespace,
+): string | undefined =>
+	Object.values(selectedStreams)
+		.flat()
+		.find(s => s.destination_database)?.destination_database
+
+/**
+ * Destination database for a stream that has no selected entry yet: follows the
+ * configured one (custom name as is, or prefix + the stream's own namespace
+ * suffix), else the discovered value.
+ */
+export const destinationDatabaseFor = (
+	stream: StreamData["stream"],
+	configured: string | undefined,
+): string | undefined => {
+	if (!configured) return stream.destination_database
+	if (!configured.includes(":")) return configured
+	const namespace = extractNamespaceFromDestination(
+		stream.destination_database,
+		stream.namespace || "",
+	)
+	return `${extractDatabasePrefix(configured)}:${namespace}`
 }
 
 /**
