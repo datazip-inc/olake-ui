@@ -237,11 +237,23 @@ File mode also works inside Kubernetes, for example with manifests mounted from 
 
 ## Failure indicators
 
-On permanent reconcile failure, olake-ui starts Temporal **`IndicatorWorkflow`** (fire-and-forget). **olake-worker** creates a short-lived busybox Pod (K8s) or container (Docker) labelled `olake.io/indicator=true`. The container writes the error to `/dev/termination-log` and exits 1.
+On permanent reconcile failure, olake-ui starts Temporal **`IndicatorWorkflow`** (fire-and-forget).
+**olake-worker** creates a Pod (Kubernetes) or container (Docker) labelled `olake.io/indicator=true`.
+It runs the worker's own image, which is already on the node, so it needs no image pull.
+- Kubernetes: the container writes the error to `/dev/termination-log` and exits 1, so the Pod shows `Error` and `kubectl describe pod` shows the message.
+- Docker: the container prints the error and keeps running, so it stays visible in `docker ps`; it also carries the label `olake.io/phase=Failed`.
 
-The pod or container is named `olake-failed-<kind>-<name>` (for example `olake-failed-source-pg-cm`; `<name>` is the ConfigMap or Secret name made DNS-1123 safe and cut to fit 63 characters). In Kubernetes the worker also records a `Warning` event with reason `SyncFailed` and the error on the pod, so event-based alerting and `kubectl describe pod` show it. The pod is deleted when the resource syncs again.
+The pod or container is named `olake-failed-<kind>-<name>`, for example `olake-failed-source-pg-cm`.
+`<name>` is the ConfigMap or Secret name made DNS-1123 safe and cut so the whole name fits in 63 characters.
+In Kubernetes the worker also records a `Warning` event with reason `SyncFailed` and the error on the pod, so event-based alerting and `kubectl describe pod` show it.
+The pod is deleted when the resource syncs again.
 
 Configure alerts on failed Pods with that label. olake-ui never creates Pods directly.
+
+Limits:
+- Keep ConfigMap and Secret names at 63 characters or fewer. The pod's `olake.io/resource` label holds the full name, and a label value over 63 characters makes Kubernetes reject the pod: the resource is still `Failed`, but it gets no indicator.
+- Names are cut, not hashed, so two resources of one kind whose names start with the same characters can share an indicator: the first 43 characters for a source, 38 for a destination, 46 for a job and 42 for a streams object. Keep names distinct within that length.
+- Deleting is not supported in v1, so an indicator stays when its failed ConfigMap or Secret is removed from git (for example by Argo CD or Flux pruning). Delete the `olake-failed-*` pod by hand.
 
 ## Reconciliation behavior
 
@@ -261,7 +273,8 @@ Configure alerts on failed Pods with that label. olake-ui never creates Pods dir
 |---------|--------|
 | Pending, waiting for source | Ensure source ConfigMap reaches Ready first |
 | Failed, validation | Fix `data.config` JSON |
-| Failed, no indicator Pod | Check worker logs and Temporal; worker needs `pods` create |
+| Failed, no indicator Pod | Check worker logs (`read worker image failed`, `spawn indicator pod failed`) and Temporal `IndicatorWorkflow` runs; the worker needs `pods` get and create, and the object name must be at most 63 characters |
+| Indicator Pod but no `SyncFailed` event | Check worker logs (`record indicator pod event failed`); the worker needs `events` create |
 | Argo synced but phase empty | Operator may be disabled; check `GITOPS_MODE=kubernetes` |
 
 ```bash
@@ -274,7 +287,8 @@ kubectl logs -l app.kubernetes.io/name=olake-ui | grep -i gitops
 
 - olake-ui GitOps RBAC: ConfigMaps and Secrets (read/write status annotations on both), Events in the release namespace. **No pods create/delete.**
 - Secret `update`/`patch` (needed for status annotations) applies to all Secrets in the namespace, not only GitOps-managed ones — use a dedicated namespace for GitOps-managed OLake when possible.
-- Failure indicators use worker SA (already has `pods` create for connector jobs).
+- Failure indicators use the worker ServiceAccount: `pods` create, which it already has for connector jobs, and `events` create for the `SyncFailed` event (the chart adds it when `gitops.enabled` is true).
+  The indicator pod mounts no ServiceAccount token.
 
 ## Code layout
 
