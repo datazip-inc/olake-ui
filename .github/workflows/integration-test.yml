@@ -7,19 +7,47 @@ on:
     branches:
       - "*"
 
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its older run, including one still waiting for approval.
+# Pushes to master each get their own group (by sha), so they are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # PRs wait here for a required reviewer of the `integration_tests` environment before the
+  # tests run on the self-hosted runner. This job runs on ubuntu-latest so no big runner is
+  # held while waiting. Pushes to master and same-repo staging -> master PRs skip the gate.
+  approve:
+    name: Approve Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: ${{ github.event_name == 'pull_request' && !(github.head_ref == 'staging' && github.base_ref == 'master' && github.event.pull_request.head.repo.full_name == github.repository) && 'integration_tests' || '' }}
+    outputs:
+      attempt: ${{ github.run_attempt }}
+    steps:
+      - run: echo "Approved, running integration tests"
+
   integration-tests:
+    needs: approve
     runs-on: 32gb-runner
+    # "Re-run failed jobs" does not re-run `approve`, so ask for approval again here.
+    environment: ${{ github.event_name == 'pull_request' && needs.approve.outputs.attempt != github.run_attempt && !(github.head_ref == 'staging' && github.base_ref == 'master' && github.event.pull_request.head.repo.full_name == github.repository) && 'integration_tests' || '' }}
     timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # The tests mount the whole checkout into a privileged container; keep the token out of .git/config.
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version-file: 'server/go.mod'
-      
+
       - name: Download Go dependencies
         working-directory: ./server
         run: go mod download
