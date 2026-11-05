@@ -16,6 +16,7 @@ import {
 } from "../../stores"
 import {
 	getKafkaUpsertTypes,
+	getUpsertNotSupportedMessage,
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
 } from "../../utils/streams"
@@ -71,7 +72,17 @@ const UpsertTypeSectionView = ({
 	if (!isDestUpsertModeSupported || !isSourceUpsertSupported) return null
 	// upsertType is seeded from the catalog's default_stream_properties.update_mode;
 	// when absent the driver version doesn't support update_type.
-	if (appendMode || upsertType === undefined) return null
+	// Hidden when upsert is unsupported too, since Ingestion Mode then forces Append.
+	if (
+		appendMode ||
+		upsertType === undefined ||
+		getUpsertNotSupportedMessage(
+			sourceType,
+			sourceVersion,
+			availableUpdateTypes,
+		)
+	)
+		return null
 
 	return (
 		<div

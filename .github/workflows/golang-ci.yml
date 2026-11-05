@@ -39,3 +39,14 @@ jobs:
           go-version-file: "server/go.mod"
       - name: Run build
         run: make build
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version-file: "server/go.mod"
+      - name: Run GitOps unit tests
+        working-directory: ./server
+        run: go test -race ./internal/gitops/...
