@@ -39,74 +39,104 @@ on:
         default: "v0.0.0.dev"
         type: string
 
+permissions:
+  contents: read
+
 jobs:
-  build_and_publish_frontend:
+  # Builds the UI once and cross-compiles the server for each platform on the runner
+  # (`make dist`). This job has no access to the Docker Hub credentials.
+  build:
+    name: Build release artifacts for ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.ref.outputs.sha }}
+    steps:
+      - name: Resolve ref
+        id: resolve
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          if [[ -n "$INPUT_REF" ]]; then
+            ref="$INPUT_REF"
+          else
+            case "$ENVIRONMENT" in
+              master) ref=master ;;
+              dev) ref=ci/workerReleaseIssues ;;
+              *) ref=staging ;;
+            esac
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.resolve.outputs.ref }}
+          persist-credentials: false
+
+      # The push job checks out this exact commit, so the image always matches the artifacts.
+      - name: Record commit
+        id: ref
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+
+      # pnpm version comes from the packageManager field in ui/package.json.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: ui/package.json
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Build UI and server binaries
+        run: make dist PLATFORMS="linux/amd64 linux/arm64"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            dist/
+            ui/dist/
+          if-no-files-found: error
+          retention-days: 1
+
+  # Packages the prebuilt artifacts into the multi-arch image and pushes it. The Dockerfile
+  # only copies files, so no QEMU is needed.
+  push:
     name: Build and publish frontend image for ${{ inputs.environment }}
+    needs: build
     environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
     env:
       DOCKER_LOGIN: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       DOCKER_REPO: ${{ secrets.DOCKER_REPO || 'olakego' }}
-      DOCKER_REPO_WORKER: ${{ secrets.DOCKER_REPO_WORKER || 'olakego' }}
       ENVIRONMENT: ${{ inputs.environment }}
       VERSION: ${{ inputs.version }}
-
+      SKIP_ARTIFACT_BUILD: "true"
     steps:
-      - name: Checkout code from explicit ref
-        if: ${{ inputs.ref != '' }}
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.build.outputs.sha }}
+          persist-credentials: false
 
-      - name: Checkout code for master
-        if: ${{ inputs.ref == '' && inputs.environment == 'master' }}
-        uses: actions/checkout@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
         with:
-          ref: master
-
-      - name: Checkout code for staging
-        if: ${{ inputs.ref == '' && inputs.environment == 'staging' }}
-        uses: actions/checkout@v4
-        with:
-          ref: staging
-
-      - name: Checkout code for dev
-        if: ${{ inputs.ref == '' && inputs.environment == 'dev' }}
-        uses: actions/checkout@v4
-        with:
-          ref: ci/workerReleaseIssues
-
-      - name: Checkout code for other environments
-        if: ${{ inputs.ref == '' && inputs.environment != 'master' && inputs.environment != 'staging' && inputs.environment != 'dev' }}
-        uses: actions/checkout@v4
-        with:
-          ref: staging
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Install pnpm
-        run: npm install -g pnpm@11.24.0
-
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('ui/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Setup environment variables
-        run: |
-          echo "ENVIRONMENT=${{ env.ENVIRONMENT }}" >> $GITHUB_ENV
-          echo "VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
-          echo "Building frontend application for $ENVIRONMENT with version $VERSION"
+          name: release-artifacts
+          path: .
 
       - name: Run Release tool
         run: |

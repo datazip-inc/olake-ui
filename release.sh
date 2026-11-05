@@ -29,15 +29,29 @@ function fail() {
     exit 1
 }
 
-function build_frontend() {
-    echo "Building frontend application..."
-    cd ui || fail "Failed to change to UI directory"
-    echo "Installing dependencies in $(pwd)"
-    pnpm install || fail "pnpm install failed"
-    echo "Building application"
-    pnpm run build || fail "pnpm build failed"
-    cd - || fail "Failed to return to original directory"
-    echo "$(chalk green "✅ Frontend successfully built")"
+# Builds the UI once and the server for every target platform on the host (`make dist`).
+# The Dockerfile only copies these artifacts, so no build step runs under emulation.
+# Set SKIP_ARTIFACT_BUILD=true when the artifacts were already built (the CI build job).
+function build_artifacts() {
+    local platforms=$1
+    if [[ "$SKIP_ARTIFACT_BUILD" == "true" ]]; then
+        echo "Using prebuilt artifacts (SKIP_ARTIFACT_BUILD=true)"
+    else
+        echo "Building release artifacts for platforms [$platforms]..."
+        make dist PLATFORMS="${platforms//,/ }" || fail "make dist failed"
+    fi
+
+    # Fail before pushing anything if an artifact is missing.
+    [[ -f ui/dist/index.html ]] || fail "❌ ui/dist/index.html not found. Run 'make dist' first."
+    local p
+    for p in ${platforms//,/ }; do
+        [[ -f "dist/$p/olake-server" ]] || fail "❌ dist/$p/olake-server not found. Run 'make dist' first."
+    done
+    echo "$(chalk green "✅ UI and server artifacts ready")"
+}
+
+function docker_login() {
+    printf '%s' "$DOCKER_PASSWORD" | docker login -u="$DOCKER_LOGIN" --password-stdin
 }
 
 function setup_buildx() {
@@ -75,7 +89,7 @@ function release_frontend() {
     esac
 
     echo "Logging into Docker..."
-    docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD" || fail "Docker login failed for $DOCKER_LOGIN"
+    docker_login || fail "Docker login failed for $DOCKER_LOGIN"
     
     echo "**** Releasing frontend image $image_name for platforms [$platform] with version [$tag_version] ****"
 
@@ -106,7 +120,7 @@ echo "Latest commit SHA: $GIT_COMMITSHA"
 echo "Running checks..."
 
 # Verify Docker login
-docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD" >/dev/null 2>&1 || fail "❌ Docker login failed. Ensure DOCKER_LOGIN and DOCKER_PASSWORD are set."
+docker_login >/dev/null 2>&1 || fail "❌ Docker login failed. Ensure DOCKER_LOGIN and DOCKER_PASSWORD are set."
 echo "✅ Docker login successful"
 
 # Version validation based on environment (default is dev with no restrictions)
@@ -128,9 +142,9 @@ fi
 # Setup buildx
 setup_buildx
 
-build_frontend
-
 platform="linux/amd64,linux/arm64"
+
+build_artifacts "$platform"
 echo "✅ Releasing frontend application for environment $ENVIRONMENT with version $VERSION on platforms: $platform"
 
 chalk green "=== Releasing Olake Frontend application ==="
