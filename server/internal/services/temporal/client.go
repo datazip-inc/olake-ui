@@ -101,6 +101,7 @@ func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
 			TaskQueue: t.taskQueue,
 		},
 		Overlap: enumspb.SCHEDULE_OVERLAP_POLICY_SKIP,
+		Paused:  !job.Active,
 	})
 
 	return err
