@@ -72,6 +72,7 @@ const CreateDestination: React.FC = () => {
 	)
 	const [catalog, setCatalog] = useState<string | null>(null)
 	const [authType, setAuthType] = useState<string | null>(null)
+	const [storageType, setStorageType] = useState<string | null>(null)
 	const [destinationName, setDestinationName] = useState("")
 	const [version, setVersion] = useState("")
 	const [formData, setFormData] = useState<DestinationConfig>({})
@@ -188,6 +189,7 @@ const CreateDestination: React.FC = () => {
 		setFormData({})
 		setCatalog(null)
 		setAuthType(null)
+		setStorageType(null)
 	}, [connector])
 
 	const handleCancel = () => {
@@ -331,7 +333,12 @@ const CreateDestination: React.FC = () => {
 		setDestinationName(selectedDestination.name)
 		setFormData(configObj)
 		setCatalog(configObj?.writer?.catalog_type ?? null)
-		setAuthType(configObj?.writer?.rest_auth_type ?? null)
+		setAuthType(
+			configObj?.writer?.rest_auth_type ??
+				configObj?.writer?.azure_auth_type ??
+				null,
+		)
+		setStorageType(configObj?.writer?.storage_type ?? null)
 		setExistingDestination(value)
 	}
 
@@ -492,7 +499,12 @@ const CreateDestination: React.FC = () => {
 									setFormData(trimmedData)
 									const catalogValue = trimmedData?.writer?.catalog_type
 									if (catalogValue) setCatalog(catalogValue)
-									setAuthType(trimmedData?.writer?.rest_auth_type ?? null)
+									setAuthType(
+										trimmedData?.writer?.rest_auth_type ??
+											trimmedData?.writer?.azure_auth_type ??
+											null,
+									)
+									setStorageType(trimmedData?.writer?.storage_type ?? null)
 								}}
 								onSubmit={handleCreate}
 								uiSchema={uiSchema}
@@ -511,7 +523,8 @@ const CreateDestination: React.FC = () => {
 		setDocsMinimized(prev => !prev)
 	}
 
-	const docUrl = `https://olake.io/docs/writers/${getConnectorDocumentationPath(connector, catalog, authType)}`
+	const hasStorageType = !!schema?.properties?.writer?.properties?.storage_type
+	const docUrl = `https://olake.io/docs/writers/${getConnectorDocumentationPath(connector, catalog, authType, hasStorageType ? storageType : null)}`
 
 	return (
 		<div className="flex h-full">
