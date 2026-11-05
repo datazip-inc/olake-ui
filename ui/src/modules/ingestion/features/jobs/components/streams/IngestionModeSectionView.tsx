@@ -12,7 +12,7 @@ import {
 	useStreamSelectionStore,
 } from "../../stores"
 import {
-	getKafkaUpsertNotSupportedMessage,
+	getUpsertNotSupportedMessage,
 	isSourceIngestionModeSupported,
 	isDestinationIngestionModeSupported,
 } from "../../utils/streams"
@@ -56,7 +56,7 @@ const IngestionModeSectionView = ({
 		destinationType,
 	)
 
-	const kafkaUpsertNotSupportedMessage = getKafkaUpsertNotSupportedMessage(
+	const upsertNotSupportedMessage = getUpsertNotSupportedMessage(
 		sourceType,
 		sourceVersion,
 		availableUpdateTypes,
@@ -67,7 +67,7 @@ const IngestionModeSectionView = ({
 			: undefined
 
 	const upsertDisabledMessage =
-		kafkaUpsertNotSupportedMessage || noCommonDedupMessage
+		upsertNotSupportedMessage || noCommonDedupMessage
 	const isUpsertDisabled = !isSourceUpsertSupported || !!upsertDisabledMessage
 
 	// Don't render if destination doesn't support upsert mode
@@ -76,7 +76,9 @@ const IngestionModeSectionView = ({
 	// Ingestion mode is Append if:
 	// 1. Source doesn't support Upsert (forced Append)
 	// 2. OR user selected Append mode
-	const isAppendMode = isUpsertDisabled || !!appendMode
+	// Missing dedup keys only disable Upsert; switching to Append stays the user's call
+	const isAppendMode =
+		!isSourceUpsertSupported || !!upsertNotSupportedMessage || !!appendMode
 
 	const upsertTooltip = !isSourceUpsertSupported
 		? "Upsert is not supported for this source"
