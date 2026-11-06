@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +30,18 @@ func convertConfigToMap(config dto.OptimizationTableConfig) map[string]string {
 	}
 	if config.SQLInput.TargetFileSize != nil {
 		properties[constants.OptTargetFileSize] = utils.ConvertMBToBytes(*config.SQLInput.TargetFileSize)
+	}
+	if config.SQLInput.SnapshotExpiryEnabled != nil {
+		properties[constants.OptSnapshotExpireEnabled] = *config.SQLInput.SnapshotExpiryEnabled
+	}
+	if config.SQLInput.SnapshotExpiryCron != nil {
+		properties[constants.OptSnapshotExpireCron] = *config.SQLInput.SnapshotExpiryCron
+	}
+	if config.SQLInput.SnapshotKeepDuration != nil {
+		properties[constants.OptSnapshotKeepDuration] = *config.SQLInput.SnapshotKeepDuration
+	}
+	if config.SQLInput.SnapshotKeepMinCount != nil {
+		properties[constants.OptSnapshotKeepMinCount] = strconv.FormatInt(*config.SQLInput.SnapshotKeepMinCount, 10)
 	}
 	return properties
 }

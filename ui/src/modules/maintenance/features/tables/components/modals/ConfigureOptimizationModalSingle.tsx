@@ -2,7 +2,6 @@ import { TableIcon } from "@phosphor-icons/react"
 
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
 import { useTableDetails, useUpdateTableCronConfig } from "../../hooks"
-import { getCleanupKey, useCleanupConfig, useCleanupStore } from "../../stores"
 
 type ConfigureOptimizationModalSingleProps = {
 	open: boolean
@@ -29,9 +28,6 @@ const ConfigureOptimizationModalSingle: React.FC<
 		tableName,
 	)
 
-	const cleanupConfig = useCleanupConfig(catalog, database, tableName)
-	const setCleanupConfig = useCleanupStore(state => state.setCleanupConfig)
-
 	return (
 		<ConfigureOptimizationModalView
 			open={open}
@@ -56,10 +52,6 @@ const ConfigureOptimizationModalSingle: React.FC<
 			isConfigLoading={isConfigLoading}
 			isConfigError={isConfigError}
 			onRetryConfig={() => void refetch()}
-			initialCleanupConfig={cleanupConfig}
-			onSaveCleanup={config =>
-				setCleanupConfig(getCleanupKey(catalog, database, tableName), config)
-			}
 			isSaving={isSaving}
 			onSave={(payload, { onSuccess, onError }) =>
 				mutate(payload, {

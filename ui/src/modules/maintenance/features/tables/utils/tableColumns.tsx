@@ -31,8 +31,6 @@ export interface TableColumnOptions {
 	setOpenActionRow: (id: string | null) => void
 	isTogglePendingFor: (tableName: string) => boolean
 	isCancelPendingFor: (tableName: string) => boolean
-	/** Saved cleanup (expire snapshots) state, kept client-side for now. */
-	isCleanupEnabledFor: (tableName: string) => boolean
 	actions: TableActions
 }
 
@@ -42,7 +40,6 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 		setOpenActionRow,
 		isTogglePendingFor,
 		isCancelPendingFor,
-		isCleanupEnabledFor,
 		actions,
 	} = opts
 
@@ -199,7 +196,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 					)
 				}
 
-				const isOn = row.enabled || isCleanupEnabledFor(row.name)
+				const isOn = row.enabled || row.snapshotExpiryEnabled
 				return (
 					<Switch
 						size="small"

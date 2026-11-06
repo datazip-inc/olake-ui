@@ -31,6 +31,7 @@ export interface FusionTable {
 	minor: FusionCompactionRun | null
 	full: FusionCompactionRun | null
 	enabled: boolean
+	snapshot_expiry_enabled: boolean
 }
 
 export interface GetTablesApiResponse {
@@ -98,6 +99,12 @@ export interface UpdateTableCronApiRequest {
 	full_cron?: string
 	enabled_for_optimization?: string
 	target_file_size?: number
+	// snapshot expiry (cleanup); omitted fields are left untouched on the table
+	snapshot_expiry_enabled?: string
+	snapshot_expiry_cron?: string
+	/** Fusion duration, e.g. "7d" */
+	snapshot_keep_duration?: string
+	snapshot_keep_min_count?: number
 }
 
 export interface UpdateTablesConfigApiRequest {
@@ -127,6 +134,7 @@ export interface Table {
 	major: CompactionRun
 	full: CompactionRun
 	enabled: boolean
+	snapshotExpiryEnabled: boolean
 }
 
 export interface TableRun {
@@ -145,6 +153,13 @@ export interface TableCronApiModel {
 	fullTriggerInterval?: string
 	enabledForOptimization: boolean
 	targetFileSize?: number
+	snapshotExpiryEnabled: boolean
+	/** False when the table has neither snapshot-expire.enabled nor a cron set. */
+	snapshotExpiryConfigured: boolean
+	snapshotExpiryCron?: string
+	/** Raw Fusion duration string, e.g. "7d" */
+	snapshotKeepDuration?: string
+	snapshotKeepMinCount?: number
 }
 
 export interface TableDetailsApiModel extends TableCronApiModel {
@@ -181,6 +196,9 @@ export interface TableCronFormModel {
 	majorCron: CronConfigOption
 	fullCron: CronConfigOption
 	targetFileSize?: number
+	/** Saved switch state; a never-configured table starts switched on. */
+	optimizationEnabled: boolean
+	cleanup: CleanupConfigFormModel
 }
 
 export interface ToggleTableOptimizingRequest {
@@ -214,7 +232,7 @@ export interface ScheduleSectionProps {
 
 export type MaintenanceTabKey = "optimize" | "cleanup"
 
-/** Snapshot-expiry (cleanup) settings. UI-only for now: kept in the cleanup store, not sent to Fusion yet. */
+/** Snapshot-expiry (cleanup) settings, stored as table properties in Fusion. */
 export interface CleanupConfigFormModel {
 	expireSnapshots: boolean
 	/** Snapshots older than this many days are removed. */

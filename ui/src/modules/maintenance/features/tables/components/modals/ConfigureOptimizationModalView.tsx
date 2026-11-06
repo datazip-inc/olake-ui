@@ -22,7 +22,11 @@ import type {
 	TableCronFormModel,
 	UpdateTableCronApiRequest,
 } from "../../types"
-import { getCronFromConfig, getNextRunsAcross } from "../../utils"
+import {
+	getCronFromConfig,
+	getNextRunsAcross,
+	mapCleanupConfigToApiRequest,
+} from "../../utils"
 import FeatureToggleRow from "../FeatureToggleRow"
 import ScheduleSection from "../ScheduleSection"
 
@@ -43,10 +47,6 @@ export type ConfigureOptimizationModalViewProps = {
 	initialConfig?: TableCronFormModel
 	onSave: (payload: UpdateTableCronApiRequest, callbacks: SaveCallbacks) => void
 	isSaving: boolean
-	/** Previously saved cleanup config; undefined means the defaults apply. */
-	initialCleanupConfig?: CleanupConfigFormModel
-	/** Persists the cleanup tab. UI-only today: callers write to the cleanup store. */
-	onSaveCleanup: (config: CleanupConfigFormModel) => void
 }
 
 enum ActiveOptimizationModalState {
@@ -68,8 +68,6 @@ const ConfigureOptimizationModalView: React.FC<
 	initialConfig,
 	onSave,
 	isSaving,
-	initialCleanupConfig,
-	onSaveCleanup,
 }) => {
 	const [activeTab, setActiveTab] = useState<MaintenanceTabKey>(
 		MAINTENANCE_TAB.OPTIMIZE,
@@ -100,12 +98,9 @@ const ConfigureOptimizationModalView: React.FC<
 		if (initialConfig.targetFileSize) {
 			setTargetFileSize(initialConfig.targetFileSize)
 		}
+		setOptimizationEnabled(initialConfig.optimizationEnabled)
+		setCleanupConfig(initialConfig.cleanup)
 	}, [initialConfig, open])
-
-	useEffect(() => {
-		if (!open) return
-		setCleanupConfig(initialCleanupConfig ?? DEFAULT_CLEANUP_CONFIG)
-	}, [initialCleanupConfig, open])
 
 	// Reset all form and sub-modal state on close.
 	useEffect(() => {
@@ -123,7 +118,7 @@ const ConfigureOptimizationModalView: React.FC<
 		}
 	}, [open])
 
-	// One save for both tabs: optimization goes to the API, cleanup to its store once that succeeds.
+	// One save for both tabs: every property goes out in a single ALTER TABLE batch.
 	const handleSave = () => {
 		const payload: UpdateTableCronApiRequest = {
 			minor_cron: getCronFromConfig(minorCron),
@@ -131,13 +126,11 @@ const ConfigureOptimizationModalView: React.FC<
 			full_cron: getCronFromConfig(fullCron),
 			target_file_size: targetFileSize,
 			enabled_for_optimization: String(optimizationEnabled),
+			...mapCleanupConfigToApiRequest(cleanupConfig),
 		}
 
 		onSave(payload, {
-			onSuccess: () => {
-				onSaveCleanup(cleanupConfig)
-				setActiveModal(ActiveOptimizationModalState.SUCCESS)
-			},
+			onSuccess: () => setActiveModal(ActiveOptimizationModalState.SUCCESS),
 			onError: logs => {
 				setErrorLogs(logs)
 				setActiveModal(ActiveOptimizationModalState.ERROR_LOGS)

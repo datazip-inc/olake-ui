@@ -295,7 +295,9 @@ type TableInfo struct {
 	Minor        *OptimizationInfo `json:"minor"`
 	Full         *OptimizationInfo `json:"full"`
 	Enabled      bool              `json:"enabled"`
-	HealthScore  int               `json:"healthScore,omitempty"`
+	// SnapshotExpiryEnabled mirrors Fusion: snapshot-expire.enabled when set, else whether a cron is set.
+	SnapshotExpiryEnabled bool `json:"snapshot_expiry_enabled"`
+	HealthScore           int  `json:"healthScore,omitempty"`
 }
 
 type OptimizationInfo struct {

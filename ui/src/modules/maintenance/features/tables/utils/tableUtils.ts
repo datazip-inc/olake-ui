@@ -12,17 +12,22 @@ import {
 	toSentenceCase,
 } from "@/common/utils"
 
+import { mapTableCronApiModelToCleanupConfig } from "./cleanupUtils"
 import {
 	FULL_CRON_PROPERTY_KEY,
+	FULL_DEFAULT_TRIGGER_INTERVAL,
 	KNOWN_CRON_TRIGGER_INTERVALS,
 	LITE_DEFAULT_TRIGGER_INTERVAL,
 	MAJOR_CRON_PROPERTY_KEY,
 	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
 	MINOR_CRON_PROPERTY_KEY,
-	FULL_DEFAULT_TRIGGER_INTERVAL,
 	RUN_STATUS,
 	RUN_TYPE,
 	RUN_TYPE_LABEL,
+	SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY,
+	SNAPSHOT_EXPIRE_ENABLED_PROPERTY_KEY,
+	SNAPSHOT_KEEP_DURATION_PROPERTY_KEY,
+	SNAPSHOT_KEEP_MIN_COUNT_PROPERTY_KEY,
 } from "../constants"
 import type {
 	CronConfigOption,
@@ -176,6 +181,7 @@ export const mapFusionTableToTable = (
 	major: mapCompactionRun(table.major),
 	full: mapCompactionRun(table.full),
 	enabled: table.enabled,
+	snapshotExpiryEnabled: table.snapshot_expiry_enabled,
 })
 
 // Applies mapFusionTableToTable across the full tables array returned by the API.
@@ -324,7 +330,25 @@ export const mapTableCronApiModelToTableCronFormModel = (
 		config.fullTriggerInterval?.trim() ?? FULL_DEFAULT_TRIGGER_INTERVAL,
 	),
 	targetFileSize: config.targetFileSize,
+	// A table with no cron keys was never configured: the modal starts with the switch on.
+	optimizationEnabled: [
+		config.minorTriggerInterval,
+		config.majorTriggerInterval,
+		config.fullTriggerInterval,
+	].some(interval => interval !== undefined)
+		? config.enabledForOptimization
+		: true,
+	cleanup: mapTableCronApiModelToCleanupConfig(config),
 })
+
+// Fusion's rule: snapshot-expire.enabled decides when set, otherwise expiry is on when a cron is set.
+const isSnapshotExpiryEnabled = (properties: Record<string, string>) => {
+	const enabled = (
+		properties[SNAPSHOT_EXPIRE_ENABLED_PROPERTY_KEY] ?? ""
+	).trim()
+	if (enabled !== "") return enabled.toLowerCase() === "true"
+	return (properties[SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY] ?? "").trim() !== ""
+}
 
 // Extracts cron/config fields from /details payload into existing TableCronApiModel shape.
 export const mapTableDetailsResponseToTableDetailsApiModel = (
@@ -344,6 +368,16 @@ export const mapTableDetailsResponseToTableDetailsApiModel = (
 		majorTriggerInterval: properties[MAJOR_CRON_PROPERTY_KEY],
 		fullTriggerInterval: properties[FULL_CRON_PROPERTY_KEY],
 		targetFileSize: targFileSizeInMB,
+		snapshotExpiryEnabled: isSnapshotExpiryEnabled(properties),
+		snapshotExpiryConfigured:
+			SNAPSHOT_EXPIRE_ENABLED_PROPERTY_KEY in properties ||
+			SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY in properties,
+		snapshotExpiryCron: properties[SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY],
+		snapshotKeepDuration: properties[SNAPSHOT_KEEP_DURATION_PROPERTY_KEY],
+		snapshotKeepMinCount: Number.parseInt(
+			properties[SNAPSHOT_KEEP_MIN_COUNT_PROPERTY_KEY] ?? "",
+			10,
+		),
 		averageFileSize: baseMetrics.averageFileSize ?? "--",
 		fileCount: baseMetrics.fileCount ?? 0,
 		lastCommitTime: baseMetrics.lastCommitTime ?? 0,

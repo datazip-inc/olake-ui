@@ -3,7 +3,6 @@ import { useEffect, useState } from "react"
 
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
 import { useBulkUpdateTableCronConfig } from "../../hooks"
-import { getCleanupKey, useCleanupStore } from "../../stores"
 
 const MAX_VISIBLE_TABLES = 5
 
@@ -92,7 +91,6 @@ const ConfigureOptimizationModalBulk: React.FC<
 		catalog,
 		database,
 	)
-	const setCleanupConfig = useCleanupStore(state => state.setCleanupConfig)
 
 	useEffect(() => {
 		if (open && tables.length === 0) {
@@ -117,11 +115,6 @@ const ConfigureOptimizationModalBulk: React.FC<
 					: undefined
 			}
 			isSaving={isSaving}
-			onSaveCleanup={config =>
-				tables.forEach(table =>
-					setCleanupConfig(getCleanupKey(catalog, database, table), config),
-				)
-			}
 			onSave={(payload, { onSuccess, onError }) =>
 				mutate(
 					{ tables, sql_input: payload },

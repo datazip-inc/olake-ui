@@ -8,6 +8,7 @@ import {
 	MAJOR_CRON_PROPERTY_KEY,
 	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
 	MINOR_CRON_PROPERTY_KEY,
+	SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY,
 	tableKeys,
 } from "../../constants"
 import { tableService } from "../../services"
@@ -17,6 +18,7 @@ import type {
 	UpdateTableCronApiRequest,
 	UpdateTablesConfigApiRequest,
 } from "../../types"
+import { defaultCleanupApiRequest } from "../../utils"
 
 export const useToggleTableOptimizing = () => {
 	return useMutation({
@@ -27,8 +29,11 @@ export const useToggleTableOptimizing = () => {
 			tableName,
 			enabled,
 		}: ToggleTableOptimizingRequest) => {
+			// Status covers both features: on enables optimization and snapshot expiry,
+			// off disables both. Never-configured tables get the defaults on the way up.
 			let config: UpdateTableCronApiRequest = {
 				enabled_for_optimization: enabled.toString(),
+				snapshot_expiry_enabled: enabled.toString(),
 			}
 
 			if (enabled) {
@@ -39,13 +44,13 @@ export const useToggleTableOptimizing = () => {
 				)
 				const properties = details.result?.properties ?? {}
 
-				const isConfigured = [
+				const isOptimizationConfigured = [
 					MINOR_CRON_PROPERTY_KEY,
 					MAJOR_CRON_PROPERTY_KEY,
 					FULL_CRON_PROPERTY_KEY,
 				].some(key => key in properties)
 
-				if (!isConfigured) {
+				if (!isOptimizationConfigured) {
 					config = {
 						...config,
 						minor_cron: LITE_DEFAULT_TRIGGER_INTERVAL,
@@ -53,6 +58,10 @@ export const useToggleTableOptimizing = () => {
 						full_cron: FULL_DEFAULT_TRIGGER_INTERVAL,
 						target_file_size: DEFAULT_TARGET_FILE_SIZE,
 					}
+				}
+
+				if (!(SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY in properties)) {
+					config = { ...config, ...defaultCleanupApiRequest() }
 				}
 			}
 

@@ -26,7 +26,6 @@ import {
 	useTables,
 	useToggleTableOptimizing,
 } from "../hooks"
-import { getCleanupKey, useCleanupStore } from "../stores"
 import type { Table, ToggleTableOptimizingRequest } from "../types"
 import type { TableActions } from "../utils"
 import { getCancelRunID, getTableColumns } from "../utils"
@@ -158,9 +157,6 @@ const Tables: React.FC = () => {
 		variables: cancelTableRunVariables,
 	} = useCancelTableRun()
 
-	const cleanupConfigs = useCleanupStore(state => state.configs)
-	const disableCleanup = useCleanupStore(state => state.disableCleanup)
-
 	const loading = isCatalogsPending || isDatabasesPending || isTablesFetching
 
 	// Get Page State according to the error
@@ -191,11 +187,6 @@ const Tables: React.FC = () => {
 			isCancelTableRunPending &&
 			cancelTableRunVariables?.tableName === tableName
 
-		const isCleanupEnabledFor = (tableName: string) =>
-			cleanupConfigs[
-				getCleanupKey(selectedCatalog ?? "", selectedDatabase ?? "", tableName)
-			]?.expireSnapshots ?? false
-
 		const actions: TableActions = {
 			onViewLogs: row => navigate(getTableRunsPath(row.name)),
 			onCancelRun: row => {
@@ -209,18 +200,6 @@ const Tables: React.FC = () => {
 				})
 			},
 			onToggleOptimizingStatus: (row, enabled) => {
-				// Status is the OR of both features, so switching it off clears cleanup as well.
-				if (!enabled) {
-					disableCleanup(
-						getCleanupKey(
-							selectedCatalog ?? "",
-							selectedDatabase ?? "",
-							row.name,
-						),
-					)
-					// Nothing left to send when optimization was already off.
-					if (!row.enabled) return
-				}
 				const request: ToggleTableOptimizingRequest = {
 					catalog: selectedCatalog ?? "",
 					database: selectedDatabase ?? "",
@@ -252,15 +231,12 @@ const Tables: React.FC = () => {
 			setOpenActionRow,
 			isTogglePendingFor,
 			isCancelPendingFor,
-			isCleanupEnabledFor,
 			actions,
 		})
 	}, [
 		openActionRow,
 		selectedCatalog,
 		selectedDatabase,
-		cleanupConfigs,
-		disableCleanup,
 		isToggleTableOptimizingPending,
 		toggleTableOptimizingVariables,
 		isCancelTableRunPending,
