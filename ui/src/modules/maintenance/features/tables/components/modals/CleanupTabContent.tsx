@@ -11,8 +11,6 @@ import ScheduleSection from "../ScheduleSection"
 type CleanupTabContentProps = {
 	value: CleanupConfigFormModel
 	onChange: (next: CleanupConfigFormModel) => void
-	/** Saved state of the Expire Snapshots switch; the form does not flip it. */
-	expireSnapshotsEnabled: boolean
 }
 
 const toPositiveInt = (raw: string) => {
@@ -24,7 +22,6 @@ const toPositiveInt = (raw: string) => {
 const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 	value,
 	onChange,
-	expireSnapshotsEnabled,
 }) => {
 	const [advancedOpen, setAdvancedOpen] = useState(true)
 
@@ -38,7 +35,8 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 			<div className="pt-6">
 				<FeatureToggleRow
 					label="Expire Snapshots"
-					checked={expireSnapshotsEnabled}
+					checked={value.expireSnapshots}
+					onChange={expireSnapshots => onChange({ ...value, expireSnapshots })}
 				/>
 			</div>
 

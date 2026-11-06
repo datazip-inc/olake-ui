@@ -56,7 +56,6 @@ const ConfigureOptimizationModalSingle: React.FC<
 			isConfigLoading={isConfigLoading}
 			isConfigError={isConfigError}
 			onRetryConfig={() => void refetch()}
-			isOptimizationEnabled={initialConfig?.enabledForOptimization ?? false}
 			initialCleanupConfig={cleanupConfig}
 			onSaveCleanup={config =>
 				setCleanupConfig(getCleanupKey(catalog, database, tableName), config)

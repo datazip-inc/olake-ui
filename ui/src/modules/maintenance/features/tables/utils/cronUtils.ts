@@ -51,6 +51,27 @@ export const getEarliestNextRun = (
 	return getParsedDate(earliest).replace(/:\d{2} GMT$/, " GMT")
 }
 
+// Earliest `count` upcoming runs across several schedules, merged and sorted.
+export const getNextRunsAcross = (
+	configs: CronConfigOption[],
+	count = 3,
+): string[] => {
+	const runs: Date[] = []
+	for (const config of configs) {
+		const cron = getCronFromConfig(config).trim()
+		if (!cron || isValidCronExpression(cron)) continue
+		try {
+			runs.push(...new Cron(cron, { timezone: "UTC" }).nextRuns(count))
+		} catch {
+			// skip invalid
+		}
+	}
+	return runs
+		.sort((a, b) => a.getTime() - b.getTime())
+		.slice(0, count)
+		.map(run => getParsedDate(run).replace(/:\d{2} GMT$/, " GMT"))
+}
+
 export const getNextRuns = (cron: string): string[] => {
 	const normalizedCron = cron.trim()
 	const cronError = isValidCronExpression(normalizedCron)

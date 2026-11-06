@@ -4,8 +4,9 @@ import { DEFAULT_CRON_CONFIG } from "./cronConstants"
 export const DEFAULT_CLEANUP_OLDER_THAN_DAYS = 7
 export const DEFAULT_MIN_SNAPSHOTS_TO_KEEP = 100
 
+/** Form defaults when a table has no saved cleanup config: the feature starts switched on. */
 export const DEFAULT_CLEANUP_CONFIG: CleanupConfigFormModel = {
-	expireSnapshots: false,
+	expireSnapshots: true,
 	olderThanDays: DEFAULT_CLEANUP_OLDER_THAN_DAYS,
 	minSnapshotsToKeep: DEFAULT_MIN_SNAPSHOTS_TO_KEEP,
 	cron: DEFAULT_CRON_CONFIG,

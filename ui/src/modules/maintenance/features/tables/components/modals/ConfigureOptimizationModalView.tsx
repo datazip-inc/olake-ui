@@ -22,7 +22,7 @@ import type {
 	TableCronFormModel,
 	UpdateTableCronApiRequest,
 } from "../../types"
-import { getCronFromConfig, getEarliestNextRun } from "../../utils"
+import { getCronFromConfig, getNextRunsAcross } from "../../utils"
 import FeatureToggleRow from "../FeatureToggleRow"
 import ScheduleSection from "../ScheduleSection"
 
@@ -41,11 +41,9 @@ export type ConfigureOptimizationModalViewProps = {
 	isConfigError?: boolean
 	onRetryConfig?: () => void
 	initialConfig?: TableCronFormModel
-	/** Saved state of the Optimization switch when the modal opens. */
-	isOptimizationEnabled?: boolean
 	onSave: (payload: UpdateTableCronApiRequest, callbacks: SaveCallbacks) => void
 	isSaving: boolean
-	/** Saved cleanup config when the modal opens; defaults to the off state. */
+	/** Previously saved cleanup config; undefined means the defaults apply. */
 	initialCleanupConfig?: CleanupConfigFormModel
 	/** Persists the cleanup tab. UI-only today: callers write to the cleanup store. */
 	onSaveCleanup: (config: CleanupConfigFormModel) => void
@@ -68,7 +66,6 @@ const ConfigureOptimizationModalView: React.FC<
 	isConfigError = false,
 	onRetryConfig,
 	initialConfig,
-	isOptimizationEnabled = false,
 	onSave,
 	isSaving,
 	initialCleanupConfig,
@@ -85,9 +82,8 @@ const ConfigureOptimizationModalView: React.FC<
 		useState<CronConfigOption>(DEFAULT_CRON_CONFIG)
 	const [targetFileSize, setTargetFileSize] = useState(DEFAULT_TARGET_FILE_SIZE)
 	const [advancedOpen, setAdvancedOpen] = useState(true)
-	// Switches reflect saved state only: they turn on when their tab is saved.
-	const [optimizationEnabled, setOptimizationEnabled] = useState(false)
-	const [cleanupEnabled, setCleanupEnabled] = useState(false)
+	// Both features start switched on; the user can turn either off before saving.
+	const [optimizationEnabled, setOptimizationEnabled] = useState(true)
 	const [cleanupConfig, setCleanupConfig] = useState<CleanupConfigFormModel>(
 		DEFAULT_CLEANUP_CONFIG,
 	)
@@ -108,14 +104,7 @@ const ConfigureOptimizationModalView: React.FC<
 
 	useEffect(() => {
 		if (!open) return
-		setOptimizationEnabled(isOptimizationEnabled)
-	}, [isOptimizationEnabled, open])
-
-	useEffect(() => {
-		if (!open) return
-		const saved = initialCleanupConfig ?? DEFAULT_CLEANUP_CONFIG
-		setCleanupConfig(saved)
-		setCleanupEnabled(saved.expireSnapshots)
+		setCleanupConfig(initialCleanupConfig ?? DEFAULT_CLEANUP_CONFIG)
 	}, [initialCleanupConfig, open])
 
 	// Reset all form and sub-modal state on close.
@@ -128,27 +117,26 @@ const ConfigureOptimizationModalView: React.FC<
 			setFullCron(DEFAULT_CRON_CONFIG)
 			setTargetFileSize(DEFAULT_TARGET_FILE_SIZE)
 			setAdvancedOpen(true)
-			setOptimizationEnabled(false)
-			setCleanupEnabled(false)
+			setOptimizationEnabled(true)
 			setCleanupConfig(DEFAULT_CLEANUP_CONFIG)
 			setErrorLogs([])
 		}
 	}, [open])
 
-	// Step 1: save optimization, then move on to the cleanup tab.
-	const handleSaveOptimization = () => {
+	// One save for both tabs: optimization goes to the API, cleanup to its store once that succeeds.
+	const handleSave = () => {
 		const payload: UpdateTableCronApiRequest = {
 			minor_cron: getCronFromConfig(minorCron),
 			major_cron: getCronFromConfig(majorCron),
 			full_cron: getCronFromConfig(fullCron),
 			target_file_size: targetFileSize,
-			enabled_for_optimization: "true",
+			enabled_for_optimization: String(optimizationEnabled),
 		}
 
 		onSave(payload, {
 			onSuccess: () => {
-				setOptimizationEnabled(true)
-				setActiveTab(MAINTENANCE_TAB.CLEANUP)
+				onSaveCleanup(cleanupConfig)
+				setActiveModal(ActiveOptimizationModalState.SUCCESS)
 			},
 			onError: logs => {
 				setErrorLogs(logs)
@@ -157,34 +145,22 @@ const ConfigureOptimizationModalView: React.FC<
 		})
 	}
 
-	// Step 2: save cleanup and finish.
-	const handleSaveCleanup = () => {
-		const saved: CleanupConfigFormModel = {
-			...cleanupConfig,
-			expireSnapshots: true,
-		}
-		onSaveCleanup(saved)
-		setCleanupConfig(saved)
-		setCleanupEnabled(true)
-		setActiveModal(ActiveOptimizationModalState.SUCCESS)
-	}
-
 	const handleClose = () => {
 		if (isSaving) return
 		setActiveModal(null)
 		onClose()
 	}
 
-	const firstRunAt = getEarliestNextRun([
-		minorCron,
-		majorCron,
-		fullCron,
-		...(cleanupEnabled ? [cleanupConfig.cron] : []),
-	])
+	const optimizeRuns = optimizationEnabled
+		? getNextRunsAcross([minorCron, majorCron, fullCron])
+		: []
+	const cleanupRuns = cleanupConfig.expireSnapshots
+		? getNextRunsAcross([cleanupConfig.cron])
+		: []
 	const isTargetFileSizeValid = targetFileSize > 0
 	const isCleanupValid =
-		cleanupConfig.olderThanDays > 0 && cleanupConfig.minSnapshotsToKeep > 0
-	const isOptimizeTab = activeTab === MAINTENANCE_TAB.OPTIMIZE
+		!cleanupConfig.expireSnapshots ||
+		(cleanupConfig.olderThanDays > 0 && cleanupConfig.minSnapshotsToKeep > 0)
 
 	const optimizeTabContent = (
 		<>
@@ -192,6 +168,7 @@ const ConfigureOptimizationModalView: React.FC<
 				<FeatureToggleRow
 					label="Optimization"
 					checked={optimizationEnabled}
+					onChange={setOptimizationEnabled}
 				/>
 			</div>
 			<ScheduleSection
@@ -319,51 +296,34 @@ const ConfigureOptimizationModalView: React.FC<
 							<div className="flex h-full items-center justify-center">
 								<Spin size="large" />
 							</div>
-						) : isOptimizeTab ? (
+						) : activeTab === MAINTENANCE_TAB.OPTIMIZE ? (
 							optimizeTabContent
 						) : (
 							<CleanupTabContent
 								value={cleanupConfig}
 								onChange={setCleanupConfig}
-								expireSnapshotsEnabled={cleanupEnabled}
 							/>
 						)}
 					</div>
 
-					{/* Footer: each tab has its own save and cancel */}
+					{/* Footer: one save for both tabs */}
 					<div className="flex h-20 shrink-0 items-center gap-3 border-t border-olake-border pl-8">
-						{isOptimizeTab ? (
-							<Tooltip title={disableSaveReason}>
-								<Button
-									type="primary"
-									onClick={handleSaveOptimization}
-									loading={isSaving}
-									disabled={
-										!!disableSaveReason ||
-										isConfigLoading ||
-										isConfigError ||
-										!isTargetFileSizeValid
-									}
-								>
-									Save &amp; Next
-								</Button>
-							</Tooltip>
-						) : (
-							<Tooltip title={disableSaveReason}>
-								<Button
-									type="primary"
-									onClick={handleSaveCleanup}
-									disabled={
-										!!disableSaveReason ||
-										isConfigLoading ||
-										isConfigError ||
-										!isCleanupValid
-									}
-								>
-									Complete Configuration
-								</Button>
-							</Tooltip>
-						)}
+						<Tooltip title={disableSaveReason}>
+							<Button
+								type="primary"
+								onClick={handleSave}
+								loading={isSaving}
+								disabled={
+									!!disableSaveReason ||
+									isConfigLoading ||
+									isConfigError ||
+									!isTargetFileSizeValid ||
+									!isCleanupValid
+								}
+							>
+								Complete Configuration
+							</Button>
+						</Tooltip>
 						<Button
 							onClick={handleClose}
 							disabled={isSaving}
@@ -377,7 +337,8 @@ const ConfigureOptimizationModalView: React.FC<
 			<ConfigurationSuccessModal
 				open={open && activeModal === ActiveOptimizationModalState.SUCCESS}
 				onClose={handleClose}
-				firstRunAt={firstRunAt}
+				optimizeRuns={optimizeRuns}
+				cleanupRuns={cleanupRuns}
 			/>
 
 			<ErrorLogsModal
@@ -387,7 +348,7 @@ const ConfigureOptimizationModalView: React.FC<
 				error={errorLogs.join("\n")}
 				onAction={() => {
 					setActiveModal(null)
-					handleSaveOptimization()
+					handleSave()
 				}}
 				actionButtonText="Retry"
 			/>

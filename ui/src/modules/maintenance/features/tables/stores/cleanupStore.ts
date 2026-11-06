@@ -1,7 +1,6 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 
-import { DEFAULT_CLEANUP_CONFIG } from "../constants"
 import type { CleanupConfigFormModel } from "../types"
 
 /**
@@ -47,13 +46,12 @@ export const useCleanupStore = create<CleanupState>()(
 	),
 )
 
+/** Saved cleanup config for a table, or undefined when it was never saved. */
 export const useCleanupConfig = (
 	catalog: string,
 	database: string,
 	tableName: string,
-): CleanupConfigFormModel =>
+): CleanupConfigFormModel | undefined =>
 	useCleanupStore(
-		state =>
-			state.configs[getCleanupKey(catalog, database, tableName)] ??
-			DEFAULT_CLEANUP_CONFIG,
+		state => state.configs[getCleanupKey(catalog, database, tableName)],
 	)
