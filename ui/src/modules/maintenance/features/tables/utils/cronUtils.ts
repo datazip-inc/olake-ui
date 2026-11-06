@@ -66,7 +66,9 @@ export const getNextRunsAcross = (
 			// skip invalid
 		}
 	}
-	return runs
+	// Two schedules firing in the same minute show as one upcoming time.
+	const unique = [...new Map(runs.map(run => [run.getTime(), run])).values()]
+	return unique
 		.sort((a, b) => a.getTime() - b.getTime())
 		.slice(0, count)
 		.map(run => getParsedDate(run).replace(/:\d{2} GMT$/, " GMT"))
