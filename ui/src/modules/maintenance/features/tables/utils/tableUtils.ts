@@ -180,6 +180,7 @@ export const mapFusionTableToTable = (
 	minor: mapCompactionRun(table.minor),
 	major: mapCompactionRun(table.major),
 	full: mapCompactionRun(table.full),
+	expiry: mapCompactionRun(table.expiry),
 	enabled: table.enabled,
 	snapshotExpiryEnabled: table.snapshot_expiry_enabled,
 })

@@ -1,10 +1,14 @@
 import { useIsFetching } from "@tanstack/react-query"
 import { Spin } from "antd"
 import { useState } from "react"
-import { useNavigate, useParams } from "react-router"
+import { useNavigate, useParams, useSearchParams } from "react-router"
 
 import { RunLogSidebar, RunLogsPanel } from "../components"
-import { DRIVER_SOURCE_KEY } from "../constants"
+import {
+	DRIVER_SOURCE_KEY,
+	RUN_LOGS_TYPE_QUERY_PARAM,
+	RUN_TYPE_FILTER,
+} from "../constants"
 import { tableKeys } from "../constants/queryKeys"
 
 const RunLogs: React.FC = () => {
@@ -20,6 +24,10 @@ const RunLogs: React.FC = () => {
 	const decodedCatalog = decodeURIComponent(catalog ?? "")
 	const decodedDatabase = decodeURIComponent(database ?? "")
 	const decodedRunId = decodeURIComponent(runId ?? "")
+	const [searchParams] = useSearchParams()
+	// Expiry runs are a single AMS job: driver log only, no Spark subtasks.
+	const isExpiryRun =
+		searchParams.get(RUN_LOGS_TYPE_QUERY_PARAM) === RUN_TYPE_FILTER.EXPIRE
 	const isLoading =
 		useIsFetching({
 			queryKey: tableKeys.processLogs(decodedRunId),
@@ -41,10 +49,12 @@ const RunLogs: React.FC = () => {
 				selectedSourceKey={selectedSourceKey}
 				onSelectSource={setSelectedSourceKey}
 				onBack={() => navigate(runsPath)}
+				isExpiryRun={isExpiryRun}
 			/>
 			<RunLogsPanel
 				runId={decodedRunId}
 				selectedSourceKey={selectedSourceKey}
+				isExpiryRun={isExpiryRun}
 			/>
 		</div>
 	)

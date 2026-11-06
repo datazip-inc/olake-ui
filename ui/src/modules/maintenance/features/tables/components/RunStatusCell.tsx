@@ -10,8 +10,13 @@ import { getRunStatusConfig } from "../utils"
 import CompactionPopoverContent from "./CompactionPopoverContent"
 
 const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
-	const runs = { minor: row.minor, major: row.major, full: row.full }
-	const hasAnyRun = row.minor || row.major || row.full
+	const runs = {
+		minor: row.minor,
+		major: row.major,
+		full: row.full,
+		expiry: row.expiry,
+	}
+	const hasAnyRun = row.minor || row.major || row.full || row.expiry
 
 	if (!hasAnyRun) {
 		return (
@@ -80,6 +85,7 @@ const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
 					minor={row.minor}
 					major={row.major}
 					full={row.full}
+					expiry={row.expiry}
 				/>
 			}
 			trigger="hover"

@@ -81,10 +81,10 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 
 	var (
 		details interface{}
-		procs   [3]*dto.OptimizationInfo
+		procs   [4]*dto.OptimizationInfo
 	)
-	processKinds := [3]string{"MINOR", "MAJOR", "FULL"}
-	processLabels := [3]string{"Lite", "Medium", "Full"}
+	processKinds := [4]string{"MINOR", "MAJOR", "FULL", constants.OptProcessTypeExpiry}
+	processLabels := [4]string{"Lite", "Medium", "Full", "Expire"}
 
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -155,6 +155,7 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 	info.Minor = procs[0]
 	info.Major = procs[1]
 	info.Full = procs[2]
+	info.Expiry = procs[3]
 	return info, nil
 }
 

@@ -35,6 +35,8 @@ export interface FusionTable {
 	major: FusionCompactionRun | null
 	minor: FusionCompactionRun | null
 	full: FusionCompactionRun | null
+	/** latest snapshot-expiry (cleanup) run */
+	expiry: FusionCompactionRun | null
 	enabled: boolean
 	snapshot_expiry_enabled: boolean
 }
@@ -140,6 +142,7 @@ export interface Table {
 	minor: CompactionRun
 	major: CompactionRun
 	full: CompactionRun
+	expiry: CompactionRun
 	enabled: boolean
 	snapshotExpiryEnabled: boolean
 }

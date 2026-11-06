@@ -8,7 +8,11 @@ import { DataTable } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
 
 import { RunMetricsSidebar } from "../components"
-import { RUN_TYPE_FILTER } from "../constants"
+import {
+	RUN_LOGS_TYPE_QUERY_PARAM,
+	RUN_TYPE_FILTER,
+	RUN_TYPE_LABEL,
+} from "../constants"
 import { useRunHistoryFilters, useTableRuns } from "../hooks"
 import type {
 	RunHistoryFilter,
@@ -20,7 +24,7 @@ import { getRunLogsStatusConfig } from "../utils"
 
 const getColumns = (
 	handleMetricsClick: (row: TableRun) => void,
-	handleLogsClick: (runId: string) => void,
+	handleLogsClick: (row: TableRun) => void,
 ): ColumnDef<TableRun>[] => [
 	{
 		key: "runId",
@@ -95,7 +99,7 @@ const getColumns = (
 		render: row => (
 			<Button
 				size="small"
-				onClick={() => handleLogsClick(row.runId)}
+				onClick={() => handleLogsClick(row)}
 			>
 				View
 			</Button>
@@ -148,11 +152,15 @@ const RunHistory: React.FC = () => {
 		setMetricsSidebarOpen(true)
 		setMetricsRows(row.metrics)
 	}
-	const getRunLogsPath = (runId: string) =>
-		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(runId)}/logs`
+	// The logs page has no run endpoint of its own, so the run type travels in the URL.
+	const getRunLogsPath = (run: TableRun) =>
+		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(run.runId)}/logs` +
+		(run.type === RUN_TYPE_LABEL.EXPIRE
+			? `?${RUN_LOGS_TYPE_QUERY_PARAM}=${RUN_TYPE_FILTER.EXPIRE}`
+			: "")
 
-	const columns = getColumns(handleMetricsClick, runId =>
-		navigate(getRunLogsPath(runId)),
+	const columns = getColumns(handleMetricsClick, run =>
+		navigate(getRunLogsPath(run)),
 	)
 
 	return (

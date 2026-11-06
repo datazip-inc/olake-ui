@@ -9,10 +9,16 @@ type Props = {
 	minor: CompactionRun
 	major: CompactionRun
 	full: CompactionRun
+	expiry: CompactionRun
 }
 
-const CompactionPopoverContent: React.FC<Props> = ({ minor, major, full }) => {
-	const runs = { minor, major, full }
+const CompactionPopoverContent: React.FC<Props> = ({
+	minor,
+	major,
+	full,
+	expiry,
+}) => {
+	const runs = { minor, major, full, expiry }
 
 	return (
 		<div className="w-60">

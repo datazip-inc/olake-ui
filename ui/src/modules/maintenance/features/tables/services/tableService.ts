@@ -143,7 +143,6 @@ export const tableService = {
 	getProcessLogs: async (runId: string) => {
 		const response = await api.get<GetProcessLogsApiResponse>(
 			API_CONFIG.ENDPOINTS.OPT.PROCESS(runId),
-			{ showNotification: true },
 		)
 		return response.data
 	},

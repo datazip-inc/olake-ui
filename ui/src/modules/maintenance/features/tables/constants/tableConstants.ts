@@ -34,12 +34,14 @@ export const MINOR_CRON_PROPERTY_KEY = "self-optimizing.minor.trigger.cron"
 export const MAJOR_CRON_PROPERTY_KEY = "self-optimizing.major.trigger.cron"
 export const FULL_CRON_PROPERTY_KEY = "self-optimizing.full.trigger.cron"
 
+/** Last Run Status slots: the three compaction levels plus snapshot expiry. */
 export const compactionSlots: Array<{
-	key: "minor" | "major" | "full"
-	tag: "L" | "M" | "F"
+	key: "minor" | "major" | "full" | "expiry"
+	tag: "L" | "M" | "F" | "E"
 	name: string
 }> = [
 	{ key: "minor", tag: "L", name: RUN_TYPE_LABEL.LITE },
 	{ key: "major", tag: "M", name: RUN_TYPE_LABEL.MEDIUM },
 	{ key: "full", tag: "F", name: RUN_TYPE_LABEL.FULL },
+	{ key: "expiry", tag: "E", name: RUN_TYPE_LABEL.EXPIRE },
 ]

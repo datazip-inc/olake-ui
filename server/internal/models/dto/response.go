@@ -294,7 +294,9 @@ type TableInfo struct {
 	Major        *OptimizationInfo `json:"major"`
 	Minor        *OptimizationInfo `json:"minor"`
 	Full         *OptimizationInfo `json:"full"`
-	Enabled      bool              `json:"enabled"`
+	// Expiry is the latest snapshot-expiry (cleanup) run, nil when none ran yet.
+	Expiry  *OptimizationInfo `json:"expiry"`
+	Enabled bool              `json:"enabled"`
 	// SnapshotExpiryEnabled mirrors Fusion: snapshot-expire.enabled when set, else whether a cron is set.
 	SnapshotExpiryEnabled bool `json:"snapshot_expiry_enabled"`
 	HealthScore           int  `json:"healthScore,omitempty"`
