@@ -14,7 +14,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
-func convertConfigToMap(config dto.OptimizationTableConfig) map[string]string {
+func convertConfigToMap(config *dto.OptimizationTableConfig) map[string]string {
 	properties := make(map[string]string)
 	if config.SQLInput.MinorCron != nil {
 		properties[constants.OptMinorCron] = *config.SQLInput.MinorCron
@@ -57,7 +57,7 @@ func createAlterQuery(database, table string, properties map[string]string) stri
 }
 
 // set properties for multiple tables using sql query
-func (s *Service) SetProperties(ctx context.Context, catalog, database string, config dto.OptimizationTableConfig) (*dto.TableProperties, error) {
+func (s *Service) SetProperties(ctx context.Context, catalog, database string, config *dto.OptimizationTableConfig) (*dto.TableProperties, error) {
 	tables := config.Tables
 	properties := convertConfigToMap(config)
 
