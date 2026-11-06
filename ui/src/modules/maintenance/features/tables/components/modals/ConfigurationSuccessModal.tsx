@@ -23,11 +23,11 @@ const NextRuns: React.FC<{ title: string; runs: string[] }> = ({
 			{title}
 		</p>
 		{runs.length > 0 ? (
-			<div className="flex flex-wrap items-center justify-center gap-2">
+			<div className="flex w-full items-center gap-2">
 				{runs.map(run => (
 					<span
 						key={`${title}-${run}`}
-						className="rounded-[6px] bg-olake-surface-muted px-2 py-1 text-sm leading-[22px] text-olake-text-secondary"
+						className="min-w-0 flex-1 whitespace-nowrap rounded-[6px] bg-olake-surface-muted px-2 py-1 text-center text-sm leading-[22px] text-olake-text-secondary"
 					>
 						{run}
 					</span>
@@ -100,7 +100,7 @@ const ConfigurationSuccessModal: React.FC<ConfigurationSuccessModalProps> = ({
 
 				{/* Upcoming runs */}
 				{(optimizeRuns || cleanupRuns) && (
-					<div className="mt-10 flex w-[600px] flex-col items-center gap-6">
+					<div className="mt-10 flex w-[632px] flex-col items-center gap-6">
 						{optimizeRuns && (
 							<NextRuns
 								title="Next 3 optimize runs"

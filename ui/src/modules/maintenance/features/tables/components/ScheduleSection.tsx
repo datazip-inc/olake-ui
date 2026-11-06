@@ -80,7 +80,7 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 						{nextRuns.map(run => (
 							<span
 								key={`${title}-${run}`}
-								className="w-48 rounded-[6px] bg-olake-surface-muted px-2 py-1 text-sm leading-[22px] text-olake-text-secondary"
+								className="min-w-0 flex-1 whitespace-nowrap rounded-[6px] bg-olake-surface-muted px-2 py-1 text-center text-sm leading-[22px] text-olake-text-secondary"
 							>
 								{run}
 							</span>
