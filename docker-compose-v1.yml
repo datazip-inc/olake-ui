@@ -309,10 +309,8 @@ services:
     restart: "no"
 
   fusion:
-    # image: olakego/fusion:latest
-    # local build of olake-fusion branch feat/fusion-snapshot-expiry (docker/amoro/Dockerfile)
-    image: olakego/fusion:snapshot-expiry
-    pull_policy: never
+    image: olakego/fusion:latest
+    pull_policy: always
     container_name: olake-fusion
     profiles:
       - fusion
