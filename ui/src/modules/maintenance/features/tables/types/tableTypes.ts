@@ -205,9 +205,21 @@ export interface UpdateTableConfigApiResponse {
 }
 
 export interface ScheduleSectionProps {
-	title: RunTypeLabel
+	title: string
 	value: CronConfigOption
 	onChange: (next: CronConfigOption) => void
 	isFirst?: boolean
 	tooltip?: string
+}
+
+export type MaintenanceTabKey = "optimize" | "cleanup"
+
+/** Snapshot-expiry (cleanup) settings. UI-only for now: kept in the cleanup store, not sent to Fusion yet. */
+export interface CleanupConfigFormModel {
+	expireSnapshots: boolean
+	/** Snapshots older than this many days are removed. */
+	olderThanDays: number
+	/** Lower bound on snapshots kept regardless of age. */
+	minSnapshotsToKeep: number
+	cron: CronConfigOption
 }

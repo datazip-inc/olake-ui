@@ -31,6 +31,8 @@ export interface TableColumnOptions {
 	setOpenActionRow: (id: string | null) => void
 	isTogglePendingFor: (tableName: string) => boolean
 	isCancelPendingFor: (tableName: string) => boolean
+	/** Saved cleanup (expire snapshots) state, kept client-side for now. */
+	isCleanupEnabledFor: (tableName: string) => boolean
 	actions: TableActions
 }
 
@@ -40,6 +42,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 		setOpenActionRow,
 		isTogglePendingFor,
 		isCancelPendingFor,
+		isCleanupEnabledFor,
 		actions,
 	} = opts
 
@@ -177,7 +180,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 			header: (
 				<div className="flex items-center justify-center gap-1">
 					<span>Status</span>
-					<Tooltip title="Enables or disables all optimization runs.">
+					<Tooltip title="On when optimization or expire snapshots is enabled. Turning it off disables both.">
 						<QuestionIcon
 							size={14}
 							className="cursor-help text-olake-text-secondary"
@@ -196,11 +199,12 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 					)
 				}
 
+				const isOn = row.enabled || isCleanupEnabledFor(row.name)
 				return (
 					<Switch
 						size="small"
-						checked={row.enabled}
-						className={row.enabled ? "!bg-olake-success" : undefined}
+						checked={isOn}
+						className={isOn ? "!bg-olake-success" : undefined}
 						onChange={checked => actions.onToggleOptimizingStatus(row, checked)}
 					/>
 				)
