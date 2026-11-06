@@ -8,11 +8,14 @@ import clsx from "clsx"
 
 import { DRIVER_SOURCE_KEY } from "../constants"
 import { useDownloadProcessLogsArchive, useProcessLogs } from "../hooks"
+import { getPrimaryLogTitle } from "../utils"
 import SubtaskList from "./SubtaskList"
 
 type RunLogSidebarProps = {
 	tableName: string
 	runId: string
+	/** Expiry runs are one AMS job with a single log; compaction runs add Spark subtasks. */
+	isExpiryRun: boolean
 	selectedSourceKey: string
 	onSelectSource: (sourceKey: string) => void
 	onBack: () => void
@@ -21,6 +24,7 @@ type RunLogSidebarProps = {
 const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 	tableName,
 	runId,
+	isExpiryRun,
 	selectedSourceKey,
 	onSelectSource,
 	onBack,
@@ -30,8 +34,6 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 	const hasAnyLogs = Object.values(data?.logsBySource ?? {}).some(
 		logEntries => logEntries.length > 0,
 	)
-	// Expiry runs are one AMS job with a single log; compaction runs add Spark subtasks.
-	const isExpiryRun = data?.isExpiryRun ?? false
 
 	return (
 		<div className="h-full w-[360px] overflow-y-auto border-r border-olake-border px-4 pb-6 pt-6">
@@ -86,7 +88,7 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 						className="text-olake-text-secondary"
 					/>
 					<span className="font-sans text-sm font-normal leading-[22px] text-olake-text-secondary">
-						{isExpiryRun ? "Expiry Logs" : "Driver Logs"}
+						{getPrimaryLogTitle(isExpiryRun)}
 					</span>
 				</button>
 

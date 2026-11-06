@@ -83,8 +83,12 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 		details interface{}
 		procs   [4]*dto.OptimizationInfo
 	)
-	processKinds := [4]string{"MINOR", "MAJOR", "FULL", constants.OptProcessTypeExpiry}
-	processLabels := [4]string{"Lite", "Medium", "Full", "Expire"}
+	processKinds := [4]string{
+		constants.OptProcessTypeMinor,
+		constants.OptProcessTypeMajor,
+		constants.OptProcessTypeFull,
+		constants.OptProcessTypeExpiry,
+	}
 
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -101,7 +105,7 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 		g.Go(func() error {
 			r, err := s.fetchLatestProcessInfo(gctx, catalog, database, tableName, kind)
 			if err != nil && !errors.Is(err, errNoProcess) {
-				return fmt.Errorf("failed to fetch latest %s process info: %w", processLabels[i], err)
+				return fmt.Errorf("failed to fetch latest %s process info: %w", kind, err)
 			}
 			procs[i] = r
 			return nil

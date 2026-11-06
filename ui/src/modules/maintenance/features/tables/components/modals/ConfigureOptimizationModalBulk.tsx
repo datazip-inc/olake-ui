@@ -2,7 +2,8 @@ import { TableIcon, WarningIcon, XIcon } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
-import { useBulkUpdateTableCronConfig } from "../../hooks"
+import { CONFIGURE_MODE } from "../../constants"
+import { useBulkUpdateTableConfig } from "../../hooks"
 
 const MAX_VISIBLE_TABLES = 5
 
@@ -87,7 +88,7 @@ type ConfigureOptimizationModalBulkProps = {
 const ConfigureOptimizationModalBulk: React.FC<
 	ConfigureOptimizationModalBulkProps
 > = ({ open, onClose, catalog, database, tables, onRemoveTable }) => {
-	const { mutate, isPending: isSaving } = useBulkUpdateTableCronConfig(
+	const { mutate, isPending: isSaving } = useBulkUpdateTableConfig(
 		catalog,
 		database,
 	)
@@ -102,6 +103,7 @@ const ConfigureOptimizationModalBulk: React.FC<
 		<ConfigureOptimizationModalView
 			open={open}
 			onClose={onClose}
+			mode={CONFIGURE_MODE.BULK}
 			title="Bulk Optimization"
 			headerChip={
 				<SelectedTablesHeader

@@ -24,10 +24,7 @@ const NextRuns: React.FC<{ title: string; runs: string[] }> = ({
 			{title}
 		</p>
 		{runs.length > 0 ? (
-			<RunTimeChips
-				runs={runs}
-				keyPrefix={title}
-			/>
+			<RunTimeChips runs={runs} />
 		) : (
 			<p className="text-sm leading-[22px] text-olake-text-secondary">
 				No runs scheduled

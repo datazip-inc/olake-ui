@@ -203,3 +203,16 @@ type OptimizationTableConfig struct {
 		SnapshotKeepMinCount  *int64  `json:"snapshot_keep_min_count"`
 	} `json:"sql_input"`
 }
+
+// TableRunsQuery selects one page of a table's optimizing runs.
+type TableRunsQuery struct {
+	Catalog  string
+	Database string
+	Table    string
+	// Kind is constants.RunKindAll, RunKindExpiry or RunKindOptimization; empty means all.
+	Kind string
+	// Status narrows to one Fusion process status when set.
+	Status   string
+	Page     int
+	PageSize int
+}

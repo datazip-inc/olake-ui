@@ -5,22 +5,21 @@ import { ErrorLogsModal } from "@/common/components/modals"
 
 import CleanupTabContent from "./CleanupTabContent"
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
-import OptimizeTabContent, {
-	type OptimizeFormModel,
-} from "./OptimizeTabContent"
+import OptimizeTabContent from "./OptimizeTabContent"
 import {
-	DEFAULT_CLEANUP_CONFIG,
-	DEFAULT_CRON_CONFIG,
+	CONFIGURE_MODE,
+	DEFAULT_TABLE_CONFIG_FORM,
 	DEFAULT_TABLE_MODAL_STYLES,
-	DEFAULT_TARGET_FILE_SIZE,
 	MAINTENANCE_TAB,
+	MAINTENANCE_TAB_ITEMS,
+	OPTIMIZE_SCHEDULES,
 	TABLE_MODAL_WIDTH,
 } from "../../constants"
 import type {
-	CleanupConfigFormModel,
+	ConfigureMode,
 	MaintenanceTabKey,
-	TableCronFormModel,
-	UpdateTableCronApiRequest,
+	TableConfigFormModel,
+	UpdateTableConfigApiRequest,
 } from "../../types"
 import {
 	getCronConfigError,
@@ -37,64 +36,33 @@ export type SaveCallbacks = {
 export type ConfigureOptimizationModalViewProps = {
 	open: boolean
 	onClose: () => void
+	mode: ConfigureMode
 	title?: string
 	headerChip?: React.ReactNode
 	disableSaveReason?: string
 	isConfigLoading?: boolean
 	isConfigError?: boolean
 	onRetryConfig?: () => void
-	/** Saved settings of one table. Absent in bulk mode, where the form starts from defaults. */
-	initialConfig?: TableCronFormModel
-	onSave: (payload: UpdateTableCronApiRequest, callbacks: SaveCallbacks) => void
+	/** Saved settings of the table in single mode. Bulk mode starts from defaults. */
+	initialConfig?: TableConfigFormModel
+	onSave: (
+		payload: UpdateTableConfigApiRequest,
+		callbacks: SaveCallbacks,
+	) => void
 	isSaving: boolean
 }
-
-interface ConfigureFormState {
-	optimize: OptimizeFormModel
-	cleanup: CleanupConfigFormModel
-	/** Bulk mode only writes cleanup when the user changed it, so other tables keep their own. */
-	cleanupTouched: boolean
-}
-
-const INITIAL_FORM: ConfigureFormState = {
-	optimize: {
-		optimizationEnabled: true,
-		minorCron: DEFAULT_CRON_CONFIG,
-		majorCron: DEFAULT_CRON_CONFIG,
-		fullCron: DEFAULT_CRON_CONFIG,
-		targetFileSize: DEFAULT_TARGET_FILE_SIZE,
-	},
-	cleanup: DEFAULT_CLEANUP_CONFIG,
-	cleanupTouched: false,
-}
-
-const toFormState = (config: TableCronFormModel): ConfigureFormState => ({
-	optimize: {
-		optimizationEnabled: config.optimizationEnabled,
-		minorCron: config.minorCron,
-		majorCron: config.majorCron,
-		fullCron: config.fullCron,
-		targetFileSize: config.targetFileSize || DEFAULT_TARGET_FILE_SIZE,
-	},
-	cleanup: config.cleanup,
-	cleanupTouched: false,
-})
 
 enum ActiveOptimizationModalState {
 	SUCCESS = "success",
 	ERROR_LOGS = "error-logs",
 }
 
-const TAB_ITEMS = [
-	{ key: MAINTENANCE_TAB.OPTIMIZE, label: "Optimize" },
-	{ key: MAINTENANCE_TAB.CLEANUP, label: "Cleanup" },
-]
-
 const ConfigureOptimizationModalView: React.FC<
 	ConfigureOptimizationModalViewProps
 > = ({
 	open,
 	onClose,
+	mode,
 	title = "Configure Optimization",
 	headerChip,
 	disableSaveReason,
@@ -108,7 +76,11 @@ const ConfigureOptimizationModalView: React.FC<
 	const [activeTab, setActiveTab] = useState<MaintenanceTabKey>(
 		MAINTENANCE_TAB.OPTIMIZE,
 	)
-	const [form, setForm] = useState<ConfigureFormState>(INITIAL_FORM)
+	const [form, setForm] = useState<TableConfigFormModel>(
+		DEFAULT_TABLE_CONFIG_FORM,
+	)
+	// Bulk mode only writes cleanup when the user changed it, so other tables keep their own.
+	const [cleanupTouched, setCleanupTouched] = useState(false)
 	const [activeModal, setActiveModal] =
 		useState<ActiveOptimizationModalState | null>(null)
 	const [errorLogs, setErrorLogs] = useState<string[]>([])
@@ -119,19 +91,22 @@ const ConfigureOptimizationModalView: React.FC<
 			setActiveTab(MAINTENANCE_TAB.OPTIMIZE)
 			setActiveModal(null)
 			setErrorLogs([])
-			setForm(INITIAL_FORM)
+			setForm(DEFAULT_TABLE_CONFIG_FORM)
+			setCleanupTouched(false)
 			return
 		}
-		if (initialConfig) setForm(toFormState(initialConfig))
+		if (initialConfig) {
+			const { optimize, cleanup } = initialConfig
+			setForm({ optimize, cleanup })
+		}
 	}, [initialConfig, open])
 
-	// Single mode always writes cleanup; bulk mode only after the user touched that tab.
-	const includeCleanup = initialConfig !== undefined || form.cleanupTouched
+	const includeCleanup = mode === CONFIGURE_MODE.SINGLE || cleanupTouched
 	const { optimize, cleanup } = form
 
 	// One save for both tabs: every property goes out in a single ALTER TABLE batch.
 	const handleSave = () => {
-		const payload: UpdateTableCronApiRequest = {
+		const payload: UpdateTableConfigApiRequest = {
 			minor_cron: getCronFromConfig(optimize.minorCron),
 			major_cron: getCronFromConfig(optimize.majorCron),
 			full_cron: getCronFromConfig(optimize.fullCron),
@@ -155,11 +130,9 @@ const ConfigureOptimizationModalView: React.FC<
 		onClose()
 	}
 
-	const compactionCrons = [
-		optimize.minorCron,
-		optimize.majorCron,
-		optimize.fullCron,
-	]
+	const compactionCrons = OPTIMIZE_SCHEDULES.map(
+		schedule => optimize[schedule.key],
+	)
 	const activeCrons = [
 		...compactionCrons,
 		...(includeCleanup && cleanup.expireSnapshots ? [cleanup.cron] : []),
@@ -213,7 +186,7 @@ const ConfigureOptimizationModalView: React.FC<
 							activeKey={activeTab}
 							onChange={key => setActiveTab(key as MaintenanceTabKey)}
 							className="mt-2 [&_.ant-tabs-nav]:mb-0"
-							items={TAB_ITEMS}
+							items={MAINTENANCE_TAB_ITEMS}
 						/>
 					</div>
 
@@ -249,13 +222,10 @@ const ConfigureOptimizationModalView: React.FC<
 						) : (
 							<CleanupTabContent
 								value={cleanup}
-								onChange={next =>
-									setForm(prev => ({
-										...prev,
-										cleanup: next,
-										cleanupTouched: true,
-									}))
-								}
+								onChange={next => {
+									setCleanupTouched(true)
+									setForm(prev => ({ ...prev, cleanup: next }))
+								}}
 							/>
 						)}
 					</div>

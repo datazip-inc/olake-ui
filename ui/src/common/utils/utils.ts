@@ -294,6 +294,12 @@ export const trimFormDataStrings = (data: any): any => {
 	return data
 }
 
+/** Digits only; an empty field reads as 0 so callers can flag it invalid. */
+export const parseDigits = (raw: string): number => {
+	const digits = raw.replace(/[^0-9]/g, "")
+	return digits === "" ? 0 : Number(digits)
+}
+
 // validate alphanumeric underscore
 export const validateAlphanumericUnderscore = (
 	value: string,

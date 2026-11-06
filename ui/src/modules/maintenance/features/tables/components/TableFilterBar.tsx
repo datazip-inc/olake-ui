@@ -1,14 +1,9 @@
 import { MagnifyingGlassIcon } from "@phosphor-icons/react"
 import { Input } from "antd"
 
+import { TABLE_FILTER_OPTIONS } from "../constants"
 import type { FilterKey } from "../types"
 import FilterChips from "./FilterChips"
-
-const FILTER_OPTIONS: ReadonlyArray<{ key: FilterKey; label: string }> = [
-	{ key: "all", label: "All tables" },
-	{ key: "olake", label: "OLake Ingested" },
-	{ key: "external", label: "Imported Tables" },
-]
 
 type Props = {
 	searchTerm: string
@@ -40,7 +35,7 @@ const TableFilterBar: React.FC<Props> = ({
 		</div>
 
 		<FilterChips
-			options={FILTER_OPTIONS}
+			options={TABLE_FILTER_OPTIONS}
 			value={activeFilter}
 			onChange={onFilterChange}
 		/>

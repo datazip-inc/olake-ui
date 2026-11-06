@@ -383,7 +383,6 @@ const Tables: React.FC = () => {
 				database={selectedDatabase ?? ""}
 				tableName={configureTable?.name ?? ""}
 				tableSize={configureTable?.totalSize ?? ""}
-				snapshotExpiryEnabled={configureTable?.snapshotExpiryEnabled ?? false}
 			/>
 			<ConfigureOptimizationModalBulk
 				open={bulkModalOpen}

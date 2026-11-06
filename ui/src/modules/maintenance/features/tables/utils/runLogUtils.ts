@@ -1,4 +1,4 @@
-import { DRIVER_SOURCE_KEY, EXPIRY_LOG_MESSAGE_PREFIX } from "../constants"
+import { DRIVER_SOURCE_KEY } from "../constants"
 import type {
 	GetProcessLogsApiResponse,
 	ProcessLogEntry,
@@ -75,13 +75,12 @@ export const mapProcessLogsResponse = (response: GetProcessLogsApiResponse) => {
 		),
 	}
 
-	// A snapshot-expiry run is one AMS job: no Spark subtasks, and Fusion opens its log with a fixed line.
-	const isExpiryRun =
-		taskLogs.length === 0 &&
-		(driverLogs[0]?.message ?? "").startsWith(EXPIRY_LOG_MESSAGE_PREFIX)
-
-	return { driverLogs, taskSources, logsBySource, isExpiryRun }
+	return { driverLogs, taskSources, logsBySource }
 }
+
+/** Heading of the primary log: expiry runs are one AMS job, compaction runs have a Spark driver. */
+export const getPrimaryLogTitle = (isExpiryRun: boolean): string =>
+	isExpiryRun ? "Expiry Logs" : "Driver Logs"
 
 /** Maps UI source keys to API `file` segment (`driver` or numeric task id). */
 export const getProcessLogFileId = (selectedSourceKey: string): string => {

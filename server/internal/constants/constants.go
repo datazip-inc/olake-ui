@@ -163,7 +163,10 @@ var (
 	OptSnapshotKeepDuration  = "snapshot.keep.duration"
 	OptSnapshotKeepMinCount  = "snapshot.keep.min-count"
 	OptSQLCommand            = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
-	// Fusion process type for snapshot expiry runs; compaction runs are MINOR/MAJOR/FULL.
+	// Fusion optimizing process types: the three compaction levels and snapshot expiry.
+	OptProcessTypeMinor  = "MINOR"
+	OptProcessTypeMajor  = "MAJOR"
+	OptProcessTypeFull   = "FULL"
 	OptProcessTypeExpiry = "EXPIRY"
 	// run kinds accepted by the table runs endpoint
 	RunKindAll          = "all"

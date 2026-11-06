@@ -15,7 +15,7 @@ import { tableService } from "../../services"
 import type {
 	CancelRunRequest,
 	ToggleTableOptimizingRequest,
-	UpdateTableCronApiRequest,
+	UpdateTableConfigApiRequest,
 	UpdateTablesConfigApiRequest,
 } from "../../types"
 import { DEFAULT_CLEANUP_API_REQUEST } from "../../utils"
@@ -31,7 +31,7 @@ export const useToggleTableOptimizing = () => {
 		}: ToggleTableOptimizingRequest) => {
 			// Status covers both features: on enables optimization and snapshot expiry,
 			// off disables both. Never-configured tables get the defaults on the way up.
-			let config: UpdateTableCronApiRequest = {
+			let config: UpdateTableConfigApiRequest = {
 				enabled_for_optimization: enabled.toString(),
 				snapshot_expiry_enabled: enabled.toString(),
 			}
@@ -75,10 +75,7 @@ export const useToggleTableOptimizing = () => {
 	})
 }
 
-export const useBulkUpdateTableCronConfig = (
-	catalog: string,
-	database: string,
-) => {
+export const useBulkUpdateTableConfig = (catalog: string, database: string) => {
 	return useMutation({
 		mutationKey: tableKeys.list(catalog, database),
 		mutationFn: (payload: UpdateTablesConfigApiRequest) =>
@@ -86,15 +83,15 @@ export const useBulkUpdateTableCronConfig = (
 	})
 }
 
-/** Scoped to the specific table — only its cron/metrics/runs queries are invalidated on success. */
-export const useUpdateTableCronConfig = (
+/** Writes one table's optimize + cleanup properties. */
+export const useUpdateTableConfig = (
 	catalog: string,
 	database: string,
 	tableName: string,
 ) => {
 	return useMutation({
 		mutationKey: tableKeys.list(catalog, database),
-		mutationFn: (payload: UpdateTableCronApiRequest) =>
+		mutationFn: (payload: UpdateTableConfigApiRequest) =>
 			tableService.updateTableConfig(catalog, database, tableName, payload),
 	})
 }

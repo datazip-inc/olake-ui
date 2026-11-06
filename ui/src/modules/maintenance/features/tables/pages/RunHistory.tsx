@@ -9,6 +9,7 @@ import type { ColumnDef } from "@/common/components"
 
 import { FilterChips, RunMetricsSidebar } from "../components"
 import {
+	RUN_LOGS_TYPE_QUERY_PARAM,
 	RUN_STATUS_FILTER_OPTIONS,
 	RUN_TYPE_FILTER_OPTIONS,
 } from "../constants"
@@ -18,7 +19,7 @@ import { getRunLogsStatusConfig } from "../utils"
 
 const getColumns = (
 	handleMetricsClick: (row: TableRun) => void,
-	handleLogsClick: (runId: string) => void,
+	handleLogsClick: (row: TableRun) => void,
 ): ColumnDef<TableRun>[] => [
 	{
 		key: "runId",
@@ -93,7 +94,7 @@ const getColumns = (
 		render: row => (
 			<Button
 				size="small"
-				onClick={() => handleLogsClick(row.runId)}
+				onClick={() => handleLogsClick(row)}
 			>
 				View
 			</Button>
@@ -146,11 +147,12 @@ const RunHistory: React.FC = () => {
 		setMetricsSidebarOpen(true)
 		setMetricsRows(row.metrics)
 	}
-	const getRunLogsPath = (runId: string) =>
-		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(runId)}/logs`
+	// The run kind rides along so the logs page can tell an expiry run from a compaction run.
+	const getRunLogsPath = (run: TableRun) =>
+		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(run.runId)}/logs?${RUN_LOGS_TYPE_QUERY_PARAM}=${encodeURIComponent(run.runType)}`
 
-	const columns = getColumns(handleMetricsClick, runId =>
-		navigate(getRunLogsPath(runId)),
+	const columns = getColumns(handleMetricsClick, run =>
+		navigate(getRunLogsPath(run)),
 	)
 
 	return (

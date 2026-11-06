@@ -1,5 +1,6 @@
 import { Switch } from "antd"
 import type { SwitchProps } from "antd"
+import clsx from "clsx"
 
 /** antd Switch that turns green when on, the maintenance module's on/off colour. */
 const StatusSwitch: React.FC<SwitchProps> = ({
@@ -9,9 +10,7 @@ const StatusSwitch: React.FC<SwitchProps> = ({
 }) => (
 	<Switch
 		checked={checked}
-		className={[checked ? "!bg-olake-success" : "", className ?? ""]
-			.join(" ")
-			.trim()}
+		className={clsx(checked && "!bg-olake-success", className)}
 		{...rest}
 	/>
 )

@@ -9,8 +9,8 @@ import type {
 	CleanupConfigFormModel,
 	KeepDuration,
 	KeepDurationUnit,
-	TableCronApiModel,
-	UpdateTableCronApiRequest,
+	TableConfigApiModel,
+	UpdateTableConfigApiRequest,
 } from "../types"
 import {
 	getCronFromConfig,
@@ -20,12 +20,6 @@ import {
 const DEFAULT_KEEP_DURATION: KeepDuration = {
 	value: DEFAULT_KEEP_DURATION_VALUE,
 	unit: DEFAULT_KEEP_DURATION_UNIT,
-}
-
-/** Digits only; an empty field reads as 0. */
-export const parsePositiveInt = (raw: string): number => {
-	const digits = raw.replace(/[^0-9]/g, "")
-	return digits === "" ? 0 : Number(digits)
 }
 
 /**
@@ -47,14 +41,13 @@ export const parseKeepDuration = (raw?: string): KeepDuration => {
 export const formatKeepDuration = ({ value, unit }: KeepDuration) =>
 	`${value}${unit}`
 
-/**
- * Cleanup form from the table's properties. The switch is set by the caller from the
- * tables list, which already carries Fusion's enabled flag; here it only defaults to on.
- */
-export const mapTableCronApiModelToCleanupConfig = (
-	config: TableCronApiModel,
+/** Cleanup form from the table's properties. A never-configured table starts switched on. */
+export const mapTableConfigApiModelToCleanupConfig = (
+	config: TableConfigApiModel,
 ): CleanupConfigFormModel => ({
-	expireSnapshots: true,
+	expireSnapshots: config.snapshotExpiryConfigured
+		? config.snapshotExpiryEnabled
+		: true,
 	keepDuration: parseKeepDuration(config.snapshotKeepDuration),
 	minSnapshotsToKeep:
 		config.snapshotKeepMinCount && config.snapshotKeepMinCount > 0
@@ -69,7 +62,7 @@ export const mapTableCronApiModelToCleanupConfig = (
 export const mapCleanupConfigToApiRequest = (
 	config: CleanupConfigFormModel,
 ): Pick<
-	UpdateTableCronApiRequest,
+	UpdateTableConfigApiRequest,
 	| "snapshot_expiry_enabled"
 	| "snapshot_expiry_cron"
 	| "snapshot_keep_duration"

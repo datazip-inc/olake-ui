@@ -1,8 +1,8 @@
 import { TableIcon } from "@phosphor-icons/react"
-import { useMemo } from "react"
 
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
-import { useTableDetails, useUpdateTableCronConfig } from "../../hooks"
+import { CONFIGURE_MODE } from "../../constants"
+import { useTableDetails, useUpdateTableConfig } from "../../hooks"
 
 type ConfigureOptimizationModalSingleProps = {
 	open: boolean
@@ -11,45 +11,19 @@ type ConfigureOptimizationModalSingleProps = {
 	database: string
 	tableName: string
 	tableSize: string
-	/** Fusion's current expiry state for this table, as shown in the list's Status column. */
-	snapshotExpiryEnabled: boolean
 }
 
 const ConfigureOptimizationModalSingle: React.FC<
 	ConfigureOptimizationModalSingleProps
-> = ({
-	open,
-	onClose,
-	catalog,
-	database,
-	tableName,
-	tableSize,
-	snapshotExpiryEnabled,
-}) => {
+> = ({ open, onClose, catalog, database, tableName, tableSize }) => {
 	const {
-		data: details,
+		data: initialConfig,
 		isLoading: isConfigLoading,
 		isError: isConfigError,
 		refetch,
 	} = useTableDetails(catalog, database, tableName, open)
 
-	// The details payload has the cleanup values; whether expiry is on comes from the list row,
-	// so the rule that decides it stays in the backend. Never-configured tables start switched on.
-	const initialConfig = useMemo(
-		() =>
-			details && {
-				...details,
-				cleanup: {
-					...details.cleanup,
-					expireSnapshots: details.snapshotExpiryConfigured
-						? snapshotExpiryEnabled
-						: true,
-				},
-			},
-		[details, snapshotExpiryEnabled],
-	)
-
-	const { mutate, isPending: isSaving } = useUpdateTableCronConfig(
+	const { mutate, isPending: isSaving } = useUpdateTableConfig(
 		catalog,
 		database,
 		tableName,
@@ -59,6 +33,7 @@ const ConfigureOptimizationModalSingle: React.FC<
 		<ConfigureOptimizationModalView
 			open={open}
 			onClose={onClose}
+			mode={CONFIGURE_MODE.SINGLE}
 			headerChip={
 				<div className="mt-4 flex h-7 items-center justify-between rounded-[4px] bg-olake-surface-muted pl-3 pr-3">
 					<div className="flex items-center gap-2">

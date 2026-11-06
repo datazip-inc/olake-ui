@@ -3,9 +3,17 @@ import { Input, Select, Tooltip } from "antd"
 import clsx from "clsx"
 
 import { CRON_FREQUENCY_OPTIONS } from "../constants"
-import type { ScheduleSectionProps } from "../types"
+import type { CronConfigOption } from "../types"
 import { getCronConfigError, getCronFromConfig, getNextRuns } from "../utils"
 import RunTimeChips from "./RunTimeChips"
+
+type ScheduleSectionProps = {
+	title: string
+	value: CronConfigOption
+	onChange: (next: CronConfigOption) => void
+	isFirst?: boolean
+	tooltip?: string
+}
 
 /** One cron schedule block (frequency / custom expression / next 3 runs), shared by the optimize and cleanup tabs. */
 const ScheduleSection: React.FC<ScheduleSectionProps> = ({
@@ -83,10 +91,7 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 					<span className="text-sm font-medium leading-6 text-olake-text">
 						Next 3 Runs
 					</span>
-					<RunTimeChips
-						runs={nextRuns}
-						keyPrefix={title}
-					/>
+					<RunTimeChips runs={nextRuns} />
 				</div>
 			)}
 		</div>

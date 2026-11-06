@@ -21,7 +21,9 @@ export const DEFAULT_CRON_CONFIG: CronConfigOption = {
 	customCron: "",
 }
 
+// Fusion defaults written when the Status toggle switches a never-configured table on.
 export const LITE_DEFAULT_TRIGGER_INTERVAL = "0 * * * *"
 export const MEDIUM_DEFAULT_TRIGGER_INTERVAL = "0 */8 * * *"
 export const FULL_DEFAULT_TRIGGER_INTERVAL = ""
+export const CLEANUP_DEFAULT_TRIGGER_INTERVAL = "0 */12 * * *"
 export const DEFAULT_TARGET_FILE_SIZE = 512

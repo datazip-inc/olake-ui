@@ -70,7 +70,15 @@ func (h *Handler) GetTableRuns(c *gin.Context) {
 		return
 	}
 
-	runs, err := h.opt.GetTableRuns(c.Request.Context(), catalog, database, table, c.Query("type"), c.Query("status"), page, pageSize)
+	runs, err := h.opt.GetTableRuns(c.Request.Context(), dto.TableRunsQuery{
+		Catalog:  catalog,
+		Database: database,
+		Table:    table,
+		Kind:     c.Query("type"),
+		Status:   c.Query("status"),
+		Page:     page,
+		PageSize: pageSize,
+	})
 	if err != nil {
 		utils.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
 		return

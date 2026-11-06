@@ -16,58 +16,61 @@ import (
 // a time, so "everything except expiry" has to be assembled here: pull the runs page by page,
 // drop the expiry ones and paginate what is left.
 const (
-	runsFetchPageSize = 200
+	runsDefaultPageSize = 20
+	runsFetchPageSize   = 200
 	// runsFetchMax bounds how many runs are pulled for the in-memory optimization filter.
 	runsFetchMax = 5000
 )
 
 // GetTableRuns lists a table's optimizing processes (compaction and snapshot expiry), newest first.
-// kind is one of constants.RunKindAll, RunKindExpiry or RunKindOptimization.
-func (s *Service) GetTableRuns(ctx context.Context, catalog, database, table, kind, status string, page, pageSize int) (*dto.TableRunsResponse, error) {
-	if page < 1 {
-		page = 1
+func (s *Service) GetTableRuns(ctx context.Context, query dto.TableRunsQuery) (*dto.TableRunsResponse, error) {
+	if query.Page < 1 {
+		query.Page = 1
 	}
-	if pageSize < 1 {
-		pageSize = 20
+	if query.PageSize < 1 {
+		query.PageSize = runsDefaultPageSize
 	}
 
-	switch kind {
+	switch query.Kind {
 	case constants.RunKindAll, "":
-		return s.fetchRunsPage(ctx, catalog, database, table, "", status, page, pageSize)
+		return s.fetchRunsPage(ctx, query, "")
 	case constants.RunKindExpiry:
-		return s.fetchRunsPage(ctx, catalog, database, table, constants.OptProcessTypeExpiry, status, page, pageSize)
+		return s.fetchRunsPage(ctx, query, constants.OptProcessTypeExpiry)
 	case constants.RunKindOptimization:
-		return s.fetchOptimizationRuns(ctx, catalog, database, table, status, page, pageSize)
+		return s.fetchOptimizationRuns(ctx, query)
 	default:
-		return nil, &HTTPError{StatusCode: http.StatusBadRequest, Body: []byte(fmt.Sprintf("unknown run type %q", kind))}
+		return nil, &HTTPError{StatusCode: http.StatusBadRequest, Body: []byte(fmt.Sprintf("unknown run type %q", query.Kind))}
 	}
 }
 
-// fetchRunsPage forwards one page to Fusion as-is.
-func (s *Service) fetchRunsPage(ctx context.Context, catalog, database, table, processType, status string, page, pageSize int) (*dto.TableRunsResponse, error) {
-	path := fmt.Sprintf(constants.OptPathTableOptimizingProcesses, catalog, database, table)
+// fetchRunsPage forwards one page to Fusion as-is, narrowed to processType when it is set.
+func (s *Service) fetchRunsPage(ctx context.Context, query dto.TableRunsQuery, processType string) (*dto.TableRunsResponse, error) {
+	path := fmt.Sprintf(constants.OptPathTableOptimizingProcesses, query.Catalog, query.Database, query.Table)
 	params := url.Values{}
-	params.Set("page", strconv.Itoa(page))
-	params.Set("pageSize", strconv.Itoa(pageSize))
+	params.Set("page", strconv.Itoa(query.Page))
+	params.Set("pageSize", strconv.Itoa(query.PageSize))
 	if processType != "" {
 		params.Set("type", processType)
 	}
-	if status != "" {
-		params.Set("status", status)
+	if query.Status != "" {
+		params.Set("status", query.Status)
 	}
 
 	var result dto.TableRunsResponse
 	if err := s.DoInto(ctx, http.MethodGet, path, params, nil, &result); err != nil {
-		return nil, fmt.Errorf("failed to get runs for %s.%s.%s: %w", catalog, database, table, err)
+		return nil, fmt.Errorf("failed to get runs for %s.%s.%s: %w", query.Catalog, query.Database, query.Table, err)
 	}
 	return &result, nil
 }
 
 // fetchOptimizationRuns collects every non-expiry run and paginates in memory.
-func (s *Service) fetchOptimizationRuns(ctx context.Context, catalog, database, table, status string, page, pageSize int) (*dto.TableRunsResponse, error) {
-	kept := make([]json.RawMessage, 0, pageSize)
+func (s *Service) fetchOptimizationRuns(ctx context.Context, query dto.TableRunsQuery) (*dto.TableRunsResponse, error) {
+	kept := make([]json.RawMessage, 0, runsFetchPageSize)
+	chunkQuery := query
+	chunkQuery.PageSize = runsFetchPageSize
 	for fusionPage, fetched := 1, 0; fetched < runsFetchMax; fusionPage++ {
-		chunk, err := s.fetchRunsPage(ctx, catalog, database, table, "", status, fusionPage, runsFetchPageSize)
+		chunkQuery.Page = fusionPage
+		chunk, err := s.fetchRunsPage(ctx, chunkQuery, "")
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +79,7 @@ func (s *Service) fetchOptimizationRuns(ctx context.Context, catalog, database, 
 				OptimizingType string `json:"optimizingType"`
 			}
 			if err := json.Unmarshal(raw, &run); err != nil {
-				return nil, fmt.Errorf("failed to parse run for %s.%s.%s: %s", catalog, database, table, err)
+				return nil, fmt.Errorf("failed to parse run for %s.%s.%s: %s", query.Catalog, query.Database, query.Table, err)
 			}
 			if run.OptimizingType != constants.OptProcessTypeExpiry {
 				kept = append(kept, raw)
@@ -88,11 +91,11 @@ func (s *Service) fetchOptimizationRuns(ctx context.Context, catalog, database, 
 		}
 	}
 
-	start := (page - 1) * pageSize
+	start := (query.Page - 1) * query.PageSize
 	if start > len(kept) {
 		start = len(kept)
 	}
-	end := start + pageSize
+	end := start + query.PageSize
 	if end > len(kept) {
 		end = len(kept)
 	}

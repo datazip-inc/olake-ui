@@ -1,3 +1,5 @@
+import type { FilterKey, LatestRunSlotKey } from "../types"
+
 export const PAGE_SIZE = 6
 
 export const RUN_STATUS = {
@@ -41,13 +43,29 @@ export const RUN_STATUS_FILTER_OPTIONS = [
 	{ key: "failed", label: "Failed Runs" },
 ] as const
 
+export const TABLE_FILTER_OPTIONS: ReadonlyArray<{
+	key: FilterKey
+	label: string
+}> = [
+	{ key: "all", label: "All tables" },
+	{ key: "olake", label: "OLake Ingested" },
+	{ key: "external", label: "Imported Tables" },
+]
+
+/** Fusion table properties behind the configure modal and the Status toggle. */
 export const MINOR_CRON_PROPERTY_KEY = "self-optimizing.minor.trigger.cron"
 export const MAJOR_CRON_PROPERTY_KEY = "self-optimizing.major.trigger.cron"
 export const FULL_CRON_PROPERTY_KEY = "self-optimizing.full.trigger.cron"
+export const TARGET_FILE_SIZE_PROPERTY_KEY = "self-optimizing.target-size"
+export const OPTIMIZATION_ENABLED_PROPERTY_KEY = "self-optimizing.enabled"
+export const SNAPSHOT_EXPIRE_ENABLED_PROPERTY_KEY = "snapshot-expire.enabled"
+export const SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY = "snapshot-expire.trigger.cron"
+export const SNAPSHOT_KEEP_DURATION_PROPERTY_KEY = "snapshot.keep.duration"
+export const SNAPSHOT_KEEP_MIN_COUNT_PROPERTY_KEY = "snapshot.keep.min-count"
 
 /** Last Run Status slots: the three compaction levels plus snapshot expiry. */
-export const LATEST_RUN_SLOTS: Array<{
-	key: "minor" | "major" | "full" | "expiry"
+export const LATEST_RUN_SLOTS: ReadonlyArray<{
+	key: LatestRunSlotKey
 	tag: "L" | "M" | "F" | "E"
 	name: string
 }> = [

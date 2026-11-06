@@ -199,7 +199,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 				return (
 					<StatusSwitch
 						size="small"
-						checked={row.enabled || row.snapshotExpiryEnabled}
+						checked={row.maintenanceEnabled}
 						onChange={checked => actions.onToggleOptimizingStatus(row, checked)}
 					/>
 				)

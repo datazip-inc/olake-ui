@@ -5,18 +5,18 @@ import clsx from "clsx"
 import { Tag } from "@/common/components"
 
 import { LATEST_RUN_SLOTS } from "../constants"
-import type { Table } from "../types"
+import type { LatestRunsByKind, Table } from "../types"
 import { getRunStatusConfig } from "../utils"
 import LatestRunsPopoverContent from "./LatestRunsPopoverContent"
 
 const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
-	const runs = {
+	const runs: LatestRunsByKind = {
 		minor: row.minor,
 		major: row.major,
 		full: row.full,
 		expiry: row.expiry,
 	}
-	const hasAnyRun = row.minor || row.major || row.full || row.expiry
+	const hasAnyRun = LATEST_RUN_SLOTS.some(slot => runs[slot.key])
 
 	if (!hasAnyRun) {
 		return (
@@ -32,7 +32,7 @@ const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
 	const tags = (
 		<div className="flex items-center justify-center gap-1">
 			{LATEST_RUN_SLOTS.map(slot => {
-				const run = runs[slot.key] ?? null
+				const run = runs[slot.key]
 				if (!run) {
 					return (
 						<div
@@ -80,14 +80,7 @@ const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
 
 	return (
 		<Popover
-			content={
-				<LatestRunsPopoverContent
-					minor={row.minor}
-					major={row.major}
-					full={row.full}
-					expiry={row.expiry}
-				/>
-			}
+			content={<LatestRunsPopoverContent runs={runs} />}
 			trigger="hover"
 			placement="bottomLeft"
 			arrow={false}

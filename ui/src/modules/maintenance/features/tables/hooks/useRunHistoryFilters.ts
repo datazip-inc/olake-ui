@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router"
 
-import { RUN_STATUS, RUN_TYPE_FILTER } from "../constants"
+import { PAGE_SIZE, RUN_STATUS, RUN_TYPE_FILTER } from "../constants"
 import type { RunHistoryFilter, RunTypeFilter } from "../types"
 
-const RUNS_PAGE_SIZE = 6
 const STATUS_QUERY_PARAM_KEY = "status"
 const TYPE_QUERY_PARAM_KEY = "type"
 
@@ -49,7 +48,7 @@ export const useRunHistoryFilters = () => {
 	const activeFilter = getStatusFilter(searchParams)
 	const activeTypeFilter = getTypeFilter(searchParams)
 	const [currentPage, setCurrentPage] = useState(1)
-	const pageSize = RUNS_PAGE_SIZE
+	const pageSize = PAGE_SIZE
 
 	const status = FILTER_TO_STATUS_QUERY_VALUE[activeFilter]
 	// "all" is the endpoint default, so it is not sent.

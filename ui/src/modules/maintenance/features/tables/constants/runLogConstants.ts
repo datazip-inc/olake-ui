@@ -1,4 +1,4 @@
 export const DRIVER_SOURCE_KEY = "driver"
 
-/** First log line Fusion writes for a snapshot-expiry run; tells the logs page which kind of run it is showing. */
-export const EXPIRY_LOG_MESSAGE_PREFIX = "Snapshot expiry"
+/** Query param the run history page sets on the logs route, carrying the run's RunType. */
+export const RUN_LOGS_TYPE_QUERY_PARAM = "runType"

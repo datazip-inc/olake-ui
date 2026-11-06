@@ -1,6 +1,6 @@
 import { Input } from "antd"
 
-import { parsePositiveInt } from "../utils"
+import { parseDigits } from "@/common/utils"
 
 type PositiveIntInputProps = {
 	value: number
@@ -20,7 +20,7 @@ const PositiveIntInput: React.FC<PositiveIntInputProps> = ({
 }) => (
 	<Input
 		value={value === 0 ? "" : String(value)}
-		onChange={e => onChange(parsePositiveInt(e.target.value))}
+		onChange={e => onChange(parseDigits(e.target.value))}
 		inputMode="numeric"
 		placeholder={placeholder}
 		addonAfter={addonAfter}

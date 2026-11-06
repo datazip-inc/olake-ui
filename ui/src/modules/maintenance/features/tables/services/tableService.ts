@@ -10,7 +10,7 @@ import type {
 	GetTablesApiResponse,
 	TableMetricsApiResponse,
 	TableRunsQuery,
-	UpdateTableCronApiRequest,
+	UpdateTableConfigApiRequest,
 	UpdateTableConfigApiResponse,
 	UpdateTablesConfigApiRequest,
 } from "../types"
@@ -113,7 +113,7 @@ export const tableService = {
 		catalog: string,
 		database: string,
 		tableName: string,
-		payload: UpdateTableCronApiRequest,
+		payload: UpdateTableConfigApiRequest,
 	): Promise<UpdateTableConfigApiResponse> => {
 		try {
 			const request: UpdateTablesConfigApiRequest = {

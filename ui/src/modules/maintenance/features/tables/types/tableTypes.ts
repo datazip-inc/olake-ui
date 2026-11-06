@@ -1,4 +1,5 @@
 import {
+	CONFIGURE_MODE,
 	MAINTENANCE_TAB,
 	RUN_STATUS,
 	RUN_TYPE,
@@ -101,13 +102,14 @@ export interface GetTableRunsApiResponse {
 	total?: number
 }
 
-export interface UpdateTableCronApiRequest {
+/** Table properties written by the configure modal and the Status toggle; omitted fields are left untouched. */
+export interface UpdateTableConfigApiRequest {
 	minor_cron?: string
 	major_cron?: string
 	full_cron?: string
 	enabled_for_optimization?: string
 	target_file_size?: number
-	// snapshot expiry (cleanup); omitted fields are left untouched on the table
+	// snapshot expiry (cleanup)
 	snapshot_expiry_enabled?: string
 	snapshot_expiry_cron?: string
 	/** Fusion duration, e.g. "7d" */
@@ -117,7 +119,7 @@ export interface UpdateTableCronApiRequest {
 
 export interface UpdateTablesConfigApiRequest {
 	tables: string[]
-	sql_input: UpdateTableCronApiRequest
+	sql_input: UpdateTableConfigApiRequest
 }
 
 // Frontend Domain Types
@@ -144,21 +146,32 @@ export interface Table {
 	major: LatestRun
 	full: LatestRun
 	expiry: LatestRun
-	enabled: boolean
-	snapshotExpiryEnabled: boolean
+	/** Status column: on when optimization or snapshot expiry is enabled. */
+	maintenanceEnabled: boolean
 }
+
+/** The latest run of each kind, as shown in the Last Run Status cell and its popover. */
+export type LatestRunsByKind = Pick<
+	Table,
+	"minor" | "major" | "full" | "expiry"
+>
+
+export type LatestRunSlotKey = keyof LatestRunsByKind
 
 export interface TableRun {
 	id: string
 	runId: string
 	status: RunStatus
+	runType: RunType
+	/** Display name of runType */
 	type: RunTypeLabel
 	startTime: string
 	duration: string
 	metrics: RunMetricRow[]
 }
 
-export interface TableCronApiModel {
+/** Maintenance settings read from a table's properties. */
+export interface TableConfigApiModel {
 	minorTriggerInterval?: string
 	majorTriggerInterval?: string
 	fullTriggerInterval?: string
@@ -168,20 +181,22 @@ export interface TableCronApiModel {
 	targetFileSize?: number
 	/** False when the table has neither snapshot-expire.enabled nor a cron set. */
 	snapshotExpiryConfigured: boolean
+	/** Fusion's rule: snapshot-expire.enabled when set, else whether a cron is set. */
+	snapshotExpiryEnabled: boolean
 	snapshotExpiryCron?: string
 	/** Raw Fusion duration string, e.g. "7d" */
 	snapshotKeepDuration?: string
 	snapshotKeepMinCount?: number
 }
 
-export interface TableDetailsApiModel extends TableCronApiModel {
+export interface TableDetailsApiModel extends TableConfigApiModel {
 	averageFileSize: string
 	fileCount: number
 	lastCommitTime: number
 	totalSize: string
 }
 
-export type TableDetailsViewModel = TableDetailsApiModel & TableCronFormModel
+export type TableDetailsViewModel = TableDetailsApiModel & TableConfigFormModel
 
 export interface TableMetricsFileSummary {
 	"data-files": number
@@ -203,13 +218,42 @@ export interface CronConfigOption {
 	customCron: string
 }
 
-export interface TableCronFormModel {
+/** Optimize tab of the configure modal. */
+export interface OptimizeConfigFormModel {
+	/** Saved switch state; a never-configured table starts switched on. */
+	optimizationEnabled: boolean
 	minorCron: CronConfigOption
 	majorCron: CronConfigOption
 	fullCron: CronConfigOption
-	targetFileSize?: number
-	/** Saved switch state; a never-configured table starts switched on. */
-	optimizationEnabled: boolean
+	targetFileSize: number
+}
+
+export type CompactionCronKey = keyof Pick<
+	OptimizeConfigFormModel,
+	"minorCron" | "majorCron" | "fullCron"
+>
+
+/** Units Fusion accepts for snapshot.keep.duration (seconds are folded into minutes). */
+export type KeepDurationUnit = "d" | "h" | "min"
+
+export interface KeepDuration {
+	value: number
+	unit: KeepDurationUnit
+}
+
+/** Cleanup tab of the configure modal: snapshot-expiry settings stored as table properties in Fusion. */
+export interface CleanupConfigFormModel {
+	expireSnapshots: boolean
+	/** Snapshots older than this are removed. */
+	keepDuration: KeepDuration
+	/** Lower bound on snapshots kept regardless of age. */
+	minSnapshotsToKeep: number
+	cron: CronConfigOption
+}
+
+/** Everything the configure modal edits, one branch per tab. */
+export interface TableConfigFormModel {
+	optimize: OptimizeConfigFormModel
 	cleanup: CleanupConfigFormModel
 }
 
@@ -245,30 +289,6 @@ export interface UpdateTableConfigApiResponse {
 	logs?: string[]
 }
 
-export interface ScheduleSectionProps {
-	title: string
-	value: CronConfigOption
-	onChange: (next: CronConfigOption) => void
-	isFirst?: boolean
-	tooltip?: string
-}
-
 export type MaintenanceTabKey = ValueOf<typeof MAINTENANCE_TAB>
 
-/** Units Fusion accepts for snapshot.keep.duration (seconds are folded into minutes). */
-export type KeepDurationUnit = "d" | "h" | "min"
-
-export interface KeepDuration {
-	value: number
-	unit: KeepDurationUnit
-}
-
-/** Snapshot-expiry (cleanup) settings, stored as table properties in Fusion. */
-export interface CleanupConfigFormModel {
-	expireSnapshots: boolean
-	/** Snapshots older than this are removed. */
-	keepDuration: KeepDuration
-	/** Lower bound on snapshots kept regardless of age. */
-	minSnapshotsToKeep: number
-	cron: CronConfigOption
-}
+export type ConfigureMode = ValueOf<typeof CONFIGURE_MODE>
