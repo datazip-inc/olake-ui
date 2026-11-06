@@ -1,4 +1,4 @@
-import { Switch } from "antd"
+import StatusSwitch from "./StatusSwitch"
 
 type FeatureToggleRowProps = {
 	label: string
@@ -14,10 +14,9 @@ const FeatureToggleRow: React.FC<FeatureToggleRowProps> = ({
 }) => (
 	<div className="flex h-12 items-center justify-between rounded-xl border border-olake-border px-4">
 		<span className="text-base leading-6 text-olake-text">{label}</span>
-		<Switch
+		<StatusSwitch
 			checked={checked}
 			onChange={onChange}
-			className={checked ? "!bg-olake-success" : undefined}
 			aria-label={label}
 		/>
 	</div>

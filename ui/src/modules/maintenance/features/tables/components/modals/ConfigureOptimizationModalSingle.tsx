@@ -1,4 +1,5 @@
 import { TableIcon } from "@phosphor-icons/react"
+import { useMemo } from "react"
 
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
 import { useTableDetails, useUpdateTableCronConfig } from "../../hooks"
@@ -10,17 +11,43 @@ type ConfigureOptimizationModalSingleProps = {
 	database: string
 	tableName: string
 	tableSize: string
+	/** Fusion's current expiry state for this table, as shown in the list's Status column. */
+	snapshotExpiryEnabled: boolean
 }
 
 const ConfigureOptimizationModalSingle: React.FC<
 	ConfigureOptimizationModalSingleProps
-> = ({ open, onClose, catalog, database, tableName, tableSize }) => {
+> = ({
+	open,
+	onClose,
+	catalog,
+	database,
+	tableName,
+	tableSize,
+	snapshotExpiryEnabled,
+}) => {
 	const {
-		data: initialConfig,
+		data: details,
 		isLoading: isConfigLoading,
 		isError: isConfigError,
 		refetch,
 	} = useTableDetails(catalog, database, tableName, open)
+
+	// The details payload has the cleanup values; whether expiry is on comes from the list row,
+	// so the rule that decides it stays in the backend. Never-configured tables start switched on.
+	const initialConfig = useMemo(
+		() =>
+			details && {
+				...details,
+				cleanup: {
+					...details.cleanup,
+					expireSnapshots: details.snapshotExpiryConfigured
+						? snapshotExpiryEnabled
+						: true,
+				},
+			},
+		[details, snapshotExpiryEnabled],
+	)
 
 	const { mutate, isPending: isSaving } = useUpdateTableCronConfig(
 		catalog,

@@ -60,31 +60,26 @@ export const useRunHistoryFilters = () => {
 		setCurrentPage(1)
 	}, [activeFilter, activeTypeFilter])
 
-	const handleFilterChange = (nextFilter: RunHistoryFilter) => {
+	const setQueryParam = (key: string, value?: string) => {
 		setCurrentPage(1)
 		setSearchParams(prev => {
 			const next = new URLSearchParams(prev)
-			applyFilterToSearchParams(
-				next,
-				STATUS_QUERY_PARAM_KEY,
-				FILTER_TO_STATUS_QUERY_VALUE[nextFilter],
-			)
+			applyFilterToSearchParams(next, key, value)
 			return next
 		})
 	}
 
-	const handleTypeFilterChange = (nextFilter: RunTypeFilter) => {
-		setCurrentPage(1)
-		setSearchParams(prev => {
-			const next = new URLSearchParams(prev)
-			applyFilterToSearchParams(
-				next,
-				TYPE_QUERY_PARAM_KEY,
-				nextFilter === RUN_TYPE_FILTER.ALL ? undefined : nextFilter,
-			)
-			return next
-		})
-	}
+	const handleFilterChange = (nextFilter: RunHistoryFilter) =>
+		setQueryParam(
+			STATUS_QUERY_PARAM_KEY,
+			FILTER_TO_STATUS_QUERY_VALUE[nextFilter],
+		)
+
+	const handleTypeFilterChange = (nextFilter: RunTypeFilter) =>
+		setQueryParam(
+			TYPE_QUERY_PARAM_KEY,
+			nextFilter === RUN_TYPE_FILTER.ALL ? undefined : nextFilter,
+		)
 
 	return {
 		activeFilter,

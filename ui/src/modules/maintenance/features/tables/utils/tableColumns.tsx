@@ -5,13 +5,13 @@ import {
 	SpinnerIcon,
 	TrashIcon,
 } from "@phosphor-icons/react"
-import { Button, Dropdown, Spin, Switch, Tooltip } from "antd"
+import { Button, Dropdown, Spin, Tooltip } from "antd"
 import type { MenuProps } from "antd/es/menu"
 import clsx from "clsx"
 
 import { Tag, type ColumnDef } from "@/common/components"
 
-import { RunStatusCell } from "../components"
+import { RunStatusCell, StatusSwitch } from "../components"
 import type { Table } from "../types"
 import { getCancelRunID } from "./tableUtils"
 
@@ -196,12 +196,10 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 					)
 				}
 
-				const isOn = row.enabled || row.snapshotExpiryEnabled
 				return (
-					<Switch
+					<StatusSwitch
 						size="small"
-						checked={isOn}
-						className={isOn ? "!bg-olake-success" : undefined}
+						checked={row.enabled || row.snapshotExpiryEnabled}
 						onChange={checked => actions.onToggleOptimizingStatus(row, checked)}
 					/>
 				)

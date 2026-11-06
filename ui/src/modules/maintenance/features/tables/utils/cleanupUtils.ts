@@ -1,47 +1,61 @@
 import {
 	CLEANUP_DEFAULT_TRIGGER_INTERVAL,
 	DEFAULT_CLEANUP_CONFIG,
-	DEFAULT_CLEANUP_OLDER_THAN_DAYS,
+	DEFAULT_KEEP_DURATION_UNIT,
+	DEFAULT_KEEP_DURATION_VALUE,
 	DEFAULT_MIN_SNAPSHOTS_TO_KEEP,
 } from "../constants"
 import type {
 	CleanupConfigFormModel,
+	KeepDuration,
+	KeepDurationUnit,
 	TableCronApiModel,
 	UpdateTableCronApiRequest,
 } from "../types"
-import { getCronFromConfig } from "./cronUtils"
-import { mapTriggerIntervalToCronConfigOption } from "./tableUtils"
+import {
+	getCronFromConfig,
+	mapTriggerIntervalToCronConfigOption,
+} from "./cronUtils"
 
-const MINUTES_PER_DAY = 24 * 60
-const UNIT_TO_MINUTES: Record<string, number> = {
-	d: MINUTES_PER_DAY,
-	h: 60,
-	min: 1,
-	s: 1 / 60,
+const DEFAULT_KEEP_DURATION: KeepDuration = {
+	value: DEFAULT_KEEP_DURATION_VALUE,
+	unit: DEFAULT_KEEP_DURATION_UNIT,
+}
+
+/** Digits only; an empty field reads as 0. */
+export const parsePositiveInt = (raw: string): number => {
+	const digits = raw.replace(/[^0-9]/g, "")
+	return digits === "" ? 0 : Number(digits)
 }
 
 /**
- * Days in a Fusion duration ("7d", "36h", "90min", "7"; a bare number is days),
- * rounded up to a whole day. Unparsable input falls back to the default.
+ * Fusion duration ("7d", "36h", "90min", "30s"; a bare number is days) as value + unit.
+ * Seconds are the one unit the picker does not offer, so they are rounded up to minutes.
+ * Unparsable input falls back to the default.
  */
-export const parseKeepDurationToDays = (raw?: string): number => {
+export const parseKeepDuration = (raw?: string): KeepDuration => {
 	const match = (raw ?? "").trim().match(/^(\d+)\s*(d|h|min|s)?$/)
-	if (!match) return DEFAULT_CLEANUP_OLDER_THAN_DAYS
-	const minutes = Number(match[1]) * UNIT_TO_MINUTES[match[2] ?? "d"]
-	return Math.max(1, Math.ceil(minutes / MINUTES_PER_DAY))
+	if (!match) return DEFAULT_KEEP_DURATION
+	const value = Number(match[1])
+	const unit = match[2] ?? "d"
+	if (unit === "s")
+		return { value: Math.max(1, Math.ceil(value / 60)), unit: "min" }
+	return { value, unit: unit as KeepDurationUnit }
 }
 
-/** Fusion duration string for the form's day count. */
-export const formatKeepDuration = (days: number) => `${days}d`
+/** Fusion duration string for the form value, e.g. "36h". */
+export const formatKeepDuration = ({ value, unit }: KeepDuration) =>
+	`${value}${unit}`
 
+/**
+ * Cleanup form from the table's properties. The switch is set by the caller from the
+ * tables list, which already carries Fusion's enabled flag; here it only defaults to on.
+ */
 export const mapTableCronApiModelToCleanupConfig = (
 	config: TableCronApiModel,
 ): CleanupConfigFormModel => ({
-	// Never configured: start switched on, like the Optimization switch.
-	expireSnapshots: config.snapshotExpiryConfigured
-		? config.snapshotExpiryEnabled
-		: true,
-	olderThanDays: parseKeepDurationToDays(config.snapshotKeepDuration),
+	expireSnapshots: true,
+	keepDuration: parseKeepDuration(config.snapshotKeepDuration),
 	minSnapshotsToKeep:
 		config.snapshotKeepMinCount && config.snapshotKeepMinCount > 0
 			? config.snapshotKeepMinCount
@@ -63,10 +77,11 @@ export const mapCleanupConfigToApiRequest = (
 > => ({
 	snapshot_expiry_enabled: String(config.expireSnapshots),
 	snapshot_expiry_cron: getCronFromConfig(config.cron),
-	snapshot_keep_duration: formatKeepDuration(config.olderThanDays),
+	snapshot_keep_duration: formatKeepDuration(config.keepDuration),
 	snapshot_keep_min_count: config.minSnapshotsToKeep,
 })
 
 /** Request fields that switch cleanup on with defaults for a never-configured table. */
-export const defaultCleanupApiRequest = () =>
-	mapCleanupConfigToApiRequest(DEFAULT_CLEANUP_CONFIG)
+export const DEFAULT_CLEANUP_API_REQUEST = mapCleanupConfigToApiRequest(
+	DEFAULT_CLEANUP_CONFIG,
+)

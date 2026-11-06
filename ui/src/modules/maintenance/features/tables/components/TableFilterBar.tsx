@@ -1,10 +1,10 @@
 import { MagnifyingGlassIcon } from "@phosphor-icons/react"
 import { Input } from "antd"
-import clsx from "clsx"
 
 import type { FilterKey } from "../types"
+import FilterChips from "./FilterChips"
 
-const FILTER_OPTIONS: Array<{ key: FilterKey; label: string }> = [
+const FILTER_OPTIONS: ReadonlyArray<{ key: FilterKey; label: string }> = [
 	{ key: "all", label: "All tables" },
 	{ key: "olake", label: "OLake Ingested" },
 	{ key: "external", label: "Imported Tables" },
@@ -39,26 +39,11 @@ const TableFilterBar: React.FC<Props> = ({
 			</button>
 		</div>
 
-		<div className="flex items-center gap-2">
-			{FILTER_OPTIONS.map(filter => {
-				const active = activeFilter === filter.key
-				return (
-					<button
-						key={filter.key}
-						type="button"
-						onClick={() => onFilterChange(filter.key)}
-						className={clsx(
-							"h-9 whitespace-nowrap rounded-md border border-olake-border px-3 text-sm leading-5",
-							active
-								? "bg-olake-surface-muted text-olake-text-secondary"
-								: "bg-white text-olake-body-secondary",
-						)}
-					>
-						{filter.label}
-					</button>
-				)
-			})}
-		</div>
+		<FilterChips
+			options={FILTER_OPTIONS}
+			value={activeFilter}
+			onChange={onFilterChange}
+		/>
 	</div>
 )
 

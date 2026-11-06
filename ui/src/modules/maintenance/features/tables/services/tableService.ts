@@ -9,6 +9,7 @@ import type {
 	TableDetailsApiResponse,
 	GetTablesApiResponse,
 	TableMetricsApiResponse,
+	TableRunsQuery,
 	UpdateTableCronApiRequest,
 	UpdateTableConfigApiResponse,
 	UpdateTablesConfigApiRequest,
@@ -45,15 +46,15 @@ export const tableService = {
 		return response.data
 	},
 
-	getTableRuns: async (
-		catalog: string,
-		database: string,
-		tableName: string,
-		page: number,
-		pageSize: number,
-		status?: string,
-		runType?: string,
-	) => {
+	getTableRuns: async ({
+		catalog,
+		database,
+		tableName,
+		page,
+		pageSize,
+		status,
+		runType,
+	}: TableRunsQuery) => {
 		const searchParams = new URLSearchParams({
 			page: String(page),
 			pageSize: String(pageSize),

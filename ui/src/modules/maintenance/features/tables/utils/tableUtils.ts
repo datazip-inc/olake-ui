@@ -13,10 +13,10 @@ import {
 } from "@/common/utils"
 
 import { mapTableCronApiModelToCleanupConfig } from "./cleanupUtils"
+import { mapTriggerIntervalToCronConfigOption } from "./cronUtils"
 import {
 	FULL_CRON_PROPERTY_KEY,
 	FULL_DEFAULT_TRIGGER_INTERVAL,
-	KNOWN_CRON_TRIGGER_INTERVALS,
 	LITE_DEFAULT_TRIGGER_INTERVAL,
 	MAJOR_CRON_PROPERTY_KEY,
 	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
@@ -30,9 +30,8 @@ import {
 	SNAPSHOT_KEEP_MIN_COUNT_PROPERTY_KEY,
 } from "../constants"
 import type {
-	CronConfigOption,
-	FusionCompactionRun,
-	CompactionRun,
+	FusionLatestRun,
+	LatestRun,
 	FusionRun,
 	FusionTable,
 	RunType,
@@ -158,7 +157,7 @@ export const getRunLogsStatusConfig = (status?: string) => {
 	}
 }
 
-const mapCompactionRun = (run: FusionCompactionRun | null): CompactionRun => {
+const mapLatestRun = (run: FusionLatestRun | null): LatestRun => {
 	if (!run) return null
 	return {
 		status: run.status,
@@ -177,10 +176,10 @@ export const mapFusionTableToTable = (
 	totalSize: table.totalSize,
 	healthScore: table.healthScore,
 	olakeCreated: table.olake_created,
-	minor: mapCompactionRun(table.minor),
-	major: mapCompactionRun(table.major),
-	full: mapCompactionRun(table.full),
-	expiry: mapCompactionRun(table.expiry),
+	minor: mapLatestRun(table.minor),
+	major: mapLatestRun(table.major),
+	full: mapLatestRun(table.full),
+	expiry: mapLatestRun(table.expiry),
 	enabled: table.enabled,
 	snapshotExpiryEnabled: table.snapshot_expiry_enabled,
 })
@@ -191,7 +190,7 @@ export const mapGetTablesResponseToTables = (tables: FusionTable[]): Table[] =>
 
 // Returns the run id only when one of full/minor/major is currently RUNNING.
 export const getCancelRunID = (table: Table): string | null => {
-	const runs: Array<CompactionRun> = [table.full, table.minor, table.major]
+	const runs: Array<LatestRun> = [table.full, table.minor, table.major]
 	const running = runs.find(run => run?.status === RUN_STATUS.RUNNING)
 	const runId = running?.runID
 	return typeof runId === "string" && runId.trim() ? runId : null
@@ -201,7 +200,7 @@ const runTypeToLabel: Record<RunType, TableRun["type"]> = {
 	[RUN_TYPE.MINOR]: RUN_TYPE_LABEL.LITE,
 	[RUN_TYPE.MAJOR]: RUN_TYPE_LABEL.MEDIUM,
 	[RUN_TYPE.FULL]: RUN_TYPE_LABEL.FULL,
-	[RUN_TYPE.EXPIRY]: RUN_TYPE_LABEL.EXPIRE,
+	[RUN_TYPE.EXPIRY]: RUN_TYPE_LABEL.EXPIRY,
 }
 
 // Failed runs carry the reason outside the summary; surface it with the metrics.
@@ -307,27 +306,6 @@ export const mapRunMetricsPayloadToRows = (
 			}
 		})
 }
-// Maps a raw cron string to dropdown state — preset strings become a frequency value, anything else becomes a custom cron entry.
-export const mapTriggerIntervalToCronConfigOption = (
-	triggerInterval: string,
-): CronConfigOption => {
-	if (triggerInterval === "") {
-		return { frequency: "never", customCron: "" }
-	}
-
-	if (KNOWN_CRON_TRIGGER_INTERVALS.has(triggerInterval)) {
-		return {
-			frequency: triggerInterval,
-			customCron: "",
-		}
-	}
-
-	return {
-		frequency: "custom",
-		customCron: triggerInterval,
-	}
-}
-
 // Expands a TableCronApiModel into TableCronFormModel by resolving each trigger interval through mapTriggerIntervalToCronConfigOption.
 export const mapTableCronApiModelToTableCronFormModel = (
 	config: TableCronApiModel,
@@ -342,24 +320,17 @@ export const mapTableCronApiModelToTableCronFormModel = (
 		config.fullTriggerInterval?.trim() ?? FULL_DEFAULT_TRIGGER_INTERVAL,
 	),
 	targetFileSize: config.targetFileSize,
-	// A table with no cron keys was never configured: the modal starts with the switch on.
-	optimizationEnabled: [
-		config.minorTriggerInterval,
-		config.majorTriggerInterval,
-		config.fullTriggerInterval,
-	].some(interval => interval !== undefined)
+	// A never-configured table starts with the switch on.
+	optimizationEnabled: config.optimizationConfigured
 		? config.enabledForOptimization
 		: true,
 	cleanup: mapTableCronApiModelToCleanupConfig(config),
 })
 
-// Fusion's rule: snapshot-expire.enabled decides when set, otherwise expiry is on when a cron is set.
-const isSnapshotExpiryEnabled = (properties: Record<string, string>) => {
-	const enabled = (
-		properties[SNAPSHOT_EXPIRE_ENABLED_PROPERTY_KEY] ?? ""
-	).trim()
-	if (enabled !== "") return enabled.toLowerCase() === "true"
-	return (properties[SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY] ?? "").trim() !== ""
+// Integer property value, or undefined when the property is absent or not a number.
+const parseOptionalInt = (raw?: string): number | undefined => {
+	const parsed = Number.parseInt(raw ?? "", 10)
+	return Number.isNaN(parsed) ? undefined : parsed
 }
 
 // Extracts cron/config fields from /details payload into existing TableCronApiModel shape.
@@ -380,15 +351,18 @@ export const mapTableDetailsResponseToTableDetailsApiModel = (
 		majorTriggerInterval: properties[MAJOR_CRON_PROPERTY_KEY],
 		fullTriggerInterval: properties[FULL_CRON_PROPERTY_KEY],
 		targetFileSize: targFileSizeInMB,
-		snapshotExpiryEnabled: isSnapshotExpiryEnabled(properties),
+		optimizationConfigured: [
+			MINOR_CRON_PROPERTY_KEY,
+			MAJOR_CRON_PROPERTY_KEY,
+			FULL_CRON_PROPERTY_KEY,
+		].some(key => key in properties),
 		snapshotExpiryConfigured:
 			SNAPSHOT_EXPIRE_ENABLED_PROPERTY_KEY in properties ||
 			SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY in properties,
 		snapshotExpiryCron: properties[SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY],
 		snapshotKeepDuration: properties[SNAPSHOT_KEEP_DURATION_PROPERTY_KEY],
-		snapshotKeepMinCount: Number.parseInt(
-			properties[SNAPSHOT_KEEP_MIN_COUNT_PROPERTY_KEY] ?? "",
-			10,
+		snapshotKeepMinCount: parseOptionalInt(
+			properties[SNAPSHOT_KEEP_MIN_COUNT_PROPERTY_KEY],
 		),
 		averageFileSize: baseMetrics.averageFileSize ?? "--",
 		fileCount: baseMetrics.fileCount ?? 0,

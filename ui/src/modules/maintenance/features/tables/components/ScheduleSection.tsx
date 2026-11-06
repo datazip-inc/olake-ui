@@ -4,7 +4,8 @@ import clsx from "clsx"
 
 import { CRON_FREQUENCY_OPTIONS } from "../constants"
 import type { ScheduleSectionProps } from "../types"
-import { getCronFromConfig, getNextRuns } from "../utils"
+import { getCronConfigError, getCronFromConfig, getNextRuns } from "../utils"
+import RunTimeChips from "./RunTimeChips"
 
 /** One cron schedule block (frequency / custom expression / next 3 runs), shared by the optimize and cleanup tabs. */
 const ScheduleSection: React.FC<ScheduleSectionProps> = ({
@@ -15,6 +16,8 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 	tooltip,
 }) => {
 	const nextRuns = getNextRuns(getCronFromConfig(value))
+	const cronError =
+		value.frequency === "custom" ? getCronConfigError(value) : null
 
 	return (
 		<div
@@ -64,8 +67,12 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 							value={value.customCron}
 							onChange={e => onChange({ ...value, customCron: e.target.value })}
 							placeholder="e.g. 0 */6 * * *"
+							status={cronError ? "error" : undefined}
 							className="font-mono text-[13px]"
 						/>
+						{cronError && (
+							<p className="text-xs leading-5 text-olake-error">{cronError}</p>
+						)}
 					</div>
 				)}
 			</div>
@@ -76,16 +83,10 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 					<span className="text-sm font-medium leading-6 text-olake-text">
 						Next 3 Runs
 					</span>
-					<div className="flex items-center gap-2">
-						{nextRuns.map(run => (
-							<span
-								key={`${title}-${run}`}
-								className="min-w-0 flex-1 whitespace-nowrap rounded-[6px] bg-olake-surface-muted px-2 py-1 text-center text-sm leading-[22px] text-olake-text-secondary"
-							>
-								{run}
-							</span>
-						))}
-					</div>
+					<RunTimeChips
+						runs={nextRuns}
+						keyPrefix={title}
+					/>
 				</div>
 			)}
 		</div>

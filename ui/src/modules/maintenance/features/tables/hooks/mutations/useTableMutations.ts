@@ -18,7 +18,7 @@ import type {
 	UpdateTableCronApiRequest,
 	UpdateTablesConfigApiRequest,
 } from "../../types"
-import { defaultCleanupApiRequest } from "../../utils"
+import { DEFAULT_CLEANUP_API_REQUEST } from "../../utils"
 
 export const useToggleTableOptimizing = () => {
 	return useMutation({
@@ -61,7 +61,7 @@ export const useToggleTableOptimizing = () => {
 				}
 
 				if (!(SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY in properties)) {
-					config = { ...config, ...defaultCleanupApiRequest() }
+					config = { ...config, ...DEFAULT_CLEANUP_API_REQUEST }
 				}
 			}
 

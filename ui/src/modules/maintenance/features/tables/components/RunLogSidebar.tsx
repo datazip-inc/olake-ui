@@ -2,16 +2,13 @@ import {
 	ArrowLeftIcon,
 	DownloadSimpleIcon,
 	HardDrivesIcon,
-	ListBulletsIcon,
-	MagnifyingGlassIcon,
-	WarningCircleIcon,
 } from "@phosphor-icons/react"
-import { Button, Input, message } from "antd"
+import { Button, message } from "antd"
 import clsx from "clsx"
-import { useMemo, useState } from "react"
 
 import { DRIVER_SOURCE_KEY } from "../constants"
 import { useDownloadProcessLogsArchive, useProcessLogs } from "../hooks"
+import SubtaskList from "./SubtaskList"
 
 type RunLogSidebarProps = {
 	tableName: string
@@ -19,8 +16,6 @@ type RunLogSidebarProps = {
 	selectedSourceKey: string
 	onSelectSource: (sourceKey: string) => void
 	onBack: () => void
-	/** Snapshot-expiry run: one log, no Spark subtasks. */
-	isExpiryRun?: boolean
 }
 
 const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
@@ -29,25 +24,14 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 	selectedSourceKey,
 	onSelectSource,
 	onBack,
-	isExpiryRun = false,
 }) => {
 	const { data } = useProcessLogs(runId)
 	const downloadArchive = useDownloadProcessLogsArchive()
 	const hasAnyLogs = Object.values(data?.logsBySource ?? {}).some(
 		logEntries => logEntries.length > 0,
 	)
-
-	const taskSources = data?.taskSources ?? []
-
-	const [subtaskSearchTerm, setSubtaskSearchTerm] = useState("")
-
-	const filteredSubtasks = useMemo(() => {
-		const normalized = subtaskSearchTerm.trim().toLowerCase()
-		if (!normalized) return taskSources
-		return taskSources.filter(source =>
-			source.label.toLowerCase().includes(normalized),
-		)
-	}, [subtaskSearchTerm, taskSources])
+	// Expiry runs are one AMS job with a single log; compaction runs add Spark subtasks.
+	const isExpiryRun = data?.isExpiryRun ?? false
 
 	return (
 		<div className="h-full w-[360px] overflow-y-auto border-r border-olake-border px-4 pb-6 pt-6">
@@ -70,22 +54,6 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 			</p>
 
 			<div className="mt-4 flex items-center gap-2">
-				{!isExpiryRun && (
-					<div className="flex h-8 flex-1 overflow-hidden rounded-md border border-olake-border">
-						<Input
-							value={subtaskSearchTerm}
-							onChange={e => setSubtaskSearchTerm(e.target.value)}
-							placeholder="Search Subtasks"
-							className="h-8 border-0 text-sm"
-						/>
-						<button
-							type="button"
-							className="flex h-8 w-8 items-center justify-center border-l border-olake-border"
-						>
-							<MagnifyingGlassIcon size={14} />
-						</button>
-					</div>
-				)}
 				<Button
 					size="small"
 					className="!h-8"
@@ -102,88 +70,32 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 				</Button>
 			</div>
 
-			<div className="mt-5 space-y-4">
-				<div className="space-y-3">
-					<button
-						type="button"
-						onClick={() => onSelectSource(DRIVER_SOURCE_KEY)}
-						className={clsx(
-							"flex h-7 w-full items-center gap-[9px] rounded-md px-2",
-							selectedSourceKey === DRIVER_SOURCE_KEY
-								? "bg-olake-surface-muted"
-								: "bg-transparent",
-						)}
-					>
-						<HardDrivesIcon
-							size={16}
-							className="text-olake-text-secondary"
-						/>
-						<span className="font-sans text-sm font-normal leading-[22px] text-olake-text-secondary">
-							{isExpiryRun ? "Expiry Logs" : "Driver Logs"}
-						</span>
-					</button>
-					{!isExpiryRun && (
-						<div className="flex h-7 w-full items-center gap-[9px] px-2">
-							<ListBulletsIcon
-								size={16}
-								className="text-olake-text-secondary"
-							/>
-							<span className="font-sans text-sm font-normal leading-[22px] text-olake-text-secondary">
-								Subtasks
-							</span>
-						</div>
+			<div className="mt-5 space-y-3">
+				<button
+					type="button"
+					onClick={() => onSelectSource(DRIVER_SOURCE_KEY)}
+					className={clsx(
+						"flex h-7 w-full items-center gap-[9px] rounded-md px-2",
+						selectedSourceKey === DRIVER_SOURCE_KEY
+							? "bg-olake-surface-muted"
+							: "bg-transparent",
 					)}
-				</div>
+				>
+					<HardDrivesIcon
+						size={16}
+						className="text-olake-text-secondary"
+					/>
+					<span className="font-sans text-sm font-normal leading-[22px] text-olake-text-secondary">
+						{isExpiryRun ? "Expiry Logs" : "Driver Logs"}
+					</span>
+				</button>
 
 				{!isExpiryRun && (
-					<div className="flex w-full min-w-0 gap-4 pl-2">
-						<div className="w-px shrink-0 self-stretch bg-olake-border" />
-						<div className="min-w-0 flex-1 space-y-3">
-							{filteredSubtasks.length === 0 ? (
-								<p className="px-2 font-sans text-sm font-normal leading-[22px] text-olake-text-tertiary">
-									{taskSources.length === 0
-										? "No subtask logs are available for this run."
-										: "No subtasks match your search criteria."}
-								</p>
-							) : (
-								filteredSubtasks.map(source => {
-									const isSelected = selectedSourceKey === source.key
-
-									return (
-										<button
-											key={source.key}
-											type="button"
-											onClick={() => onSelectSource(source.key)}
-											className={clsx(
-												"flex h-6 w-full items-center gap-2 rounded-md px-2",
-												isSelected
-													? "bg-olake-surface-subtle"
-													: "bg-transparent",
-											)}
-										>
-											{source.hasError && (
-												<WarningCircleIcon
-													size={14}
-													weight="fill"
-													className="text-olake-error"
-												/>
-											)}
-											<span
-												className={clsx(
-													"font-sans text-sm font-normal leading-[22px]",
-													source.hasError
-														? "text-olake-error"
-														: "text-olake-text-secondary",
-												)}
-											>
-												{source.label}
-											</span>
-										</button>
-									)
-								})
-							)}
-						</div>
-					</div>
+					<SubtaskList
+						sources={data?.taskSources ?? []}
+						selectedSourceKey={selectedSourceKey}
+						onSelectSource={onSelectSource}
+					/>
 				)}
 			</div>
 		</div>

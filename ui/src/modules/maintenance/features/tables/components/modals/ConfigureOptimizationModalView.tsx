@@ -1,34 +1,33 @@
-import { CaretUpIcon, QuestionIcon } from "@phosphor-icons/react"
-import { Button, Input, Modal, Spin, Tabs, Tooltip } from "antd"
-import clsx from "clsx"
+import { Button, Modal, Spin, Tabs, Tooltip } from "antd"
 import { useEffect, useState } from "react"
 
 import { ErrorLogsModal } from "@/common/components/modals"
 
 import CleanupTabContent from "./CleanupTabContent"
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
+import OptimizeTabContent, {
+	type OptimizeFormModel,
+} from "./OptimizeTabContent"
 import {
 	DEFAULT_CLEANUP_CONFIG,
 	DEFAULT_CRON_CONFIG,
+	DEFAULT_TABLE_MODAL_STYLES,
 	DEFAULT_TARGET_FILE_SIZE,
 	MAINTENANCE_TAB,
-	RUN_TYPE_LABEL,
+	TABLE_MODAL_WIDTH,
 } from "../../constants"
-import { DEFAULT_TABLE_MODAL_STYLES } from "../../constants"
 import type {
 	CleanupConfigFormModel,
-	CronConfigOption,
 	MaintenanceTabKey,
 	TableCronFormModel,
 	UpdateTableCronApiRequest,
 } from "../../types"
 import {
+	getCronConfigError,
 	getCronFromConfig,
 	getNextRunsAcross,
 	mapCleanupConfigToApiRequest,
 } from "../../utils"
-import FeatureToggleRow from "../FeatureToggleRow"
-import ScheduleSection from "../ScheduleSection"
 
 export type SaveCallbacks = {
 	onSuccess: () => void
@@ -44,15 +43,52 @@ export type ConfigureOptimizationModalViewProps = {
 	isConfigLoading?: boolean
 	isConfigError?: boolean
 	onRetryConfig?: () => void
+	/** Saved settings of one table. Absent in bulk mode, where the form starts from defaults. */
 	initialConfig?: TableCronFormModel
 	onSave: (payload: UpdateTableCronApiRequest, callbacks: SaveCallbacks) => void
 	isSaving: boolean
 }
 
+interface ConfigureFormState {
+	optimize: OptimizeFormModel
+	cleanup: CleanupConfigFormModel
+	/** Bulk mode only writes cleanup when the user changed it, so other tables keep their own. */
+	cleanupTouched: boolean
+}
+
+const INITIAL_FORM: ConfigureFormState = {
+	optimize: {
+		optimizationEnabled: true,
+		minorCron: DEFAULT_CRON_CONFIG,
+		majorCron: DEFAULT_CRON_CONFIG,
+		fullCron: DEFAULT_CRON_CONFIG,
+		targetFileSize: DEFAULT_TARGET_FILE_SIZE,
+	},
+	cleanup: DEFAULT_CLEANUP_CONFIG,
+	cleanupTouched: false,
+}
+
+const toFormState = (config: TableCronFormModel): ConfigureFormState => ({
+	optimize: {
+		optimizationEnabled: config.optimizationEnabled,
+		minorCron: config.minorCron,
+		majorCron: config.majorCron,
+		fullCron: config.fullCron,
+		targetFileSize: config.targetFileSize || DEFAULT_TARGET_FILE_SIZE,
+	},
+	cleanup: config.cleanup,
+	cleanupTouched: false,
+})
+
 enum ActiveOptimizationModalState {
 	SUCCESS = "success",
 	ERROR_LOGS = "error-logs",
 }
+
+const TAB_ITEMS = [
+	{ key: MAINTENANCE_TAB.OPTIMIZE, label: "Optimize" },
+	{ key: MAINTENANCE_TAB.CLEANUP, label: "Cleanup" },
+]
 
 const ConfigureOptimizationModalView: React.FC<
 	ConfigureOptimizationModalViewProps
@@ -72,61 +108,36 @@ const ConfigureOptimizationModalView: React.FC<
 	const [activeTab, setActiveTab] = useState<MaintenanceTabKey>(
 		MAINTENANCE_TAB.OPTIMIZE,
 	)
-	const [minorCron, setMinorCron] =
-		useState<CronConfigOption>(DEFAULT_CRON_CONFIG)
-	const [majorCron, setMajorCron] =
-		useState<CronConfigOption>(DEFAULT_CRON_CONFIG)
-	const [fullCron, setFullCron] =
-		useState<CronConfigOption>(DEFAULT_CRON_CONFIG)
-	const [targetFileSize, setTargetFileSize] = useState(DEFAULT_TARGET_FILE_SIZE)
-	const [advancedOpen, setAdvancedOpen] = useState(true)
-	// Both features start switched on; the user can turn either off before saving.
-	const [optimizationEnabled, setOptimizationEnabled] = useState(true)
-	const [cleanupConfig, setCleanupConfig] = useState<CleanupConfigFormModel>(
-		DEFAULT_CLEANUP_CONFIG,
-	)
+	const [form, setForm] = useState<ConfigureFormState>(INITIAL_FORM)
 	const [activeModal, setActiveModal] =
 		useState<ActiveOptimizationModalState | null>(null)
 	const [errorLogs, setErrorLogs] = useState<string[]>([])
 
-	// Populate form when config loads.
-	useEffect(() => {
-		if (!initialConfig || !open) return
-		setMinorCron(initialConfig.minorCron)
-		setMajorCron(initialConfig.majorCron)
-		setFullCron(initialConfig.fullCron)
-		if (initialConfig.targetFileSize) {
-			setTargetFileSize(initialConfig.targetFileSize)
-		}
-		setOptimizationEnabled(initialConfig.optimizationEnabled)
-		setCleanupConfig(initialConfig.cleanup)
-	}, [initialConfig, open])
-
-	// Reset all form and sub-modal state on close.
+	// Populate when the saved config arrives; reset everything on close.
 	useEffect(() => {
 		if (!open) {
 			setActiveTab(MAINTENANCE_TAB.OPTIMIZE)
 			setActiveModal(null)
-			setMinorCron(DEFAULT_CRON_CONFIG)
-			setMajorCron(DEFAULT_CRON_CONFIG)
-			setFullCron(DEFAULT_CRON_CONFIG)
-			setTargetFileSize(DEFAULT_TARGET_FILE_SIZE)
-			setAdvancedOpen(true)
-			setOptimizationEnabled(true)
-			setCleanupConfig(DEFAULT_CLEANUP_CONFIG)
 			setErrorLogs([])
+			setForm(INITIAL_FORM)
+			return
 		}
-	}, [open])
+		if (initialConfig) setForm(toFormState(initialConfig))
+	}, [initialConfig, open])
+
+	// Single mode always writes cleanup; bulk mode only after the user touched that tab.
+	const includeCleanup = initialConfig !== undefined || form.cleanupTouched
+	const { optimize, cleanup } = form
 
 	// One save for both tabs: every property goes out in a single ALTER TABLE batch.
 	const handleSave = () => {
 		const payload: UpdateTableCronApiRequest = {
-			minor_cron: getCronFromConfig(minorCron),
-			major_cron: getCronFromConfig(majorCron),
-			full_cron: getCronFromConfig(fullCron),
-			target_file_size: targetFileSize,
-			enabled_for_optimization: String(optimizationEnabled),
-			...mapCleanupConfigToApiRequest(cleanupConfig),
+			minor_cron: getCronFromConfig(optimize.minorCron),
+			major_cron: getCronFromConfig(optimize.majorCron),
+			full_cron: getCronFromConfig(optimize.fullCron),
+			target_file_size: optimize.targetFileSize,
+			enabled_for_optimization: String(optimize.optimizationEnabled),
+			...(includeCleanup ? mapCleanupConfigToApiRequest(cleanup) : {}),
 		}
 
 		onSave(payload, {
@@ -144,96 +155,38 @@ const ConfigureOptimizationModalView: React.FC<
 		onClose()
 	}
 
-	const optimizeRuns = optimizationEnabled
-		? getNextRunsAcross([minorCron, majorCron, fullCron])
-		: []
-	const cleanupRuns = cleanupConfig.expireSnapshots
-		? getNextRunsAcross([cleanupConfig.cron])
-		: []
-	const isTargetFileSizeValid = targetFileSize > 0
-	const isCleanupValid =
-		!cleanupConfig.expireSnapshots ||
-		(cleanupConfig.olderThanDays > 0 && cleanupConfig.minSnapshotsToKeep > 0)
-
-	const optimizeTabContent = (
-		<>
-			<div className="pt-6">
-				<FeatureToggleRow
-					label="Optimization"
-					checked={optimizationEnabled}
-					onChange={setOptimizationEnabled}
-				/>
-			</div>
-			<ScheduleSection
-				title={RUN_TYPE_LABEL.LITE}
-				tooltip="Converts equality deletes to position deletes and merge small files"
-				value={minorCron}
-				onChange={setMinorCron}
-				isFirst
-			/>
-			<ScheduleSection
-				title={RUN_TYPE_LABEL.MEDIUM}
-				tooltip="Applies deletes and merges data files"
-				value={majorCron}
-				onChange={setMajorCron}
-			/>
-			<ScheduleSection
-				title={RUN_TYPE_LABEL.FULL}
-				tooltip="Rewrites all data and applies deletes, creating files of the target size."
-				value={fullCron}
-				onChange={setFullCron}
-			/>
-
-			{/* Advanced Config */}
-			<div className="border-t border-olake-border-secondary">
-				<button
-					type="button"
-					className="flex w-full items-center justify-between py-2"
-					onClick={() => setAdvancedOpen(prev => !prev)}
-				>
-					<span className="text-base font-medium leading-6 text-olake-text">
-						Advanced Config
-					</span>
-					<CaretUpIcon
-						size={16}
-						className={clsx(
-							"text-olake-text-tertiary transition-transform",
-							!advancedOpen && "rotate-180",
-						)}
-					/>
-				</button>
-
-				{advancedOpen && (
-					<div className="flex items-center justify-between pb-8">
-						<div className="flex items-center justify-center gap-x-2">
-							<span className="text-base leading-6 text-olake-text">
-								Target file size
-							</span>
-							<Tooltip title="Desired file size after compaction; full optimization creates files of this size.">
-								<QuestionIcon
-									size={14}
-									className="cursor-help text-olake-text-tertiary"
-								/>
-							</Tooltip>
-						</div>
-						<Input
-							value={targetFileSize === 0 ? "" : String(targetFileSize)}
-							onChange={e => {
-								const numericValue = e.target.value.replace(/[^0-9]/g, "")
-								setTargetFileSize(
-									numericValue === "" ? 0 : Number(numericValue),
-								)
-							}}
-							inputMode="numeric"
-							placeholder="100"
-							addonAfter="MB"
-							className="w-32"
-						/>
-					</div>
-				)}
-			</div>
-		</>
+	const compactionCrons = [
+		optimize.minorCron,
+		optimize.majorCron,
+		optimize.fullCron,
+	]
+	const activeCrons = [
+		...compactionCrons,
+		...(includeCleanup && cleanup.expireSnapshots ? [cleanup.cron] : []),
+	]
+	const hasInvalidCron = activeCrons.some(
+		cron => getCronConfigError(cron) !== null,
 	)
+	const isCleanupValid =
+		!includeCleanup ||
+		!cleanup.expireSnapshots ||
+		(cleanup.keepDuration.value > 0 && cleanup.minSnapshotsToKeep > 0)
+	const canSave =
+		!disableSaveReason &&
+		!isConfigLoading &&
+		!isConfigError &&
+		optimize.targetFileSize > 0 &&
+		isCleanupValid &&
+		!hasInvalidCron
+
+	const optimizeRuns = optimize.optimizationEnabled
+		? getNextRunsAcross(compactionCrons)
+		: []
+	const cleanupRuns = includeCleanup
+		? cleanup.expireSnapshots
+			? getNextRunsAcross([cleanup.cron])
+			: []
+		: undefined
 
 	return (
 		<>
@@ -245,7 +198,7 @@ const ConfigureOptimizationModalView: React.FC<
 				maskClosable={!isSaving}
 				keyboard={!isSaving}
 				centered
-				width={696}
+				width={TABLE_MODAL_WIDTH}
 				destroyOnHidden
 				styles={DEFAULT_TABLE_MODAL_STYLES}
 			>
@@ -260,10 +213,7 @@ const ConfigureOptimizationModalView: React.FC<
 							activeKey={activeTab}
 							onChange={key => setActiveTab(key as MaintenanceTabKey)}
 							className="mt-2 [&_.ant-tabs-nav]:mb-0"
-							items={[
-								{ key: MAINTENANCE_TAB.OPTIMIZE, label: "Optimize" },
-								{ key: MAINTENANCE_TAB.CLEANUP, label: "Cleanup" },
-							]}
+							items={TAB_ITEMS}
 						/>
 					</div>
 
@@ -290,11 +240,22 @@ const ConfigureOptimizationModalView: React.FC<
 								<Spin size="large" />
 							</div>
 						) : activeTab === MAINTENANCE_TAB.OPTIMIZE ? (
-							optimizeTabContent
+							<OptimizeTabContent
+								value={optimize}
+								onChange={next =>
+									setForm(prev => ({ ...prev, optimize: next }))
+								}
+							/>
 						) : (
 							<CleanupTabContent
-								value={cleanupConfig}
-								onChange={setCleanupConfig}
+								value={cleanup}
+								onChange={next =>
+									setForm(prev => ({
+										...prev,
+										cleanup: next,
+										cleanupTouched: true,
+									}))
+								}
 							/>
 						)}
 					</div>
@@ -306,13 +267,7 @@ const ConfigureOptimizationModalView: React.FC<
 								type="primary"
 								onClick={handleSave}
 								loading={isSaving}
-								disabled={
-									!!disableSaveReason ||
-									isConfigLoading ||
-									isConfigError ||
-									!isTargetFileSizeValid ||
-									!isCleanupValid
-								}
+								disabled={!canSave}
 							>
 								Complete Configuration
 							</Button>

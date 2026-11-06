@@ -3,14 +3,15 @@ import { useEffect, useRef, useState } from "react"
 
 import ConfigSuccessIcon from "@/assets/config-success-icon.svg"
 
-import { DEFAULT_TABLE_MODAL_STYLES } from "../../constants"
+import { DEFAULT_TABLE_MODAL_STYLES, TABLE_MODAL_WIDTH } from "../../constants"
+import RunTimeChips from "../RunTimeChips"
 
 type ConfigurationSuccessModalProps = {
 	open: boolean
 	onClose: () => void
 	/** Upcoming optimize runs across Lite/Medium/Full, earliest first. */
-	optimizeRuns?: string[]
-	/** Upcoming cleanup (expire snapshots) runs, earliest first. */
+	optimizeRuns: string[]
+	/** Upcoming cleanup runs; undefined when cleanup was not part of this save (bulk, untouched). */
 	cleanupRuns?: string[]
 }
 
@@ -23,16 +24,10 @@ const NextRuns: React.FC<{ title: string; runs: string[] }> = ({
 			{title}
 		</p>
 		{runs.length > 0 ? (
-			<div className="flex w-full items-center gap-2">
-				{runs.map(run => (
-					<span
-						key={`${title}-${run}`}
-						className="min-w-0 flex-1 whitespace-nowrap rounded-[6px] bg-olake-surface-muted px-2 py-1 text-center text-sm leading-[22px] text-olake-text-secondary"
-					>
-						{run}
-					</span>
-				))}
-			</div>
+			<RunTimeChips
+				runs={runs}
+				keyPrefix={title}
+			/>
 		) : (
 			<p className="text-sm leading-[22px] text-olake-text-secondary">
 				No runs scheduled
@@ -80,7 +75,7 @@ const ConfigurationSuccessModal: React.FC<ConfigurationSuccessModalProps> = ({
 			footer={null}
 			closable={false}
 			centered
-			width={696}
+			width={TABLE_MODAL_WIDTH}
 			destroyOnHidden
 			styles={DEFAULT_TABLE_MODAL_STYLES}
 		>
@@ -99,22 +94,18 @@ const ConfigurationSuccessModal: React.FC<ConfigurationSuccessModalProps> = ({
 				</div>
 
 				{/* Upcoming runs */}
-				{(optimizeRuns || cleanupRuns) && (
-					<div className="mt-10 flex w-[632px] flex-col items-center gap-6">
-						{optimizeRuns && (
-							<NextRuns
-								title="Next 3 optimize runs"
-								runs={optimizeRuns}
-							/>
-						)}
-						{cleanupRuns && (
-							<NextRuns
-								title="Next 3 cleanup runs"
-								runs={cleanupRuns}
-							/>
-						)}
-					</div>
-				)}
+				<div className="mt-10 flex w-full flex-col items-center gap-6 px-8">
+					<NextRuns
+						title="Next 3 optimize runs"
+						runs={optimizeRuns}
+					/>
+					{cleanupRuns && (
+						<NextRuns
+							title="Next 3 cleanup runs"
+							runs={cleanupRuns}
+						/>
+					)}
+				</div>
 
 				{/* Button */}
 				<button

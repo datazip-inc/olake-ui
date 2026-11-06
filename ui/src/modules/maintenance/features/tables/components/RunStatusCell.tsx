@@ -4,10 +4,10 @@ import clsx from "clsx"
 
 import { Tag } from "@/common/components"
 
-import { compactionSlots } from "../constants"
+import { LATEST_RUN_SLOTS } from "../constants"
 import type { Table } from "../types"
 import { getRunStatusConfig } from "../utils"
-import CompactionPopoverContent from "./CompactionPopoverContent"
+import LatestRunsPopoverContent from "./LatestRunsPopoverContent"
 
 const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
 	const runs = {
@@ -31,7 +31,7 @@ const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
 
 	const tags = (
 		<div className="flex items-center justify-center gap-1">
-			{compactionSlots.map(slot => {
+			{LATEST_RUN_SLOTS.map(slot => {
 				const run = runs[slot.key] ?? null
 				if (!run) {
 					return (
@@ -81,7 +81,7 @@ const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
 	return (
 		<Popover
 			content={
-				<CompactionPopoverContent
+				<LatestRunsPopoverContent
 					minor={row.minor}
 					major={row.major}
 					full={row.full}

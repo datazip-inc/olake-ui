@@ -18,24 +18,21 @@ import { getProcessLogFileId } from "../utils"
 type RunLogsPanelProps = {
 	runId: string
 	selectedSourceKey: string
-	isExpiryRun?: boolean
 }
 
 const RunLogsPanel: React.FC<RunLogsPanelProps> = ({
 	runId,
 	selectedSourceKey,
-	isExpiryRun = false,
 }) => {
 	const { data, isFetching, refetch } = useProcessLogs(runId)
 	const downloadLogFile = useDownloadProcessLogFile()
 
 	const logs = data?.logsBySource[selectedSourceKey] ?? []
 
+	const driverTitle = data?.isExpiryRun ? "Expiry Logs" : "Driver Logs"
 	const title =
 		selectedSourceKey === DRIVER_SOURCE_KEY
-			? isExpiryRun
-				? "Expiry Logs"
-				: "Driver Logs"
+			? driverTitle
 			: `Subtask ${selectedSourceKey.replace("task-", "")}`
 
 	const [searchTerm, setSearchTerm] = useState("")

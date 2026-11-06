@@ -7,24 +7,18 @@ import { useNavigate, useParams } from "react-router"
 import { DataTable } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
 
-import { RunMetricsSidebar } from "../components"
+import { FilterChips, RunMetricsSidebar } from "../components"
 import {
-	RUN_LOGS_TYPE_QUERY_PARAM,
-	RUN_TYPE_FILTER,
-	RUN_TYPE_LABEL,
+	RUN_STATUS_FILTER_OPTIONS,
+	RUN_TYPE_FILTER_OPTIONS,
 } from "../constants"
 import { useRunHistoryFilters, useTableRuns } from "../hooks"
-import type {
-	RunHistoryFilter,
-	RunMetricRow,
-	RunTypeFilter,
-	TableRun,
-} from "../types"
+import type { RunMetricRow, TableRun } from "../types"
 import { getRunLogsStatusConfig } from "../utils"
 
 const getColumns = (
 	handleMetricsClick: (row: TableRun) => void,
-	handleLogsClick: (row: TableRun) => void,
+	handleLogsClick: (runId: string) => void,
 ): ColumnDef<TableRun>[] => [
 	{
 		key: "runId",
@@ -99,7 +93,7 @@ const getColumns = (
 		render: row => (
 			<Button
 				size="small"
-				onClick={() => handleLogsClick(row)}
+				onClick={() => handleLogsClick(row.runId)}
 			>
 				View
 			</Button>
@@ -132,15 +126,15 @@ const RunHistory: React.FC = () => {
 		handleFilterChange,
 		handleTypeFilterChange,
 	} = useRunHistoryFilters()
-	const { data, isLoading, isFetching, refetch } = useTableRuns(
-		decodedCatalog,
-		decodedDatabase,
-		decodedTableName,
-		currentPage,
+	const { data, isLoading, isFetching, refetch } = useTableRuns({
+		catalog: decodedCatalog,
+		database: decodedDatabase,
+		tableName: decodedTableName,
+		page: currentPage,
 		pageSize,
 		status,
 		runType,
-	)
+	})
 
 	const runs = data?.runs ?? []
 	const totalRuns = data?.total ?? 0
@@ -152,15 +146,11 @@ const RunHistory: React.FC = () => {
 		setMetricsSidebarOpen(true)
 		setMetricsRows(row.metrics)
 	}
-	// The logs page has no run endpoint of its own, so the run type travels in the URL.
-	const getRunLogsPath = (run: TableRun) =>
-		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(run.runId)}/logs` +
-		(run.type === RUN_TYPE_LABEL.EXPIRE
-			? `?${RUN_LOGS_TYPE_QUERY_PARAM}=${RUN_TYPE_FILTER.EXPIRE}`
-			: "")
+	const getRunLogsPath = (runId: string) =>
+		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(runId)}/logs`
 
-	const columns = getColumns(handleMetricsClick, run =>
-		navigate(getRunLogsPath(run)),
+	const columns = getColumns(handleMetricsClick, runId =>
+		navigate(getRunLogsPath(runId)),
 	)
 
 	return (
@@ -200,58 +190,21 @@ const RunHistory: React.FC = () => {
 					}}
 				/>
 
-				<div className="flex items-center gap-1.5">
-					{[
-						{ key: "all", label: "All Runs" },
-						{ key: "failed", label: "Failed Runs" },
-					].map(filter => {
-						const active = activeFilter === (filter.key as RunHistoryFilter)
-						return (
-							<button
-								key={filter.key}
-								type="button"
-								onClick={() =>
-									handleFilterChange(filter.key as RunHistoryFilter)
-								}
-								className={clsx(
-									"h-8 rounded-md border border-olake-border px-3 text-sm leading-[22px]",
-									active
-										? "bg-olake-surface-muted text-olake-text-secondary"
-										: "bg-white text-olake-text-secondary",
-								)}
-							>
-								{filter.label}
-							</button>
-						)
-					})}
-				</div>
+				<FilterChips
+					options={RUN_STATUS_FILTER_OPTIONS}
+					value={activeFilter}
+					onChange={handleFilterChange}
+					size="sm"
+				/>
 
 				{/* Run type: compaction (Lite/Medium/Full) vs snapshot expiry */}
-				<div className="flex items-center gap-1.5 border-l border-olake-border pl-4">
-					{[
-						{ key: RUN_TYPE_FILTER.ALL, label: "All Types" },
-						{ key: RUN_TYPE_FILTER.OPTIMIZATION, label: "Optimization" },
-						{ key: RUN_TYPE_FILTER.EXPIRE, label: "Expire" },
-					].map(filter => {
-						const active = activeTypeFilter === filter.key
-						return (
-							<button
-								key={filter.key}
-								type="button"
-								onClick={() =>
-									handleTypeFilterChange(filter.key as RunTypeFilter)
-								}
-								className={clsx(
-									"h-8 rounded-md border border-olake-border px-3 text-sm leading-[22px]",
-									active
-										? "bg-olake-surface-muted text-olake-text-secondary"
-										: "bg-white text-olake-text-secondary",
-								)}
-							>
-								{filter.label}
-							</button>
-						)
-					})}
+				<div className="border-l border-olake-border pl-4">
+					<FilterChips
+						options={RUN_TYPE_FILTER_OPTIONS}
+						value={activeTypeFilter}
+						onChange={handleTypeFilterChange}
+						size="sm"
+					/>
 				</div>
 			</div>
 

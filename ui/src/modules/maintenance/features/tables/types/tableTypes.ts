@@ -1,4 +1,5 @@
 import {
+	MAINTENANCE_TAB,
 	RUN_STATUS,
 	RUN_TYPE,
 	RUN_TYPE_FILTER,
@@ -21,7 +22,7 @@ export interface RunMetricRow {
 	value: string
 }
 
-export interface FusionCompactionRun {
+export interface FusionLatestRun {
 	finish_time: number
 	status: RunStatus
 	runID?: string
@@ -32,11 +33,11 @@ export interface FusionTable {
 	totalSize: string
 	healthScore: number
 	olake_created: boolean
-	major: FusionCompactionRun | null
-	minor: FusionCompactionRun | null
-	full: FusionCompactionRun | null
+	major: FusionLatestRun | null
+	minor: FusionLatestRun | null
+	full: FusionLatestRun | null
 	/** latest snapshot-expiry (cleanup) run */
-	expiry: FusionCompactionRun | null
+	expiry: FusionLatestRun | null
 	enabled: boolean
 	snapshot_expiry_enabled: boolean
 }
@@ -126,7 +127,7 @@ export type RunHistoryFilter = "all" | "failed"
 
 export type RunTypeFilter = ValueOf<typeof RUN_TYPE_FILTER>
 
-export type CompactionRun = {
+export type LatestRun = {
 	lastRun: string
 	status: RunStatus
 	runID?: string
@@ -139,10 +140,10 @@ export interface Table {
 	totalSize: string
 	healthScore: number
 	olakeCreated: boolean
-	minor: CompactionRun
-	major: CompactionRun
-	full: CompactionRun
-	expiry: CompactionRun
+	minor: LatestRun
+	major: LatestRun
+	full: LatestRun
+	expiry: LatestRun
 	enabled: boolean
 	snapshotExpiryEnabled: boolean
 }
@@ -162,8 +163,9 @@ export interface TableCronApiModel {
 	majorTriggerInterval?: string
 	fullTriggerInterval?: string
 	enabledForOptimization: boolean
+	/** False when the table has no compaction cron set at all. */
+	optimizationConfigured: boolean
 	targetFileSize?: number
-	snapshotExpiryEnabled: boolean
 	/** False when the table has neither snapshot-expire.enabled nor a cron set. */
 	snapshotExpiryConfigured: boolean
 	snapshotExpiryCron?: string
@@ -211,6 +213,17 @@ export interface TableCronFormModel {
 	cleanup: CleanupConfigFormModel
 }
 
+/** Arguments of the run history query, shared by the service, hook and query key. */
+export interface TableRunsQuery {
+	catalog: string
+	database: string
+	tableName: string
+	page: number
+	pageSize: number
+	status?: string
+	runType?: string
+}
+
 export interface ToggleTableOptimizingRequest {
 	catalog: string
 	database: string
@@ -240,13 +253,21 @@ export interface ScheduleSectionProps {
 	tooltip?: string
 }
 
-export type MaintenanceTabKey = "optimize" | "cleanup"
+export type MaintenanceTabKey = ValueOf<typeof MAINTENANCE_TAB>
+
+/** Units Fusion accepts for snapshot.keep.duration (seconds are folded into minutes). */
+export type KeepDurationUnit = "d" | "h" | "min"
+
+export interface KeepDuration {
+	value: number
+	unit: KeepDurationUnit
+}
 
 /** Snapshot-expiry (cleanup) settings, stored as table properties in Fusion. */
 export interface CleanupConfigFormModel {
 	expireSnapshots: boolean
-	/** Snapshots older than this many days are removed. */
-	olderThanDays: number
+	/** Snapshots older than this are removed. */
+	keepDuration: KeepDuration
 	/** Lower bound on snapshots kept regardless of age. */
 	minSnapshotsToKeep: number
 	cron: CronConfigOption

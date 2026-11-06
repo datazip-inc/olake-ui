@@ -1,18 +1,18 @@
 import clsx from "clsx"
 
-import { compactionSlots } from "../constants"
+import { LATEST_RUN_SLOTS } from "../constants"
 import { RUN_STATUS } from "../constants"
-import type { CompactionRun } from "../types"
+import type { LatestRun } from "../types"
 import { getRunStatusConfig } from "../utils"
 
 type Props = {
-	minor: CompactionRun
-	major: CompactionRun
-	full: CompactionRun
-	expiry: CompactionRun
+	minor: LatestRun
+	major: LatestRun
+	full: LatestRun
+	expiry: LatestRun
 }
 
-const CompactionPopoverContent: React.FC<Props> = ({
+const LatestRunsPopoverContent: React.FC<Props> = ({
 	minor,
 	major,
 	full,
@@ -22,7 +22,7 @@ const CompactionPopoverContent: React.FC<Props> = ({
 
 	return (
 		<div className="w-60">
-			{compactionSlots.map((slot, idx) => {
+			{LATEST_RUN_SLOTS.map((slot, idx) => {
 				const run = runs[slot.key]
 				const cfg = run ? getRunStatusConfig(run.status) : null
 
@@ -72,4 +72,4 @@ const CompactionPopoverContent: React.FC<Props> = ({
 	)
 }
 
-export default CompactionPopoverContent
+export default LatestRunsPopoverContent
