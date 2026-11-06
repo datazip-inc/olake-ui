@@ -12,12 +12,22 @@ export const RUN_TYPE = {
 	MINOR: "MINOR",
 	MAJOR: "MAJOR",
 	FULL: "FULL",
+	/** Snapshot expiry (cleanup) run */
+	EXPIRY: "EXPIRY",
 } as const
 
 export const RUN_TYPE_LABEL = {
 	LITE: "Lite",
 	MEDIUM: "Medium",
 	FULL: "Full",
+	EXPIRE: "Expire",
+} as const
+
+/** Run History type filter; values double as the `type` query param of the runs endpoint. */
+export const RUN_TYPE_FILTER = {
+	ALL: "all",
+	OPTIMIZATION: "optimization",
+	EXPIRE: "expiry",
 } as const
 
 export const MINOR_CRON_PROPERTY_KEY = "self-optimizing.minor.trigger.cron"

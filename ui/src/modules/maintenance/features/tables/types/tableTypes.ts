@@ -1,4 +1,9 @@
-import { RUN_STATUS, RUN_TYPE, RUN_TYPE_LABEL } from "../constants"
+import {
+	RUN_STATUS,
+	RUN_TYPE,
+	RUN_TYPE_FILTER,
+	RUN_TYPE_LABEL,
+} from "../constants"
 
 type ValueOf<T> = T[keyof T]
 
@@ -83,14 +88,14 @@ export interface FusionRun {
 	optimizingType: RunType
 	startTime: number
 	duration: number
-	summary?: RunMetrics
+	failReason?: string | null
+	summary?: RunMetrics | null
 }
 
+/** Page of runs from the BFF runs endpoint (compaction and snapshot expiry together). */
 export interface GetTableRunsApiResponse {
-	result?: {
-		list?: FusionRun[]
-		total?: number
-	}
+	list?: FusionRun[]
+	total?: number
 }
 
 export interface UpdateTableCronApiRequest {
@@ -116,6 +121,8 @@ export interface UpdateTablesConfigApiRequest {
 export type FilterKey = "all" | "olake" | "external"
 
 export type RunHistoryFilter = "all" | "failed"
+
+export type RunTypeFilter = ValueOf<typeof RUN_TYPE_FILTER>
 
 export type CompactionRun = {
 	lastRun: string

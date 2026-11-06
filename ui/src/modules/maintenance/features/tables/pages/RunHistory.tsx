@@ -8,8 +8,14 @@ import { DataTable } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
 
 import { RunMetricsSidebar } from "../components"
+import { RUN_TYPE_FILTER } from "../constants"
 import { useRunHistoryFilters, useTableRuns } from "../hooks"
-import type { RunHistoryFilter, RunMetricRow, TableRun } from "../types"
+import type {
+	RunHistoryFilter,
+	RunMetricRow,
+	RunTypeFilter,
+	TableRun,
+} from "../types"
 import { getRunLogsStatusConfig } from "../utils"
 
 const getColumns = (
@@ -113,11 +119,14 @@ const RunHistory: React.FC = () => {
 	const [selectedRunId, setSelectedRunId] = useState<string>("")
 	const {
 		activeFilter,
+		activeTypeFilter,
 		currentPage,
 		setCurrentPage,
 		pageSize,
 		status,
+		runType,
 		handleFilterChange,
+		handleTypeFilterChange,
 	} = useRunHistoryFilters()
 	const { data, isLoading, isFetching, refetch } = useTableRuns(
 		decodedCatalog,
@@ -126,6 +135,7 @@ const RunHistory: React.FC = () => {
 		currentPage,
 		pageSize,
 		status,
+		runType,
 	)
 
 	const runs = data?.runs ?? []
@@ -194,6 +204,34 @@ const RunHistory: React.FC = () => {
 								type="button"
 								onClick={() =>
 									handleFilterChange(filter.key as RunHistoryFilter)
+								}
+								className={clsx(
+									"h-8 rounded-md border border-olake-border px-3 text-sm leading-[22px]",
+									active
+										? "bg-olake-surface-muted text-olake-text-secondary"
+										: "bg-white text-olake-text-secondary",
+								)}
+							>
+								{filter.label}
+							</button>
+						)
+					})}
+				</div>
+
+				{/* Run type: compaction (Lite/Medium/Full) vs snapshot expiry */}
+				<div className="flex items-center gap-1.5 border-l border-olake-border pl-4">
+					{[
+						{ key: RUN_TYPE_FILTER.ALL, label: "All Types" },
+						{ key: RUN_TYPE_FILTER.OPTIMIZATION, label: "Optimization" },
+						{ key: RUN_TYPE_FILTER.EXPIRE, label: "Expire" },
+					].map(filter => {
+						const active = activeTypeFilter === filter.key
+						return (
+							<button
+								key={filter.key}
+								type="button"
+								onClick={() =>
+									handleTypeFilterChange(filter.key as RunTypeFilter)
 								}
 								className={clsx(
 									"h-8 rounded-md border border-olake-border px-3 text-sm leading-[22px]",

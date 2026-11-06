@@ -100,6 +100,8 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 
 		// tables: view
 		opt.GET("/:catalog/:database/tables", optHandler.GetTablesWithDetails)
+		// runs: compaction + snapshot expiry history (type=all|expiry|optimization)
+		opt.GET("/:catalog/:database/tables/:table/runs", optHandler.GetTableRuns)
 	}
 }
 

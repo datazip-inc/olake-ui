@@ -15,11 +15,12 @@ export const tableKeys = {
 		page: number,
 		pageSize: number,
 		status?: string,
+		runType?: string,
 	) =>
 		[
 			...tableKeys.table(catalog, database, tableName),
 			"runs",
-			{ page, pageSize, status },
+			{ page, pageSize, status, runType },
 		] as const,
 	cron: (catalog: string, database: string, tableName: string) =>
 		[...tableKeys.table(catalog, database, tableName), "cron"] as const,

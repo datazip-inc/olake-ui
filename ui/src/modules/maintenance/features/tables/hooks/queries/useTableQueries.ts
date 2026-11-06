@@ -61,6 +61,7 @@ export const useTableRuns = (
 	page: number,
 	pageSize: number,
 	status?: string,
+	runType?: string,
 ) => {
 	return useQuery({
 		queryKey: tableKeys.runs(
@@ -70,6 +71,7 @@ export const useTableRuns = (
 			page,
 			pageSize,
 			status,
+			runType,
 		),
 		queryFn: () =>
 			tableService.getTableRuns(
@@ -79,6 +81,7 @@ export const useTableRuns = (
 				page,
 				pageSize,
 				status,
+				runType,
 			),
 		select: mapGetTableRunsResponseToTableRuns,
 		enabled: !!catalog && !!database && !!tableName,

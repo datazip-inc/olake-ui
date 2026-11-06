@@ -200,23 +200,34 @@ const runTypeToLabel: Record<RunType, TableRun["type"]> = {
 	[RUN_TYPE.MINOR]: RUN_TYPE_LABEL.LITE,
 	[RUN_TYPE.MAJOR]: RUN_TYPE_LABEL.MEDIUM,
 	[RUN_TYPE.FULL]: RUN_TYPE_LABEL.FULL,
+	[RUN_TYPE.EXPIRY]: RUN_TYPE_LABEL.EXPIRE,
+}
+
+// Failed runs carry the reason outside the summary; surface it with the metrics.
+const mapRunToMetricRows = (run: FusionRun): RunMetricRow[] => {
+	const rows = mapRunMetricsPayloadToRows(run.summary ?? {})
+	const failReason = run.failReason?.trim()
+	if (failReason && run.status === RUN_STATUS.FAILED) {
+		rows.push({ label: "Fail Reason", value: failReason })
+	}
+	return rows
 }
 
 export const mapGetTableRunsResponseToTableRuns = (
 	response: GetTableRunsApiResponse,
 ): { runs: TableRun[]; total: number } => {
-	const runs: FusionRun[] = response.result?.list ?? []
+	const runs: FusionRun[] = response.list ?? []
 	return {
 		runs: runs.map(run => ({
 			id: run.processId,
 			runId: run.processId,
 			status: run.status,
-			type: runTypeToLabel[run.optimizingType],
+			type: runTypeToLabel[run.optimizingType] ?? run.optimizingType,
 			startTime: formatTimestampToUtcTime(run.startTime),
 			duration: formatDuration(run.duration) || "-",
-			metrics: mapRunMetricsPayloadToRows(run.summary ?? {}),
+			metrics: mapRunToMetricRows(run),
 		})),
-		total: response.result?.total ?? 0,
+		total: response.total ?? 0,
 	}
 }
 

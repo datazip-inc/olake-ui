@@ -52,6 +52,7 @@ export const tableService = {
 		page: number,
 		pageSize: number,
 		status?: string,
+		runType?: string,
 	) => {
 		const searchParams = new URLSearchParams({
 			page: String(page),
@@ -60,9 +61,12 @@ export const tableService = {
 		if (status) {
 			searchParams.set("status", status)
 		}
+		if (runType) {
+			searchParams.set("type", runType)
+		}
 
 		const response = await api.get<GetTableRunsApiResponse>(
-			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/optimizing-processes?${searchParams.toString()}`,
+			`${API_CONFIG.ENDPOINTS.OPT.TABLE_RUNS(catalog, database, tableName)}?${searchParams.toString()}`,
 		)
 		return response.data
 	},
