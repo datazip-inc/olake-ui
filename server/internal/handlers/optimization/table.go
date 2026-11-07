@@ -70,7 +70,7 @@ func (h *Handler) GetTableRuns(c *gin.Context) {
 		return
 	}
 
-	runs, err := h.opt.GetTableRuns(c.Request.Context(), dto.TableRunsQuery{
+	runs, err := h.opt.GetTableRuns(c.Request.Context(), &dto.TableRunsQuery{
 		Catalog:  catalog,
 		Database: database,
 		Table:    table,

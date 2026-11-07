@@ -23,7 +23,8 @@ const (
 )
 
 // GetTableRuns lists a table's optimizing processes (compaction and snapshot expiry), newest first.
-func (s *Service) GetTableRuns(ctx context.Context, query dto.TableRunsQuery) (*dto.TableRunsResponse, error) {
+// Page and PageSize are normalised in place when they are missing.
+func (s *Service) GetTableRuns(ctx context.Context, query *dto.TableRunsQuery) (*dto.TableRunsResponse, error) {
 	if query.Page < 1 {
 		query.Page = 1
 	}
@@ -44,7 +45,7 @@ func (s *Service) GetTableRuns(ctx context.Context, query dto.TableRunsQuery) (*
 }
 
 // fetchRunsPage forwards one page to Fusion as-is, narrowed to processType when it is set.
-func (s *Service) fetchRunsPage(ctx context.Context, query dto.TableRunsQuery, processType string) (*dto.TableRunsResponse, error) {
+func (s *Service) fetchRunsPage(ctx context.Context, query *dto.TableRunsQuery, processType string) (*dto.TableRunsResponse, error) {
 	path := fmt.Sprintf(constants.OptPathTableOptimizingProcesses, query.Catalog, query.Database, query.Table)
 	params := url.Values{}
 	params.Set("page", strconv.Itoa(query.Page))
@@ -64,13 +65,13 @@ func (s *Service) fetchRunsPage(ctx context.Context, query dto.TableRunsQuery, p
 }
 
 // fetchOptimizationRuns collects every non-expiry run and paginates in memory.
-func (s *Service) fetchOptimizationRuns(ctx context.Context, query dto.TableRunsQuery) (*dto.TableRunsResponse, error) {
+func (s *Service) fetchOptimizationRuns(ctx context.Context, query *dto.TableRunsQuery) (*dto.TableRunsResponse, error) {
 	kept := make([]json.RawMessage, 0, runsFetchPageSize)
-	chunkQuery := query
+	chunkQuery := *query
 	chunkQuery.PageSize = runsFetchPageSize
 	for fusionPage, fetched := 1, 0; fetched < runsFetchMax; fusionPage++ {
 		chunkQuery.Page = fusionPage
-		chunk, err := s.fetchRunsPage(ctx, chunkQuery, "")
+		chunk, err := s.fetchRunsPage(ctx, &chunkQuery, "")
 		if err != nil {
 			return nil, err
 		}
