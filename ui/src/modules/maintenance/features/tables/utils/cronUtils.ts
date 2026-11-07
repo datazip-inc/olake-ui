@@ -1,5 +1,6 @@
 import { Cron } from "croner"
 
+import { KNOWN_CRON_TRIGGER_INTERVALS } from "../constants"
 import type { CronConfigOption } from "../types"
 
 export const getCronFromConfig = (config: CronConfigOption) => {
@@ -24,43 +25,65 @@ export const isValidCronExpression = (cron: string): string | null => {
 	}
 }
 
-const getParsedDate = (value: Date) => value.toUTCString()
+/** Validation message for a schedule, or null when it is "never" or a valid expression. */
+export const getCronConfigError = (config: CronConfigOption): string | null => {
+	const cron = getCronFromConfig(config)
+	return cron ? isValidCronExpression(cron) : null
+}
 
-export const getEarliestNextRun = (
-	configs: CronConfigOption[],
-): string | undefined => {
-	let earliest: Date | null = null
+// Maps a raw cron string to dropdown state: preset strings become a frequency value, anything else a custom entry.
+export const mapTriggerIntervalToCronConfigOption = (
+	triggerInterval: string,
+): CronConfigOption => {
+	if (triggerInterval === "") {
+		return { frequency: "never", customCron: "" }
+	}
 
-	for (const config of configs) {
-		const cron = getCronFromConfig(config).trim()
-		const cronError = isValidCronExpression(cron)
-		if (!cron || cronError) continue
-
-		try {
-			const next = new Cron(cron, { timezone: "UTC" }).nextRun()
-			if (!next) continue
-			if (!earliest || next < earliest) {
-				earliest = next
-			}
-		} catch {
-			// skip invalid
+	if (KNOWN_CRON_TRIGGER_INTERVALS.has(triggerInterval)) {
+		return {
+			frequency: triggerInterval,
+			customCron: "",
 		}
 	}
 
-	if (!earliest) return undefined
-	return getParsedDate(earliest).replace(/:\d{2} GMT$/, " GMT")
+	return {
+		frequency: "custom",
+		customCron: triggerInterval,
+	}
 }
 
-export const getNextRuns = (cron: string): string[] => {
-	const normalizedCron = cron.trim()
-	const cronError = isValidCronExpression(normalizedCron)
-	if (!normalizedCron || cronError) return []
+// "Fri, 06 Nov 2026 10:42 GMT": UTC, seconds dropped.
+const formatRunTime = (run: Date) =>
+	run.toUTCString().replace(/:\d{2} GMT$/, " GMT")
 
+// Next `count` fire times of one expression; empty for "never" or an invalid expression.
+const getUpcomingRunDates = (cron: string, count: number): Date[] => {
+	const normalized = cron.trim()
+	if (!normalized || isValidCronExpression(normalized)) return []
 	try {
-		return new Cron(normalizedCron, { timezone: "UTC" })
-			.nextRuns(3)
-			.map(run => getParsedDate(run).replace(/:\d{2} GMT$/, " GMT"))
+		return new Cron(normalized, { timezone: "UTC" }).nextRuns(count)
 	} catch {
 		return []
 	}
 }
+
+// Earliest `count` upcoming runs across several schedules, merged and sorted.
+// Two schedules firing in the same minute show as one upcoming time.
+export const getNextRunsAcross = (
+	configs: CronConfigOption[],
+	count = 3,
+): string[] => {
+	const byTime = new Map<number, Date>()
+	for (const config of configs) {
+		for (const run of getUpcomingRunDates(getCronFromConfig(config), count)) {
+			byTime.set(run.getTime(), run)
+		}
+	}
+	return [...byTime.values()]
+		.sort((a, b) => a.getTime() - b.getTime())
+		.slice(0, count)
+		.map(formatRunTime)
+}
+
+export const getNextRuns = (cron: string): string[] =>
+	getUpcomingRunDates(cron, 3).map(formatRunTime)

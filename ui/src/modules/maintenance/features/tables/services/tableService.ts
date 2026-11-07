@@ -9,7 +9,8 @@ import type {
 	TableDetailsApiResponse,
 	GetTablesApiResponse,
 	TableMetricsApiResponse,
-	UpdateTableCronApiRequest,
+	TableRunsQuery,
+	UpdateTableConfigApiRequest,
 	UpdateTableConfigApiResponse,
 	UpdateTablesConfigApiRequest,
 } from "../types"
@@ -45,14 +46,15 @@ export const tableService = {
 		return response.data
 	},
 
-	getTableRuns: async (
-		catalog: string,
-		database: string,
-		tableName: string,
-		page: number,
-		pageSize: number,
-		status?: string,
-	) => {
+	getTableRuns: async ({
+		catalog,
+		database,
+		tableName,
+		page,
+		pageSize,
+		status,
+		runType,
+	}: TableRunsQuery) => {
 		const searchParams = new URLSearchParams({
 			page: String(page),
 			pageSize: String(pageSize),
@@ -60,9 +62,12 @@ export const tableService = {
 		if (status) {
 			searchParams.set("status", status)
 		}
+		if (runType) {
+			searchParams.set("type", runType)
+		}
 
 		const response = await api.get<GetTableRunsApiResponse>(
-			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/optimizing-processes?${searchParams.toString()}`,
+			`${API_CONFIG.ENDPOINTS.OPT.TABLE_RUNS(catalog, database, tableName)}?${searchParams.toString()}`,
 		)
 		return response.data
 	},
@@ -108,7 +113,7 @@ export const tableService = {
 		catalog: string,
 		database: string,
 		tableName: string,
-		payload: UpdateTableCronApiRequest,
+		payload: UpdateTableConfigApiRequest,
 	): Promise<UpdateTableConfigApiResponse> => {
 		try {
 			const request: UpdateTablesConfigApiRequest = {
@@ -139,7 +144,6 @@ export const tableService = {
 	getProcessLogs: async (runId: string) => {
 		const response = await api.get<GetProcessLogsApiResponse>(
 			API_CONFIG.ENDPOINTS.OPT.PROCESS(runId),
-			{ showNotification: true },
 		)
 		return response.data
 	},

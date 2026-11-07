@@ -1,7 +1,8 @@
 import { TableIcon } from "@phosphor-icons/react"
 
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
-import { useTableDetails, useUpdateTableCronConfig } from "../../hooks"
+import { CONFIGURE_MODE } from "../../constants"
+import { useTableDetails, useUpdateTableConfig } from "../../hooks"
 
 type ConfigureOptimizationModalSingleProps = {
 	open: boolean
@@ -22,7 +23,7 @@ const ConfigureOptimizationModalSingle: React.FC<
 		refetch,
 	} = useTableDetails(catalog, database, tableName, open)
 
-	const { mutate, isPending: isSaving } = useUpdateTableCronConfig(
+	const { mutate, isPending: isSaving } = useUpdateTableConfig(
 		catalog,
 		database,
 		tableName,
@@ -32,6 +33,7 @@ const ConfigureOptimizationModalSingle: React.FC<
 		<ConfigureOptimizationModalView
 			open={open}
 			onClose={onClose}
+			mode={CONFIGURE_MODE.SINGLE}
 			headerChip={
 				<div className="mt-4 flex h-7 items-center justify-between rounded-[4px] bg-olake-surface-muted pl-3 pr-3">
 					<div className="flex items-center gap-2">

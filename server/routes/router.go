@@ -100,6 +100,10 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 
 		// tables: view
 		opt.GET("/:catalog/:database/tables", optHandler.GetTablesWithDetails)
+		// runs: compaction + snapshot expiry history (type=all|expiry|optimization).
+		// type=optimization is paged in memory by the BFF because Fusion cannot exclude one process type;
+		// see services/optimization/runs.go for the bound on how many runs it pulls.
+		opt.GET("/:catalog/:database/tables/:table/runs", optHandler.GetTableRuns)
 	}
 }
 

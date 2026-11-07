@@ -8,15 +8,17 @@ import {
 	MAJOR_CRON_PROPERTY_KEY,
 	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
 	MINOR_CRON_PROPERTY_KEY,
+	SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY,
 	tableKeys,
 } from "../../constants"
 import { tableService } from "../../services"
 import type {
 	CancelRunRequest,
 	ToggleTableOptimizingRequest,
-	UpdateTableCronApiRequest,
+	UpdateTableConfigApiRequest,
 	UpdateTablesConfigApiRequest,
 } from "../../types"
+import { DEFAULT_CLEANUP_API_REQUEST } from "../../utils"
 
 export const useToggleTableOptimizing = () => {
 	return useMutation({
@@ -27,8 +29,11 @@ export const useToggleTableOptimizing = () => {
 			tableName,
 			enabled,
 		}: ToggleTableOptimizingRequest) => {
-			let config: UpdateTableCronApiRequest = {
+			// Status covers both features: on enables optimization and snapshot expiry,
+			// off disables both. Never-configured tables get the defaults on the way up.
+			let config: UpdateTableConfigApiRequest = {
 				enabled_for_optimization: enabled.toString(),
+				snapshot_expiry_enabled: enabled.toString(),
 			}
 
 			if (enabled) {
@@ -39,13 +44,13 @@ export const useToggleTableOptimizing = () => {
 				)
 				const properties = details.result?.properties ?? {}
 
-				const isConfigured = [
+				const isOptimizationConfigured = [
 					MINOR_CRON_PROPERTY_KEY,
 					MAJOR_CRON_PROPERTY_KEY,
 					FULL_CRON_PROPERTY_KEY,
 				].some(key => key in properties)
 
-				if (!isConfigured) {
+				if (!isOptimizationConfigured) {
 					config = {
 						...config,
 						minor_cron: LITE_DEFAULT_TRIGGER_INTERVAL,
@@ -53,6 +58,10 @@ export const useToggleTableOptimizing = () => {
 						full_cron: FULL_DEFAULT_TRIGGER_INTERVAL,
 						target_file_size: DEFAULT_TARGET_FILE_SIZE,
 					}
+				}
+
+				if (!(SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY in properties)) {
+					config = { ...config, ...DEFAULT_CLEANUP_API_REQUEST }
 				}
 			}
 
@@ -66,10 +75,7 @@ export const useToggleTableOptimizing = () => {
 	})
 }
 
-export const useBulkUpdateTableCronConfig = (
-	catalog: string,
-	database: string,
-) => {
+export const useBulkUpdateTableConfig = (catalog: string, database: string) => {
 	return useMutation({
 		mutationKey: tableKeys.list(catalog, database),
 		mutationFn: (payload: UpdateTablesConfigApiRequest) =>
@@ -77,15 +83,15 @@ export const useBulkUpdateTableCronConfig = (
 	})
 }
 
-/** Scoped to the specific table — only its cron/metrics/runs queries are invalidated on success. */
-export const useUpdateTableCronConfig = (
+/** Writes one table's optimize + cleanup properties. */
+export const useUpdateTableConfig = (
 	catalog: string,
 	database: string,
 	tableName: string,
 ) => {
 	return useMutation({
 		mutationKey: tableKeys.list(catalog, database),
-		mutationFn: (payload: UpdateTableCronApiRequest) =>
+		mutationFn: (payload: UpdateTableConfigApiRequest) =>
 			tableService.updateTableConfig(catalog, database, tableName, payload),
 	})
 }

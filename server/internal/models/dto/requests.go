@@ -196,5 +196,23 @@ type OptimizationTableConfig struct {
 		FullCron               *string `json:"full_cron"`
 		TargetFileSize         *int64  `json:"target_file_size"`
 		EnabledForOptimization *string `json:"enabled_for_optimization"`
+		// snapshot expiry (cleanup); nil fields are left untouched on the table
+		SnapshotExpiryEnabled *string `json:"snapshot_expiry_enabled"`
+		SnapshotExpiryCron    *string `json:"snapshot_expiry_cron"`
+		SnapshotKeepDuration  *string `json:"snapshot_keep_duration"`
+		SnapshotKeepMinCount  *int64  `json:"snapshot_keep_min_count"`
 	} `json:"sql_input"`
+}
+
+// TableRunsQuery selects one page of a table's optimizing runs.
+type TableRunsQuery struct {
+	Catalog  string
+	Database string
+	Table    string
+	// Kind is constants.RunKindAll, RunKindExpiry or RunKindOptimization; empty means all.
+	Kind string
+	// Status narrows to one Fusion process status when set.
+	Status   string
+	Page     int
+	PageSize int
 }

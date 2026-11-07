@@ -34,6 +34,9 @@ export const API_CONFIG = {
 				`/api/opt/v1/tables/catalogs/${encodeURIComponent(catalog)}/dbs/${encodeURIComponent(database)}/tables/${encodeURIComponent(tableName)}`,
 			TABLES: (catalog: string, database: string) =>
 				`/api/opt/v1/${encodeURIComponent(catalog)}/${encodeURIComponent(database)}/tables`,
+			// compaction + snapshot expiry runs, filtered by type=all|optimization|expiry
+			TABLE_RUNS: (catalog: string, database: string, tableName: string) =>
+				`/api/opt/v1/${encodeURIComponent(catalog)}/${encodeURIComponent(database)}/tables/${encodeURIComponent(tableName)}/runs`,
 			PROCESS: (processId: string) =>
 				`/api/opt/v1/logs/process/${encodeURIComponent(processId)}`,
 		},

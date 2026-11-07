@@ -5,13 +5,13 @@ import {
 	SpinnerIcon,
 	TrashIcon,
 } from "@phosphor-icons/react"
-import { Button, Dropdown, Spin, Switch, Tooltip } from "antd"
+import { Button, Dropdown, Spin, Tooltip } from "antd"
 import type { MenuProps } from "antd/es/menu"
 import clsx from "clsx"
 
 import { Tag, type ColumnDef } from "@/common/components"
 
-import { RunStatusCell } from "../components"
+import { RunStatusCell, StatusSwitch } from "../components"
 import type { Table } from "../types"
 import { getCancelRunID } from "./tableUtils"
 
@@ -177,7 +177,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 			header: (
 				<div className="flex items-center justify-center gap-1">
 					<span>Status</span>
-					<Tooltip title="Enables or disables all optimization runs.">
+					<Tooltip title="On when optimization or expire snapshots is enabled. Turning it off disables both.">
 						<QuestionIcon
 							size={14}
 							className="cursor-help text-olake-text-secondary"
@@ -197,10 +197,9 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 				}
 
 				return (
-					<Switch
+					<StatusSwitch
 						size="small"
-						checked={row.enabled}
-						className={row.enabled ? "!bg-olake-success" : undefined}
+						checked={row.maintenanceEnabled}
 						onChange={checked => actions.onToggleOptimizingStatus(row, checked)}
 					/>
 				)
