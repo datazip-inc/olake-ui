@@ -308,12 +308,6 @@ type OptimizationInfo struct {
 	RunID      string `json:"runID,omitempty"`
 }
 
-// TableRunsResponse is one page of a table's runs, each item exactly as Fusion returned it.
-type TableRunsResponse struct {
-	List  []json.RawMessage `json:"list"`
-	Total int               `json:"total"`
-}
-
 // TableProperties represents the response from setting table properties
 type TableProperties struct {
 	SessionID string   `json:"sessionId"`

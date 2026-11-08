@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router"
 
-import { PAGE_SIZE, RUN_STATUS, RUN_TYPE_FILTER } from "../constants"
+import {
+	PAGE_SIZE,
+	RUN_STATUS,
+	RUN_TYPE_FILTER,
+	RUN_TYPE_FILTER_PROCESS_TYPES,
+} from "../constants"
 import type { RunHistoryFilter, RunTypeFilter } from "../types"
 
 const STATUS_QUERY_PARAM_KEY = "status"
@@ -51,9 +56,7 @@ export const useRunHistoryFilters = () => {
 	const pageSize = PAGE_SIZE
 
 	const status = FILTER_TO_STATUS_QUERY_VALUE[activeFilter]
-	// "all" is the endpoint default, so it is not sent.
-	const runType =
-		activeTypeFilter === RUN_TYPE_FILTER.ALL ? undefined : activeTypeFilter
+	const runType = RUN_TYPE_FILTER_PROCESS_TYPES[activeTypeFilter]
 
 	useEffect(() => {
 		setCurrentPage(1)

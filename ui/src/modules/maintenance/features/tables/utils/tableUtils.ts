@@ -220,7 +220,7 @@ const mapRunToMetricRows = (run: FusionRun): RunMetricRow[] => {
 export const mapGetTableRunsResponseToTableRuns = (
 	response: GetTableRunsApiResponse,
 ): { runs: TableRun[]; total: number } => {
-	const runs: FusionRun[] = response.list ?? []
+	const runs: FusionRun[] = response.result?.list ?? []
 	return {
 		runs: runs.map(run => ({
 			id: run.processId,
@@ -232,7 +232,7 @@ export const mapGetTableRunsResponseToTableRuns = (
 			duration: formatDuration(run.duration) || "-",
 			metrics: mapRunToMetricRows(run),
 		})),
-		total: response.total ?? 0,
+		total: response.result?.total ?? 0,
 	}
 }
 

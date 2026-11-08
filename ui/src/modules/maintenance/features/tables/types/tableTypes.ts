@@ -96,10 +96,12 @@ export interface FusionRun {
 	summary?: RunMetrics | null
 }
 
-/** Page of runs from the BFF runs endpoint (compaction and snapshot expiry together). */
+/** Page of Fusion optimizing processes (compaction and snapshot expiry together). */
 export interface GetTableRunsApiResponse {
-	list?: FusionRun[]
-	total?: number
+	result?: {
+		list?: FusionRun[]
+		total?: number
+	}
 }
 
 /** Table properties written by the configure modal and the Status toggle; omitted fields are left untouched. */
@@ -265,6 +267,7 @@ export interface TableRunsQuery {
 	page: number
 	pageSize: number
 	status?: string
+	/** Fusion `type` filter: one process type or a comma-separated list; undefined means all. */
 	runType?: string
 }
 

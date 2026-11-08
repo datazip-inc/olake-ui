@@ -62,12 +62,14 @@ export const tableService = {
 		if (status) {
 			searchParams.set("status", status)
 		}
+		// Fusion lists compaction and snapshot-expiry runs together; `type` takes one
+		// process type or a comma-separated list (e.g. MINOR,MAJOR,FULL).
 		if (runType) {
 			searchParams.set("type", runType)
 		}
 
 		const response = await api.get<GetTableRunsApiResponse>(
-			`${API_CONFIG.ENDPOINTS.OPT.TABLE_RUNS(catalog, database, tableName)}?${searchParams.toString()}`,
+			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/optimizing-processes?${searchParams.toString()}`,
 		)
 		return response.data
 	},

@@ -168,10 +168,6 @@ var (
 	OptProcessTypeMajor  = "MAJOR"
 	OptProcessTypeFull   = "FULL"
 	OptProcessTypeExpiry = "EXPIRY"
-	// run kinds accepted by the table runs endpoint
-	RunKindAll          = "all"
-	RunKindExpiry       = "expiry"
-	RunKindOptimization = "optimization"
 	// properties
 	OptCreatedAt        = "created-at"
 	OptCacheEnabled     = "cache-enabled"

@@ -1,5 +1,7 @@
 import type { FilterKey, LatestRunSlotKey } from "../types"
 
+type ValueOf<T> = T[keyof T]
+
 export const PAGE_SIZE = 6
 
 export const RUN_STATUS = {
@@ -25,12 +27,26 @@ export const RUN_TYPE_LABEL = {
 	EXPIRY: "Expire",
 } as const
 
-/** Run History type filter; values double as the `type` query param of the runs endpoint. */
+/** Run History type filter, also the `type` query param of the run history URL. */
 export const RUN_TYPE_FILTER = {
 	ALL: "all",
 	OPTIMIZATION: "optimization",
 	EXPIRY: "expiry",
 } as const
+
+/** Fusion process types each filter selects (its `type` param); undefined means no filter. */
+export const RUN_TYPE_FILTER_PROCESS_TYPES: Record<
+	ValueOf<typeof RUN_TYPE_FILTER>,
+	string | undefined
+> = {
+	[RUN_TYPE_FILTER.ALL]: undefined,
+	[RUN_TYPE_FILTER.OPTIMIZATION]: [
+		RUN_TYPE.MINOR,
+		RUN_TYPE.MAJOR,
+		RUN_TYPE.FULL,
+	].join(","),
+	[RUN_TYPE_FILTER.EXPIRY]: RUN_TYPE.EXPIRY,
+}
 
 export const RUN_TYPE_FILTER_OPTIONS = [
 	{ key: RUN_TYPE_FILTER.ALL, label: "All Types" },
