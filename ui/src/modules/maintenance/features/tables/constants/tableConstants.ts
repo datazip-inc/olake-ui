@@ -56,7 +56,7 @@ export const RUN_TYPE_FILTER_OPTIONS: Array<{
 }> = [
 	{ key: RUN_TYPE_FILTER.ALL, label: "All Types" },
 	{ key: RUN_TYPE_FILTER.OPTIMIZATION, label: "Optimization" },
-	{ key: RUN_TYPE_FILTER.EXPIRY, label: "Expire" },
+	{ key: RUN_TYPE_FILTER.EXPIRY, label: "Cleanup" },
 ]
 
 export const RUN_STATUS_FILTER_OPTIONS: Array<{
