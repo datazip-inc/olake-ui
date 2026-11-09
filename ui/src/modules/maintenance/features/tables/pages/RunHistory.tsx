@@ -196,7 +196,6 @@ const RunHistory: React.FC = () => {
 					options={RUN_STATUS_FILTER_OPTIONS}
 					value={activeFilter}
 					onChange={handleFilterChange}
-					size="sm"
 				/>
 
 				{/* Run type: compaction (Lite/Medium/Full) vs snapshot expiry */}
@@ -205,7 +204,6 @@ const RunHistory: React.FC = () => {
 						options={RUN_TYPE_FILTER_OPTIONS}
 						value={activeTypeFilter}
 						onChange={handleTypeFilterChange}
-						size="sm"
 					/>
 				</div>
 			</div>

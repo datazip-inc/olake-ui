@@ -37,7 +37,6 @@ export interface FusionTable {
 	major: FusionLatestRun | null
 	minor: FusionLatestRun | null
 	full: FusionLatestRun | null
-	/** latest snapshot-expiry (cleanup) run */
 	expiry: FusionLatestRun | null
 	enabled: boolean
 	snapshot_expiry_enabled: boolean
@@ -96,7 +95,7 @@ export interface FusionRun {
 	summary?: RunMetrics | null
 }
 
-/** Page of Fusion optimizing processes (compaction and snapshot expiry together). */
+// Page of Fusion optimizing processes (compaction and snapshot expiry together).
 export interface GetTableRunsApiResponse {
 	result?: {
 		list?: FusionRun[]
@@ -104,17 +103,16 @@ export interface GetTableRunsApiResponse {
 	}
 }
 
-/** Table properties written by the configure modal and the Status toggle; omitted fields are left untouched. */
+// Table properties written by the configure modal and the Status toggle; omitted fields are left untouched.
 export interface UpdateTableConfigApiRequest {
 	minor_cron?: string
 	major_cron?: string
 	full_cron?: string
 	enabled_for_optimization?: string
 	target_file_size?: number
-	// snapshot expiry (cleanup)
 	snapshot_expiry_enabled?: string
 	snapshot_expiry_cron?: string
-	/** Fusion duration, e.g. "7d" */
+	// Fusion duration, e.g. "7d"
 	snapshot_keep_duration?: string
 	snapshot_keep_min_count?: number
 }
@@ -148,11 +146,10 @@ export interface Table {
 	major: LatestRun
 	full: LatestRun
 	expiry: LatestRun
-	/** Status column: on when optimization or snapshot expiry is enabled. */
+	// Status column: on when optimization or snapshot expiry is enabled.
 	maintenanceEnabled: boolean
 }
 
-/** The latest run of each kind, as shown in the Last Run Status cell and its popover. */
 export type LatestRunsByKind = Pick<
 	Table,
 	"minor" | "major" | "full" | "expiry"
@@ -165,28 +162,26 @@ export interface TableRun {
 	runId: string
 	status: RunStatus
 	runType: RunType
-	/** Display name of runType */
 	type: RunTypeLabel
 	startTime: string
 	duration: string
 	metrics: RunMetricRow[]
 }
 
-/** Maintenance settings read from a table's properties. */
 export interface TableConfigApiModel {
 	minorTriggerInterval?: string
 	majorTriggerInterval?: string
 	fullTriggerInterval?: string
 	enabledForOptimization: boolean
-	/** False when the table has no compaction cron set at all. */
+	// False when the table has no compaction cron set at all.
 	optimizationConfigured: boolean
 	targetFileSize?: number
-	/** False when the table has neither snapshot-expire.enabled nor a cron set. */
+	// False when the table has neither snapshot-expire.enabled nor a cron set.
 	snapshotExpiryConfigured: boolean
-	/** Fusion's rule: snapshot-expire.enabled when set, else whether a cron is set. */
+	// Fusion's rule: snapshot-expire.enabled when set, else whether a cron is set.
 	snapshotExpiryEnabled: boolean
 	snapshotExpiryCron?: string
-	/** Raw Fusion duration string, e.g. "7d" */
+	// Raw Fusion duration string, e.g. "7d"
 	snapshotKeepDuration?: string
 	snapshotKeepMinCount?: number
 }
@@ -220,9 +215,8 @@ export interface CronConfigOption {
 	customCron: string
 }
 
-/** Optimize tab of the configure modal. */
 export interface OptimizeConfigFormModel {
-	/** Saved switch state; a never-configured table starts switched on. */
+	// Saved switch state; a never-configured table starts switched on.
 	optimizationEnabled: boolean
 	minorCron: CronConfigOption
 	majorCron: CronConfigOption
@@ -235,7 +229,7 @@ export type CompactionCronKey = keyof Pick<
 	"minorCron" | "majorCron" | "fullCron"
 >
 
-/** Units Fusion accepts for snapshot.keep.duration (seconds are folded into minutes). */
+// Units Fusion accepts for snapshot.keep.duration (seconds are folded into minutes).
 export type KeepDurationUnit = "d" | "h" | "min"
 
 export interface KeepDuration {
@@ -243,23 +237,21 @@ export interface KeepDuration {
 	unit: KeepDurationUnit
 }
 
-/** Cleanup tab of the configure modal: snapshot-expiry settings stored as table properties in Fusion. */
+// Cleanup tab of the configure modal: snapshot-expiry settings stored as table properties in Fusion.
 export interface CleanupConfigFormModel {
 	expireSnapshots: boolean
-	/** Snapshots older than this are removed. */
+	// Snapshots older than this are removed.
 	keepDuration: KeepDuration
-	/** Lower bound on snapshots kept regardless of age. */
+	// Lower bound on snapshots kept regardless of age.
 	minSnapshotsToKeep: number
 	cron: CronConfigOption
 }
 
-/** Everything the configure modal edits, one branch per tab. */
 export interface TableConfigFormModel {
 	optimize: OptimizeConfigFormModel
 	cleanup: CleanupConfigFormModel
 }
 
-/** Arguments of the run history query, shared by the service, hook and query key. */
 export interface TableRunsQuery {
 	catalog: string
 	database: string
@@ -267,7 +259,7 @@ export interface TableRunsQuery {
 	page: number
 	pageSize: number
 	status?: string
-	/** Fusion `type` filter: one process type or a comma-separated list; undefined means all. */
+	// Fusion `type` filter: one process type or a comma-separated list; undefined means all.
 	runType?: string
 }
 

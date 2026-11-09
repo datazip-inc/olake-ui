@@ -53,7 +53,7 @@ export const useToggleTableOptimizing = () => {
 
 				// Expiry only fires on a cron, so a table without one gets the full defaults
 				// even when snapshot-expire.enabled was already set.
-				if (!details.snapshotExpiryCron?.trim()) {
+				if (!details.snapshotExpiryCron) {
 					config = {
 						...config,
 						...mapCleanupConfigToApiRequest(DEFAULT_CLEANUP_CONFIG),
@@ -79,7 +79,6 @@ export const useBulkUpdateTableConfig = (catalog: string, database: string) => {
 	})
 }
 
-/** Writes one table's optimize + cleanup properties. */
 export const useUpdateTableConfig = (
 	catalog: string,
 	database: string,

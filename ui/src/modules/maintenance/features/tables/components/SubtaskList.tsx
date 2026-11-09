@@ -15,7 +15,7 @@ type SubtaskListProps = {
 	onSelectSource: (sourceKey: string) => void
 }
 
-/** Spark subtask log sources with a search box; only compaction runs have these. */
+// Spark subtask log sources with a search box; only compaction runs have these.
 const SubtaskList: React.FC<SubtaskListProps> = ({
 	sources,
 	selectedSourceKey,

@@ -3,30 +3,23 @@ import { useSearchParams } from "react-router"
 
 import {
 	PAGE_SIZE,
+	RUN_HISTORY_QUERY_PARAM,
 	RUN_STATUS,
+	RUN_STATUS_FILTER_STATUSES,
 	RUN_TYPE_FILTER,
 	RUN_TYPE_FILTER_PROCESS_TYPES,
 } from "../constants"
 import type { RunHistoryFilter, RunTypeFilter } from "../types"
 
-const STATUS_QUERY_PARAM_KEY = "status"
-const TYPE_QUERY_PARAM_KEY = "type"
-
-const FILTER_TO_STATUS_QUERY_VALUE: Record<
-	RunHistoryFilter,
-	string | undefined
-> = {
-	all: undefined,
-	failed: RUN_STATUS.FAILED,
-}
-
 const TYPE_FILTER_VALUES = new Set<string>(Object.values(RUN_TYPE_FILTER))
 
 const getStatusFilter = (params: URLSearchParams): RunHistoryFilter =>
-	params.get(STATUS_QUERY_PARAM_KEY) === RUN_STATUS.FAILED ? "failed" : "all"
+	params.get(RUN_HISTORY_QUERY_PARAM.STATUS) === RUN_STATUS.FAILED
+		? "failed"
+		: "all"
 
 const getTypeFilter = (params: URLSearchParams): RunTypeFilter => {
-	const value = params.get(TYPE_QUERY_PARAM_KEY)
+	const value = params.get(RUN_HISTORY_QUERY_PARAM.TYPE)
 	return value && TYPE_FILTER_VALUES.has(value)
 		? (value as RunTypeFilter)
 		: RUN_TYPE_FILTER.ALL
@@ -44,10 +37,8 @@ const applyFilterToSearchParams = (
 	params.delete(queryParamKey)
 }
 
-/**
- * Manages Run History filters + pagination and syncs the `status` and `type`
- * query params so the view survives a reload.
- */
+// Manages Run History filters + pagination and syncs the `status` and `type`
+// query params so the view survives a reload.
 export const useRunHistoryFilters = () => {
 	const [searchParams, setSearchParams] = useSearchParams()
 	const activeFilter = getStatusFilter(searchParams)
@@ -55,7 +46,7 @@ export const useRunHistoryFilters = () => {
 	const [currentPage, setCurrentPage] = useState(1)
 	const pageSize = PAGE_SIZE
 
-	const status = FILTER_TO_STATUS_QUERY_VALUE[activeFilter]
+	const status = RUN_STATUS_FILTER_STATUSES[activeFilter]
 	const runType = RUN_TYPE_FILTER_PROCESS_TYPES[activeTypeFilter]
 
 	useEffect(() => {
@@ -73,13 +64,13 @@ export const useRunHistoryFilters = () => {
 
 	const handleFilterChange = (nextFilter: RunHistoryFilter) =>
 		setQueryParam(
-			STATUS_QUERY_PARAM_KEY,
-			FILTER_TO_STATUS_QUERY_VALUE[nextFilter],
+			RUN_HISTORY_QUERY_PARAM.STATUS,
+			RUN_STATUS_FILTER_STATUSES[nextFilter],
 		)
 
 	const handleTypeFilterChange = (nextFilter: RunTypeFilter) =>
 		setQueryParam(
-			TYPE_QUERY_PARAM_KEY,
+			RUN_HISTORY_QUERY_PARAM.TYPE,
 			nextFilter === RUN_TYPE_FILTER.ALL ? undefined : nextFilter,
 		)
 

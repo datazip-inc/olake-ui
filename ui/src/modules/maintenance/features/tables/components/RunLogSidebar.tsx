@@ -14,7 +14,7 @@ import SubtaskList from "./SubtaskList"
 type RunLogSidebarProps = {
 	tableName: string
 	runId: string
-	/** Expiry runs are one AMS job with a single log; compaction runs add Spark subtasks. */
+	// Expiry runs are one AMS job with a single log; compaction runs add Spark subtasks.
 	isExpiryRun: boolean
 	selectedSourceKey: string
 	onSelectSource: (sourceKey: string) => void

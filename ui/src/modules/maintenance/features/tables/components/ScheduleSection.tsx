@@ -15,7 +15,6 @@ type ScheduleSectionProps = {
 	tooltip?: string
 }
 
-/** One cron schedule block (frequency / custom expression / next 3 runs), shared by the optimize and cleanup tabs. */
 const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 	title,
 	value,

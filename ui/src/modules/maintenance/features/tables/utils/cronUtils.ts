@@ -25,7 +25,7 @@ export const isValidCronExpression = (cron: string): string | null => {
 	}
 }
 
-/** Validation message for a schedule, or null when it is "never" or a valid expression. */
+// Validation message for a schedule, or null when it is "never" or a valid expression.
 export const getCronConfigError = (config: CronConfigOption): string | null => {
 	const cron = getCronFromConfig(config)
 	return cron ? isValidCronExpression(cron) : null

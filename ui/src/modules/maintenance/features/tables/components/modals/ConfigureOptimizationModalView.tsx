@@ -12,6 +12,7 @@ import {
 	DEFAULT_TABLE_MODAL_STYLES,
 	MAINTENANCE_TAB,
 	MAINTENANCE_TAB_ITEMS,
+	MIN_SNAPSHOTS_TO_KEEP_LOWEST,
 	OPTIMIZE_SCHEDULES,
 	TABLE_MODAL_WIDTH,
 } from "../../constants"
@@ -43,7 +44,7 @@ export type ConfigureOptimizationModalViewProps = {
 	isConfigLoading?: boolean
 	isConfigError?: boolean
 	onRetryConfig?: () => void
-	/** Saved settings of the table in single mode. Bulk mode starts from defaults. */
+	// Saved settings of the table in single mode. Bulk mode starts from defaults.
 	initialConfig?: TableConfigFormModel
 	onSave: (
 		payload: UpdateTableConfigApiRequest,
@@ -143,7 +144,8 @@ const ConfigureOptimizationModalView: React.FC<
 	const isCleanupValid =
 		!includeCleanup ||
 		!cleanup.expireSnapshots ||
-		(cleanup.keepDuration.value > 0 && cleanup.minSnapshotsToKeep > 0)
+		(cleanup.keepDuration.value > 0 &&
+			cleanup.minSnapshotsToKeep >= MIN_SNAPSHOTS_TO_KEEP_LOWEST)
 	const canSave =
 		!disableSaveReason &&
 		!isConfigLoading &&

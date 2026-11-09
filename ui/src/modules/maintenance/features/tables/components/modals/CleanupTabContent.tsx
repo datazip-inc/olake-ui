@@ -3,15 +3,14 @@ import { InputNumber, Select } from "antd"
 import { restrictNumericInput } from "@/common/utils"
 
 import {
-	CLEANUP_TEXT,
 	DEFAULT_KEEP_DURATION_VALUE,
 	DEFAULT_MIN_SNAPSHOTS_TO_KEEP,
 	KEEP_DURATION_UNIT_OPTIONS,
+	MIN_SNAPSHOTS_TO_KEEP_LOWEST,
 } from "../../constants"
 import type { CleanupConfigFormModel, KeepDurationUnit } from "../../types"
-import AdvancedConfigSection, {
-	AdvancedConfigRow,
-} from "../AdvancedConfigSection"
+import AdvancedConfigRow from "../AdvancedConfigRow"
+import AdvancedConfigSection from "../AdvancedConfigSection"
 import FeatureToggleRow from "../FeatureToggleRow"
 import ScheduleSection from "../ScheduleSection"
 
@@ -20,7 +19,6 @@ type CleanupTabContentProps = {
 	onChange: (next: CleanupConfigFormModel) => void
 }
 
-/** Body of the Cleanup tab: description, Expire Snapshots switch, advanced limits, and the cleanup cron. */
 const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 	value,
 	onChange,
@@ -28,12 +26,13 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 	<>
 		{/* Description banner spans the full modal width, so it cancels the body padding. */}
 		<div className="-mx-8 bg-olake-surface-muted px-8 py-2 text-sm leading-6 text-olake-text-secondary">
-			{CLEANUP_TEXT.description}
+			Removes old snapshots from table history. Data files are not deleted in
+			this version.
 		</div>
 
 		<div className="pt-6">
 			<FeatureToggleRow
-				label={CLEANUP_TEXT.switchLabel}
+				label="Expire Snapshots"
 				checked={value.expireSnapshots}
 				onChange={expireSnapshots => onChange({ ...value, expireSnapshots })}
 			/>
@@ -41,8 +40,8 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 
 		<AdvancedConfigSection className="pt-6">
 			<AdvancedConfigRow
-				label={CLEANUP_TEXT.keepDurationLabel}
-				tooltip={CLEANUP_TEXT.keepDurationTooltip}
+				label="Remove snapshots older than"
+				tooltip="Snapshots older than this are expired on each cleanup run."
 			>
 				<InputNumber
 					min={1}
@@ -74,11 +73,11 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 				/>
 			</AdvancedConfigRow>
 			<AdvancedConfigRow
-				label={CLEANUP_TEXT.minKeepLabel}
-				tooltip={CLEANUP_TEXT.minKeepTooltip}
+				label="Minimum snapshots to keep"
+				tooltip={`Cleanup never drops below this many snapshots, even if they are older than the limit. Fusion requires at least ${MIN_SNAPSHOTS_TO_KEEP_LOWEST}.`}
 			>
 				<InputNumber
-					min={1}
+					min={MIN_SNAPSHOTS_TO_KEEP_LOWEST}
 					precision={0}
 					value={value.minSnapshotsToKeep || null}
 					onChange={minSnapshotsToKeep =>
@@ -92,8 +91,8 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 		</AdvancedConfigSection>
 
 		<ScheduleSection
-			title={CLEANUP_TEXT.cronTitle}
-			tooltip={CLEANUP_TEXT.cronTooltip}
+			title="Cleanup Cron"
+			tooltip="How often expired snapshots are removed."
 			value={value.cron}
 			onChange={cron => onChange({ ...value, cron })}
 		/>

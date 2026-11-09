@@ -9,9 +9,9 @@ import RunTimeChips from "../RunTimeChips"
 type ConfigurationSuccessModalProps = {
 	open: boolean
 	onClose: () => void
-	/** Upcoming optimize runs across Lite/Medium/Full, earliest first. */
+	// Upcoming optimize runs across Lite/Medium/Full, earliest first.
 	optimizeRuns: string[]
-	/** Upcoming cleanup runs; undefined when cleanup was not part of this save (bulk, untouched). */
+	// Upcoming cleanup runs; undefined when cleanup was not part of this save (bulk, untouched).
 	cleanupRuns?: string[]
 }
 

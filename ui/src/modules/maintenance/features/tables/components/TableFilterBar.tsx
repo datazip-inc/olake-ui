@@ -19,16 +19,16 @@ const TableFilterBar: React.FC<Props> = ({
 	onFilterChange,
 }) => (
 	<div className="flex items-center gap-6">
-		<div className="flex h-9 w-[479px] overflow-hidden rounded-md border border-olake-border">
+		<div className="flex h-8 w-[479px] overflow-hidden rounded-md border border-olake-border">
 			<Input
 				value={searchTerm}
 				onChange={e => onSearchChange(e.target.value)}
 				placeholder="Search Tables"
-				className="h-9 border-0"
+				className="h-8 border-0"
 			/>
 			<button
 				type="button"
-				className="flex h-9 w-8 items-center justify-center border-l border-olake-border"
+				className="flex h-8 w-8 items-center justify-center border-l border-olake-border"
 			>
 				<MagnifyingGlassIcon size={16} />
 			</button>

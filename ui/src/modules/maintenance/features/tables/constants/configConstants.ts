@@ -14,8 +14,11 @@ import {
 export const DEFAULT_KEEP_DURATION_VALUE = 7
 export const DEFAULT_KEEP_DURATION_UNIT: KeepDurationUnit = "d"
 export const DEFAULT_MIN_SNAPSHOTS_TO_KEEP = 30
+// Fusion rejects a smaller snapshot.keep.min-count (TableConfigurations.SNAPSHOT_MIN_COUNT_LOWEST):
+// OLake's pebble index can be invalidated when too few snapshots remain.
+export const MIN_SNAPSHOTS_TO_KEEP_LOWEST = 10
 
-/** Units Fusion accepts for snapshot.keep.duration, in the order the picker lists them. */
+// Units Fusion accepts for snapshot.keep.duration, in the order the picker lists them.
 export const KEEP_DURATION_UNIT_OPTIONS: Array<{
 	value: KeepDurationUnit
 	label: string
@@ -25,7 +28,7 @@ export const KEEP_DURATION_UNIT_OPTIONS: Array<{
 	{ value: "min", label: "Minutes" },
 ]
 
-/** Form defaults when a table has no saved config: both features start switched on. */
+// Form defaults when a table has no saved config: both features start switched on.
 export const DEFAULT_OPTIMIZE_CONFIG: OptimizeConfigFormModel = {
 	optimizationEnabled: true,
 	minorCron: DEFAULT_CRON_CONFIG,

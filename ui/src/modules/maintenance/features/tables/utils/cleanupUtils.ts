@@ -21,11 +21,9 @@ const DEFAULT_KEEP_DURATION: KeepDuration = {
 	unit: DEFAULT_KEEP_DURATION_UNIT,
 }
 
-/**
- * Fusion duration ("7d", "36h", "90min", "30s"; a bare number is days) as value + unit.
- * Seconds are the one unit the picker does not offer, so they are rounded up to minutes.
- * Unparsable input falls back to the default.
- */
+// Fusion duration ("7d", "36h", "90min", "30s"; a bare number is days) as value + unit.
+// Seconds are the one unit the picker does not offer, so they are rounded up to minutes.
+// Unparsable input falls back to the default.
 export const parseKeepDuration = (raw?: string): KeepDuration => {
 	const match = (raw ?? "").trim().match(/^(\d+)\s*(d|h|min|s)?$/)
 	if (!match) return DEFAULT_KEEP_DURATION
@@ -36,11 +34,11 @@ export const parseKeepDuration = (raw?: string): KeepDuration => {
 	return { value, unit: unit as KeepDurationUnit }
 }
 
-/** Fusion duration string for the form value, e.g. "36h". */
+// Fusion duration string for the form value, e.g. "36h".
 export const formatKeepDuration = ({ value, unit }: KeepDuration) =>
 	`${value}${unit}`
 
-/** Cleanup form from the table's properties. A never-configured table starts switched on. */
+// Cleanup form from the table's properties. A never-configured table starts switched on.
 export const mapTableConfigApiModelToCleanupConfig = (
 	config: TableConfigApiModel,
 ): CleanupConfigFormModel => ({
@@ -57,7 +55,6 @@ export const mapTableConfigApiModelToCleanupConfig = (
 	),
 })
 
-/** Request fields that write the cleanup form to the table properties. */
 export const mapCleanupConfigToApiRequest = (
 	config: CleanupConfigFormModel,
 ): Pick<

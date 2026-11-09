@@ -1,6 +1,9 @@
-import type { FilterKey, LatestRunSlotKey } from "../types"
-
-type ValueOf<T> = T[keyof T]
+import type {
+	FilterKey,
+	LatestRunSlotKey,
+	RunHistoryFilter,
+	RunTypeFilter,
+} from "../types"
 
 export const PAGE_SIZE = 6
 
@@ -16,7 +19,6 @@ export const RUN_TYPE = {
 	MINOR: "MINOR",
 	MAJOR: "MAJOR",
 	FULL: "FULL",
-	/** Snapshot expiry (cleanup) run */
 	EXPIRY: "EXPIRY",
 } as const
 
@@ -27,16 +29,16 @@ export const RUN_TYPE_LABEL = {
 	EXPIRY: "Expire",
 } as const
 
-/** Run History type filter, also the `type` query param of the run history URL. */
+// Run History type filter, also the `type` query param of the run history URL.
 export const RUN_TYPE_FILTER = {
 	ALL: "all",
 	OPTIMIZATION: "optimization",
 	EXPIRY: "expiry",
 } as const
 
-/** Fusion process types each filter selects (its `type` param); undefined means no filter. */
+// Fusion process types each filter selects (its `type` param); undefined means no filter.
 export const RUN_TYPE_FILTER_PROCESS_TYPES: Record<
-	ValueOf<typeof RUN_TYPE_FILTER>,
+	RunTypeFilter,
 	string | undefined
 > = {
 	[RUN_TYPE_FILTER.ALL]: undefined,
@@ -48,18 +50,39 @@ export const RUN_TYPE_FILTER_PROCESS_TYPES: Record<
 	[RUN_TYPE_FILTER.EXPIRY]: RUN_TYPE.EXPIRY,
 }
 
-export const RUN_TYPE_FILTER_OPTIONS = [
+export const RUN_TYPE_FILTER_OPTIONS: Array<{
+	key: RunTypeFilter
+	label: string
+}> = [
 	{ key: RUN_TYPE_FILTER.ALL, label: "All Types" },
 	{ key: RUN_TYPE_FILTER.OPTIMIZATION, label: "Optimization" },
 	{ key: RUN_TYPE_FILTER.EXPIRY, label: "Expire" },
-] as const
+]
 
-export const RUN_STATUS_FILTER_OPTIONS = [
+export const RUN_STATUS_FILTER_OPTIONS: Array<{
+	key: RunHistoryFilter
+	label: string
+}> = [
 	{ key: "all", label: "All Runs" },
 	{ key: "failed", label: "Failed Runs" },
-] as const
+]
 
-export const TABLE_FILTER_OPTIONS: ReadonlyArray<{
+// Fusion process status each status filter selects; undefined means no filter.
+export const RUN_STATUS_FILTER_STATUSES: Record<
+	RunHistoryFilter,
+	string | undefined
+> = {
+	all: undefined,
+	failed: RUN_STATUS.FAILED,
+}
+
+// Query params the run history page keeps in the URL so filters survive a reload.
+export const RUN_HISTORY_QUERY_PARAM = {
+	STATUS: "status",
+	TYPE: "type",
+} as const
+
+export const TABLE_FILTER_OPTIONS: Array<{
 	key: FilterKey
 	label: string
 }> = [
@@ -68,7 +91,7 @@ export const TABLE_FILTER_OPTIONS: ReadonlyArray<{
 	{ key: "external", label: "Imported Tables" },
 ]
 
-/** Fusion table properties behind the configure modal and the Status toggle. */
+// Fusion table properties behind the configure modal and the Status toggle.
 export const MINOR_CRON_PROPERTY_KEY = "self-optimizing.minor.trigger.cron"
 export const MAJOR_CRON_PROPERTY_KEY = "self-optimizing.major.trigger.cron"
 export const FULL_CRON_PROPERTY_KEY = "self-optimizing.full.trigger.cron"
@@ -79,8 +102,8 @@ export const SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY = "snapshot-expire.trigger.cron"
 export const SNAPSHOT_KEEP_DURATION_PROPERTY_KEY = "snapshot.keep.duration"
 export const SNAPSHOT_KEEP_MIN_COUNT_PROPERTY_KEY = "snapshot.keep.min-count"
 
-/** Last Run Status slots: the three compaction levels plus snapshot expiry. */
-export const LATEST_RUN_SLOTS: ReadonlyArray<{
+// Last Run Status slots: the three compaction levels plus snapshot expiry.
+export const LATEST_RUN_SLOTS: Array<{
 	key: LatestRunSlotKey
 	tag: "L" | "M" | "F" | "E"
 	name: string

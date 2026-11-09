@@ -1,7 +1,7 @@
-import type { CompactionCronKey } from "../types"
+import type { CompactionCronKey, MaintenanceTabKey } from "../types"
 import { RUN_TYPE_LABEL } from "./tableConstants"
 
-/** Shared size of the configure and success modals so their inner layouts can agree. */
+// Shared size of the configure and success modals so their inner layouts can agree.
 export const TABLE_MODAL_WIDTH = 696
 
 export const DEFAULT_TABLE_MODAL_STYLES = {
@@ -15,7 +15,7 @@ export const DEFAULT_TABLE_MODAL_STYLES = {
 	},
 } as const
 
-/** Single edits one table's saved config; bulk writes the same form to many tables. */
+// Single edits one table's saved config; bulk writes the same form to many tables.
 export const CONFIGURE_MODE = {
 	SINGLE: "single",
 	BULK: "bulk",
@@ -26,21 +26,16 @@ export const MAINTENANCE_TAB = {
 	CLEANUP: "cleanup",
 } as const
 
-export const MAINTENANCE_TAB_ITEMS = [
+export const MAINTENANCE_TAB_ITEMS: Array<{
+	key: MaintenanceTabKey
+	label: string
+}> = [
 	{ key: MAINTENANCE_TAB.OPTIMIZE, label: "Optimize" },
 	{ key: MAINTENANCE_TAB.CLEANUP, label: "Cleanup" },
 ]
 
-/** All user-facing copy of the Optimize tab. */
-export const OPTIMIZE_TEXT = {
-	switchLabel: "Optimization",
-	targetFileSizeLabel: "Target file size",
-	targetFileSizeTooltip:
-		"Desired file size after compaction; full optimization creates files of this size.",
-} as const
-
-/** The three compaction schedules of the Optimize tab, in display order. */
-export const OPTIMIZE_SCHEDULES: ReadonlyArray<{
+// The three compaction schedules of the Optimize tab, in display order.
+export const OPTIMIZE_SCHEDULES: Array<{
 	key: CompactionCronKey
 	title: string
 	tooltip: string
@@ -63,18 +58,3 @@ export const OPTIMIZE_SCHEDULES: ReadonlyArray<{
 			"Rewrites all data and applies deletes, creating files of the target size.",
 	},
 ]
-
-/** All user-facing copy of the Cleanup tab. */
-export const CLEANUP_TEXT = {
-	description:
-		"Removes old snapshots from table history. Data files are not deleted in this version.",
-	switchLabel: "Expire Snapshots",
-	keepDurationLabel: "Remove snapshots older than",
-	keepDurationTooltip:
-		"Snapshots older than this are expired on each cleanup run.",
-	minKeepLabel: "Minimum snapshots to keep",
-	minKeepTooltip:
-		"Cleanup never drops below this many snapshots, even if they are older than the limit.",
-	cronTitle: "Cleanup Cron",
-	cronTooltip: "How often expired snapshots are removed.",
-} as const

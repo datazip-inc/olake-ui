@@ -1,19 +1,15 @@
 import clsx from "clsx"
 
 type FilterChipsProps<K extends string> = {
-	options: ReadonlyArray<{ key: K; label: string }>
+	options: Array<{ key: K; label: string }>
 	value: K
 	onChange: (key: K) => void
-	/** sm = 32px (run history), md = 36px (tables list) */
-	size?: "sm" | "md"
 }
 
-/** Row of mutually exclusive filter buttons, shared by the tables list and run history. */
 const FilterChips = <K extends string>({
 	options,
 	value,
 	onChange,
-	size = "md",
 }: FilterChipsProps<K>) => (
 	<div className="flex items-center gap-2">
 		{options.map(option => (
@@ -22,8 +18,7 @@ const FilterChips = <K extends string>({
 				type="button"
 				onClick={() => onChange(option.key)}
 				className={clsx(
-					"whitespace-nowrap rounded-md border border-olake-border px-3 text-sm leading-5 text-olake-text-secondary",
-					size === "sm" ? "h-8" : "h-9",
+					"h-8 whitespace-nowrap rounded-md border border-olake-border px-3 text-sm leading-5 text-olake-text-secondary",
 					value === option.key ? "bg-olake-surface-muted" : "bg-white",
 				)}
 			>

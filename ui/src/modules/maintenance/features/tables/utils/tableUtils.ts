@@ -345,9 +345,9 @@ const parseOptionalInt = (raw?: string): number | undefined => {
 const isSnapshotExpiryEnabled = (
 	properties: Record<string, string>,
 ): boolean => {
-	const enabled = properties[SNAPSHOT_EXPIRE_ENABLED_PROPERTY_KEY]?.trim()
-	if (enabled) return enabled.toLowerCase() === "true"
-	return !!properties[SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY]?.trim()
+	const enabled = properties[SNAPSHOT_EXPIRE_ENABLED_PROPERTY_KEY]
+	if (enabled) return enabled === "true"
+	return !!properties[SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY]
 }
 
 // Extracts config fields from the /details payload into TableConfigApiModel.
@@ -362,8 +362,7 @@ export const mapTableDetailsResponseToTableDetailsApiModel = (
 
 	return {
 		enabledForOptimization:
-			(properties[OPTIMIZATION_ENABLED_PROPERTY_KEY] ?? "").toLowerCase() ===
-			"true",
+			properties[OPTIMIZATION_ENABLED_PROPERTY_KEY] === "true",
 		minorTriggerInterval: properties[MINOR_CRON_PROPERTY_KEY],
 		majorTriggerInterval: properties[MAJOR_CRON_PROPERTY_KEY],
 		fullTriggerInterval: properties[FULL_CRON_PROPERTY_KEY],

@@ -78,11 +78,11 @@ export const mapProcessLogsResponse = (response: GetProcessLogsApiResponse) => {
 	return { driverLogs, taskSources, logsBySource }
 }
 
-/** Heading of the primary log: expiry runs are one AMS job, compaction runs have a Spark driver. */
+// Heading of the primary log: expiry runs are one AMS job, compaction runs have a Spark driver.
 export const getPrimaryLogTitle = (isExpiryRun: boolean): string =>
 	isExpiryRun ? "Expiry Logs" : "Driver Logs"
 
-/** Maps UI source keys to API `file` segment (`driver` or numeric task id). */
+// Maps UI source keys to API `file` segment (`driver` or numeric task id).
 export const getProcessLogFileId = (selectedSourceKey: string): string => {
 	if (selectedSourceKey === DRIVER_SOURCE_KEY) return DRIVER_SOURCE_KEY
 	if (selectedSourceKey.startsWith("task-")) {

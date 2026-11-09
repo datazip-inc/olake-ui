@@ -6,7 +6,7 @@ type FeatureToggleRowProps = {
 	onChange: (checked: boolean) => void
 }
 
-/** Bordered "feature on/off" row at the top of each configure tab. Saved together with the rest of the form. */
+// Bordered "feature on/off" row at the top of each configure tab. Saved together with the rest of the form.
 const FeatureToggleRow: React.FC<FeatureToggleRowProps> = ({
 	label,
 	checked,

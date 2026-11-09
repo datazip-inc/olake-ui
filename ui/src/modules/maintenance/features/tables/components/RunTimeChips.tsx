@@ -2,7 +2,6 @@ type RunTimeChipsProps = {
 	runs: string[]
 }
 
-/** Upcoming run times laid out as equal-width chips on one line. */
 const RunTimeChips: React.FC<RunTimeChipsProps> = ({ runs }) => (
 	<div className="flex w-full items-center gap-2">
 		{runs.map(run => (
