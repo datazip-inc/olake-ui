@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react"
 
 import ConfigSuccessIcon from "@/assets/config-success-icon.svg"
 
-import { DEFAULT_TABLE_MODAL_STYLES, TABLE_MODAL_WIDTH } from "../../constants"
+import { DEFAULT_TABLE_MODAL_STYLES } from "../../constants"
 import RunTimeChips from "../RunTimeChips"
 
 type ConfigurationSuccessModalProps = {
@@ -72,7 +72,7 @@ const ConfigurationSuccessModal: React.FC<ConfigurationSuccessModalProps> = ({
 			footer={null}
 			closable={false}
 			centered
-			width={TABLE_MODAL_WIDTH}
+			width={696}
 			destroyOnHidden
 			styles={DEFAULT_TABLE_MODAL_STYLES}
 		>

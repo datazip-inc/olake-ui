@@ -1,9 +1,6 @@
 import type { CompactionCronKey, MaintenanceTabKey } from "../types"
 import { RUN_TYPE_LABEL } from "./tableConstants"
 
-// Shared size of the configure and success modals so their inner layouts can agree.
-export const TABLE_MODAL_WIDTH = 696
-
 export const DEFAULT_TABLE_MODAL_STYLES = {
 	content: {
 		padding: 0,

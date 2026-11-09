@@ -14,7 +14,6 @@ import {
 	MAINTENANCE_TAB_ITEMS,
 	MIN_SNAPSHOTS_TO_KEEP_LOWEST,
 	OPTIMIZE_SCHEDULES,
-	TABLE_MODAL_WIDTH,
 } from "../../constants"
 import type {
 	ConfigureMode,
@@ -173,7 +172,7 @@ const ConfigureOptimizationModalView: React.FC<
 				maskClosable={!isSaving}
 				keyboard={!isSaving}
 				centered
-				width={TABLE_MODAL_WIDTH}
+				width={696}
 				destroyOnHidden
 				styles={DEFAULT_TABLE_MODAL_STYLES}
 			>
