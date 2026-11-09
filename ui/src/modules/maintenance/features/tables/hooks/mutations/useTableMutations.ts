@@ -1,14 +1,11 @@
 import { useMutation } from "@tanstack/react-query"
 
 import {
+	DEFAULT_CLEANUP_CONFIG,
 	DEFAULT_TARGET_FILE_SIZE,
-	FULL_CRON_PROPERTY_KEY,
 	FULL_DEFAULT_TRIGGER_INTERVAL,
 	LITE_DEFAULT_TRIGGER_INTERVAL,
-	MAJOR_CRON_PROPERTY_KEY,
 	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
-	MINOR_CRON_PROPERTY_KEY,
-	SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY,
 	tableKeys,
 } from "../../constants"
 import { tableService } from "../../services"
@@ -18,7 +15,10 @@ import type {
 	UpdateTableConfigApiRequest,
 	UpdateTablesConfigApiRequest,
 } from "../../types"
-import { DEFAULT_CLEANUP_API_REQUEST } from "../../utils"
+import {
+	mapCleanupConfigToApiRequest,
+	mapTableDetailsResponseToTableDetailsApiModel,
+} from "../../utils"
 
 export const useToggleTableOptimizing = () => {
 	return useMutation({
@@ -37,20 +37,11 @@ export const useToggleTableOptimizing = () => {
 			}
 
 			if (enabled) {
-				const details = await tableService.getTableDetails(
-					catalog,
-					database,
-					tableName,
+				const details = mapTableDetailsResponseToTableDetailsApiModel(
+					await tableService.getTableDetails(catalog, database, tableName),
 				)
-				const properties = details.result?.properties ?? {}
 
-				const isOptimizationConfigured = [
-					MINOR_CRON_PROPERTY_KEY,
-					MAJOR_CRON_PROPERTY_KEY,
-					FULL_CRON_PROPERTY_KEY,
-				].some(key => key in properties)
-
-				if (!isOptimizationConfigured) {
+				if (!details.optimizationConfigured) {
 					config = {
 						...config,
 						minor_cron: LITE_DEFAULT_TRIGGER_INTERVAL,
@@ -60,8 +51,13 @@ export const useToggleTableOptimizing = () => {
 					}
 				}
 
-				if (!(SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY in properties)) {
-					config = { ...config, ...DEFAULT_CLEANUP_API_REQUEST }
+				// Expiry only fires on a cron, so a table without one gets the full defaults
+				// even when snapshot-expire.enabled was already set.
+				if (!details.snapshotExpiryCron?.trim()) {
+					config = {
+						...config,
+						...mapCleanupConfigToApiRequest(DEFAULT_CLEANUP_CONFIG),
+					}
 				}
 			}
 

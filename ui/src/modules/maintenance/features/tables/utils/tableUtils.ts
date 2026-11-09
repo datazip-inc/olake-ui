@@ -227,7 +227,7 @@ export const mapGetTableRunsResponseToTableRuns = (
 			runId: run.processId,
 			status: run.status,
 			runType: run.optimizingType,
-			type: runTypeToLabel[run.optimizingType] ?? run.optimizingType,
+			type: runTypeToLabel[run.optimizingType],
 			startTime: formatTimestampToUtcTime(run.startTime),
 			duration: formatDuration(run.duration) || "-",
 			metrics: mapRunToMetricRows(run),

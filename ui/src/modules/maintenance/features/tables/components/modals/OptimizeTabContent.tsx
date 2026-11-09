@@ -1,3 +1,7 @@
+import { InputNumber } from "antd"
+
+import { restrictNumericInput } from "@/common/utils"
+
 import {
 	DEFAULT_TARGET_FILE_SIZE,
 	OPTIMIZE_SCHEDULES,
@@ -8,7 +12,6 @@ import AdvancedConfigSection, {
 	AdvancedConfigRow,
 } from "../AdvancedConfigSection"
 import FeatureToggleRow from "../FeatureToggleRow"
-import PositiveIntInput from "../PositiveIntInput"
 import ScheduleSection from "../ScheduleSection"
 
 type OptimizeTabContentProps = {
@@ -46,9 +49,14 @@ const OptimizeTabContent: React.FC<OptimizeTabContentProps> = ({
 				label={OPTIMIZE_TEXT.targetFileSizeLabel}
 				tooltip={OPTIMIZE_TEXT.targetFileSizeTooltip}
 			>
-				<PositiveIntInput
-					value={value.targetFileSize}
-					onChange={targetFileSize => onChange({ ...value, targetFileSize })}
+				<InputNumber
+					min={1}
+					precision={0}
+					value={value.targetFileSize || null}
+					onChange={targetFileSize =>
+						onChange({ ...value, targetFileSize: targetFileSize ?? 0 })
+					}
+					onKeyDown={restrictNumericInput}
 					placeholder={String(DEFAULT_TARGET_FILE_SIZE)}
 					addonAfter="MB"
 					className="w-32"

@@ -1,6 +1,5 @@
 import {
 	CLEANUP_DEFAULT_TRIGGER_INTERVAL,
-	DEFAULT_CLEANUP_CONFIG,
 	DEFAULT_KEEP_DURATION_UNIT,
 	DEFAULT_KEEP_DURATION_VALUE,
 	DEFAULT_MIN_SNAPSHOTS_TO_KEEP,
@@ -73,8 +72,3 @@ export const mapCleanupConfigToApiRequest = (
 	snapshot_keep_duration: formatKeepDuration(config.keepDuration),
 	snapshot_keep_min_count: config.minSnapshotsToKeep,
 })
-
-/** Request fields that switch cleanup on with defaults for a never-configured table. */
-export const DEFAULT_CLEANUP_API_REQUEST = mapCleanupConfigToApiRequest(
-	DEFAULT_CLEANUP_CONFIG,
-)

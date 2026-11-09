@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
-	"strings"
 
 	"golang.org/x/sync/errgroup"
 
@@ -166,11 +165,11 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 // isSnapshotExpiryEnabled follows Fusion's rule: snapshot-expire.enabled decides when present,
 // otherwise expiry is on exactly when a trigger cron is set.
 func isSnapshotExpiryEnabled(properties map[string]interface{}) bool {
-	if enabled, ok := properties[constants.OptSnapshotExpireEnabled].(string); ok && strings.TrimSpace(enabled) != "" {
-		return strings.EqualFold(strings.TrimSpace(enabled), "true")
+	if enabled, ok := properties[constants.OptSnapshotExpireEnabled].(string); ok && enabled != "" {
+		return enabled == "true"
 	}
 	cron, _ := properties[constants.OptSnapshotExpireCron].(string)
-	return strings.TrimSpace(cron) != ""
+	return cron != ""
 }
 
 // GetTables returns the list of tables for a given catalog and database

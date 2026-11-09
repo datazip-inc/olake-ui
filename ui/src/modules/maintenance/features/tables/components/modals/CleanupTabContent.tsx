@@ -1,4 +1,6 @@
-import { Select } from "antd"
+import { InputNumber, Select } from "antd"
+
+import { restrictNumericInput } from "@/common/utils"
 
 import {
 	CLEANUP_TEXT,
@@ -11,7 +13,6 @@ import AdvancedConfigSection, {
 	AdvancedConfigRow,
 } from "../AdvancedConfigSection"
 import FeatureToggleRow from "../FeatureToggleRow"
-import PositiveIntInput from "../PositiveIntInput"
 import ScheduleSection from "../ScheduleSection"
 
 type CleanupTabContentProps = {
@@ -43,14 +44,17 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 				label={CLEANUP_TEXT.keepDurationLabel}
 				tooltip={CLEANUP_TEXT.keepDurationTooltip}
 			>
-				<PositiveIntInput
-					value={value.keepDuration.value}
+				<InputNumber
+					min={1}
+					precision={0}
+					value={value.keepDuration.value || null}
 					onChange={next =>
 						onChange({
 							...value,
-							keepDuration: { ...value.keepDuration, value: next },
+							keepDuration: { ...value.keepDuration, value: next ?? 0 },
 						})
 					}
+					onKeyDown={restrictNumericInput}
 					placeholder={String(DEFAULT_KEEP_DURATION_VALUE)}
 					addonAfter={
 						<Select<KeepDurationUnit>
@@ -73,11 +77,14 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 				label={CLEANUP_TEXT.minKeepLabel}
 				tooltip={CLEANUP_TEXT.minKeepTooltip}
 			>
-				<PositiveIntInput
-					value={value.minSnapshotsToKeep}
+				<InputNumber
+					min={1}
+					precision={0}
+					value={value.minSnapshotsToKeep || null}
 					onChange={minSnapshotsToKeep =>
-						onChange({ ...value, minSnapshotsToKeep })
+						onChange({ ...value, minSnapshotsToKeep: minSnapshotsToKeep ?? 0 })
 					}
+					onKeyDown={restrictNumericInput}
 					placeholder={String(DEFAULT_MIN_SNAPSHOTS_TO_KEEP)}
 					className="w-20"
 				/>
