@@ -129,16 +129,17 @@ const ConfigureOptimizationModalView: React.FC<
 	const compactionCrons = OPTIMIZE_SCHEDULES.map(
 		schedule => optimize[schedule.key],
 	)
+	// Every field in the payload is validated whichever way its switch points: the save
+	// writes all of them, and Fusion rejects a bad cron or a min-count under its floor.
 	const activeCrons = [
 		...compactionCrons,
-		...(includeCleanup && cleanup.expireSnapshots ? [cleanup.cron] : []),
+		...(includeCleanup ? [cleanup.cron] : []),
 	]
 	const hasInvalidCron = activeCrons.some(
 		cron => getCronConfigError(cron) !== null,
 	)
 	const isCleanupValid =
 		!includeCleanup ||
-		!cleanup.expireSnapshots ||
 		(cleanup.keepDuration.value > 0 &&
 			cleanup.minSnapshotsToKeep >= MIN_SNAPSHOTS_TO_KEEP_LOWEST)
 	const canSave =
