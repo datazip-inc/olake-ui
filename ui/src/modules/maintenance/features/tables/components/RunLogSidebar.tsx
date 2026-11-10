@@ -6,6 +6,8 @@ import {
 import { Button, message } from "antd"
 import clsx from "clsx"
 
+import { TruncatedText } from "@/common/components"
+
 import { DRIVER_SOURCE_KEY } from "../constants"
 import { useDownloadProcessLogsArchive, useProcessLogs } from "../hooks"
 import { getPrimaryLogTitle } from "../utils"
@@ -40,10 +42,14 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 			<button
 				type="button"
 				onClick={onBack}
-				className="mb-2 inline-flex items-center gap-1 font-sans text-sm font-normal leading-[22px] text-olake-text-secondary"
+				className="mb-2 flex w-full min-w-0 items-center gap-1 font-sans text-sm font-normal leading-[22px] text-olake-text-secondary"
 			>
-				<ArrowLeftIcon size={14} />
-				<span>{`Run Logs / ${tableName} `}</span>
+				<ArrowLeftIcon
+					size={14}
+					className="shrink-0"
+				/>
+				<span className="shrink-0">Run Logs /</span>
+				<TruncatedText text={tableName} />
 			</button>
 
 			<h1 className="font-sans text-xl font-medium leading-7 text-olake-text">

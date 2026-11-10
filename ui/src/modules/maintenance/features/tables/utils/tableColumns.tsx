@@ -9,7 +9,7 @@ import { Button, Dropdown, Spin, Tooltip } from "antd"
 import type { MenuProps } from "antd/es/menu"
 import clsx from "clsx"
 
-import { Tag, type ColumnDef } from "@/common/components"
+import { Tag, TruncatedText, type ColumnDef } from "@/common/components"
 
 import { RunStatusCell, StatusSwitch } from "../components"
 import type { Table } from "../types"
@@ -98,9 +98,16 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 			header: "Table",
 			width: 20,
 			render: row => (
-				<div className="flex items-center gap-2">
-					<p className="text-sm leading-6 text-olake-text">{row.name}</p>
-					{row.olakeCreated && <Tag>OLake</Tag>}
+				<div className="flex min-w-0 items-center gap-2">
+					<TruncatedText
+						text={row.name}
+						className="text-sm leading-6 text-olake-text"
+					/>
+					{row.olakeCreated && (
+						<span className="shrink-0">
+							<Tag>OLake</Tag>
+						</span>
+					)}
 				</div>
 			),
 		},

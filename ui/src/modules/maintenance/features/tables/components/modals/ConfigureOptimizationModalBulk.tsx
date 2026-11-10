@@ -1,6 +1,8 @@
 import { TableIcon, WarningIcon, XIcon } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 
+import { TruncatedText } from "@/common/components"
+
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
 import { CONFIGURE_MODE } from "../../constants"
 import { useBulkUpdateTableConfig } from "../../hooks"
@@ -32,7 +34,10 @@ const SelectedTablesHeader: React.FC<{
 						className="flex h-7 items-center gap-2 rounded bg-olake-surface-muted px-3 py-0.5"
 					>
 						<TableIcon className="size-4 shrink-0 text-olake-text" />
-						<span className="text-sm text-olake-text">{name}</span>
+						<TruncatedText
+							text={name}
+							className="max-w-[240px] text-sm text-olake-text"
+						/>
 						<button
 							type="button"
 							onClick={() => onRemoveTable(name)}

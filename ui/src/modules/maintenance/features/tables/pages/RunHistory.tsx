@@ -4,7 +4,7 @@ import clsx from "clsx"
 import { useState } from "react"
 import { useNavigate, useParams } from "react-router"
 
-import { DataTable } from "@/common/components"
+import { DataTable, TruncatedText } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
 
 import { FilterChips, RunMetricsSidebar } from "../components"
@@ -177,9 +177,12 @@ const RunHistory: React.FC = () => {
 				<span>Back</span>
 			</button>
 
-			<h1 className="text-[28px] font-medium leading-[36px] text-olake-text">
-				Run History for{" "}
-				<span className="text-olake-primary">{decodedTableName}</span>
+			<h1 className="flex min-w-0 items-baseline gap-2 text-[28px] font-medium leading-[36px] text-olake-text">
+				<span className="shrink-0">Run History for</span>
+				<TruncatedText
+					text={decodedTableName}
+					className="text-olake-primary"
+				/>
 			</h1>
 			<p className="mt-1 text-sm leading-[22px] text-olake-text-secondary">
 				View logs, runs &amp; performance metrics
