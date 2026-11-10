@@ -9,6 +9,8 @@ import RunTimeChips from "./RunTimeChips"
 
 type ScheduleSectionProps = {
 	title: string
+	// Small secondary note shown after the title.
+	subtitle?: string
 	value: CronConfigOption
 	onChange: (next: CronConfigOption) => void
 	isFirst?: boolean
@@ -17,6 +19,7 @@ type ScheduleSectionProps = {
 
 const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 	title,
+	subtitle,
 	value,
 	onChange,
 	isFirst = false,
@@ -38,6 +41,11 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 				<span className="text-base font-medium leading-6 text-olake-text">
 					{title}
 				</span>
+				{subtitle && (
+					<span className="text-xs leading-5 text-olake-text-tertiary">
+						{subtitle}
+					</span>
+				)}
 				{tooltip && (
 					<Tooltip title={tooltip}>
 						<QuestionIcon

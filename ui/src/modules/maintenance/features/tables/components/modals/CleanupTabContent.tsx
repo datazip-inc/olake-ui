@@ -92,6 +92,7 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 
 		<ScheduleSection
 			title="Cleanup Cron"
+			subtitle="(only expire snapshots)"
 			tooltip="How often expired snapshots are removed."
 			value={value.cron}
 			onChange={cron => onChange({ ...value, cron })}
