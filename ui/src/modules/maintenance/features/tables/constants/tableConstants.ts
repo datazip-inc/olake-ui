@@ -26,7 +26,7 @@ export const RUN_TYPE_LABEL = {
 	LITE: "Lite",
 	MEDIUM: "Medium",
 	FULL: "Full",
-	CLEANUP: "Cleanup",
+	EXPIRY: "Expire",
 } as const
 
 // Run History type filter, also the `type` query param of the run history URL.
@@ -111,5 +111,5 @@ export const LATEST_RUN_SLOTS: Array<{
 	{ key: "minor", tag: "L", name: RUN_TYPE_LABEL.LITE },
 	{ key: "major", tag: "M", name: RUN_TYPE_LABEL.MEDIUM },
 	{ key: "full", tag: "F", name: RUN_TYPE_LABEL.FULL },
-	{ key: "expiry", tag: "C", name: RUN_TYPE_LABEL.CLEANUP },
+	{ key: "expiry", tag: "C", name: "Cleanup" },
 ]
