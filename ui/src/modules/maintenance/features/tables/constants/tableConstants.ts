@@ -26,14 +26,14 @@ export const RUN_TYPE_LABEL = {
 	LITE: "Lite",
 	MEDIUM: "Medium",
 	FULL: "Full",
-	EXPIRY: "Expire",
+	CLEANUP: "Cleanup",
 } as const
 
 // Run History type filter, also the `type` query param of the run history URL.
 export const RUN_TYPE_FILTER = {
 	ALL: "all",
 	OPTIMIZATION: "optimization",
-	EXPIRY: "expiry",
+	CLEANUP: "cleanup",
 } as const
 
 // Fusion process types each filter selects (its `type` param); undefined means no filter.
@@ -47,7 +47,7 @@ export const RUN_TYPE_FILTER_PROCESS_TYPES: Record<
 		RUN_TYPE.MAJOR,
 		RUN_TYPE.FULL,
 	].join(","),
-	[RUN_TYPE_FILTER.EXPIRY]: RUN_TYPE.EXPIRY,
+	[RUN_TYPE_FILTER.CLEANUP]: RUN_TYPE.EXPIRY,
 }
 
 export const RUN_TYPE_FILTER_OPTIONS: Array<{
@@ -56,7 +56,7 @@ export const RUN_TYPE_FILTER_OPTIONS: Array<{
 }> = [
 	{ key: RUN_TYPE_FILTER.ALL, label: "All Types" },
 	{ key: RUN_TYPE_FILTER.OPTIMIZATION, label: "Optimization" },
-	{ key: RUN_TYPE_FILTER.EXPIRY, label: "Cleanup" },
+	{ key: RUN_TYPE_FILTER.CLEANUP, label: "Cleanup" },
 ]
 
 export const RUN_STATUS_FILTER_OPTIONS: Array<{
@@ -105,11 +105,11 @@ export const SNAPSHOT_KEEP_MIN_COUNT_PROPERTY_KEY = "snapshot.keep.min-count"
 // Last Run Status slots: the three compaction levels plus snapshot expiry.
 export const LATEST_RUN_SLOTS: Array<{
 	key: LatestRunSlotKey
-	tag: "L" | "M" | "F" | "E"
+	tag: "L" | "M" | "F" | "C"
 	name: string
 }> = [
 	{ key: "minor", tag: "L", name: RUN_TYPE_LABEL.LITE },
 	{ key: "major", tag: "M", name: RUN_TYPE_LABEL.MEDIUM },
 	{ key: "full", tag: "F", name: RUN_TYPE_LABEL.FULL },
-	{ key: "expiry", tag: "E", name: RUN_TYPE_LABEL.EXPIRY },
+	{ key: "expiry", tag: "C", name: RUN_TYPE_LABEL.CLEANUP },
 ]

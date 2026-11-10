@@ -204,7 +204,7 @@ const runTypeToLabel: Record<RunType, TableRun["type"]> = {
 	[RUN_TYPE.MINOR]: RUN_TYPE_LABEL.LITE,
 	[RUN_TYPE.MAJOR]: RUN_TYPE_LABEL.MEDIUM,
 	[RUN_TYPE.FULL]: RUN_TYPE_LABEL.FULL,
-	[RUN_TYPE.EXPIRY]: RUN_TYPE_LABEL.EXPIRY,
+	[RUN_TYPE.EXPIRY]: RUN_TYPE_LABEL.CLEANUP,
 }
 
 // Failed runs carry the reason outside the summary; surface it with the metrics.

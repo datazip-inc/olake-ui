@@ -177,7 +177,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 			header: (
 				<div className="flex items-center justify-center gap-1">
 					<span>Status</span>
-					<Tooltip title="On when optimization or expire snapshots is enabled. Turning it off disables both.">
+					<Tooltip title="On when optimization or cleanup is enabled. Turning it off disables both.">
 						<QuestionIcon
 							size={14}
 							className="cursor-help text-olake-text-secondary"

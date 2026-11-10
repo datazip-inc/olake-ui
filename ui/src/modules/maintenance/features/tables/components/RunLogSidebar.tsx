@@ -50,9 +50,7 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 				Run logs for <span className="text-olake-primary">Run ID {runId}</span>
 			</h1>
 			<p className="mt-1 font-sans text-sm font-normal leading-[22px] text-olake-text">
-				{isExpiryRun
-					? "View snapshot expiry logs"
-					: "View spark driver & subtask logs"}
+				{isExpiryRun ? "View cleanup logs" : "View spark driver & subtask logs"}
 			</p>
 
 			<div className="mt-4 flex items-center gap-2">
