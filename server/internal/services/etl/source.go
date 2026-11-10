@@ -337,8 +337,12 @@ func (s Service) startDiscover(ctx context.Context, projectID string, req *dto.S
 	if err != nil {
 		return "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
+	encryptedDestinationConfig, err := utils.Encrypt(req.DestinationConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt destination config for catalog: %s", err)
+	}
 	return s.temporal.StartDiscoverStreams(ctx, projectID, req.Type, req.Version, encryptedConfig, stored,
-		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines)
+		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines, encryptedDestinationConfig)
 }
 
 func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {

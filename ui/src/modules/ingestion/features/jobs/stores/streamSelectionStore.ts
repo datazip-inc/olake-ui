@@ -14,7 +14,7 @@ import {
 } from "@/modules/ingestion/common/types"
 
 import { extractNamespaceFromDestination } from "../utils"
-import { getDefaultUpsertTypeFor } from "../utils/streams"
+import { getDefaultUpsertTypeFor, isKafkaUpsertBlocked } from "../utils/streams"
 
 export interface BulkStreamConfig {
 	syncMode?: SyncMode
@@ -103,7 +103,7 @@ interface StreamSelectionState {
 	) => void
 
 	// Applies append_mode to every stream in selected_streams.
-	updateAllIngestionMode: (appendMode: boolean) => void
+	updateAllIngestionMode: (appendMode: boolean, sourceType?: string) => void
 
 	// Updates destination_database on all streams.
 	updateDestinationDatabase: (format: string, databaseName: string) => void
@@ -562,7 +562,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 				: state
 		}),
 
-	updateAllIngestionMode: appendMode =>
+	updateAllIngestionMode: (appendMode, sourceType) =>
 		set(state => {
 			if (!state.streamsData) return state
 
@@ -572,7 +572,21 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 					ns,
 					streams.map(s =>
 						withUpsertTypeSynced(
-							{ ...s, append_mode: appendMode },
+							{
+								...s,
+								// a Kafka topic with no dedup key options can't upsert
+								append_mode:
+									appendMode ||
+									isKafkaUpsertBlocked(
+										prev.streams.find(
+											x =>
+												x.stream.name === s.stream_name &&
+												x.stream.namespace === ns,
+										),
+										s,
+										sourceType,
+									),
+							},
 							getDefaultUpsertTypeFor(prev.streams, {
 								streamName: s.stream_name,
 								namespace: ns,
