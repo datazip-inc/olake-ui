@@ -3,6 +3,7 @@ import type {
 	LatestRunSlotKey,
 	RunHistoryFilter,
 	RunTypeFilter,
+	TableRunsQuery,
 } from "../types"
 
 export const PAGE_SIZE = 6
@@ -36,19 +37,20 @@ export const RUN_TYPE_FILTER = {
 	CLEANUP: "cleanup",
 } as const
 
-// Fusion process types each filter selects (its `type` param); undefined means no filter.
-export const RUN_TYPE_FILTER_PROCESS_TYPES: Record<
+// Run query each type filter applies. Fusion's `type` takes one process type and cannot
+// exclude one, so "Optimization" fetches every run and drops the cleanup runs in the browser.
+export const RUN_TYPE_FILTER_QUERY: Record<
 	RunTypeFilter,
-	string | undefined
+	Pick<TableRunsQuery, "runType" | "excludeRunType">
 > = {
-	[RUN_TYPE_FILTER.ALL]: undefined,
-	[RUN_TYPE_FILTER.OPTIMIZATION]: [
-		RUN_TYPE.MINOR,
-		RUN_TYPE.MAJOR,
-		RUN_TYPE.FULL,
-	].join(","),
-	[RUN_TYPE_FILTER.CLEANUP]: RUN_TYPE.EXPIRY,
+	[RUN_TYPE_FILTER.ALL]: {},
+	[RUN_TYPE_FILTER.OPTIMIZATION]: { excludeRunType: RUN_TYPE.EXPIRY },
+	[RUN_TYPE_FILTER.CLEANUP]: { runType: RUN_TYPE.EXPIRY },
 }
+
+// Chunk size and cap when every run of a table has to be fetched.
+export const RUNS_FETCH_PAGE_SIZE = 200
+export const RUNS_FETCH_MAX = 5000
 
 export const RUN_TYPE_FILTER_OPTIONS: Array<{
 	key: RunTypeFilter

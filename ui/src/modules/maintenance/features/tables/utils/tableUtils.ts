@@ -292,6 +292,18 @@ const replaceDisplayTypes = (text: string): string =>
 	)
 
 // Converts metrics payload from API/run rows into display-ready label/value rows for the sidebar.
+// One page of a fully fetched run list after dropping runs of excludeRunType.
+export const pageTableRuns = (
+	{ runs }: { runs: TableRun[]; total: number },
+	excludeRunType: RunType,
+	page: number,
+	pageSize: number,
+): { runs: TableRun[]; total: number } => {
+	const kept = runs.filter(run => run.runType !== excludeRunType)
+	const start = (page - 1) * pageSize
+	return { runs: kept.slice(start, start + pageSize), total: kept.length }
+}
+
 export const mapRunMetricsPayloadToRows = (
 	payload: unknown,
 ): RunMetricRow[] => {

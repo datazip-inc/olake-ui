@@ -124,6 +124,7 @@ const RunHistory: React.FC = () => {
 		pageSize,
 		status,
 		runType,
+		excludeRunType,
 		handleFilterChange,
 		handleTypeFilterChange,
 	} = useRunHistoryFilters()
@@ -135,6 +136,7 @@ const RunHistory: React.FC = () => {
 		pageSize,
 		status,
 		runType,
+		excludeRunType,
 	})
 
 	const runs = data?.runs ?? []
