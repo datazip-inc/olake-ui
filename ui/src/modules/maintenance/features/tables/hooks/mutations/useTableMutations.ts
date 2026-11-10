@@ -46,13 +46,26 @@ export const useToggleTableOptimizing = () => {
 					}
 				}
 
-				// Expiry only fires on a cron, so a table without one gets the full defaults
-				// even when snapshot-expire.enabled was already set.
-				if (!details.snapshotExpiryCron) {
-					config = {
-						...mapCleanupConfigToApiRequest(DEFAULT_CLEANUP_CONFIG),
-						...config,
-					}
+				// Cleanup defaults are seeded per property, only where the table has none, so a saved
+				// duration or min-count survives the toggle. The cron is seeded whenever it is empty
+				// (also when the user picked "Never"): expiry only fires on a cron.
+				const cleanupDefaults = mapCleanupConfigToApiRequest(
+					DEFAULT_CLEANUP_CONFIG,
+				)
+				config = {
+					...(details.snapshotExpiryCron
+						? {}
+						: { snapshot_expiry_cron: cleanupDefaults.snapshot_expiry_cron }),
+					...(details.snapshotKeepDuration === undefined
+						? { snapshot_keep_duration: cleanupDefaults.snapshot_keep_duration }
+						: {}),
+					...(details.snapshotKeepMinCount === undefined
+						? {
+								snapshot_keep_min_count:
+									cleanupDefaults.snapshot_keep_min_count,
+							}
+						: {}),
+					...config,
 				}
 			}
 
