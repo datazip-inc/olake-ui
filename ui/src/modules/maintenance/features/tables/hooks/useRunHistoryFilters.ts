@@ -7,7 +7,7 @@ import {
 	RUN_STATUS,
 	RUN_STATUS_FILTER_STATUSES,
 	RUN_TYPE_FILTER,
-	RUN_TYPE_FILTER_QUERY,
+	RUN_TYPE_FILTER_PROCESS_TYPES,
 } from "../constants"
 import type { RunHistoryFilter, RunTypeFilter } from "../types"
 
@@ -47,7 +47,7 @@ export const useRunHistoryFilters = () => {
 	const pageSize = PAGE_SIZE
 
 	const status = RUN_STATUS_FILTER_STATUSES[activeFilter]
-	const { runType, excludeRunType } = RUN_TYPE_FILTER_QUERY[activeTypeFilter]
+	const runType = RUN_TYPE_FILTER_PROCESS_TYPES[activeTypeFilter]
 
 	useEffect(() => {
 		setCurrentPage(1)
@@ -82,7 +82,6 @@ export const useRunHistoryFilters = () => {
 		pageSize,
 		status,
 		runType,
-		excludeRunType,
 		handleFilterChange,
 		handleTypeFilterChange,
 	} as const

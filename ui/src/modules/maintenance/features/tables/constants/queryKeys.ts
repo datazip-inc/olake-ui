@@ -10,7 +10,6 @@ export const tableKeys = {
 
 	table: (catalog: string, database: string, tableName: string) =>
 		[...tableKeys.all(), "table", catalog, database, tableName] as const,
-	// page/pageSize are left out when every run is fetched at once and paged in the browser.
 	runs: ({
 		catalog,
 		database,
@@ -19,13 +18,11 @@ export const tableKeys = {
 		pageSize,
 		status,
 		runType,
-		excludeRunType,
-	}: Omit<TableRunsQuery, "page" | "pageSize"> &
-		Partial<Pick<TableRunsQuery, "page" | "pageSize">>) =>
+	}: TableRunsQuery) =>
 		[
 			...tableKeys.table(catalog, database, tableName),
 			"runs",
-			{ page, pageSize, status, runType, excludeRunType },
+			{ page, pageSize, status, runType },
 		] as const,
 	cron: (catalog: string, database: string, tableName: string) =>
 		[...tableKeys.table(catalog, database, tableName), "cron"] as const,

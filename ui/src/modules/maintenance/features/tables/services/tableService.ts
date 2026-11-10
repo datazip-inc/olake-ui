@@ -3,9 +3,7 @@ import { AxiosError } from "axios"
 import { API_CONFIG } from "@/config"
 import { api } from "@/core/api"
 
-import { RUNS_FETCH_MAX, RUNS_FETCH_PAGE_SIZE } from "../constants"
 import type {
-	FusionRun,
 	GetProcessLogsApiResponse,
 	GetTableRunsApiResponse,
 	TableDetailsApiResponse,
@@ -64,7 +62,8 @@ export const tableService = {
 		if (status) {
 			searchParams.set("status", status)
 		}
-		// Fusion lists compaction and snapshot-expiry runs together; `type` narrows to one.
+		// Fusion lists compaction and snapshot-expiry runs together; `type` takes one
+		// process type or a comma-separated list (e.g. MINOR,MAJOR,FULL).
 		if (runType) {
 			searchParams.set("type", runType)
 		}
@@ -73,38 +72,6 @@ export const tableService = {
 			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/optimizing-processes?${searchParams.toString()}`,
 		)
 		return response.data
-	},
-
-	// Every run of the table, newest first, in RUNS_FETCH_PAGE_SIZE chunks up to RUNS_FETCH_MAX.
-	getAllTableRuns: async ({
-		catalog,
-		database,
-		tableName,
-		status,
-	}: Pick<
-		TableRunsQuery,
-		"catalog" | "database" | "tableName" | "status"
-	>): Promise<GetTableRunsApiResponse> => {
-		const list: FusionRun[] = []
-		for (let page = 1; list.length < RUNS_FETCH_MAX; page++) {
-			const chunk = await tableService.getTableRuns({
-				catalog,
-				database,
-				tableName,
-				status,
-				page,
-				pageSize: RUNS_FETCH_PAGE_SIZE,
-			})
-			const runs = chunk.result?.list ?? []
-			list.push(...runs)
-			if (
-				runs.length < RUNS_FETCH_PAGE_SIZE ||
-				list.length >= (chunk.result?.total ?? 0)
-			) {
-				break
-			}
-		}
-		return { result: { list, total: list.length } }
 	},
 
 	cancelTableRun: async (

@@ -9,7 +9,6 @@ import {
 	mapTableDetailsResponseToTableDetailsViewModel,
 	mapTableMetricsResponseToFileSummary,
 	mapProcessLogsResponse,
-	pageTableRuns,
 } from "../../utils"
 
 export const useTables = (
@@ -57,28 +56,10 @@ export const useTableMetrics = (
 }
 
 export const useTableRuns = (query: TableRunsQuery) => {
-	const { page, pageSize, excludeRunType, ...scope } = query
-	// Fusion cannot exclude a process type, so that filter fetches every run once (one cache
-	// entry per table + status, no page in the key) and pages in the browser.
-	const fetchAll = !!excludeRunType
-
 	return useQuery({
-		queryKey: fetchAll
-			? tableKeys.runs({ ...scope, excludeRunType })
-			: tableKeys.runs(query),
-		queryFn: () =>
-			fetchAll
-				? tableService.getAllTableRuns(scope)
-				: tableService.getTableRuns(query),
-		select: fetchAll
-			? data =>
-					pageTableRuns(
-						mapGetTableRunsResponseToTableRuns(data),
-						excludeRunType,
-						page,
-						pageSize,
-					)
-			: mapGetTableRunsResponseToTableRuns,
+		queryKey: tableKeys.runs(query),
+		queryFn: () => tableService.getTableRuns(query),
+		select: mapGetTableRunsResponseToTableRuns,
 		enabled: !!query.catalog && !!query.database && !!query.tableName,
 		placeholderData: keepPreviousData,
 		refetchOnWindowFocus: false,

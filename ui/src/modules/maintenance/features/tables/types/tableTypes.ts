@@ -256,10 +256,8 @@ export interface TableRunsQuery {
 	page: number
 	pageSize: number
 	status?: string
-	// Fusion `type` filter: one process type; undefined means all.
-	runType?: RunType
-	// Dropped after fetching; Fusion cannot exclude a process type itself.
-	excludeRunType?: RunType
+	// Fusion `type` filter: one process type or a comma-separated list; undefined means all.
+	runType?: string
 }
 
 export interface ToggleTableOptimizingRequest {
