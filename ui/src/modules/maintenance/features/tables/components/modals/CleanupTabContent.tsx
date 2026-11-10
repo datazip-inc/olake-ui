@@ -32,7 +32,7 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 
 		<div className="pt-6">
 			<FeatureToggleRow
-				label="Cleanup"
+				label="Expire Snapshots"
 				checked={value.expireSnapshots}
 				onChange={expireSnapshots => onChange({ ...value, expireSnapshots })}
 			/>
@@ -41,7 +41,7 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 		<AdvancedConfigSection className="pt-6">
 			<AdvancedConfigRow
 				label="Remove snapshots older than"
-				tooltip="Snapshots older than this are removed on each cleanup run."
+				tooltip="Snapshots older than this are expired on each cleanup run."
 			>
 				<InputNumber
 					min={1}
@@ -92,7 +92,7 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 
 		<ScheduleSection
 			title="Cleanup Cron"
-			tooltip="How often cleanup runs."
+			tooltip="How often expired snapshots are removed."
 			value={value.cron}
 			onChange={cron => onChange({ ...value, cron })}
 		/>
