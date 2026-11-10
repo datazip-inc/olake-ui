@@ -328,10 +328,8 @@ export const mapTableConfigApiModelToFormModel = (
 	config: TableConfigApiModel,
 ): TableConfigFormModel => ({
 	optimize: {
-		// A never-configured table starts with the switch on.
-		optimizationEnabled: config.optimizationConfigured
-			? config.enabledForOptimization
-			: true,
+		// The switch mirrors the stored flag; Fusion's default (unset) is off.
+		optimizationEnabled: config.enabledForOptimization,
 		minorCron: mapTriggerIntervalToCronConfigOption(
 			config.minorTriggerInterval?.trim() ?? LITE_DEFAULT_TRIGGER_INTERVAL,
 		),
@@ -389,9 +387,6 @@ export const mapTableDetailsResponseToTableDetailsApiModel = (
 			MAJOR_CRON_PROPERTY_KEY,
 			FULL_CRON_PROPERTY_KEY,
 		].some(key => key in properties),
-		snapshotExpiryConfigured:
-			SNAPSHOT_EXPIRE_ENABLED_PROPERTY_KEY in properties ||
-			SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY in properties,
 		snapshotExpiryEnabled: isSnapshotExpiryEnabled(properties),
 		snapshotExpiryCron: properties[SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY],
 		snapshotKeepDuration: properties[SNAPSHOT_KEEP_DURATION_PROPERTY_KEY],

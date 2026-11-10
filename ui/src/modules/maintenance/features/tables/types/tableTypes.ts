@@ -176,8 +176,6 @@ export interface TableConfigApiModel {
 	// False when the table has no compaction cron set at all.
 	optimizationConfigured: boolean
 	targetFileSize?: number
-	// False when the table has neither snapshot-expire.enabled nor a cron set.
-	snapshotExpiryConfigured: boolean
 	// Fusion's rule: snapshot-expire.enabled when set, else whether a cron is set.
 	snapshotExpiryEnabled: boolean
 	snapshotExpiryCron?: string
@@ -216,7 +214,6 @@ export interface CronConfigOption {
 }
 
 export interface OptimizeConfigFormModel {
-	// Saved switch state; a never-configured table starts switched on.
 	optimizationEnabled: boolean
 	minorCron: CronConfigOption
 	majorCron: CronConfigOption

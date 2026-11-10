@@ -38,13 +38,11 @@ export const parseKeepDuration = (raw?: string): KeepDuration => {
 export const formatKeepDuration = ({ value, unit }: KeepDuration) =>
 	`${value}${unit}`
 
-// Cleanup form from the table's properties. A never-configured table starts switched on.
+// Cleanup form from the table's properties; the switch mirrors Fusion's effective flag.
 export const mapTableConfigApiModelToCleanupConfig = (
 	config: TableConfigApiModel,
 ): CleanupConfigFormModel => ({
-	expireSnapshots: config.snapshotExpiryConfigured
-		? config.snapshotExpiryEnabled
-		: true,
+	expireSnapshots: config.snapshotExpiryEnabled,
 	keepDuration: parseKeepDuration(config.snapshotKeepDuration),
 	// Only an absent property gets the default; a stored bad value stays visible so Save blocks it.
 	minSnapshotsToKeep:

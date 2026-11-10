@@ -37,9 +37,10 @@ export const KEEP_DURATION_UNIT_OPTIONS: Array<{
 	{ value: "min", label: "Minutes" },
 ]
 
-// Form defaults when a table has no saved config: both features start switched on.
+// Form defaults when a table has no saved config. Both switches start off, as Fusion's
+// property defaults do; the Status toggle is the path that switches a table on.
 export const DEFAULT_OPTIMIZE_CONFIG: OptimizeConfigFormModel = {
-	optimizationEnabled: true,
+	optimizationEnabled: false,
 	minorCron: presetCron(LITE_DEFAULT_TRIGGER_INTERVAL),
 	majorCron: presetCron(MEDIUM_DEFAULT_TRIGGER_INTERVAL),
 	fullCron: presetCron(FULL_DEFAULT_TRIGGER_INTERVAL),
@@ -47,7 +48,7 @@ export const DEFAULT_OPTIMIZE_CONFIG: OptimizeConfigFormModel = {
 }
 
 export const DEFAULT_CLEANUP_CONFIG: CleanupConfigFormModel = {
-	expireSnapshots: true,
+	expireSnapshots: false,
 	keepDuration: {
 		value: DEFAULT_KEEP_DURATION_VALUE,
 		unit: DEFAULT_KEEP_DURATION_UNIT,
