@@ -138,6 +138,12 @@ services:
       OLAKE_INDEX_DB_DIR: /index-db
       OLAKE_INDEX_DB_CACHE_SIZE: 512  # in mb
       OLAKE_INDEX_DB_MAX_OPEN_FILES: 1000  # max open files
+      # Mount host paths into connector containers.
+      # Format: comma-separated list of <host_path>:<container_absolute_path>.
+      # `host_path` is the path on the host machine.
+      # `container_path` is the path inside the connector container where the host path is mounted.
+      # Example: Mount custom certificates and client keys.
+      # OLAKE_JOB_BIND_MOUNTS: "${PWD}/olake-certs:/etc/ssl/custom-certs,${PWD}/olake-client-keys:/etc/ssl/client-keys"
     depends_on:
       temporal:
         condition: service_healthy
