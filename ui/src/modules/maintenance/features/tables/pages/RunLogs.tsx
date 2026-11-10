@@ -26,6 +26,7 @@ const RunLogs: React.FC = () => {
 	const decodedDatabase = decodeURIComponent(database ?? "")
 	const decodedRunId = decodeURIComponent(runId ?? "")
 	// Run history passes the run kind along; the logs API itself does not say which kind it is.
+	// TODO: read the run kind from Fusion's /logs/process/{id} once it returns processType, instead of ?runType=.
 	const isExpiryRun =
 		searchParams.get(RUN_LOGS_TYPE_QUERY_PARAM) === RUN_TYPE.EXPIRY
 	const isLoading =
