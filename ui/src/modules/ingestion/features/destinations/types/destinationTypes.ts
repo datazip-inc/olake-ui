@@ -8,6 +8,8 @@ export interface DestinationConfig {
 		catalog?: string
 		catalog_type?: string
 		rest_auth_type?: string
+		storage_type?: string
+		azure_auth_type?: string
 	}
 }
 

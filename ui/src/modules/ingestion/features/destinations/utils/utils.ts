@@ -30,10 +30,21 @@ export const getConnectorDocumentationPath = (
 	connector: string,
 	catalog: string | null,
 	authType?: string | null,
+	storageType?: string | null,
 ) => {
 	switch (connector) {
-		case "Amazon S3":
-			return "s3/config"
+		case "Amazon S3": {
+			// older driver specs have no storage_type, keep the legacy docs page
+			if (!storageType) return "s3/config"
+
+			const params = new URLSearchParams({
+				"storage-type": storageType.toLowerCase(),
+			})
+			if (storageType === "Azure" && authType)
+				params.set("azure-auth-type", authType)
+
+			return `parquet/config/?${params.toString()}`
+		}
 		case "Apache Iceberg":
 			switch (catalog) {
 				case "jdbc":
