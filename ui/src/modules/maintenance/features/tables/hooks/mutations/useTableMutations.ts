@@ -46,16 +46,15 @@ export const useToggleTableOptimizing = () => {
 					}
 				}
 
-				// Cleanup defaults are seeded per property, only where the table has none, so a saved
-				// duration or min-count survives the toggle. The cron is seeded whenever it is empty
-				// (also when the user picked "Never"): expiry only fires on a cron.
+				// Cleanup defaults are seeded per property, only where the table has none, so every
+				// saved value survives the toggle, including a cron of "" (the user picked "Never").
 				const cleanupDefaults = mapCleanupConfigToApiRequest(
 					DEFAULT_CLEANUP_CONFIG,
 				)
 				config = {
-					...(details.snapshotExpiryCron
-						? {}
-						: { snapshot_expiry_cron: cleanupDefaults.snapshot_expiry_cron }),
+					...(details.snapshotExpiryCron === undefined
+						? { snapshot_expiry_cron: cleanupDefaults.snapshot_expiry_cron }
+						: {}),
 					...(details.snapshotKeepDuration === undefined
 						? { snapshot_keep_duration: cleanupDefaults.snapshot_keep_duration }
 						: {}),
