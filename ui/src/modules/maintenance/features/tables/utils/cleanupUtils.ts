@@ -46,10 +46,9 @@ export const mapTableConfigApiModelToCleanupConfig = (
 		? config.snapshotExpiryEnabled
 		: true,
 	keepDuration: parseKeepDuration(config.snapshotKeepDuration),
+	// Only an absent property gets the default; a stored bad value stays visible so Save blocks it.
 	minSnapshotsToKeep:
-		config.snapshotKeepMinCount && config.snapshotKeepMinCount > 0
-			? config.snapshotKeepMinCount
-			: DEFAULT_MIN_SNAPSHOTS_TO_KEEP,
+		config.snapshotKeepMinCount ?? DEFAULT_MIN_SNAPSHOTS_TO_KEEP,
 	cron: mapTriggerIntervalToCronConfigOption(
 		config.snapshotExpiryCron?.trim() ?? CLEANUP_DEFAULT_TRIGGER_INTERVAL,
 	),

@@ -368,8 +368,10 @@ export const mapTableDetailsResponseToTableDetailsApiModel = (
 ): TableDetailsApiModel => {
 	const baseMetrics = data.result?.baseMetrics ?? {}
 	const properties = data.result?.properties ?? {}
-	const targetFileSizeInMB = bytesToMb(
-		Number.parseInt(properties[TARGET_FILE_SIZE_PROPERTY_KEY] ?? "", 10),
+	// Absent property -> undefined (form falls back to the default); a stored value stays
+	// visible even when it rounds to 0 MB, so Save blocks it instead of silently rewriting it.
+	const targetFileSizeBytes = parseOptionalInt(
+		properties[TARGET_FILE_SIZE_PROPERTY_KEY],
 	)
 
 	return {
@@ -378,7 +380,10 @@ export const mapTableDetailsResponseToTableDetailsApiModel = (
 		minorTriggerInterval: properties[MINOR_CRON_PROPERTY_KEY],
 		majorTriggerInterval: properties[MAJOR_CRON_PROPERTY_KEY],
 		fullTriggerInterval: properties[FULL_CRON_PROPERTY_KEY],
-		targetFileSize: targetFileSizeInMB > 0 ? targetFileSizeInMB : undefined,
+		targetFileSize:
+			targetFileSizeBytes === undefined
+				? undefined
+				: bytesToMb(targetFileSizeBytes),
 		optimizationConfigured: [
 			MINOR_CRON_PROPERTY_KEY,
 			MAJOR_CRON_PROPERTY_KEY,
