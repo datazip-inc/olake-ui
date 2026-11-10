@@ -2,7 +2,7 @@ import { ArrowsClockwiseIcon, CaretLeftIcon } from "@phosphor-icons/react"
 import { Button } from "antd"
 import clsx from "clsx"
 import { useState } from "react"
-import { useNavigate, useParams } from "react-router"
+import { useNavigate, useParams, useSearchParams } from "react-router"
 
 import { DataTable, TruncatedText } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
@@ -104,6 +104,7 @@ const getColumns = (
 
 const RunHistory: React.FC = () => {
 	const navigate = useNavigate()
+	const [searchParams] = useSearchParams()
 	const { catalog, database, tableName } = useParams<{
 		catalog: string
 		database: string
@@ -147,9 +148,13 @@ const RunHistory: React.FC = () => {
 		setMetricsSidebarOpen(true)
 		setMetricsRows(row.metrics)
 	}
-	// The run kind rides along so the logs page can tell an expiry run from a compaction run.
-	const getRunLogsPath = (run: TableRun) =>
-		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(run.runId)}/logs?${RUN_LOGS_TYPE_QUERY_PARAM}=${encodeURIComponent(run.runType)}`
+	// The run kind rides along so the logs page can tell an expiry run from a compaction run;
+	// the current filters ride along too so the back link can restore them.
+	const getRunLogsPath = (run: TableRun) => {
+		const params = new URLSearchParams(searchParams)
+		params.set(RUN_LOGS_TYPE_QUERY_PARAM, run.runType)
+		return `/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(run.runId)}/logs?${params.toString()}`
+	}
 
 	const columns = getColumns(handleMetricsClick, run =>
 		navigate(getRunLogsPath(run)),

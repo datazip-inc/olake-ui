@@ -35,6 +35,12 @@ const RunLogs: React.FC = () => {
 		}) > 0
 
 	const [selectedSourceKey, setSelectedSourceKey] = useState(DRIVER_SOURCE_KEY)
+	// Back restores the run history filters that came along in the URL; runType is the logs page's own.
+	const runsSearch = (() => {
+		const params = new URLSearchParams(searchParams)
+		params.delete(RUN_LOGS_TYPE_QUERY_PARAM)
+		return params.toString()
+	})()
 	const runsPath = `/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs`
 
 	return (
@@ -50,7 +56,7 @@ const RunLogs: React.FC = () => {
 				isExpiryRun={isExpiryRun}
 				selectedSourceKey={selectedSourceKey}
 				onSelectSource={setSelectedSourceKey}
-				onBack={() => navigate(runsPath)}
+				onBack={() => navigate({ pathname: runsPath, search: runsSearch })}
 			/>
 			<RunLogsPanel
 				runId={decodedRunId}
