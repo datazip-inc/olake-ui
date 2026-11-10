@@ -53,22 +53,25 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 				{isExpiryRun ? "View cleanup logs" : "View spark driver & subtask logs"}
 			</p>
 
-			<div className="mt-4 flex items-center gap-2">
-				<Button
-					size="small"
-					className="!h-8"
-					icon={<DownloadSimpleIcon size={14} />}
-					loading={downloadArchive.isPending}
-					disabled={!hasAnyLogs}
-					onClick={() =>
-						downloadArchive.mutate(runId, {
-							onSuccess: () => message.success("Downloading logs..."),
-						})
-					}
-				>
-					Logs
-				</Button>
-			</div>
+			{/* The archive bundles driver + subtask logs; a cleanup run has one log, which the panel's Download Logs already covers. */}
+			{!isExpiryRun && (
+				<div className="mt-4 flex items-center gap-2">
+					<Button
+						size="small"
+						className="!h-8"
+						icon={<DownloadSimpleIcon size={14} />}
+						loading={downloadArchive.isPending}
+						disabled={!hasAnyLogs}
+						onClick={() =>
+							downloadArchive.mutate(runId, {
+								onSuccess: () => message.success("Downloading logs..."),
+							})
+						}
+					>
+						Logs
+					</Button>
+				</div>
+			)}
 
 			<div className="mt-5 space-y-3">
 				<button
