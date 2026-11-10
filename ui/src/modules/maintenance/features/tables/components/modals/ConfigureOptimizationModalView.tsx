@@ -23,9 +23,9 @@ import type {
 } from "../../types"
 import {
 	getCronConfigError,
-	getCronFromConfig,
 	getNextRunsAcross,
 	mapCleanupConfigToApiRequest,
+	mapOptimizeConfigToApiRequest,
 } from "../../utils"
 
 export type SaveCallbacks = {
@@ -107,11 +107,7 @@ const ConfigureOptimizationModalView: React.FC<
 	// One save for both tabs: every property goes out in a single ALTER TABLE batch.
 	const handleSave = () => {
 		const payload: UpdateTableConfigApiRequest = {
-			minor_cron: getCronFromConfig(optimize.minorCron),
-			major_cron: getCronFromConfig(optimize.majorCron),
-			full_cron: getCronFromConfig(optimize.fullCron),
-			target_file_size: optimize.targetFileSize,
-			enabled_for_optimization: String(optimize.optimizationEnabled),
+			...mapOptimizeConfigToApiRequest(optimize),
 			...(includeCleanup ? mapCleanupConfigToApiRequest(cleanup) : {}),
 		}
 

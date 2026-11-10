@@ -2,10 +2,7 @@ import { useMutation } from "@tanstack/react-query"
 
 import {
 	DEFAULT_CLEANUP_CONFIG,
-	DEFAULT_TARGET_FILE_SIZE,
-	FULL_DEFAULT_TRIGGER_INTERVAL,
-	LITE_DEFAULT_TRIGGER_INTERVAL,
-	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
+	DEFAULT_OPTIMIZE_CONFIG,
 	tableKeys,
 } from "../../constants"
 import { tableService } from "../../services"
@@ -17,6 +14,7 @@ import type {
 } from "../../types"
 import {
 	mapCleanupConfigToApiRequest,
+	mapOptimizeConfigToApiRequest,
 	mapTableDetailsResponseToTableDetailsApiModel,
 } from "../../utils"
 
@@ -43,11 +41,8 @@ export const useToggleTableOptimizing = () => {
 
 				if (!details.optimizationConfigured) {
 					config = {
+						...mapOptimizeConfigToApiRequest(DEFAULT_OPTIMIZE_CONFIG),
 						...config,
-						minor_cron: LITE_DEFAULT_TRIGGER_INTERVAL,
-						major_cron: MEDIUM_DEFAULT_TRIGGER_INTERVAL,
-						full_cron: FULL_DEFAULT_TRIGGER_INTERVAL,
-						target_file_size: DEFAULT_TARGET_FILE_SIZE,
 					}
 				}
 
@@ -55,8 +50,8 @@ export const useToggleTableOptimizing = () => {
 				// even when snapshot-expire.enabled was already set.
 				if (!details.snapshotExpiryCron) {
 					config = {
-						...config,
 						...mapCleanupConfigToApiRequest(DEFAULT_CLEANUP_CONFIG),
+						...config,
 					}
 				}
 			}
