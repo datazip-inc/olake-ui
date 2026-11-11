@@ -13,15 +13,17 @@ import { getLogLevelClass, getLogTextColor } from "@/common/utils/utils"
 import { DRIVER_SOURCE_KEY } from "../constants"
 import { useDownloadProcessLogFile, useProcessLogs } from "../hooks"
 import type { RunLogEntry } from "../types"
-import { getProcessLogFileId } from "../utils"
+import { getPrimaryLogTitle, getProcessLogFileId } from "../utils"
 
 type RunLogsPanelProps = {
 	runId: string
+	isExpiryRun: boolean
 	selectedSourceKey: string
 }
 
 const RunLogsPanel: React.FC<RunLogsPanelProps> = ({
 	runId,
+	isExpiryRun,
 	selectedSourceKey,
 }) => {
 	const { data, isFetching, refetch } = useProcessLogs(runId)
@@ -31,7 +33,7 @@ const RunLogsPanel: React.FC<RunLogsPanelProps> = ({
 
 	const title =
 		selectedSourceKey === DRIVER_SOURCE_KEY
-			? "Driver Logs"
+			? getPrimaryLogTitle(isExpiryRun)
 			: `Subtask ${selectedSourceKey.replace("task-", "")}`
 
 	const [searchTerm, setSearchTerm] = useState("")

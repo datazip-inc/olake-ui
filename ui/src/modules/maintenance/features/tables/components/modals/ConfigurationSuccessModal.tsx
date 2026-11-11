@@ -4,19 +4,42 @@ import { useEffect, useRef, useState } from "react"
 import ConfigSuccessIcon from "@/assets/config-success-icon.svg"
 
 import { DEFAULT_TABLE_MODAL_STYLES } from "../../constants"
+import RunTimeChips from "../RunTimeChips"
 
 type ConfigurationSuccessModalProps = {
 	open: boolean
 	onClose: () => void
-	firstRunAt?: string
+	// Upcoming optimize runs across Lite/Medium/Full, earliest first.
+	optimizeRuns: string[]
+	// Upcoming cleanup runs; undefined when cleanup was not part of this save (bulk, untouched).
+	cleanupRuns?: string[]
 }
+
+const NextRuns: React.FC<{ title: string; runs: string[] }> = ({
+	title,
+	runs,
+}) => (
+	<div className="flex w-full flex-col items-center gap-2 text-center">
+		<p className="text-base font-medium leading-6 text-olake-success-strong">
+			{title}
+		</p>
+		{runs.length > 0 ? (
+			<RunTimeChips runs={runs} />
+		) : (
+			<p className="text-sm leading-[22px] text-olake-text-secondary">
+				No runs scheduled
+			</p>
+		)}
+	</div>
+)
 
 const COUNTDOWN_START = 3
 
 const ConfigurationSuccessModal: React.FC<ConfigurationSuccessModalProps> = ({
 	open,
 	onClose,
-	firstRunAt,
+	optimizeRuns,
+	cleanupRuns,
 }) => {
 	const [countdown, setCountdown] = useState(COUNTDOWN_START)
 	const onCloseRef = useRef(onClose)
@@ -53,7 +76,7 @@ const ConfigurationSuccessModal: React.FC<ConfigurationSuccessModalProps> = ({
 			destroyOnHidden
 			styles={DEFAULT_TABLE_MODAL_STYLES}
 		>
-			<div className="flex h-[808px] flex-col items-center bg-white pt-[280px]">
+			<div className="flex h-[808px] flex-col items-center bg-white pt-[200px]">
 				{/* Icon + title group */}
 				<div className="flex flex-col items-center gap-6">
 					<p className="whitespace-nowrap text-[30px] font-medium leading-[38px] text-olake-success-strong">
@@ -67,17 +90,19 @@ const ConfigurationSuccessModal: React.FC<ConfigurationSuccessModalProps> = ({
 					/>
 				</div>
 
-				{/* First run section */}
-				{firstRunAt && (
-					<div className="mt-[46px] flex w-80 flex-col items-center gap-1 text-center">
-						<p className="w-full text-xl leading-normal text-olake-success-strong">
-							Your first run will start on
-						</p>
-						<p className="w-full text-sm leading-[22px] text-olake-text-secondary">
-							{firstRunAt}
-						</p>
-					</div>
-				)}
+				{/* Upcoming runs */}
+				<div className="mt-10 flex w-full flex-col items-center gap-6 px-8">
+					<NextRuns
+						title="Next 3 optimize runs"
+						runs={optimizeRuns}
+					/>
+					{cleanupRuns && (
+						<NextRuns
+							title="Next 3 cleanup runs"
+							runs={cleanupRuns}
+						/>
+					)}
+				</div>
 
 				{/* Button */}
 				<button

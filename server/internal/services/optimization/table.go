@@ -80,10 +80,14 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 
 	var (
 		details interface{}
-		procs   [3]*dto.OptimizationInfo
+		procs   [4]*dto.OptimizationInfo
 	)
-	processKinds := [3]string{"MINOR", "MAJOR", "FULL"}
-	processLabels := [3]string{"Lite", "Medium", "Full"}
+	processKinds := [4]string{
+		constants.OptProcessTypeMinor,
+		constants.OptProcessTypeMajor,
+		constants.OptProcessTypeFull,
+		constants.OptProcessTypeExpiry,
+	}
 
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -100,7 +104,7 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 		g.Go(func() error {
 			r, err := s.fetchLatestProcessInfo(gctx, catalog, database, tableName, kind)
 			if err != nil && !errors.Is(err, errNoProcess) {
-				return fmt.Errorf("failed to fetch latest %s process info: %w", processLabels[i], err)
+				return fmt.Errorf("failed to fetch latest %s process info: %w", kind, err)
 			}
 			procs[i] = r
 			return nil
@@ -139,6 +143,7 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 	if _, ok := properties["olake_2pc"]; ok {
 		info.OLakeCreated = true
 	}
+	info.SnapshotExpiryEnabled = isSnapshotExpiryEnabled(properties)
 
 	tableSummary, ok := detailsMap["tableSummary"].(map[string]interface{})
 	if !ok {
@@ -153,7 +158,18 @@ func (s *Service) buildTableInfo(ctx context.Context, catalog, database, tableNa
 	info.Minor = procs[0]
 	info.Major = procs[1]
 	info.Full = procs[2]
+	info.Expiry = procs[3]
 	return info, nil
+}
+
+// isSnapshotExpiryEnabled follows Fusion's rule: snapshot-expire.enabled decides when present,
+// otherwise expiry is on exactly when a trigger cron is set.
+func isSnapshotExpiryEnabled(properties map[string]interface{}) bool {
+	if enabled, ok := properties[constants.OptSnapshotExpireEnabled].(string); ok && enabled != "" {
+		return enabled == "true"
+	}
+	cron, _ := properties[constants.OptSnapshotExpireCron].(string)
+	return cron != ""
 }
 
 // GetTables returns the list of tables for a given catalog and database

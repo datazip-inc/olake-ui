@@ -1,8 +1,11 @@
 import { TableIcon, WarningIcon, XIcon } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 
+import { TruncatedText } from "@/common/components"
+
 import ConfigureOptimizationModalView from "./ConfigureOptimizationModalView"
-import { useBulkUpdateTableCronConfig } from "../../hooks"
+import { CONFIGURE_MODE } from "../../constants"
+import { useBulkUpdateTableConfig } from "../../hooks"
 
 const MAX_VISIBLE_TABLES = 5
 
@@ -31,7 +34,10 @@ const SelectedTablesHeader: React.FC<{
 						className="flex h-7 items-center gap-2 rounded bg-olake-surface-muted px-3 py-0.5"
 					>
 						<TableIcon className="size-4 shrink-0 text-olake-text" />
-						<span className="text-sm text-olake-text">{name}</span>
+						<TruncatedText
+							text={name}
+							className="max-w-[240px] text-sm text-olake-text"
+						/>
 						<button
 							type="button"
 							onClick={() => onRemoveTable(name)}
@@ -87,7 +93,7 @@ type ConfigureOptimizationModalBulkProps = {
 const ConfigureOptimizationModalBulk: React.FC<
 	ConfigureOptimizationModalBulkProps
 > = ({ open, onClose, catalog, database, tables, onRemoveTable }) => {
-	const { mutate, isPending: isSaving } = useBulkUpdateTableCronConfig(
+	const { mutate, isPending: isSaving } = useBulkUpdateTableConfig(
 		catalog,
 		database,
 	)
@@ -102,6 +108,7 @@ const ConfigureOptimizationModalBulk: React.FC<
 		<ConfigureOptimizationModalView
 			open={open}
 			onClose={onClose}
+			mode={CONFIGURE_MODE.BULK}
 			title="Bulk Optimization"
 			headerChip={
 				<SelectedTablesHeader

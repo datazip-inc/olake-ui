@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
-func convertConfigToMap(config dto.OptimizationTableConfig) map[string]string {
+func convertConfigToMap(config *dto.OptimizationTableConfig) map[string]string {
 	properties := make(map[string]string)
 	if config.SQLInput.MinorCron != nil {
 		properties[constants.OptMinorCron] = *config.SQLInput.MinorCron
@@ -30,6 +31,18 @@ func convertConfigToMap(config dto.OptimizationTableConfig) map[string]string {
 	if config.SQLInput.TargetFileSize != nil {
 		properties[constants.OptTargetFileSize] = utils.ConvertMBToBytes(*config.SQLInput.TargetFileSize)
 	}
+	if config.SQLInput.SnapshotExpiryEnabled != nil {
+		properties[constants.OptSnapshotExpireEnabled] = *config.SQLInput.SnapshotExpiryEnabled
+	}
+	if config.SQLInput.SnapshotExpiryCron != nil {
+		properties[constants.OptSnapshotExpireCron] = *config.SQLInput.SnapshotExpiryCron
+	}
+	if config.SQLInput.SnapshotKeepDuration != nil {
+		properties[constants.OptSnapshotKeepDuration] = *config.SQLInput.SnapshotKeepDuration
+	}
+	if config.SQLInput.SnapshotKeepMinCount != nil {
+		properties[constants.OptSnapshotKeepMinCount] = strconv.FormatInt(*config.SQLInput.SnapshotKeepMinCount, 10)
+	}
 	return properties
 }
 
@@ -44,7 +57,7 @@ func createAlterQuery(database, table string, properties map[string]string) stri
 }
 
 // set properties for multiple tables using sql query
-func (s *Service) SetProperties(ctx context.Context, catalog, database string, config dto.OptimizationTableConfig) (*dto.TableProperties, error) {
+func (s *Service) SetProperties(ctx context.Context, catalog, database string, config *dto.OptimizationTableConfig) (*dto.TableProperties, error) {
 	tables := config.Tables
 	properties := convertConfigToMap(config)
 

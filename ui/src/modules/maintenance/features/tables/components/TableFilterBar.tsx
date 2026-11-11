@@ -1,14 +1,9 @@
 import { MagnifyingGlassIcon } from "@phosphor-icons/react"
 import { Input } from "antd"
-import clsx from "clsx"
 
+import { TABLE_FILTER_OPTIONS } from "../constants"
 import type { FilterKey } from "../types"
-
-const FILTER_OPTIONS: Array<{ key: FilterKey; label: string }> = [
-	{ key: "all", label: "All tables" },
-	{ key: "olake", label: "OLake Ingested" },
-	{ key: "external", label: "Imported Tables" },
-]
+import FilterChips from "./FilterChips"
 
 type Props = {
 	searchTerm: string
@@ -24,41 +19,26 @@ const TableFilterBar: React.FC<Props> = ({
 	onFilterChange,
 }) => (
 	<div className="flex items-center gap-6">
-		<div className="flex h-9 w-[479px] overflow-hidden rounded-md border border-olake-border">
+		<div className="flex h-8 w-[479px] overflow-hidden rounded-md border border-olake-border">
 			<Input
 				value={searchTerm}
 				onChange={e => onSearchChange(e.target.value)}
 				placeholder="Search Tables"
-				className="h-9 border-0"
+				className="h-8 border-0"
 			/>
 			<button
 				type="button"
-				className="flex h-9 w-8 items-center justify-center border-l border-olake-border"
+				className="flex h-8 w-8 items-center justify-center border-l border-olake-border"
 			>
 				<MagnifyingGlassIcon size={16} />
 			</button>
 		</div>
 
-		<div className="flex items-center gap-2">
-			{FILTER_OPTIONS.map(filter => {
-				const active = activeFilter === filter.key
-				return (
-					<button
-						key={filter.key}
-						type="button"
-						onClick={() => onFilterChange(filter.key)}
-						className={clsx(
-							"h-9 whitespace-nowrap rounded-md border border-olake-border px-3 text-sm leading-5",
-							active
-								? "bg-olake-surface-muted text-olake-text-secondary"
-								: "bg-white text-olake-body-secondary",
-						)}
-					>
-						{filter.label}
-					</button>
-				)
-			})}
-		</div>
+		<FilterChips
+			options={TABLE_FILTER_OPTIONS}
+			value={activeFilter}
+			onChange={onFilterChange}
+		/>
 	</div>
 )
 
