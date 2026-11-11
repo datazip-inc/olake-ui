@@ -12,31 +12,38 @@ import {
 	toSentenceCase,
 } from "@/common/utils"
 
+import { mapTableConfigApiModelToCleanupConfig } from "./cleanupUtils"
+import { mapTriggerIntervalToCronConfigOption } from "./cronUtils"
 import {
+	DEFAULT_TARGET_FILE_SIZE,
 	FULL_CRON_PROPERTY_KEY,
-	KNOWN_CRON_TRIGGER_INTERVALS,
+	FULL_DEFAULT_TRIGGER_INTERVAL,
 	LITE_DEFAULT_TRIGGER_INTERVAL,
 	MAJOR_CRON_PROPERTY_KEY,
 	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
 	MINOR_CRON_PROPERTY_KEY,
-	FULL_DEFAULT_TRIGGER_INTERVAL,
+	OPTIMIZATION_ENABLED_PROPERTY_KEY,
 	RUN_STATUS,
 	RUN_TYPE,
 	RUN_TYPE_LABEL,
+	SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY,
+	SNAPSHOT_EXPIRE_ENABLED_PROPERTY_KEY,
+	SNAPSHOT_KEEP_DURATION_PROPERTY_KEY,
+	SNAPSHOT_KEEP_MIN_COUNT_PROPERTY_KEY,
+	TARGET_FILE_SIZE_PROPERTY_KEY,
 } from "../constants"
 import type {
-	CronConfigOption,
-	FusionCompactionRun,
-	CompactionRun,
+	FusionLatestRun,
+	LatestRun,
 	FusionRun,
 	FusionTable,
 	RunType,
 	RunMetricRow,
 	Table,
 	TableDetailsApiResponse,
-	TableCronApiModel,
+	TableConfigApiModel,
 	TableDetailsApiModel,
-	TableCronFormModel,
+	TableConfigFormModel,
 	TableDetailsViewModel,
 	GetTableRunsApiResponse,
 	TableMetricsApiResponse,
@@ -153,7 +160,7 @@ export const getRunLogsStatusConfig = (status?: string) => {
 	}
 }
 
-const mapCompactionRun = (run: FusionCompactionRun | null): CompactionRun => {
+const mapLatestRun = (run: FusionLatestRun | null): LatestRun => {
 	if (!run) return null
 	return {
 		status: run.status,
@@ -172,10 +179,12 @@ export const mapFusionTableToTable = (
 	totalSize: table.totalSize,
 	healthScore: table.healthScore,
 	olakeCreated: table.olake_created,
-	minor: mapCompactionRun(table.minor),
-	major: mapCompactionRun(table.major),
-	full: mapCompactionRun(table.full),
-	enabled: table.enabled,
+	minor: mapLatestRun(table.minor),
+	major: mapLatestRun(table.major),
+	full: mapLatestRun(table.full),
+	expiry: mapLatestRun(table.expiry),
+	// The Status toggle covers both features; off switches both off.
+	maintenanceEnabled: table.enabled || table.snapshot_expiry_enabled,
 })
 
 // Applies mapFusionTableToTable across the full tables array returned by the API.
@@ -183,8 +192,9 @@ export const mapGetTablesResponseToTables = (tables: FusionTable[]): Table[] =>
 	tables.map(mapFusionTableToTable)
 
 // Returns the run id only when one of full/minor/major is currently RUNNING.
+// Cancel is offered for compaction runs only; expiry runs are not cancellable from the list.
 export const getCancelRunID = (table: Table): string | null => {
-	const runs: Array<CompactionRun> = [table.full, table.minor, table.major]
+	const runs: Array<LatestRun> = [table.full, table.minor, table.major]
 	const running = runs.find(run => run?.status === RUN_STATUS.RUNNING)
 	const runId = running?.runID
 	return typeof runId === "string" && runId.trim() ? runId : null
@@ -194,6 +204,17 @@ const runTypeToLabel: Record<RunType, TableRun["type"]> = {
 	[RUN_TYPE.MINOR]: RUN_TYPE_LABEL.LITE,
 	[RUN_TYPE.MAJOR]: RUN_TYPE_LABEL.MEDIUM,
 	[RUN_TYPE.FULL]: RUN_TYPE_LABEL.FULL,
+	[RUN_TYPE.EXPIRY]: RUN_TYPE_LABEL.EXPIRY,
+}
+
+// Failed runs carry the reason outside the summary; surface it with the metrics.
+const mapRunToMetricRows = (run: FusionRun): RunMetricRow[] => {
+	const rows = mapRunMetricsPayloadToRows(run.summary ?? {})
+	const failReason = run.failReason?.trim()
+	if (failReason && run.status === RUN_STATUS.FAILED) {
+		rows.push({ label: "Fail Reason", value: failReason })
+	}
+	return rows
 }
 
 export const mapGetTableRunsResponseToTableRuns = (
@@ -205,10 +226,11 @@ export const mapGetTableRunsResponseToTableRuns = (
 			id: run.processId,
 			runId: run.processId,
 			status: run.status,
+			runType: run.optimizingType,
 			type: runTypeToLabel[run.optimizingType],
 			startTime: formatTimestampToUtcTime(run.startTime),
 			duration: formatDuration(run.duration) || "-",
-			metrics: mapRunMetricsPayloadToRows(run.summary ?? {}),
+			metrics: mapRunToMetricRows(run),
 		})),
 		total: response.result?.total ?? 0,
 	}
@@ -289,61 +311,76 @@ export const mapRunMetricsPayloadToRows = (
 			}
 		})
 }
-// Maps a raw cron string to dropdown state — preset strings become a frequency value, anything else becomes a custom cron entry.
-export const mapTriggerIntervalToCronConfigOption = (
-	triggerInterval: string,
-): CronConfigOption => {
-	if (triggerInterval === "") {
-		return { frequency: "never", customCron: "" }
-	}
-
-	if (KNOWN_CRON_TRIGGER_INTERVALS.has(triggerInterval)) {
-		return {
-			frequency: triggerInterval,
-			customCron: "",
-		}
-	}
-
-	return {
-		frequency: "custom",
-		customCron: triggerInterval,
-	}
-}
-
-// Expands a TableCronApiModel into TableCronFormModel by resolving each trigger interval through mapTriggerIntervalToCronConfigOption.
-export const mapTableCronApiModelToTableCronFormModel = (
-	config: TableCronApiModel,
-): TableCronFormModel => ({
-	minorCron: mapTriggerIntervalToCronConfigOption(
-		config.minorTriggerInterval?.trim() ?? LITE_DEFAULT_TRIGGER_INTERVAL,
-	),
-	majorCron: mapTriggerIntervalToCronConfigOption(
-		config.majorTriggerInterval?.trim() ?? MEDIUM_DEFAULT_TRIGGER_INTERVAL,
-	),
-	fullCron: mapTriggerIntervalToCronConfigOption(
-		config.fullTriggerInterval?.trim() ?? FULL_DEFAULT_TRIGGER_INTERVAL,
-	),
-	targetFileSize: config.targetFileSize,
+// Expands a TableConfigApiModel into the configure modal's form, one branch per tab.
+export const mapTableConfigApiModelToFormModel = (
+	config: TableConfigApiModel,
+): TableConfigFormModel => ({
+	optimize: {
+		// The switch mirrors the stored flag; Fusion's default (unset) is off.
+		optimizationEnabled: config.enabledForOptimization,
+		minorCron: mapTriggerIntervalToCronConfigOption(
+			config.minorTriggerInterval?.trim() ?? LITE_DEFAULT_TRIGGER_INTERVAL,
+		),
+		majorCron: mapTriggerIntervalToCronConfigOption(
+			config.majorTriggerInterval?.trim() ?? MEDIUM_DEFAULT_TRIGGER_INTERVAL,
+		),
+		fullCron: mapTriggerIntervalToCronConfigOption(
+			config.fullTriggerInterval?.trim() ?? FULL_DEFAULT_TRIGGER_INTERVAL,
+		),
+		targetFileSize: config.targetFileSize ?? DEFAULT_TARGET_FILE_SIZE,
+	},
+	cleanup: mapTableConfigApiModelToCleanupConfig(config),
 })
 
-// Extracts cron/config fields from /details payload into existing TableCronApiModel shape.
+// Integer property value, or undefined when the property is absent or not a number.
+const parseOptionalInt = (raw?: string): number | undefined => {
+	const parsed = Number.parseInt(raw ?? "", 10)
+	return Number.isNaN(parsed) ? undefined : parsed
+}
+
+// Mirrors Fusion's rule (and the BFF list endpoint): snapshot-expire.enabled decides when set,
+// otherwise expiry is on exactly when a trigger cron is set.
+const isSnapshotExpiryEnabled = (
+	properties: Record<string, string>,
+): boolean => {
+	const enabled = properties[SNAPSHOT_EXPIRE_ENABLED_PROPERTY_KEY]
+	if (enabled) return enabled === "true"
+	return !!properties[SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY]
+}
+
+// Extracts config fields from the /details payload into TableConfigApiModel.
 export const mapTableDetailsResponseToTableDetailsApiModel = (
 	data: TableDetailsApiResponse,
 ): TableDetailsApiModel => {
 	const baseMetrics = data.result?.baseMetrics ?? {}
 	const properties = data.result?.properties ?? {}
-	const targetFileSizeRaw = properties["self-optimizing.target-size"]
-	const targFileSizeInMB = bytesToMb(
-		Number.parseInt(targetFileSizeRaw ?? "", 10),
+	// Absent property -> undefined (form falls back to the default); a stored value stays
+	// visible even when it rounds to 0 MB, so Save blocks it instead of silently rewriting it.
+	const targetFileSizeBytes = parseOptionalInt(
+		properties[TARGET_FILE_SIZE_PROPERTY_KEY],
 	)
 
 	return {
 		enabledForOptimization:
-			(properties["self-optimizing.enabled"] ?? "").toLowerCase() === "true",
+			properties[OPTIMIZATION_ENABLED_PROPERTY_KEY] === "true",
 		minorTriggerInterval: properties[MINOR_CRON_PROPERTY_KEY],
 		majorTriggerInterval: properties[MAJOR_CRON_PROPERTY_KEY],
 		fullTriggerInterval: properties[FULL_CRON_PROPERTY_KEY],
-		targetFileSize: targFileSizeInMB,
+		targetFileSize:
+			targetFileSizeBytes === undefined
+				? undefined
+				: bytesToMb(targetFileSizeBytes),
+		optimizationConfigured: [
+			MINOR_CRON_PROPERTY_KEY,
+			MAJOR_CRON_PROPERTY_KEY,
+			FULL_CRON_PROPERTY_KEY,
+		].some(key => key in properties),
+		snapshotExpiryEnabled: isSnapshotExpiryEnabled(properties),
+		snapshotExpiryCron: properties[SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY],
+		snapshotKeepDuration: properties[SNAPSHOT_KEEP_DURATION_PROPERTY_KEY],
+		snapshotKeepMinCount: parseOptionalInt(
+			properties[SNAPSHOT_KEEP_MIN_COUNT_PROPERTY_KEY],
+		),
 		averageFileSize: baseMetrics.averageFileSize ?? "--",
 		fileCount: baseMetrics.fileCount ?? 0,
 		lastCommitTime: baseMetrics.lastCommitTime ?? 0,
@@ -357,7 +394,7 @@ export const mapTableDetailsResponseToTableDetailsViewModel = (
 	const tableDetails = mapTableDetailsResponseToTableDetailsApiModel(data)
 	return {
 		...tableDetails,
-		...mapTableCronApiModelToTableCronFormModel(tableDetails),
+		...mapTableConfigApiModelToFormModel(tableDetails),
 	}
 }
 

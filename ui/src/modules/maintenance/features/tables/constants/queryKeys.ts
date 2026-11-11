@@ -1,5 +1,7 @@
 import { API_CONFIG } from "@/config/apiConfig"
 
+import type { TableRunsQuery } from "../types"
+
 export const tableKeys = {
 	all: () => ["projects", API_CONFIG.PROJECT_ID, "tables"] as const,
 
@@ -8,18 +10,19 @@ export const tableKeys = {
 
 	table: (catalog: string, database: string, tableName: string) =>
 		[...tableKeys.all(), "table", catalog, database, tableName] as const,
-	runs: (
-		catalog: string,
-		database: string,
-		tableName: string,
-		page: number,
-		pageSize: number,
-		status?: string,
-	) =>
+	runs: ({
+		catalog,
+		database,
+		tableName,
+		page,
+		pageSize,
+		status,
+		runType,
+	}: TableRunsQuery) =>
 		[
 			...tableKeys.table(catalog, database, tableName),
 			"runs",
-			{ page, pageSize, status },
+			{ page, pageSize, status, runType },
 		] as const,
 	cron: (catalog: string, database: string, tableName: string) =>
 		[...tableKeys.table(catalog, database, tableName), "cron"] as const,

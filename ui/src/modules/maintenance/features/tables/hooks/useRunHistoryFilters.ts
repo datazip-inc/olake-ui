@@ -1,29 +1,28 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router"
 
-import { RUN_STATUS } from "../constants"
-import { RunHistoryFilter } from "../types"
+import {
+	PAGE_SIZE,
+	RUN_HISTORY_QUERY_PARAM,
+	RUN_STATUS,
+	RUN_STATUS_FILTER_STATUSES,
+	RUN_TYPE_FILTER,
+	RUN_TYPE_FILTER_PROCESS_TYPES,
+} from "../constants"
+import type { RunHistoryFilter, RunTypeFilter } from "../types"
 
-const RUNS_PAGE_SIZE = 6
-const STATUS_QUERY_PARAM_KEY = "status"
+const TYPE_FILTER_VALUES = new Set<string>(Object.values(RUN_TYPE_FILTER))
 
-const FILTER_TO_STATUS_QUERY_VALUE: Record<
-	RunHistoryFilter,
-	string | undefined
-> = {
-	all: undefined,
-	failed: RUN_STATUS.FAILED,
-}
+const getStatusFilter = (params: URLSearchParams): RunHistoryFilter =>
+	params.get(RUN_HISTORY_QUERY_PARAM.STATUS) === RUN_STATUS.FAILED
+		? "failed"
+		: "all"
 
-const getFilterFromSearchParams = (
-	params: URLSearchParams,
-	queryParamKey: string,
-	valueToFilterMap: Record<string, RunHistoryFilter>,
-	fallbackFilter: RunHistoryFilter,
-): RunHistoryFilter => {
-	const queryValue = params.get(queryParamKey)
-	if (!queryValue) return fallbackFilter
-	return valueToFilterMap[queryValue] ?? fallbackFilter
+const getTypeFilter = (params: URLSearchParams): RunTypeFilter => {
+	const value = params.get(RUN_HISTORY_QUERY_PARAM.TYPE)
+	return value && TYPE_FILTER_VALUES.has(value)
+		? (value as RunTypeFilter)
+		: RUN_TYPE_FILTER.ALL
 }
 
 const applyFilterToSearchParams = (
@@ -37,43 +36,53 @@ const applyFilterToSearchParams = (
 	}
 	params.delete(queryParamKey)
 }
-/** Manages Run History filter + pagination state and syncs the `status` query param for persistence across reloads. */
+
+// Manages Run History filters + pagination and syncs the `status` and `type`
+// query params so the view survives a reload.
 export const useRunHistoryFilters = () => {
 	const [searchParams, setSearchParams] = useSearchParams()
-	const activeFilter = getFilterFromSearchParams(
-		searchParams,
-		STATUS_QUERY_PARAM_KEY,
-		{ [RUN_STATUS.FAILED]: "failed" },
-		"all",
-	)
+	const activeFilter = getStatusFilter(searchParams)
+	const activeTypeFilter = getTypeFilter(searchParams)
 	const [currentPage, setCurrentPage] = useState(1)
-	const pageSize = RUNS_PAGE_SIZE
+	const pageSize = PAGE_SIZE
 
-	const status = FILTER_TO_STATUS_QUERY_VALUE[activeFilter]
+	const status = RUN_STATUS_FILTER_STATUSES[activeFilter]
+	const runType = RUN_TYPE_FILTER_PROCESS_TYPES[activeTypeFilter]
 
 	useEffect(() => {
 		setCurrentPage(1)
-	}, [activeFilter])
+	}, [activeFilter, activeTypeFilter])
 
-	const handleFilterChange = (nextFilter: RunHistoryFilter) => {
+	const setQueryParam = (key: string, value?: string) => {
 		setCurrentPage(1)
 		setSearchParams(prev => {
 			const next = new URLSearchParams(prev)
-			applyFilterToSearchParams(
-				next,
-				STATUS_QUERY_PARAM_KEY,
-				FILTER_TO_STATUS_QUERY_VALUE[nextFilter],
-			)
+			applyFilterToSearchParams(next, key, value)
 			return next
 		})
 	}
 
+	const handleFilterChange = (nextFilter: RunHistoryFilter) =>
+		setQueryParam(
+			RUN_HISTORY_QUERY_PARAM.STATUS,
+			RUN_STATUS_FILTER_STATUSES[nextFilter],
+		)
+
+	const handleTypeFilterChange = (nextFilter: RunTypeFilter) =>
+		setQueryParam(
+			RUN_HISTORY_QUERY_PARAM.TYPE,
+			nextFilter === RUN_TYPE_FILTER.ALL ? undefined : nextFilter,
+		)
+
 	return {
 		activeFilter,
+		activeTypeFilter,
 		currentPage,
 		setCurrentPage,
 		pageSize,
 		status,
+		runType,
 		handleFilterChange,
+		handleTypeFilterChange,
 	} as const
 }

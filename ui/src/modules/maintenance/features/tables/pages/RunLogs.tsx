@@ -1,14 +1,19 @@
 import { useIsFetching } from "@tanstack/react-query"
 import { Spin } from "antd"
 import { useState } from "react"
-import { useNavigate, useParams } from "react-router"
+import { useNavigate, useParams, useSearchParams } from "react-router"
 
 import { RunLogSidebar, RunLogsPanel } from "../components"
-import { DRIVER_SOURCE_KEY } from "../constants"
-import { tableKeys } from "../constants/queryKeys"
+import {
+	DRIVER_SOURCE_KEY,
+	RUN_LOGS_TYPE_QUERY_PARAM,
+	RUN_TYPE,
+	tableKeys,
+} from "../constants"
 
 const RunLogs: React.FC = () => {
 	const navigate = useNavigate()
+	const [searchParams] = useSearchParams()
 	const { catalog, database, tableName, runId } = useParams<{
 		catalog: string
 		database: string
@@ -20,12 +25,22 @@ const RunLogs: React.FC = () => {
 	const decodedCatalog = decodeURIComponent(catalog ?? "")
 	const decodedDatabase = decodeURIComponent(database ?? "")
 	const decodedRunId = decodeURIComponent(runId ?? "")
+	// Run history passes the run kind along; the logs API itself does not say which kind it is.
+	// TODO: read the run kind from Fusion's /logs/process/{id} once it returns processType, instead of ?runType=.
+	const isExpiryRun =
+		searchParams.get(RUN_LOGS_TYPE_QUERY_PARAM) === RUN_TYPE.EXPIRY
 	const isLoading =
 		useIsFetching({
 			queryKey: tableKeys.processLogs(decodedRunId),
 		}) > 0
 
 	const [selectedSourceKey, setSelectedSourceKey] = useState(DRIVER_SOURCE_KEY)
+	// Back restores the run history filters that came along in the URL; runType is the logs page's own.
+	const runsSearch = (() => {
+		const params = new URLSearchParams(searchParams)
+		params.delete(RUN_LOGS_TYPE_QUERY_PARAM)
+		return params.toString()
+	})()
 	const runsPath = `/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs`
 
 	return (
@@ -38,12 +53,14 @@ const RunLogs: React.FC = () => {
 			<RunLogSidebar
 				tableName={decodedTableName}
 				runId={decodedRunId}
+				isExpiryRun={isExpiryRun}
 				selectedSourceKey={selectedSourceKey}
 				onSelectSource={setSelectedSourceKey}
-				onBack={() => navigate(runsPath)}
+				onBack={() => navigate({ pathname: runsPath, search: runsSearch })}
 			/>
 			<RunLogsPanel
 				runId={decodedRunId}
+				isExpiryRun={isExpiryRun}
 				selectedSourceKey={selectedSourceKey}
 			/>
 		</div>

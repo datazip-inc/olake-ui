@@ -9,7 +9,12 @@ import { Button, Dropdown, Input } from "antd"
 import type { MenuProps } from "antd/es/menu"
 import { useState } from "react"
 
-import { DataTable, PageErrorState, Tag } from "@/common/components"
+import {
+	DataTable,
+	PageErrorState,
+	Tag,
+	TruncatedText,
+} from "@/common/components"
 import type { ColumnDef } from "@/common/components"
 import { usePaginatedSearch } from "@/common/hooks"
 
@@ -100,9 +105,16 @@ const Catalogs: React.FC = () => {
 			header: "Catalog Name",
 			width: 60,
 			render: row => (
-				<div className="flex items-center gap-2">
-					<p className="text-sm leading-6 text-olake-text">{row.name}</p>
-					{row.olakeCreated && <Tag>OLake</Tag>}
+				<div className="flex min-w-0 items-center gap-2">
+					<TruncatedText
+						text={row.name}
+						className="text-sm leading-6 text-olake-text"
+					/>
+					{row.olakeCreated && (
+						<span className="shrink-0">
+							<Tag>OLake</Tag>
+						</span>
+					)}
 				</div>
 			),
 		},
