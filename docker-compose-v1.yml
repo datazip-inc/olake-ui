@@ -60,6 +60,9 @@ services:
       # Mount Docker socket to enable black box environment by managing local containers/images
       - /var/run/docker.sock:/var/run/docker.sock
       - <<: *workerConfigVolumeDetails
+      # Custom CA certificate for enterprise environments with TLS-inspecting proxies.
+      # The CA file './custom-ca.crt' has to exist before uncommenting, otherwise Docker mounts an empty directory instead.
+      # - ./custom-ca.crt:/etc/ssl/certs/custom-ca.crt:ro
     networks:
       - olake-network
     depends_on:
