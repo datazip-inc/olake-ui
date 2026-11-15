@@ -9,7 +9,8 @@ import type {
 	TableDetailsApiResponse,
 	GetTablesApiResponse,
 	TableMetricsApiResponse,
-	UpdateTableCronApiRequest,
+	TableRunsQuery,
+	UpdateTableConfigApiRequest,
 	UpdateTableConfigApiResponse,
 	UpdateTablesConfigApiRequest,
 } from "../types"
@@ -45,20 +46,26 @@ export const tableService = {
 		return response.data
 	},
 
-	getTableRuns: async (
-		catalog: string,
-		database: string,
-		tableName: string,
-		page: number,
-		pageSize: number,
-		status?: string,
-	) => {
+	getTableRuns: async ({
+		catalog,
+		database,
+		tableName,
+		page,
+		pageSize,
+		status,
+		runType,
+	}: TableRunsQuery) => {
 		const searchParams = new URLSearchParams({
 			page: String(page),
 			pageSize: String(pageSize),
 		})
 		if (status) {
 			searchParams.set("status", status)
+		}
+		// Fusion lists compaction and snapshot-expiry runs together; `type` takes one
+		// process type or a comma-separated list (e.g. MINOR,MAJOR,FULL).
+		if (runType) {
+			searchParams.set("type", runType)
 		}
 
 		const response = await api.get<GetTableRunsApiResponse>(
@@ -108,7 +115,7 @@ export const tableService = {
 		catalog: string,
 		database: string,
 		tableName: string,
-		payload: UpdateTableCronApiRequest,
+		payload: UpdateTableConfigApiRequest,
 	): Promise<UpdateTableConfigApiResponse> => {
 		try {
 			const request: UpdateTablesConfigApiRequest = {
@@ -139,7 +146,6 @@ export const tableService = {
 	getProcessLogs: async (runId: string) => {
 		const response = await api.get<GetProcessLogsApiResponse>(
 			API_CONFIG.ENDPOINTS.OPT.PROCESS(runId),
-			{ showNotification: true },
 		)
 		return response.data
 	},

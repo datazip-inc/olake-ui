@@ -384,8 +384,10 @@ const JobCreation: React.FC = () => {
 								sourceVersion={sourceConnectorPayload.version}
 								sourceConfig={sourceConnectorPayload.config}
 								destinationType={destinationConnectorPayload.type}
+								destinationConfig={destinationConnectorPayload.config}
 								jobName={jobName}
 								advancedSettings={advancedSettings}
+								onChangeQueryEngines={handleConfirmResetStreams}
 							/>
 						</div>
 					)}

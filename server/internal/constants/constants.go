@@ -156,7 +156,18 @@ var (
 	OptFullCron           = "self-optimizing.full.trigger.cron"
 	OptTargetFileSize     = "self-optimizing.target-size"
 	OptEnableOptimization = "self-optimizing.enabled"
-	OptSQLCommand         = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
+	// snapshot expiry (cleanup) table properties; Fusion reads the cron as a 5-field unix cron,
+	// the keep duration as a number with d/h/min/s (bare number = days).
+	OptSnapshotExpireEnabled = "snapshot-expire.enabled"
+	OptSnapshotExpireCron    = "snapshot-expire.trigger.cron"
+	OptSnapshotKeepDuration  = "snapshot.keep.duration"
+	OptSnapshotKeepMinCount  = "snapshot.keep.min-count"
+	OptSQLCommand            = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
+	// Fusion optimizing process types: the three compaction levels and snapshot expiry.
+	OptProcessTypeMinor  = "MINOR"
+	OptProcessTypeMajor  = "MAJOR"
+	OptProcessTypeFull   = "FULL"
+	OptProcessTypeExpiry = "EXPIRY"
 	// properties
 	OptCreatedAt        = "created-at"
 	OptCacheEnabled     = "cache-enabled"

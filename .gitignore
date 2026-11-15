@@ -28,6 +28,7 @@ server/olake-server
 olake-data/
 amoro-logs/
 /server/temporal-worker/
+olake-gitops/
 
 # ----------------------------
 # Node-Related Files
