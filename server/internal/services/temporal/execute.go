@@ -485,12 +485,12 @@ func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, o
 func stageCatalog(catalog types.StreamsCatalog, prefix, streamsFlag, availableFlag, selectedFlag string) ([]JobConfig, []string) {
 	if catalog.IsSplit() {
 		return []JobConfig{
-				{Name: prefix + constants.AvailableStreamsFile, Data: catalog.Available},
-				{Name: prefix + constants.SelectedStreamsFile, Data: catalog.Selected},
-			}, []string{
-				availableFlag, "/mnt/config/" + prefix + constants.AvailableStreamsFile,
-				selectedFlag, "/mnt/config/" + prefix + constants.SelectedStreamsFile,
-			}
+			{Name: prefix + constants.AvailableStreamsFile, Data: catalog.Available},
+			{Name: prefix + constants.SelectedStreamsFile, Data: catalog.Selected},
+		}, []string{
+			availableFlag, "/mnt/config/" + prefix + constants.AvailableStreamsFile,
+			selectedFlag, "/mnt/config/" + prefix + constants.SelectedStreamsFile,
+		}
 	}
 	return []JobConfig{{Name: prefix + constants.StreamsFile, Data: catalog.Streams}},
 		[]string{streamsFlag, "/mnt/config/" + prefix + constants.StreamsFile}
