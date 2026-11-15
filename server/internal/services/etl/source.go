@@ -186,7 +186,7 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 
 	// checked before any change or job cancellation, so a rejected update has no side effects
 	if existing.Type == constants.SourceTypePostgres || req.Type == constants.SourceTypePostgres {
-		if err := validatePreserveToastValues(existing.Config, req.Config); err != nil {
+		if err := validatePreserveToastValues(existing.Config, req.Config.String()); err != nil {
 			return err
 		}
 	}
