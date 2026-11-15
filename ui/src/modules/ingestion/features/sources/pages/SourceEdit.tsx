@@ -47,6 +47,7 @@ import DocumentationPanel from "@/modules/ingestion/common/components/Documentat
 import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
 import {
 	DISPLAYED_JOBS_COUNT,
+	SOURCE_INTERNAL_TYPES,
 	SOURCE_SECTION_DOC_ANCHORS,
 } from "@/modules/ingestion/common/constants"
 import {
@@ -67,7 +68,11 @@ import {
 } from "../hooks"
 import { useSourceStore } from "../stores"
 import { SourceJob } from "../types"
-import { getConnectorLabel } from "../utils"
+import {
+	getConnectorLabel,
+	lockPreserveToastValues,
+	restorePreserveToastValues,
+} from "../utils"
 
 const SourceEdit: React.FC = () => {
 	// Local component state.
@@ -95,6 +100,10 @@ const SourceEdit: React.FC = () => {
 
 	// Derived constants from current state.
 	const normalizedSourceConnector = getConnectorInLowerCase(connector)
+	const isPostgres =
+		normalizedSourceConnector === SOURCE_INTERNAL_TYPES.POSTGRES
+	// saved preserve_toast_values, put back on every change since edit can't change it
+	const savedPreserveToast = useRef<boolean | undefined>(undefined)
 
 	// Data fetching and mutation hooks.
 	const queryClient = useQueryClient()
@@ -128,11 +137,12 @@ const SourceEdit: React.FC = () => {
 			const normalizedType = getConnectorLabel(source.type)
 			setConnector(normalizedType)
 			setSelectedVersion(source.version)
-			setFormData(
+			const config =
 				typeof source.config === "string"
 					? JSON.parse(source.config)
-					: source.config,
-			)
+					: source.config
+			savedPreserveToast.current = config?.update_method?.preserve_toast_values
+			setFormData(config)
 		}
 	}, [source, sourceId])
 
@@ -146,9 +156,19 @@ const SourceEdit: React.FC = () => {
 
 	useEffect(() => {
 		if (specData) {
-			handleSpecResponse(specData, setSchema, setUiSchema, "source")
+			handleSpecResponse(
+				specData,
+				setSchema,
+				ui =>
+					setUiSchema(
+						isPostgres
+							? lockPreserveToastValues(ui, specData.spec?.jsonschema)
+							: ui,
+					),
+				"source",
+			)
 		}
-	}, [specData])
+	}, [specData, isPostgres])
 
 	useEffect(() => {
 		if (specQueryError) {
@@ -519,7 +539,14 @@ const SourceEdit: React.FC = () => {
 													formData={formData}
 													onChange={e => {
 														const trimmedData = trimFormDataStrings(e.formData)
-														setFormData(trimmedData)
+														setFormData(
+															isPostgres
+																? restorePreserveToastValues(
+																		trimmedData,
+																		savedPreserveToast.current,
+																	)
+																: trimmedData,
+														)
 													}}
 													transformErrors={transformErrors}
 													onError={notifyFirstFormError}
