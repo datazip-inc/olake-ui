@@ -1,16 +1,16 @@
 # OLake-UI
 
 <h1 align="center" style="border-bottom: none">
-    <a href="https://datazip.io/olake" target="_blank">
+    <a href="https://olake.io/" target="_blank">
         <img alt="olake" src="https://github.com/user-attachments/assets/d204f25f-5289-423c-b3f2-44b2194bdeaf" width="100" height="100"/>
     </a>
     <br>OLake
 </h1>
 
-<p align="center"><a href="https://github.com/datazip-inc/olake"><strong>OLake Go</strong></a> enables real-time data ingestion from databases, S3, and Kafka into Apache Iceberg. <br/> <a href="https://github.com/datazip-inc/olake-fusion"><strong>OLake Fusion</strong></a> is a table management system for Apache Iceberg, helping teams to optimize performance and reduce storage costs. <br/> Visit <a href="https://olake.io/" target="_blank">olake.io/docs</a> for the full documentation, and benchmarks</p>
+<p align="center"><a href="https://github.com/datazip-inc/olake-go"><strong>OLake Go</strong></a> enables real-time data ingestion from databases, S3, and Kafka into Apache Iceberg. <br/> <a href="https://github.com/datazip-inc/olake-fusion"><strong>OLake Fusion</strong></a> is a table management system for Apache Iceberg, helping teams to optimize performance and reduce storage costs. <br/> Visit <a href="https://olake.io/" target="_blank">olake.io/docs</a> for the full documentation, and benchmarks</p>
 
 <p align="center">
-    <a href="https://github.com/datazip-inc/olake-ui/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/datazip-inc/olake"/></a> <a href="https://olake.io/docs"><img alt="Documentation" height="22" src="https://img.shields.io/badge/view-Documentation-blue?style=for-the-badge"/></a>
+    <a href="https://github.com/datazip-inc/olake-ui/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/datazip-inc/olake-ui"/></a> <a href="https://olake.io/docs"><img alt="Documentation" height="22" src="https://img.shields.io/badge/view-Documentation-blue?style=for-the-badge"/></a>
     <a href="https://olake.io/slack/"><img alt="slack" src="https://img.shields.io/badge/Join%20Our%20Community-Slack-blue"/></a>
 
 </p>
@@ -150,6 +150,6 @@ curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-c
 We ❤️ contributions of all sizes and appreciate every improvement to the project. As always, thanks to our amazing contributors!
 
 - To contribute to OLake-UI visit [CONTRIBUTING.md](CONTRIBUTING.md)
-- To contribute to OLake Go Repo, visit [OLake Go Repository](https://github.com/datazip-inc/olake).
+- To contribute to OLake Go Repo, visit [OLake Go Repository](https://github.com/datazip-inc/olake-go).
 - To contribute to OLake Fusion Repo, visit [OLake Fusion Repository](https://github.com/datazip-inc/olake-fusion).
 - To contribute to OLake website and [documentation](https://olake.io/docs), visit [OLake Docs Repository](https://github.com/datazip-inc/olake-docs/).
