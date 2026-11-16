@@ -60,7 +60,7 @@ var ReleaseSources = []GithubReleaseSource{
 	{Type: ReleaseOlakeUI, Repo: "olake-ui", OnlyNewerReleases: true},
 	{Type: ReleaseWorker, Repo: "olake-helm", OnlyNewerReleases: true},
 	{Type: ReleaseOlakeHelm, Repo: "olake-helm"},
-	{Type: ReleaseOlake, Repo: "olake", OnlyNewerReleases: true},
+	{Type: ReleaseOlake, Repo: "olake-go", OnlyNewerReleases: true},
 }
 
 // BuildReleasesResponse builds the final releases response from fetched data.
