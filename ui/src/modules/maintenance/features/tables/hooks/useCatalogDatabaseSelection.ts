@@ -23,7 +23,7 @@ type UseCatalogDatabaseSelectionReturn = {
 	setDatabaseNotAvailableOpen: (open: boolean) => void
 }
 
-/** Syncs catalog/database selection with URL query params and validates them against loaded catalog data. */
+// Syncs catalog/database selection with URL query params and validates them against loaded catalog data.
 export function useCatalogDatabaseSelection(
 	catalogs: Catalog[],
 ): UseCatalogDatabaseSelectionReturn {

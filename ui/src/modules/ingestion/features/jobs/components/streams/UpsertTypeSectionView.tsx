@@ -15,12 +15,15 @@ import {
 	useStreamSelectionStore,
 } from "../../stores"
 import {
+	getKafkaUpsertTypes,
+	getUpsertNotSupportedMessage,
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
 } from "../../utils/streams"
 
 interface UpsertTypeSectionViewProps {
 	sourceType?: string
+	sourceVersion?: string
 	destinationType?: string
 	isSelected: boolean
 	isDirty?: boolean
@@ -31,6 +34,7 @@ interface UpsertTypeSectionViewProps {
 
 const UpsertTypeSectionView = ({
 	sourceType,
+	sourceVersion,
 	destinationType,
 	isSelected,
 	isDirty,
@@ -56,7 +60,8 @@ const UpsertTypeSectionView = ({
 
 	const upsertTypeOptions = UPSERT_TYPE_OPTIONS.filter(option => {
 		if (!availableUpdateTypes.includes(option.value)) return false
-		if (isKafka) return option.value === UpsertType.POSITIONAL
+		if (isKafka)
+			return getKafkaUpsertTypes(sourceVersion).includes(option.value)
 		return true
 	})
 	const selectedUpsertTypeOption = upsertTypeOptions.find(
@@ -67,7 +72,17 @@ const UpsertTypeSectionView = ({
 	if (!isDestUpsertModeSupported || !isSourceUpsertSupported) return null
 	// upsertType is seeded from the catalog's default_stream_properties.update_mode;
 	// when absent the driver version doesn't support update_type.
-	if (appendMode || upsertType === undefined) return null
+	// Hidden when upsert is unsupported too, since Ingestion Mode then forces Append.
+	if (
+		appendMode ||
+		upsertType === undefined ||
+		getUpsertNotSupportedMessage(
+			sourceType,
+			sourceVersion,
+			availableUpdateTypes,
+		)
+	)
+		return null
 
 	return (
 		<div
@@ -89,8 +104,7 @@ const UpsertTypeSectionView = ({
 						!isSelected ? "text-gray-500" : "text-neutral-700",
 					)}
 				>
-					Specify Iceberg delete mode (for faster reads and multi query engine
-					support use positional).{" "}
+					Specify Iceberg delete mode.{" "}
 					<a
 						href="https://olake.io/docs/understanding/terminologies/olake/#upsert"
 						target="_blank"
@@ -119,11 +133,15 @@ const UpsertTypeSectionView = ({
 					</span>
 				</div>
 			)}
-			{upsertType === UpsertType.POSITIONAL && (
+			{(upsertType === UpsertType.POSITIONAL ||
+				upsertType === UpsertType.DELETION_VECTOR) && (
 				<div className="mb-4 flex items-start gap-1.5 text-xs leading-5 text-amber-700">
 					<WarningIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
 					<span>
-						Positional deletes need a newer OLake version.{" "}
+						{upsertType === UpsertType.POSITIONAL
+							? "Positional deletes"
+							: "Deletion vectors"}{" "}
+						need a newer OLake version.{" "}
 						<a
 							href="https://olake.io/docs/understanding/terminologies/olake/#upsert"
 							target="_blank"

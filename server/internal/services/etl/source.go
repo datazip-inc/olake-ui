@@ -62,6 +62,33 @@ func (s Service) GetSource(ctx context.Context, projectID string, sourceID int) 
 	return item, nil
 }
 
+// GetSourceByName returns a source model by name within a project.
+func (s Service) GetSourceByName(_ context.Context, projectID, name string) (*models.Source, error) {
+	source, err := s.db.GetSourceByName(projectID, name)
+	if err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
+		return nil, err
+	}
+	return source, nil
+}
+
+// GetSourceByID returns a source model by ID within a project.
+func (s Service) GetSourceByID(_ context.Context, projectID string, id int) (*models.Source, error) {
+	source, err := s.db.GetSourceByID(id)
+	if err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
+		return nil, err
+	}
+	if source.ProjectID != projectID {
+		return nil, fmt.Errorf("%w: source not found id[%d] project_id[%s]", constants.ErrSourceNotFound, id, projectID)
+	}
+	return source, nil
+}
+
 // GetAllSources returns all sources for a project with lightweight job summaries.
 func (s Service) ListSources(ctx context.Context, projectID string) ([]dto.SourceDataItem, error) {
 	sources, err := s.db.ListSourcesByProjectID(projectID)
@@ -130,7 +157,7 @@ func (s Service) CreateSource(ctx context.Context, req *dto.CreateSourceRequest,
 		Name:      req.Name,
 		Type:      req.Type,
 		Version:   req.Version,
-		Config:    req.Config,
+		Config:    req.Config.String(),
 		ProjectID: projectID,
 	}
 
@@ -157,9 +184,16 @@ func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req
 		return fmt.Errorf("failed to get source: %s", err)
 	}
 
+	// checked before any change or job cancellation, so a rejected update has no side effects
+	if existing.Type == constants.SourceTypePostgres || req.Type == constants.SourceTypePostgres {
+		if err := validatePreserveToastValues(existing.Config, req.Config.String()); err != nil {
+			return err
+		}
+	}
+
 	prevVersion := existing.Version
 	existing.Name = req.Name
-	existing.Config = req.Config
+	existing.Config = req.Config.String()
 	existing.Type = req.Type
 	existing.Version = req.Version
 
@@ -249,7 +283,7 @@ func (s Service) TestSourceConnection(ctx context.Context, projectID string, req
 		return "", fmt.Errorf("temporal client not available")
 	}
 
-	encryptedConfig, err := utils.Encrypt(req.Config)
+	encryptedConfig, err := utils.Encrypt(req.Config.String())
 	if err != nil {
 		return "", fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}
@@ -268,14 +302,7 @@ func (s Service) DiscoverCatalog(ctx context.Context, projectID string, req *dto
 		}
 		stored = job.StreamsCatalog()
 	}
-
-	encryptedConfig, err := utils.Encrypt(req.Config)
-	if err != nil {
-		return "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
-	}
-
-	return s.temporal.StartDiscoverStreams(ctx, projectID, req.Type, req.Version, encryptedConfig, stored,
-		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines)
+	return s.startDiscover(ctx, projectID, req, stored)
 }
 
 // discoverCatalogResult returns a succeeded discover operation's catalog in one format:
@@ -294,6 +321,37 @@ func discoverCatalogResult(ctx context.Context, operationID string) (*dto.Discov
 	return &dto.DiscoverCatalogResponse{StreamsConfig: json.RawMessage(catalog.Streams)}, nil
 }
 
+// DiscoverWithCatalog runs discover with stored as the prior catalog, waits for it, and returns
+// every file the driver wrote. With an empty stored catalog, discover runs fresh. It blocks, so it
+// is for callers outside a request (GitOps); the API starts discover with DiscoverCatalog.
+func (s Service) DiscoverWithCatalog(ctx context.Context, projectID string, req *dto.StreamsRequest, stored types.StreamsCatalog) (types.StreamsCatalog, error) {
+	operationID, err := s.startDiscover(ctx, projectID, req, stored)
+	if err != nil {
+		return types.StreamsCatalog{}, fmt.Errorf("failed to get catalog: %w", err)
+	}
+	if _, err := s.AwaitOperationOutput(ctx, operationID); err != nil {
+		return types.StreamsCatalog{}, fmt.Errorf("failed to get catalog: %w", err)
+	}
+	catalog, _, err := temporal.ReadDiscoverOutput(ctx, operationID)
+	if err != nil {
+		return types.StreamsCatalog{}, fmt.Errorf("failed to get catalog: %w", err)
+	}
+	return catalog, nil
+}
+
+func (s Service) startDiscover(ctx context.Context, projectID string, req *dto.StreamsRequest, stored types.StreamsCatalog) (string, error) {
+	encryptedConfig, err := utils.Encrypt(req.Config.String())
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt config for catalog: %s", err)
+	}
+	encryptedDestinationConfig, err := utils.Encrypt(req.DestinationConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt destination config for catalog: %s", err)
+	}
+	return s.temporal.StartDiscoverStreams(ctx, projectID, req.Type, req.Version, encryptedConfig, stored,
+		req.JobName, req.MaxDiscoverThreads, req.TargetQueryEngines, encryptedDestinationConfig)
+}
+
 func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {
 	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
 	versions, _, err := utils.GetDriverImageTags(ctx, imageName, true)
@@ -307,4 +365,35 @@ func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.
 // TODO: cache spec in db for each version
 func (s Service) GetSourceSpec(ctx context.Context, projectID string, req *dto.SpecRequest) (string, error) {
 	return s.temporal.StartDriverSpecs(ctx, projectID, "", req.Type, req.Version, req.AvailableQueryEngines)
+}
+
+// validatePreserveToastValues rejects changing Postgres preserve_toast_values after the source is
+// created: it limits the source's jobs to update types that keep a row index.
+//
+// Edge cases not handled for now:
+//   - CDC -> Standalone is allowed and drops the flag; going back to CDC then locks it to false.
+//   - Sources saved without the flag (older driver versions) can't turn it on later; recreate them.
+//   - Switching to a driver version without the field keeps true in the config, but that driver ignores it.
+func validatePreserveToastValues(storedConfig, incomingConfig string) error {
+	stored, _ := preserveToastValues(storedConfig)
+	incoming, isCDC := preserveToastValues(incomingConfig)
+	if isCDC && incoming != stored {
+		return constants.ErrPreserveToastValuesLocked
+	}
+	return nil
+}
+
+// preserveToastValues returns the flag (false when missing) and whether the config is CDC. Like the
+// driver, a replication_slot key means CDC; type CDC or the flag itself count too.
+func preserveToastValues(config string) (value, isCDC bool) {
+	var cfg struct {
+		UpdateMethod map[string]any `json:"update_method"`
+	}
+	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
+		return false, false
+	}
+	_, hasSlot := cfg.UpdateMethod["replication_slot"]
+	flag, hasFlag := cfg.UpdateMethod["preserve_toast_values"]
+	value, _ = flag.(bool)
+	return value, hasSlot || hasFlag || cfg.UpdateMethod["type"] == "CDC"
 }

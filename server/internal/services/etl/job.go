@@ -83,6 +83,18 @@ func (s Service) GetJob(ctx context.Context, projectID string, jobID int) (*dto.
 	return &jobResponse, nil
 }
 
+// GetJobByName returns a job model by name within a project.
+func (s Service) GetJobByName(_ context.Context, projectID, name string) (*models.Job, error) {
+	job, err := s.db.GetJobByName(projectID, name)
+	if err != nil {
+		if errors.Is(err, constants.ErrJobNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrJobNotFound, err)
+		}
+		return nil, err
+	}
+	return job, nil
+}
+
 func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
 	if err := validateStreamsFormat(req.StreamsConfig, req.AvailableStreamsConfig, req.SelectedStreamsConfig, req.Source.Version, nil); err != nil {
 		return err
@@ -124,7 +136,7 @@ func (s Service) CreateJob(ctx context.Context, req *dto.CreateJobRequest, proje
 		DestID:                 dest.ID,
 		Source:                 source,
 		Destination:            dest,
-		Active:                 true,
+		Active:                 req.Activate,
 		Frequency:              req.Frequency,
 		StreamsConfig:          utils.StringPtr(req.StreamsConfig),
 		AvailableStreamsConfig: utils.StringPtr(req.AvailableStreamsConfig),
@@ -177,7 +189,7 @@ func (s Service) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, proje
 		return fmt.Errorf("failed to check if clear-destination is running: %s", err)
 	}
 	if clearRunning {
-		return fmt.Errorf("clear-destination is in progress, cannot update job")
+		return constants.ErrClearDestinationRunning
 	}
 
 	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
@@ -428,29 +440,32 @@ func (s Service) GetStreamDifference(ctx context.Context, _ string, jobID int, r
 	edited := types.StreamsCatalog{Streams: req.UpdatedStreamsConfig, Available: newAvailable, Selected: newSelected}
 	operationID, err := s.temporal.StartStreamDifference(ctx, job, job.StreamsCatalog(), edited)
 	if err != nil {
-		return "", fmt.Errorf("failed to get stream difference: %s", err)
+		return "", fmt.Errorf("failed to get stream difference: %w", err)
 	}
 
 	logger.Infof("stream difference started for job %d operation_id[%s]", job.ID, operationID)
 	return operationID, nil
 }
 
-// validateStreamsFormat requires the catalog in the job's format: streams_config for a legacy (v1)
-// job, otherwise available_streams_config and selected_streams_config. An existing job keeps its
-// stored format; a new job is legacy when its source version does not support streams v2.
+// validateStreamsFormat rejects a catalog that: is not exactly one format (streams, or available and
+// selected together); uses the split format on a source that does not support it; or downgrades a
+// split-catalog job to legacy.
 func validateStreamsFormat(streamsConfig, available, selected, sourceVersion string, existingJob *models.Job) error {
-	legacy := !utils.SupportsStreamsV2(sourceVersion)
-	if existingJob != nil {
-		legacy = !existingJob.StreamsCatalog().IsSplit()
+	split := available != "" && selected != ""
+	switch {
+	case (available != "") != (selected != ""):
+		return fmt.Errorf("%w: available_streams_config and selected_streams_config must be set together", constants.ErrStreamsFormat)
+	case split && streamsConfig != "":
+		return fmt.Errorf("%w: set either streams_config or available_streams_config + selected_streams_config, not both", constants.ErrStreamsFormat)
+	case !split && streamsConfig == "":
+		return fmt.Errorf("%w: either streams_config or available_streams_config + selected_streams_config is required", constants.ErrStreamsFormat)
 	}
-	if legacy {
-		if streamsConfig == "" {
-			return fmt.Errorf("%w: streams_config is required", constants.ErrStreamsFormat)
-		}
-		return nil
+	if split && !utils.SupportsStreamsV2(sourceVersion) {
+		return fmt.Errorf("%w: source version %s does not support the split streams format (minimum %s)",
+			constants.ErrStreamsFormat, sourceVersion, constants.MinStreamsV2Version)
 	}
-	if available == "" || selected == "" {
-		return fmt.Errorf("%w: available_streams_config and selected_streams_config are required", constants.ErrStreamsFormat)
+	if !split && existingJob != nil && existingJob.StreamsCatalog().IsSplit() {
+		return fmt.Errorf("%w: job uses the split streams format, set available_streams_config and selected_streams_config", constants.ErrStreamsFormat)
 	}
 	return nil
 }
@@ -580,7 +595,7 @@ func (s Service) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, incl
 			Type:    job.Source.Type,
 			Version: job.Source.Version,
 		}
-		jobResp.Source.Config = utils.Ternary(includeConfig, job.Source.Config, "").(string)
+		jobResp.Source.Config = dto.JSONConfig(utils.Ternary(includeConfig, job.Source.Config, "").(string))
 	}
 
 	if job.Destination != nil {
@@ -590,7 +605,7 @@ func (s Service) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, incl
 			Type:    job.Destination.DestType,
 			Version: job.Destination.Version,
 		}
-		jobResp.Destination.Config = utils.Ternary(includeConfig, job.Destination.Config, "").(string)
+		jobResp.Destination.Config = dto.JSONConfig(utils.Ternary(includeConfig, job.Destination.Config, "").(string))
 	}
 
 	if job.CreatedBy != nil {
@@ -642,7 +657,7 @@ func (s Service) upsertSource(ctx context.Context, config *dto.DriverConfig, pro
 	newSource := &models.Source{
 		Name:        config.Name,
 		Type:        config.Type,
-		Config:      config.Config,
+		Config:      config.Config.String(),
 		Version:     config.Version,
 		ProjectID:   projectID,
 		CreatedByID: user.ID,
@@ -682,7 +697,7 @@ func (s Service) upsertDestination(ctx context.Context, config *dto.DriverConfig
 	newDest := &models.Destination{
 		Name:        config.Name,
 		DestType:    config.Type,
-		Config:      config.Config,
+		Config:      config.Config.String(),
 		Version:     config.Version,
 		ProjectID:   projectID,
 		CreatedByID: user.ID,

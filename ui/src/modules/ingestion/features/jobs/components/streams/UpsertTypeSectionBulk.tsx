@@ -4,6 +4,7 @@ import UpsertTypeSectionView from "./UpsertTypeSectionView"
 
 interface UpsertTypeSectionBulkProps {
 	sourceType?: string
+	sourceVersion?: string
 	destinationType?: string
 	isDirty?: boolean
 	bulkAppendMode?: boolean
@@ -13,6 +14,7 @@ interface UpsertTypeSectionBulkProps {
 
 const UpsertTypeSectionBulk = ({
 	sourceType,
+	sourceVersion,
 	destinationType,
 	isDirty,
 	bulkAppendMode,
@@ -21,6 +23,7 @@ const UpsertTypeSectionBulk = ({
 }: UpsertTypeSectionBulkProps) => (
 	<UpsertTypeSectionView
 		sourceType={sourceType}
+		sourceVersion={sourceVersion}
 		destinationType={destinationType}
 		isSelected={true}
 		isDirty={isDirty}

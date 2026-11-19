@@ -30,12 +30,17 @@ import {
 } from "../stores/streamSelectionStore"
 import { SchemaConfigurationProps } from "../types"
 import FilterButton from "./FilterButton"
+import { IngestionMode } from "../enums"
 import BulkConfigureStreamsModal from "./modals/BulkConfigureStreamsModal"
 import DestinationDatabaseModal from "./modals/DestinationDatabaseModal"
+import NoCommonUpdateTypeModal from "./modals/NoCommonUpdateTypeModal"
 import StreamConfiguration from "./streams/StreamConfiguration"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
 import {
 	getStreamsDataFromSourceStreamsResponse,
+	hasNoCommonUpdateType,
+	isDestinationIngestionModeSupported,
+	isSourceIngestionModeSupported,
 	parseDiscoverResponse,
 	shouldUseFilterConfig,
 } from "../utils/streams"
@@ -52,8 +57,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	fromJobEditFlow = false,
 	jobId = -1,
 	destinationType,
+	destinationConfig,
 	jobName,
 	advancedSettings,
+	onChangeQueryEngines,
 }) => {
 	const { setShowDestinationDatabaseModal, setShowStreamEditDisabledModal } =
 		useJobStore()
@@ -96,6 +103,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const [showDiscoverErrorModal, setShowDiscoverErrorModal] = useState(false)
 	const [showBulkConfigureStreamsModal, setShowBulkConfigureStreamsModal] =
 		useState(false)
+	const [showNoCommonUpdateTypeModal, setShowNoCommonUpdateTypeModal] =
+		useState(false)
 
 	const triggerStreamsDiscovery = () => {
 		if (
@@ -123,6 +132,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				job_id: fromJobEditFlow ? jobId : -1,
 				max_discover_threads: advancedSettings?.max_discover_threads,
 				target_query_engines: advancedSettings?.target_query_engines,
+				destination_config: destinationConfig,
 			},
 			{
 				onSuccess: response => {
@@ -136,6 +146,40 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						)
 
 					initializeFromDiscovery(data, parsed.format)
+
+					const isUpsertSupported =
+						isDestinationIngestionModeSupported(
+							IngestionMode.UPSERT,
+							destinationType,
+						) &&
+						isSourceIngestionModeSupported(
+							IngestionMode.UPSERT,
+							sourceConnector,
+						)
+					const availableUpdateTypes =
+						parsed.response.available_streams.streams[0]?.stream
+							.available_update_types
+					// v2 entries omit append_mode when it equals the driver default (e.g. Kafka: append).
+					const defaultAppendMode =
+						parsed.response.available_streams.streams[0]?.stream
+							.default_stream_properties?.append_mode
+					// In the edit flow selected_streams are the saved ones, so a job the
+					// user already kept in append mode doesn't warn again.
+					const hasUpsertStream = Object.values(
+						parsed.response.selected_streams,
+					).some(streams =>
+						streams.some(s => !(s.append_mode ?? defaultAppendMode)),
+					)
+
+					// Streams were already forced to append; let the user go back and pick
+					// query engines that share an update type with the destination.
+					if (
+						isUpsertSupported &&
+						hasUpsertStream &&
+						hasNoCommonUpdateType(availableUpdateTypes)
+					) {
+						setShowNoCommonUpdateTypeModal(true)
+					}
 				},
 				onError: error => {
 					setDiscovering(false)
@@ -419,6 +463,15 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					triggerStreamsDiscovery()
 				}}
 				actionButtonText="Retry"
+			/>
+
+			<NoCommonUpdateTypeModal
+				open={showNoCommonUpdateTypeModal}
+				onChangeQueryEngines={() => {
+					setShowNoCommonUpdateTypeModal(false)
+					onChangeQueryEngines?.()
+				}}
+				onContinue={() => setShowNoCommonUpdateTypeModal(false)}
 			/>
 
 			<BulkConfigureStreamsModal

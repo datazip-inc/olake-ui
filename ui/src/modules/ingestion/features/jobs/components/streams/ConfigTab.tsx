@@ -36,6 +36,7 @@ const ConfigTab = ({
 				)}
 				<UpsertTypeSectionSingle
 					sourceType={sourceType}
+					sourceVersion={sourceVersion}
 					destinationType={destinationType}
 				/>
 			</div>

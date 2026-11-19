@@ -7,6 +7,7 @@ export type {
 	PaginationConfig,
 } from "./DataTable"
 export { Tag } from "./Tag"
+export { default as TruncatedText } from "./TruncatedText"
 export type { TagColor, TagProps } from "./Tag"
 export { default as PageErrorState } from "./PageErrorState"
 export * from "./ErrorBoundary"

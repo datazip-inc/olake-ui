@@ -57,6 +57,10 @@ const (
 
 // TODO: check if we can add command args as constants for all the methods
 
+// ErrWorkflowStart means Temporal did not start the workflow (for example, it is unreachable), so
+// the command never ran. Unlike a workflow that ran and failed, a retry can succeed.
+var ErrWorkflowStart = errors.New("failed to start workflow")
+
 // Scheduled Process (sync, clear-destination):
 // For scheduled/triggered workflows, configs are written in the worker-side.
 // This is because the BFF doesn't know the actual execution workflowID that
@@ -74,7 +78,7 @@ const (
 // StartDiscoverStreams starts discover with the job's stored catalog as input and returns the
 // operation ID; with an empty catalog, discover runs fresh. The result is read with
 // ReadDiscoverOutput once the operation has succeeded.
-func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceType, version, config string, stored types.StreamsCatalog, jobName string, maxDiscoverThreads *int, targetQueryEngines []string) (string, error) {
+func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceType, version, config string, stored types.StreamsCatalog, jobName string, maxDiscoverThreads *int, targetQueryEngines []string, destinationConfig string) (string, error) {
 	workflowID, err := NewOperationID(OperationDiscoverCatalog, projectID)
 	if err != nil {
 		return "", err
@@ -84,6 +88,14 @@ func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceTy
 		{Name: "config.json", Data: config},
 		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID(ctx)},
 	}
+
+	// Older drivers ignore --destination on discover, so it rides the query engine gate.
+	sendDestinationConfig := destinationConfig != "" && supportsQueryEngines(version)
+
+	if sendDestinationConfig {
+		configs = append(configs, JobConfig{Name: "destination.json", Data: destinationConfig})
+	}
+
 	cmdArgs := []string{
 		"discover",
 		"--config",
@@ -105,6 +117,10 @@ func (t *Temporal) StartDiscoverStreams(ctx context.Context, projectID, sourceTy
 	// OLake stores no engines, so an omitted flag means unconstrained rather than "reuse the last choice".
 	if len(targetQueryEngines) > 0 && supportsQueryEngines(version) {
 		cmdArgs = append(cmdArgs, constants.TargetQueryEnginesFlag, strings.Join(targetQueryEngines, ","))
+	}
+
+	if sendDestinationConfig {
+		cmdArgs = append(cmdArgs, "--destination", "/mnt/config/destination.json")
 	}
 
 	switch {
@@ -208,7 +224,7 @@ func (t *Temporal) startDiscoverWorkflow(ctx context.Context, sourceType, versio
 	}
 	run, err := t.Client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{ID: workflowID, TaskQueue: t.taskQueue}, ExecuteWorkflow, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute discover workflow: %s", err)
+		return nil, fmt.Errorf("%w: discover: %s", ErrWorkflowStart, err)
 	}
 	return run, nil
 }
@@ -340,7 +356,7 @@ func (t *Temporal) StartVerifyDriverCredentials(ctx context.Context, projectID, 
 	}
 
 	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
-		return "", fmt.Errorf("failed to execute test connection workflow: %s", err)
+		return "", fmt.Errorf("%w: test connection: %s", ErrWorkflowStart, err)
 	}
 
 	return workflowID, nil
@@ -458,7 +474,7 @@ func (t *Temporal) StartStreamDifference(ctx context.Context, job *models.Job, o
 	}
 
 	if _, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req); err != nil {
-		return "", fmt.Errorf("failed to execute stream difference workflow: %s", err)
+		return "", fmt.Errorf("%w: stream difference: %s", ErrWorkflowStart, err)
 	}
 
 	return workflowID, nil

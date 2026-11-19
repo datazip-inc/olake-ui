@@ -35,7 +35,7 @@ func (h *Handler) SetProperties(c *gin.Context) {
 		return
 	}
 
-	result, err := h.opt.SetProperties(c.Request.Context(), catalog, database, tableConfigs)
+	result, err := h.opt.SetProperties(c.Request.Context(), catalog, database, &tableConfigs)
 	if err != nil {
 		utils.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
 		return

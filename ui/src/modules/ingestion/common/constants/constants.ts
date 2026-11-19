@@ -55,11 +55,17 @@ export const MIN_COLUMN_SELECTION_SOURCE_VERSION = "v0.4.0"
 // Minimum source version that supports structured filter_config (JSON) instead of the legacy filter string.
 export const MIN_JSON_FILTER_VERSION = "v0.6.0"
 
+// Minimum source version that supports the target_query_engines advanced setting.
+export const MIN_QUERY_ENGINES_VERSION = "v0.11.0"
+
 // Minimum source version that supports the source naming convention (use_source_column_names).
 export const MIN_SOURCE_NAMING_CONVENTION_VERSION = "v0.7.7"
 
 // Minimum Kafka source version that supports Upsert.
 export const MIN_KAFKA_UPSERT_SOURCE_VERSION = "v0.12.1"
+
+// Minimum Kafka source version that writes deletion vectors on Upsert; older ones always write positional deletes.
+export const MIN_KAFKA_DV_UPSERT_SOURCE_VERSION = "v1.1.1"
 
 export const KAFKA_KEY_COLUMN = "_kafka_key"
 

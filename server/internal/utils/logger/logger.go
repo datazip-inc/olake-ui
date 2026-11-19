@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zerologr"
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
 )
@@ -99,4 +101,10 @@ func Fatal(v ...interface{}) {
 func Fatalf(format string, v ...interface{}) {
 	logger.Fatal().Msgf(format, v...)
 	os.Exit(1)
+}
+
+// Logr returns a logr.Logger backed by the root zerolog instance.
+// Use for libraries that expect logr (e.g. controller-runtime).
+func Logr() logr.Logger {
+	return zerologr.New(&logger)
 }

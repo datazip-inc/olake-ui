@@ -31,7 +31,7 @@ import {
 import {
 	buildBulkStreamsData,
 	getDedupKeyOptions,
-	getKafkaUpsertNotSupportedMessage,
+	getUpsertNotSupportedMessage,
 	isUseSourceColumnNamesSupported,
 } from "../../utils/streams"
 import BulkStreamSelectorList from "../streams/BulkStreamSelectorList"
@@ -128,7 +128,7 @@ const BulkConfigureStreamsModal = ({
 	const availableUpdateTypes = useStreamSelectionStore(
 		selectAvailableUpdateTypes,
 	)
-	const kafkaUpsertBlocked = !!getKafkaUpsertNotSupportedMessage(
+	const upsertBlocked = !!getUpsertNotSupportedMessage(
 		sourceType,
 		sourceVersion,
 		availableUpdateTypes,
@@ -298,7 +298,7 @@ const BulkConfigureStreamsModal = ({
 
 	const missingUpsertDedupKeys =
 		isKafka &&
-		!kafkaUpsertBlocked &&
+		!upsertBlocked &&
 		!bulkConfig.appendMode &&
 		(dirtyFields[BulkDirtyFieldKey.AppendMode] ||
 			dirtyFields[BulkDirtyFieldKey.DedupKeys]) &&
@@ -551,7 +551,7 @@ const BulkConfigureStreamsModal = ({
 														/>
 													)}
 													{isKafka &&
-														!kafkaUpsertBlocked &&
+														!upsertBlocked &&
 														dirtyFields[BulkDirtyFieldKey.DedupKeys] &&
 														!bulkConfig.appendMode && (
 															<DedupKeysSelectionBulk
@@ -564,6 +564,7 @@ const BulkConfigureStreamsModal = ({
 													{dirtyFields[BulkDirtyFieldKey.UpsertType] && (
 														<UpsertTypeSectionBulk
 															sourceType={sourceType}
+															sourceVersion={sourceVersion}
 															destinationType={destinationType}
 															bulkAppendMode={bulkConfig.appendMode}
 															bulkUpsertType={bulkConfig.upsertType}
@@ -816,7 +817,7 @@ const BulkConfigureStreamsModal = ({
 																	}}
 																/>
 																{isKafka &&
-																	!kafkaUpsertBlocked &&
+																	!upsertBlocked &&
 																	!bulkConfig.appendMode && (
 																		<DedupKeysSelectionBulk
 																			isDirty={
@@ -835,6 +836,7 @@ const BulkConfigureStreamsModal = ({
 																		dirtyFields[BulkDirtyFieldKey.UpsertType]
 																	}
 																	sourceType={sourceType}
+																	sourceVersion={sourceVersion}
 																	destinationType={destinationType}
 																	bulkAppendMode={bulkConfig.appendMode}
 																	bulkUpsertType={bulkConfig.upsertType}

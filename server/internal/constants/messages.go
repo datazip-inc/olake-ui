@@ -16,8 +16,12 @@ var (
 	ErrJobNotFound         = errors.New("job not found")
 	ErrConfigDecrypt       = errors.New("failed to decrypt config")
 
+	ErrPreserveToastValuesLocked = errors.New("preserve_toast_values can only be set when the source is created")
+
 	// ErrStreamsFormat rejects a catalog whose format does not fit the job or its driver
 	ErrStreamsFormat = errors.New("invalid streams format")
+	// ErrClearDestinationRunning rejects a job update while the job's clear-destination runs
+	ErrClearDestinationRunning = errors.New("clear-destination is in progress, cannot update job")
 
 	// Log related errors
 	ErrInvalidLogCursor   = errors.New("invalid log cursor")

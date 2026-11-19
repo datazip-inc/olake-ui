@@ -315,7 +315,8 @@ function DataTable<TRow>({
 								{columns.map(col => (
 									<div
 										key={`cell-${col.key}`}
-										className={getAlignmentClass(col.align)}
+										// min-w-0 lets a grid cell shrink below its content so long values can truncate
+										className={clsx("min-w-0", getAlignmentClass(col.align))}
 									>
 										{col.render(row)}
 									</div>
