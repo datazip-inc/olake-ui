@@ -7,7 +7,7 @@ import {
 } from "@/modules/ingestion/features/jobs/stores"
 import {
 	getDedupKeyOptions,
-	getKafkaUpsertNotSupportedMessage,
+	getUpsertNotSupportedMessage,
 } from "@/modules/ingestion/features/jobs/utils/streams"
 
 import DedupKeysSelectionView from "./DedupKeysSelectionView"
@@ -36,7 +36,7 @@ const DedupKeysSelectionSingle = ({
 	if (!storeStream || !storeSelectedStream) return null
 	if (storeSelectedStream.append_mode) return null
 	if (
-		getKafkaUpsertNotSupportedMessage(
+		getUpsertNotSupportedMessage(
 			sourceType,
 			sourceVersion,
 			availableUpdateTypes,

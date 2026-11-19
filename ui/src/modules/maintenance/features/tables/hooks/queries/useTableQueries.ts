@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query"
 
 import { tableKeys } from "../../constants"
 import { tableService } from "../../services"
+import type { TableRunsQuery } from "../../types"
 import {
 	mapGetTablesResponseToTables,
 	mapGetTableRunsResponseToTableRuns,
@@ -54,34 +55,12 @@ export const useTableMetrics = (
 	})
 }
 
-export const useTableRuns = (
-	catalog: string,
-	database: string,
-	tableName: string,
-	page: number,
-	pageSize: number,
-	status?: string,
-) => {
+export const useTableRuns = (query: TableRunsQuery) => {
 	return useQuery({
-		queryKey: tableKeys.runs(
-			catalog,
-			database,
-			tableName,
-			page,
-			pageSize,
-			status,
-		),
-		queryFn: () =>
-			tableService.getTableRuns(
-				catalog,
-				database,
-				tableName,
-				page,
-				pageSize,
-				status,
-			),
+		queryKey: tableKeys.runs(query),
+		queryFn: () => tableService.getTableRuns(query),
 		select: mapGetTableRunsResponseToTableRuns,
-		enabled: !!catalog && !!database && !!tableName,
+		enabled: !!query.catalog && !!query.database && !!query.tableName,
 		placeholderData: keepPreviousData,
 		refetchOnWindowFocus: false,
 	})
