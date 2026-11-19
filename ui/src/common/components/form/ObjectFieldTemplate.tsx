@@ -264,24 +264,35 @@ export default function ObjectFieldTemplate<
 							)}
 							{uiSchema?.["ui:grid"] && Array.isArray(uiSchema["ui:grid"])
 								? uiSchema["ui:grid"].map((ui_row, rowIdx) => {
-										const rowElements = Object.keys(ui_row).map(row_item => {
-											const element = properties.find(p => p.name == row_item)
-											if (element) {
-												return (
-													<Col
-														key={element.name}
-														span={ui_row[row_item]}
-													>
-														{element.content}
-													</Col>
+										// Only fields present in the resolved schema take space; fields
+										// excluded by a dependency (e.g. another catalog type) are absent.
+										const visibleItems = Object.keys(ui_row).flatMap(
+											row_item => {
+												const element = properties.find(
+													p => p.name === row_item && !p.hidden,
 												)
-											}
-											return null
-										})
-										// Calculate total span for the row
-										const totalSpan = Object.values(ui_row).reduce(
-											(sum: number, val) =>
-												sum + (typeof val === "number" ? val : 0),
+												return element
+													? [{ element, span: ui_row[row_item] }]
+													: []
+											},
+										)
+										// Skip rows with no visible fields so they leave no gap
+										if (visibleItems.length === 0) return []
+
+										const rowElements = visibleItems.map(
+											({ element, span }) => (
+												<Col
+													key={element.name}
+													span={span}
+												>
+													{element.content}
+												</Col>
+											),
+										)
+										// Calculate total span of the visible fields in the row
+										const totalSpan = visibleItems.reduce(
+											(sum: number, { span }) =>
+												sum + (typeof span === "number" ? span : 0),
 											0,
 										)
 										// If totalSpan < 24, add an empty Col to fill the row
