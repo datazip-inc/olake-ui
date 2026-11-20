@@ -85,12 +85,13 @@ jobs:
         id: ref
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      # No caches: a release build should not restore state that other workflows saved.
+      # Go module and build cache, keyed on server/go.sum. Without it, compiling the server for
+      # both platforms from scratch takes about 3.5 minutes of the run.
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version-file: server/go.mod
-          cache: false
+          cache-dependency-path: server/go.sum
 
       # pnpm version comes from the packageManager field in ui/package.json.
       - name: Install pnpm
