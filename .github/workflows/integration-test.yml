@@ -52,6 +52,22 @@ jobs:
         working-directory: ./server
         run: go mod download
 
+      # pnpm version comes from the packageManager field in ui/package.json.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: ui/package.json
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # The test builds the olake-ui image from the local Dockerfile, which only copies prebuilt
+      # artifacts. Build them for this runner's architecture (the Docker-in-Docker host).
+      - name: Build UI and server binaries
+        run: make dist PLATFORMS="linux/$(go env GOARCH)"
+
       - name: Run Docker In Docker Container Tests
         working-directory: ./server
         run: go test -v ./tests -timeout 0 -run 'TestDinDIntegration'

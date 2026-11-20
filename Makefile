@@ -26,8 +26,10 @@ frontend-format-check:
 ## step runs inside Docker (and none under QEMU for other architectures).
 ##   ui/dist                         UI, built once (it is the same for every platform)
 ##   dist/<os>/<arch>/olake-server   server, cross-compiled for each platform
+## PLATFORMS takes a comma- or space-separated list, the same value `docker buildx --platform` takes.
 ## Example: make dist PLATFORMS=linux/amd64
-PLATFORMS ?= linux/amd64 linux/arm64
+PLATFORMS ?= linux/amd64,linux/arm64
+comma := ,
 
 dist: dist-ui dist-server
 
@@ -36,8 +38,11 @@ dist-ui:
 
 # dist/ is wiped first so a binary from an older build can never end up in the image.
 dist-server:
+	@for p in $(subst $(comma), ,$(PLATFORMS)); do \
+		case "$$p" in */*/*) echo "dist-server: $$p: platform variants are not supported" >&2; exit 1;; esac; \
+	done
 	rm -rf dist
-	@set -e; for p in $(PLATFORMS); do \
+	@set -e; for p in $(subst $(comma), ,$(PLATFORMS)); do \
 		echo "Building olake-server for $$p"; \
 		(cd server && CGO_ENABLED=0 GOOS=$${p%/*} GOARCH=$${p#*/} \
 			go build -trimpath -ldflags="-w -s" -o ../dist/$$p/olake-server .); \
