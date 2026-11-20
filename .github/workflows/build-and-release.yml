@@ -39,77 +39,163 @@ on:
         default: "v0.0.0.dev"
         type: string
 
+permissions:
+  contents: read
+
+env:
+  # Read by `make dist` and the image build.
+  PLATFORMS: linux/amd64,linux/arm64
+
 jobs:
-  build_and_publish_frontend:
-    name: Build and publish frontend image for ${{ inputs.environment }}
-    environment: ${{ inputs.environment }}
+  # Builds the UI once and cross-compiles the server for each platform on the runner
+  # (`make dist`). This job runs third-party code (Go modules, npm packages), so it has no
+  # access to the Docker Hub credentials.
+  build:
+    name: Build release artifacts for ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    env:
-      DOCKER_LOGIN: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      DOCKER_REPO: ${{ secrets.DOCKER_REPO || 'olakego' }}
-      DOCKER_REPO_WORKER: ${{ secrets.DOCKER_REPO_WORKER || 'olakego' }}
-      ENVIRONMENT: ${{ inputs.environment }}
-      VERSION: ${{ inputs.version }}
-
+    timeout-minutes: 20
+    outputs:
+      sha: ${{ steps.ref.outputs.sha }}
     steps:
-      - name: Checkout code from explicit ref
-        if: ${{ inputs.ref != '' }}
+      - name: Resolve ref
+        id: resolve
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          if [[ -n "$INPUT_REF" ]]; then
+            ref="$INPUT_REF"
+          else
+            case "$ENVIRONMENT" in
+              master) ref=master ;;
+              dev) ref=ci/workerReleaseIssues ;;
+              *) ref=staging ;;
+            esac
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ steps.resolve.outputs.ref }}
+          persist-credentials: false
 
-      - name: Checkout code for master
-        if: ${{ inputs.ref == '' && inputs.environment == 'master' }}
-        uses: actions/checkout@v4
+      # The push job checks out this exact commit, so the image always matches the artifacts.
+      - name: Record commit
+        id: ref
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # No caches: a release build should not restore state that other workflows saved.
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          ref: master
+          go-version-file: server/go.mod
+          cache: false
 
-      - name: Checkout code for staging
-        if: ${{ inputs.ref == '' && inputs.environment == 'staging' }}
-        uses: actions/checkout@v4
+      # pnpm version comes from the packageManager field in ui/package.json.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          ref: staging
-
-      - name: Checkout code for dev
-        if: ${{ inputs.ref == '' && inputs.environment == 'dev' }}
-        uses: actions/checkout@v4
-        with:
-          ref: ci/workerReleaseIssues
-
-      - name: Checkout code for other environments
-        if: ${{ inputs.ref == '' && inputs.environment != 'master' && inputs.environment != 'staging' && inputs.environment != 'dev' }}
-        uses: actions/checkout@v4
-        with:
-          ref: staging
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+          package_json_file: ui/package.json
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      - name: Install pnpm
-        run: npm install -g pnpm@11.24.0
+      - name: Build UI and server binaries
+        run: make dist PLATFORMS="$PLATFORMS"
 
-      - name: Cache pnpm store
-        uses: actions/cache@v4
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('ui/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          name: release-artifacts
+          path: |
+            dist/
+            ui/dist/
+          if-no-files-found: error
+          retention-days: 1
+          # A re-run of this job uploads under the same name.
+          overwrite: true
 
-      - name: Setup environment variables
+  # Packages the prebuilt artifacts into the multi-arch image and pushes it. The Dockerfile
+  # only copies files, so no QEMU is needed.
+  push:
+    name: Build and publish frontend image for ${{ inputs.environment }}
+    needs: build
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      IMAGE: ${{ secrets.DOCKER_REPO || 'olakego' }}
+    steps:
+      # Fail before anything is built if the version does not fit the environment.
+      #   master:  v1.2.3       -> v1.2.3, latest
+      #   staging: v1.2.3-rc1   -> stag-v1.2.3-rc1, stag-latest
+      #   other:   any tag      -> dev-<version>, dev-latest
+      - name: Resolve image tags
+        id: tags
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          VERSION: ${{ inputs.version }}
         run: |
-          echo "ENVIRONMENT=${{ env.ENVIRONMENT }}" >> $GITHUB_ENV
-          echo "VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
-          echo "Building frontend application for $ENVIRONMENT with version $VERSION"
+          case "$ENVIRONMENT" in
+            master)
+              [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+                || { echo "::error::Version '$VERSION' must be semantic (e.g. v1.0.0) for master"; exit 1; }
+              version_tag="$VERSION"; latest_tag="latest" ;;
+            staging)
+              [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-[a-zA-Z0-9_.-]+$ ]] \
+                || { echo "::error::Version '$VERSION' must look like v1.0.0-rc1 for staging"; exit 1; }
+              version_tag="stag-$VERSION"; latest_tag="stag-latest" ;;
+            *)
+              [[ "$VERSION" =~ ^[a-zA-Z0-9_.-]+$ ]] \
+                || { echo "::error::Version '$VERSION' has characters not allowed in a Docker tag"; exit 1; }
+              version_tag="dev-$VERSION"; latest_tag="dev-latest" ;;
+          esac
+          {
+            echo "version=$version_tag"
+            echo "latest=$latest_tag"
+          } >> "$GITHUB_OUTPUT"
+          echo "Publishing ${IMAGE}:${version_tag} and ${IMAGE}:${latest_tag}"
 
-      - name: Run Release tool
-        run: |
-          chmod +x ./release.sh
-          ./release.sh
-        shell: bash
+      # Only the files the Dockerfile copies are needed from the repo.
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build.outputs.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            Dockerfile
+            .dockerignore
+            server/conf/app.yaml
+            server/internal/services/optimization/resources/spec.json
+          sparse-checkout-cone-mode: false
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: .
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # `context: .` builds from the checkout plus the downloaded artifacts, not from git.
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          build-args: APP_VERSION=${{ inputs.version }}
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.tags.outputs.version }}
+            ${{ env.IMAGE }}:${{ steps.tags.outputs.latest }}
