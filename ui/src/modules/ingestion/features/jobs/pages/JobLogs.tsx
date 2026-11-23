@@ -22,8 +22,7 @@ import { getLogLevelClass, getLogTextColor } from "@/common/utils"
 import { getConnectorImage } from "@/modules/ingestion/common/utils"
 
 import { LOG_SOURCE_STYLES, LOG_SOURCE_TABS, LOGS_CONFIG } from "../constants"
-import { useJobDetails } from "../hooks"
-import { jobService } from "../services"
+import { useDownloadTaskLogs, useJobDetails } from "../hooks"
 import { useTaskStore } from "../stores"
 import { TaskLogEntry, TaskLogSource } from "../types"
 
@@ -68,6 +67,7 @@ const JobLogs: React.FC = () => {
 	} = useTaskStore()
 
 	const { data: job } = useJobDetails(jobId || "")
+	const downloadTaskLogs = useDownloadTaskLogs()
 
 	const filteredLogs = useMemo(() => {
 		const search = searchText.toLowerCase()
@@ -105,8 +105,12 @@ const JobLogs: React.FC = () => {
 
 	const handleDownloadLogs = () => {
 		if (!jobId || !filePath) return
-		jobService.downloadTaskLogs(jobId, filePath)
-		message.success("Downloading logs...")
+		downloadTaskLogs.mutate(
+			{ jobId, filePath },
+			{
+				onSuccess: () => message.success("Downloading logs..."),
+			},
+		)
 	}
 
 	// Every run opens on the merged view
@@ -389,7 +393,8 @@ const JobLogs: React.FC = () => {
 					type="default"
 					className="font-extralight"
 					onClick={handleDownloadLogs}
-					disabled={!jobId || !filePath}
+					loading={downloadTaskLogs.isPending}
+					disabled={!jobId || !filePath || downloadTaskLogs.isPending}
 				>
 					<DownloadIcon size={16} />
 					Download Logs
