@@ -43,6 +43,7 @@ import {
 	validateStreams,
 	queryEnginesChanged,
 	willBuildIndex,
+	withBlockedPartitionChanges,
 	withIndexRequired,
 } from "../utils"
 
@@ -340,26 +341,30 @@ const JobEdit: React.FC = () => {
 		}
 
 		try {
+			const catalogFormat = useStreamSelectionStore.getState().catalogFormat
 			const streamDifferenceResponse = (
 				await getStreamDifference({
 					jobId,
-					request: buildStreamDifferenceRequest(
-						streamsData,
-						useStreamSelectionStore.getState().catalogFormat,
-					),
+					request: buildStreamDifferenceRequest(streamsData, catalogFormat),
 				})
 			)?.difference_streams
 
-			const diff =
+			const diff = withBlockedPartitionChanges(
 				typeof streamDifferenceResponse === "string"
 					? JSON.parse(streamDifferenceResponse || "{}")
-					: streamDifferenceResponse || {}
+					: streamDifferenceResponse || {},
+				streamsData,
+				initialStreamsData.current,
+				destinationSnapshot.config,
+				advancedSettings?.target_query_engines,
+				catalogFormat,
+			)
 			const hasDiff = Object.keys(diff?.selected_streams ?? diff).length > 0
 			// if there is a stream difference, show the stream difference modal — it
 			// carries the index warning too, so the user never sees two modals.
 
 			if (hasDiff) {
-				setStreamDifference(streamDifferenceResponse)
+				setStreamDifference(diff)
 				setShowStreamDifferenceModal(true)
 				return
 			}
