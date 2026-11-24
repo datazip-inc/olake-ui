@@ -16,6 +16,7 @@ import {
 	SelectedStreamsByNamespace,
 	StreamsDataStructure,
 	StreamData,
+	StreamDifferenceResponse,
 	SelectedStream,
 	StreamsV2Catalog,
 	SyncMode,
@@ -418,6 +419,117 @@ export const coversAllSelectedStreams = (
 	const impacted = streamIds(streamDifference.selected_streams ?? {})
 
 	return selected.size > 0 && [...selected].every(id => impacted.has(id))
+}
+
+// Iceberg catalogs whose docs rule out partition evolution by an external writer.
+// Unity: no transform partitioning (day, month, bucket, ...) and foreign tables can't evolve.
+export const PARTITION_EVOLUTION_UNSUPPORTED_CATALOGS = ["unity"]
+
+// Query engines whose docs don't support partition evolution on Iceberg tables.
+// Athena: no partition evolution. Databricks SQL: can't evolve managed Iceberg tables.
+// BigQuery: managed features are off for evolved tables and reads aren't documented.
+export const PARTITION_EVOLUTION_UNSUPPORTED_QUERY_ENGINES = [
+	"athena",
+	"databricks",
+	"bigquery",
+]
+
+const destinationCatalogType = (destinationConfig?: string): string => {
+	try {
+		return JSON.parse(destinationConfig || "{}")?.writer?.catalog_type ?? ""
+	} catch {
+		return ""
+	}
+}
+
+// Names the catalog or target query engine that rules out partition evolution, or
+// returns null when the destination and every target engine support it.
+export const partitionEvolutionBlocker = (
+	destinationConfig: string | undefined,
+	targetQueryEngines: string[] | undefined,
+): string | null => {
+	const catalogType = destinationCatalogType(destinationConfig)
+	if (PARTITION_EVOLUTION_UNSUPPORTED_CATALOGS.includes(catalogType)) {
+		return `the ${catalogType} catalog`
+	}
+	const engine = (targetQueryEngines ?? []).find(engine =>
+		PARTITION_EVOLUTION_UNSUPPORTED_QUERY_ENGINES.includes(engine),
+	)
+	return engine ? `the ${engine} query engine` : null
+}
+
+// OLake leaves a partition_regex change on an append-only Iceberg stream out of the
+// difference because the table's partition spec evolves in place. On a catalog or for
+// a target query engine that can't handle evolution, the stream is added back so its
+// table is cleared and recreated instead.
+export const withBlockedPartitionChanges = (
+	streamDifference: StreamDifferenceResponse,
+	streamsConfig: StreamsDataStructure,
+	savedStreamsConfig: SelectedStreams | null | undefined,
+	destinationConfig: string | undefined,
+	targetQueryEngines: string[] | undefined,
+	catalogFormat: CatalogFormat,
+): StreamDifferenceResponse => {
+	if (!partitionEvolutionBlocker(destinationConfig, targetQueryEngines)) {
+		return streamDifference
+	}
+
+	const savedRegex = new Map(
+		Object.entries(
+			getSelectedStreams(savedStreamsConfig?.selected_streams ?? {}),
+		).flatMap(([namespace, streams]) =>
+			streams.map(
+				stream =>
+					[
+						`${namespace}.${stream.stream_name}`,
+						stream.partition_regex ?? "",
+					] as const,
+			),
+		),
+	)
+
+	const selectedStreams: SelectedStreamsByNamespace = {
+		...(streamDifference.selected_streams ?? {}),
+	}
+	const streams = [...(streamDifference.streams ?? [])]
+
+	Object.entries(getSelectedStreams(streamsConfig.selected_streams)).forEach(
+		([namespace, namespaceStreams]) => {
+			namespaceStreams.forEach(stream => {
+				const oldRegex = savedRegex.get(`${namespace}.${stream.stream_name}`)
+				const impacted = (selectedStreams[namespace] ?? []).some(
+					s => s.stream_name === stream.stream_name,
+				)
+				if (
+					oldRegex === undefined ||
+					oldRegex === (stream.partition_regex ?? "") ||
+					impacted
+				) {
+					return
+				}
+
+				selectedStreams[namespace] = [
+					...(selectedStreams[namespace] ?? []),
+					stream,
+				]
+				// the legacy difference carries each stream's definition too
+				const streamData = streamsConfig.streams.find(
+					s =>
+						s.stream.name === stream.stream_name &&
+						(s.stream.namespace || "") === namespace,
+				)
+				if (catalogFormat === CatalogFormat.LEGACY && streamData) {
+					streams.push(streamData)
+				}
+			})
+		},
+	)
+
+	return {
+		...streamDifference,
+		selected_streams: selectedStreams,
+		...(catalogFormat === CatalogFormat.LEGACY && { streams }),
+	}
 }
 
 // Engines only reach the catalog through a discover, so a selection that differs

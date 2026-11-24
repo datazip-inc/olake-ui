@@ -15,6 +15,8 @@ interface PartitionRegexSectionViewProps {
 	isSelected: boolean
 	isDirty?: boolean
 	activePartitionRegex: string
+	// Shown on an existing job: what a partitioning change does to the stream's data
+	changeImpact?: string
 	onChange?: (regex: string) => void
 }
 
@@ -23,6 +25,7 @@ const PartitionRegexSectionView = ({
 	isSelected,
 	isDirty,
 	activePartitionRegex,
+	changeImpact,
 	onChange,
 }: PartitionRegexSectionViewProps) => {
 	const [partitionRegex, setPartitionRegex] = useState("")
@@ -60,6 +63,12 @@ const PartitionRegexSectionView = ({
 					<ArrowSquareOutIcon className="size-5" />
 				</a>
 			</div>
+			{isSelected && changeImpact && (
+				<div className="ml-1 flex items-start gap-1 text-sm text-[#686868]">
+					<InfoIcon className="mt-0.5 size-4 shrink-0" />
+					{changeImpact}
+				</div>
+			)}
 			{isSelected ? (
 				<>
 					<Input
