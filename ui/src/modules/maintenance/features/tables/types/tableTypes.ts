@@ -173,7 +173,7 @@ export interface TableConfigApiModel {
 	majorTriggerInterval?: string
 	fullTriggerInterval?: string
 	enabledForOptimization: boolean
-	// False when the table has no compaction cron set at all.
+	// False when no compaction cron has a value (every one is unset or Never).
 	optimizationConfigured: boolean
 	targetFileSize?: number
 	// Fusion's rule: snapshot-expire.enabled when set, else whether a cron is set.

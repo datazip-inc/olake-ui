@@ -4,6 +4,7 @@ import { restrictNumericInput } from "@/common/utils"
 
 import { DEFAULT_TARGET_FILE_SIZE, OPTIMIZE_SCHEDULES } from "../../constants"
 import type { OptimizeConfigFormModel } from "../../types"
+import { toggleOptimization, updateOptimizeSchedule } from "../../utils"
 import AdvancedConfigRow from "../AdvancedConfigRow"
 import AdvancedConfigSection from "../AdvancedConfigSection"
 import FeatureToggleRow from "../FeatureToggleRow"
@@ -24,7 +25,7 @@ const OptimizeTabContent: React.FC<OptimizeTabContentProps> = ({
 				label="Optimization"
 				checked={value.optimizationEnabled}
 				onChange={optimizationEnabled =>
-					onChange({ ...value, optimizationEnabled })
+					onChange(toggleOptimization(value, optimizationEnabled))
 				}
 			/>
 		</div>
@@ -34,7 +35,10 @@ const OptimizeTabContent: React.FC<OptimizeTabContentProps> = ({
 				title={schedule.title}
 				tooltip={schedule.tooltip}
 				value={value[schedule.key]}
-				onChange={cron => onChange({ ...value, [schedule.key]: cron })}
+				onChange={cron =>
+					onChange(updateOptimizeSchedule(value, schedule.key, cron))
+				}
+				customDefault={schedule.customDefault}
 				isFirst={index === 0}
 			/>
 		))}

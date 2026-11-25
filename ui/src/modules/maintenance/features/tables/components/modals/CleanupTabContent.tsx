@@ -3,12 +3,14 @@ import { InputNumber, Select } from "antd"
 import { restrictNumericInput } from "@/common/utils"
 
 import {
+	CLEANUP_CUSTOM_DEFAULT_CRON,
 	DEFAULT_KEEP_DURATION_VALUE,
 	DEFAULT_MIN_SNAPSHOTS_TO_KEEP,
 	KEEP_DURATION_UNIT_OPTIONS,
 	MIN_SNAPSHOTS_TO_KEEP_LOWEST,
 } from "../../constants"
 import type { CleanupConfigFormModel, KeepDurationUnit } from "../../types"
+import { toggleSnapshotExpiry, updateCleanupSchedule } from "../../utils"
 import AdvancedConfigRow from "../AdvancedConfigRow"
 import AdvancedConfigSection from "../AdvancedConfigSection"
 import FeatureToggleRow from "../FeatureToggleRow"
@@ -34,7 +36,9 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 			<FeatureToggleRow
 				label="Expire Snapshots"
 				checked={value.expireSnapshots}
-				onChange={expireSnapshots => onChange({ ...value, expireSnapshots })}
+				onChange={expireSnapshots =>
+					onChange(toggleSnapshotExpiry(value, expireSnapshots))
+				}
 			/>
 		</div>
 
@@ -95,7 +99,8 @@ const CleanupTabContent: React.FC<CleanupTabContentProps> = ({
 			subtitle="(only expire snapshots)"
 			tooltip="How often expired snapshots are removed."
 			value={value.cron}
-			onChange={cron => onChange({ ...value, cron })}
+			onChange={cron => onChange(updateCleanupSchedule(value, cron))}
+			customDefault={CLEANUP_CUSTOM_DEFAULT_CRON}
 		/>
 	</>
 )

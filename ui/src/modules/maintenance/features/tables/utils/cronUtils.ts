@@ -3,10 +3,14 @@ import { Cron } from "croner"
 import { KNOWN_CRON_TRIGGER_INTERVALS } from "../constants"
 import type { CronConfigOption } from "../types"
 
-export const getCronFromConfig = (config: CronConfigOption) => {
+// Cron string a schedule saves; an empty Custom box falls back to customDefault (its placeholder).
+export const getCronFromConfig = (
+	config: CronConfigOption,
+	customDefault: string,
+) => {
 	if (config.frequency === "never") return ""
 	return config.frequency === "custom"
-		? config.customCron.trim()
+		? config.customCron.trim() || customDefault
 		: config.frequency
 }
 
@@ -25,11 +29,9 @@ export const isValidCronExpression = (cron: string): string | null => {
 	}
 }
 
-// Validation message for a schedule, or null when it is "never" or a valid expression.
-export const getCronConfigError = (config: CronConfigOption): string | null => {
-	const cron = getCronFromConfig(config)
-	return cron ? isValidCronExpression(cron) : null
-}
+// Validation message for a schedule's cron, or null when it is "" (never) or a valid expression.
+export const getCronError = (cron: string): string | null =>
+	cron ? isValidCronExpression(cron) : null
 
 // Maps a raw cron string to dropdown state: preset strings become a frequency value, anything else a custom entry.
 export const mapTriggerIntervalToCronConfigOption = (
@@ -67,15 +69,12 @@ const getUpcomingRunDates = (cron: string, count: number): Date[] => {
 	}
 }
 
-// Earliest `count` upcoming runs across several schedules, merged and sorted.
+// Earliest `count` upcoming runs across several schedules' crons, merged and sorted.
 // Two schedules firing in the same minute show as one upcoming time.
-export const getNextRunsAcross = (
-	configs: CronConfigOption[],
-	count = 3,
-): string[] => {
+export const getNextRunsAcross = (crons: string[], count = 3): string[] => {
 	const byTime = new Map<number, Date>()
-	for (const config of configs) {
-		for (const run of getUpcomingRunDates(getCronFromConfig(config), count)) {
+	for (const cron of crons) {
+		for (const run of getUpcomingRunDates(cron, count)) {
 			byTime.set(run.getTime(), run)
 		}
 	}
