@@ -28,7 +28,8 @@ export const useToggleTableOptimizing = () => {
 			enabled,
 		}: ToggleTableOptimizingRequest) => {
 			// Status covers both features: on enables optimization and snapshot expiry,
-			// off disables both. Never-configured tables get the defaults on the way up.
+			// off disables both. On the way up, a feature whose schedules are all unset or
+			// Never gets the default schedules, since an empty cron never runs.
 			let config: UpdateTableConfigApiRequest = {
 				enabled_for_optimization: enabled.toString(),
 				snapshot_expiry_enabled: enabled.toString(),
@@ -39,20 +40,28 @@ export const useToggleTableOptimizing = () => {
 					await tableService.getTableDetails(catalog, database, tableName),
 				)
 
+				// Only the schedules are replaced; a saved target file size survives the toggle.
 				if (!details.optimizationConfigured) {
+					const { minor_cron, major_cron, full_cron, target_file_size } =
+						mapOptimizeConfigToApiRequest(DEFAULT_OPTIMIZE_CONFIG)
 					config = {
-						...mapOptimizeConfigToApiRequest(DEFAULT_OPTIMIZE_CONFIG),
+						minor_cron,
+						major_cron,
+						full_cron,
+						...(details.targetFileSize === undefined
+							? { target_file_size }
+							: {}),
 						...config,
 					}
 				}
 
-				// Cleanup defaults are seeded per property, only where the table has none, so every
-				// saved value survives the toggle, including a cron of "" (the user picked "Never").
+				// Cleanup defaults are seeded per property: the cron where it is unset or Never, the
+				// rest only where the table has none, so every other saved value survives the toggle.
 				const cleanupDefaults = mapCleanupConfigToApiRequest(
 					DEFAULT_CLEANUP_CONFIG,
 				)
 				config = {
-					...(details.snapshotExpiryCron === undefined
+					...(!details.snapshotExpiryCron?.trim()
 						? { snapshot_expiry_cron: cleanupDefaults.snapshot_expiry_cron }
 						: {}),
 					...(details.snapshotKeepDuration === undefined

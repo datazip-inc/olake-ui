@@ -7,6 +7,7 @@ import CleanupTabContent from "./CleanupTabContent"
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
 import OptimizeTabContent from "./OptimizeTabContent"
 import {
+	CLEANUP_CUSTOM_DEFAULT_CRON,
 	CONFIGURE_MODE,
 	DEFAULT_TABLE_CONFIG_FORM,
 	DEFAULT_TABLE_MODAL_STYLES,
@@ -22,7 +23,8 @@ import type {
 	UpdateTableConfigApiRequest,
 } from "../../types"
 import {
-	getCronConfigError,
+	getCronError,
+	getCronFromConfig,
 	getNextRunsAcross,
 	mapCleanupConfigToApiRequest,
 	mapOptimizeConfigToApiRequest,
@@ -126,18 +128,21 @@ const ConfigureOptimizationModalView: React.FC<
 		onClose()
 	}
 
-	const compactionCrons = OPTIMIZE_SCHEDULES.map(
-		schedule => optimize[schedule.key],
+	// The crons the save writes, with an empty Custom box already resolved to its default.
+	const compactionCrons = OPTIMIZE_SCHEDULES.map(schedule =>
+		getCronFromConfig(optimize[schedule.key], schedule.customDefault),
+	)
+	const cleanupCron = getCronFromConfig(
+		cleanup.cron,
+		CLEANUP_CUSTOM_DEFAULT_CRON,
 	)
 	// Every field in the payload is validated whichever way its switch points: the save
 	// writes all of them, and Fusion rejects a bad cron or a min-count under its floor.
 	const activeCrons = [
 		...compactionCrons,
-		...(includeCleanup ? [cleanup.cron] : []),
+		...(includeCleanup ? [cleanupCron] : []),
 	]
-	const hasInvalidCron = activeCrons.some(
-		cron => getCronConfigError(cron) !== null,
-	)
+	const hasInvalidCron = activeCrons.some(cron => getCronError(cron) !== null)
 	const isCleanupValid =
 		!includeCleanup ||
 		(cleanup.keepDuration.value > 0 &&
@@ -155,7 +160,7 @@ const ConfigureOptimizationModalView: React.FC<
 		: []
 	const cleanupRuns = includeCleanup
 		? cleanup.expireSnapshots
-			? getNextRunsAcross([cleanup.cron])
+			? getNextRunsAcross([cleanupCron])
 			: []
 		: undefined
 

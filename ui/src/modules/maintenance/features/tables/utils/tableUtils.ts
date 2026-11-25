@@ -374,7 +374,7 @@ export const mapTableDetailsResponseToTableDetailsApiModel = (
 			MINOR_CRON_PROPERTY_KEY,
 			MAJOR_CRON_PROPERTY_KEY,
 			FULL_CRON_PROPERTY_KEY,
-		].some(key => key in properties),
+		].some(key => !!properties[key]?.trim()),
 		snapshotExpiryEnabled: isSnapshotExpiryEnabled(properties),
 		snapshotExpiryCron: properties[SNAPSHOT_EXPIRE_CRON_PROPERTY_KEY],
 		snapshotKeepDuration: properties[SNAPSHOT_KEEP_DURATION_PROPERTY_KEY],

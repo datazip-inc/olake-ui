@@ -4,7 +4,7 @@ import clsx from "clsx"
 
 import { CRON_FREQUENCY_OPTIONS } from "../constants"
 import type { CronConfigOption } from "../types"
-import { getCronConfigError, getCronFromConfig, getNextRuns } from "../utils"
+import { getCronError, getCronFromConfig, getNextRuns } from "../utils"
 import RunTimeChips from "./RunTimeChips"
 
 type ScheduleSectionProps = {
@@ -13,6 +13,8 @@ type ScheduleSectionProps = {
 	subtitle?: string
 	value: CronConfigOption
 	onChange: (next: CronConfigOption) => void
+	// Custom box placeholder, and the cron used when the box is left empty.
+	customDefault: string
 	isFirst?: boolean
 	tooltip?: string
 }
@@ -22,12 +24,13 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 	subtitle,
 	value,
 	onChange,
+	customDefault,
 	isFirst = false,
 	tooltip,
 }) => {
-	const nextRuns = getNextRuns(getCronFromConfig(value))
-	const cronError =
-		value.frequency === "custom" ? getCronConfigError(value) : null
+	const cron = getCronFromConfig(value, customDefault)
+	const nextRuns = getNextRuns(cron)
+	const cronError = value.frequency === "custom" ? getCronError(cron) : null
 
 	return (
 		<div
@@ -81,7 +84,7 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 						<Input
 							value={value.customCron}
 							onChange={e => onChange({ ...value, customCron: e.target.value })}
-							placeholder="e.g. 0 */6 * * *"
+							placeholder={customDefault}
 							status={cronError ? "error" : undefined}
 							className="font-mono text-[13px]"
 						/>

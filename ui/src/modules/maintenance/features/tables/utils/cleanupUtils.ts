@@ -1,11 +1,14 @@
 import {
+	CLEANUP_CUSTOM_DEFAULT_CRON,
 	CLEANUP_DEFAULT_TRIGGER_INTERVAL,
+	DEFAULT_CLEANUP_CONFIG,
 	DEFAULT_KEEP_DURATION_UNIT,
 	DEFAULT_KEEP_DURATION_VALUE,
 	DEFAULT_MIN_SNAPSHOTS_TO_KEEP,
 } from "../constants"
 import type {
 	CleanupConfigFormModel,
+	CronConfigOption,
 	KeepDuration,
 	KeepDurationUnit,
 	TableConfigApiModel,
@@ -52,6 +55,28 @@ export const mapTableConfigApiModelToCleanupConfig = (
 	),
 })
 
+// Never switches snapshot expiry off; any other frequency switches it on.
+export const updateCleanupSchedule = (
+	config: CleanupConfigFormModel,
+	cron: CronConfigOption,
+): CleanupConfigFormModel => ({
+	...config,
+	cron,
+	expireSnapshots: cron.frequency !== "never",
+})
+
+// Switching on while the schedule is Never brings back the default schedule.
+export const toggleSnapshotExpiry = (
+	config: CleanupConfigFormModel,
+	expireSnapshots: boolean,
+): CleanupConfigFormModel => ({
+	...config,
+	expireSnapshots,
+	...(expireSnapshots && config.cron.frequency === "never"
+		? { cron: DEFAULT_CLEANUP_CONFIG.cron }
+		: {}),
+})
+
 export const mapCleanupConfigToApiRequest = (
 	config: CleanupConfigFormModel,
 ): Pick<
@@ -62,7 +87,10 @@ export const mapCleanupConfigToApiRequest = (
 	| "snapshot_keep_min_count"
 > => ({
 	snapshot_expiry_enabled: String(config.expireSnapshots),
-	snapshot_expiry_cron: getCronFromConfig(config.cron),
+	snapshot_expiry_cron: getCronFromConfig(
+		config.cron,
+		CLEANUP_CUSTOM_DEFAULT_CRON,
+	),
 	snapshot_keep_duration: formatKeepDuration(config.keepDuration),
 	snapshot_keep_min_count: config.minSnapshotsToKeep,
 })
