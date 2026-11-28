@@ -35,6 +35,11 @@ const LatestRunsPopoverContent: React.FC<Props> = ({ runs }) => (
 									never run
 								</p>
 							)}
+							{run?.skippedLastRun && (
+								<p className="text-[10px] leading-normal text-olake-text-tertiary">
+									last skipped {run.skippedLastRun}
+								</p>
+							)}
 						</div>
 						{cfg && (
 							<div className="flex items-center gap-1">
