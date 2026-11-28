@@ -706,6 +706,8 @@ export const selectIsDiscovering = (state: StreamSelectionState) =>
 // Undefined on catalogs discovered before target query engines existed.
 export const selectAvailableUpdateTypes = (state: StreamSelectionState) =>
 	state.streamsData?.streams?.[0]?.stream.available_update_types
+export const selectAvailableWriteModes = (state: StreamSelectionState) =>
+	state.streamsData?.streams?.[0]?.stream.available_write_modes
 export const selectInitialStreamsSnapshot = (state: StreamSelectionState) =>
 	state.initialStreamsSnapshot
 export const selectActiveStreamKey = (state: StreamSelectionState) =>
