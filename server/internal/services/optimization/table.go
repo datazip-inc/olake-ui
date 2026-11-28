@@ -195,9 +195,54 @@ func (s *Service) getTableDetails(ctx context.Context, catalog, database, table 
 	return result, err
 }
 
-// fetchLatestProcessInfo fetches the latest optimizing process info for a specific type
+// fetchLatestProcessInfo fetches the latest optimizing process info for a specific type.
+// When the latest run is SKIPPED (a schedule fired with no work), the tag should
+// still show the last real execution, so the newest SUCCESS and FAILED runs are
+// fetched and the newer one is reported, with the skipped run kept alongside.
 func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database, table, processType string) (*dto.OptimizationInfo, error) {
-	result, err := s.getLatestOptimizingProcessByType(ctx, catalog, database, table, processType)
+	latest, err := s.fetchSingleProcessInfo(ctx, catalog, database, table, processType, "")
+	if err != nil {
+		return nil, err
+	}
+
+	if latest.Status != constants.OptProcessStatusSkipped {
+		return latest, nil
+	}
+
+	// The latest run was skipped: find the latest real run. Fusion filters by
+	// a single status, so SUCCESS and FAILED are fetched separately and the
+	// newer finish time wins.
+	var real *dto.OptimizationInfo
+	for _, status := range []string{constants.OptProcessStatusSuccess, constants.OptProcessStatusFailed} {
+		candidate, err := s.fetchSingleProcessInfo(ctx, catalog, database, table, processType, status)
+		if err != nil {
+			if errors.Is(err, errNoProcess) {
+				continue
+			}
+			return nil, err
+		}
+		if real == nil || candidate.FinishTime > real.FinishTime {
+			real = candidate
+		}
+	}
+
+	if real == nil {
+		// Every run of this type was skipped.
+		latest.SkippedRun = &dto.OptimizationInfo{
+			FinishTime: latest.FinishTime,
+			Status:     latest.Status,
+			RunID:      latest.RunID,
+		}
+		return latest, nil
+	}
+	real.SkippedRun = latest
+	return real, nil
+}
+
+// fetchSingleProcessInfo returns the newest process of a type, optionally
+// filtered to one status; errNoProcess when none exists.
+func (s *Service) fetchSingleProcessInfo(ctx context.Context, catalog, database, table, processType, status string) (*dto.OptimizationInfo, error) {
+	result, err := s.getLatestOptimizingProcessByType(ctx, catalog, database, table, processType, status)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest %s optimizing process for %s.%s.%s: %w", processType, catalog, database, table, err)
 	}
@@ -218,22 +263,25 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 	}
 
 	finishTime, _ := process["finishTime"].(float64)
-	status, _ := process["status"].(string)
+	processStatus, _ := process["status"].(string)
 	runID, _ := process["processId"].(string)
 
 	return &dto.OptimizationInfo{
 		FinishTime: int64(finishTime),
-		Status:     status,
+		Status:     processStatus,
 		RunID:      runID,
 	}, nil
 }
 
-// returns the latest optimizing process for a specific type
-func (s *Service) getLatestOptimizingProcessByType(ctx context.Context, catalog, database, table, processType string) (map[string]interface{}, error) {
+// returns the latest optimizing process for a specific type, optionally filtered by status
+func (s *Service) getLatestOptimizingProcessByType(ctx context.Context, catalog, database, table, processType, status string) (map[string]interface{}, error) {
 	path := fmt.Sprintf(constants.OptPathTableOptimizingProcesses, catalog, database, table)
 
 	params := url.Values{}
 	params.Set("type", processType)
+	if status != "" {
+		params.Set("status", status)
+	}
 	params.Set("page", "1")
 	params.Set("pageSize", "1")
 
