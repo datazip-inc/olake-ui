@@ -264,6 +264,7 @@ type ReleasesResponse struct {
 	OlakeUIWorker *ReleaseTypeData `json:"olake_ui_worker"`
 	OlakeHelm     *ReleaseTypeData `json:"olake_helm"`
 	Olake         *ReleaseTypeData `json:"olake"`
+	OlakeFusion   *ReleaseTypeData `json:"olake_fusion"`
 	Features      *ReleaseTypeData `json:"features"`
 }
 
