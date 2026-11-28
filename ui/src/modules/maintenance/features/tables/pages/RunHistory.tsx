@@ -22,16 +22,16 @@ const getColumns = (
 	handleLogsClick: (row: TableRun) => void,
 ): ColumnDef<TableRun>[] => [
 	{
-		key: "runId",
-		header: "Run ID",
-		width: 12,
-		render: row => row.runId,
+		key: "startTime",
+		header: "Start Time (UTC)",
+		width: 18,
+		render: row => row.startTime,
 	},
 	{
 		key: "status",
 		header: "Status",
 		align: "center",
-		width: 16,
+		width: 18,
 		render: row => {
 			const cfg = getRunLogsStatusConfig(row.status)
 			return (
@@ -57,25 +57,19 @@ const getColumns = (
 	{
 		key: "type",
 		header: "Type",
-		width: 10,
+		width: 12,
 		render: row => row.type,
-	},
-	{
-		key: "startTime",
-		header: "Start Time",
-		width: 14,
-		render: row => row.startTime,
 	},
 	{
 		key: "duration",
 		header: "Duration",
-		width: 12,
+		width: 14,
 		render: row => row.duration,
 	},
 	{
 		key: "metrics",
 		header: "Metrics",
-		width: 10,
+		width: 11,
 		align: "center",
 		render: row => (
 			<Button
@@ -89,7 +83,7 @@ const getColumns = (
 	{
 		key: "logs",
 		header: "Logs",
-		width: 10,
+		width: 11,
 		align: "center",
 		render: row => (
 			<Button
