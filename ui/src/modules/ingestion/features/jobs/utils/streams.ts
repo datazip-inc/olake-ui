@@ -614,11 +614,19 @@ export const getIngestionMode = (
 	return IngestionMode.CUSTOM
 }
 
-// Checks if the source connector supports a specific ingestion mode
+// Checks if the source connector supports a specific ingestion mode. When the
+// catalog provides available_write_modes it is authoritative (it covers both
+// source and destination); the hardcoded map is the fallback for older
+// connector versions that do not send the field.
 export const isSourceIngestionModeSupported = (
 	mode: IngestionMode,
 	sourceType?: string,
+	availableWriteModes?: string[],
 ): boolean => {
+	if (availableWriteModes !== undefined) {
+		return availableWriteModes.some(m => m.toLowerCase() === mode.toLowerCase())
+	}
+
 	if (!sourceType) return false
 
 	const normSourceType = normalizeConnectorType(
@@ -629,11 +637,18 @@ export const isSourceIngestionModeSupported = (
 	return sourceModes?.some(m => m === mode) ?? false
 }
 
-// Checks if the destination connector supports a specific ingestion mode
+// Checks if the destination connector supports a specific ingestion mode.
+// Like the source check, a catalog-provided available_write_modes is
+// authoritative and the hardcoded map is only a fallback.
 export const isDestinationIngestionModeSupported = (
 	mode: IngestionMode,
 	destinationType?: string,
+	availableWriteModes?: string[],
 ): boolean => {
+	if (availableWriteModes !== undefined) {
+		return availableWriteModes.some(m => m.toLowerCase() === mode.toLowerCase())
+	}
+
 	if (!destinationType) return false
 
 	const normDestType = normalizeConnectorType(destinationType).toLowerCase()
