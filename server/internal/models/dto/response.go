@@ -306,6 +306,9 @@ type OptimizationInfo struct {
 	FinishTime int64  `json:"finish_time,omitempty"`
 	Status     string `json:"status,omitempty"`
 	RunID      string `json:"runID,omitempty"`
+	// SkippedRun is the latest SKIPPED run, kept so the UI can still surface
+	// skip information when Status describes an older real run.
+	SkippedRun *OptimizationInfo `json:"skipped_run,omitempty"`
 }
 
 // TableProperties represents the response from setting table properties
