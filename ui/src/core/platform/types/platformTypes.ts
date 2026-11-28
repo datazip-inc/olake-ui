@@ -4,6 +4,7 @@ export enum ReleaseType {
 	OLAKE_UI_WORKER = "olake_ui_worker",
 	OLAKE_HELM = "olake_helm",
 	OLAKE = "olake",
+	OLAKE_FUSION = "olake_fusion",
 }
 
 // API Response Types (matching backend response)
@@ -25,6 +26,7 @@ export interface ReleasesResponse {
 	[ReleaseType.OLAKE_UI_WORKER]?: ReleaseTypeData
 	[ReleaseType.OLAKE_HELM]?: ReleaseTypeData
 	[ReleaseType.OLAKE]?: ReleaseTypeData
+	[ReleaseType.OLAKE_FUSION]?: ReleaseTypeData
 	[ReleaseType.FEATURES]?: ReleaseTypeData
 }
 
