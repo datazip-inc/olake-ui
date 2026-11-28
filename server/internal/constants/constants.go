@@ -168,6 +168,10 @@ var (
 	OptProcessTypeMajor  = "MAJOR"
 	OptProcessTypeFull   = "FULL"
 	OptProcessTypeExpiry = "EXPIRY"
+	// Fusion optimizing process statuses relevant when picking the latest real run.
+	OptProcessStatusSuccess = "SUCCESS"
+	OptProcessStatusFailed  = "FAILED"
+	OptProcessStatusSkipped = "SKIPPED"
 	// properties
 	OptCreatedAt        = "created-at"
 	OptCacheEnabled     = "cache-enabled"
