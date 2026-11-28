@@ -166,6 +166,9 @@ const mapLatestRun = (run: FusionLatestRun | null): LatestRun => {
 		status: run.status,
 		runID: run.runID,
 		lastRun: getRelativeTimeString(run.finish_time),
+		skippedLastRun: run.skipped_run
+			? getRelativeTimeString(run.skipped_run.finish_time)
+			: undefined,
 	}
 }
 
