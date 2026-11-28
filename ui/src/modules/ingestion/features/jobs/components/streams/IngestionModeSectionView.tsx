@@ -9,6 +9,7 @@ import clsx from "clsx"
 import { IngestionMode } from "../../enums"
 import {
 	selectAvailableUpdateTypes,
+	selectAvailableWriteModes,
 	useStreamSelectionStore,
 } from "../../stores"
 import {
@@ -41,19 +42,23 @@ const IngestionModeSectionView = ({
 	const availableUpdateTypes = useStreamSelectionStore(
 		selectAvailableUpdateTypes,
 	)
+	const availableWriteModes = useStreamSelectionStore(selectAvailableWriteModes)
 	const isSourceUpsertSupported = isSourceIngestionModeSupported(
 		IngestionMode.UPSERT,
 		sourceType,
+		availableWriteModes,
 	)
 
 	const isSourceAppendSupported = isSourceIngestionModeSupported(
 		IngestionMode.APPEND,
 		sourceType,
+		availableWriteModes,
 	)
 
 	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
 		IngestionMode.UPSERT,
 		destinationType,
+		availableWriteModes,
 	)
 
 	const upsertNotSupportedMessage = getUpsertNotSupportedMessage(
@@ -81,7 +86,9 @@ const IngestionModeSectionView = ({
 		!isSourceUpsertSupported || !!upsertNotSupportedMessage || !!appendMode
 
 	const upsertTooltip = !isSourceUpsertSupported
-		? "Upsert is not supported for this source"
+		? availableWriteModes !== undefined
+			? "Upsert is not supported by the source and destination for this stream"
+			: "Upsert is not supported for this source"
 		: upsertDisabledMessage
 
 	const handleIngestionModeChange = (ingestionMode: IngestionMode) => {
@@ -140,7 +147,9 @@ const IngestionModeSectionView = ({
 				<Tooltip
 					title={
 						!isSourceAppendSupported
-							? "Append is not supported for this source"
+							? availableWriteModes !== undefined
+								? "Append is not supported by the source and destination for this stream"
+								: "Append is not supported for this source"
 							: undefined
 					}
 				>

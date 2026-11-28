@@ -62,6 +62,10 @@ export type StreamData = {
 		source_defined_primary_key?: string[]
 		default_stream_properties: DefaultStreamProperties
 		available_update_types?: UpsertType[]
+		// Lowercase mode names (e.g. ["upsert"]) supported by both source and
+		// destination for this stream. Absent on catalogs from older connector
+		// versions; the UI falls back to its hardcoded maps then.
+		available_write_modes?: string[]
 		[key: string]: unknown
 	}
 }

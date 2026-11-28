@@ -11,6 +11,7 @@ import {
 	useJobStore,
 	useStreamSelectionStore,
 	selectAvailableUpdateTypes,
+	selectAvailableWriteModes,
 	selectSelectedStreams,
 } from "../../stores"
 import { GroupedStreamsCollapsibleListProps } from "../../types"
@@ -43,6 +44,7 @@ const StreamsCollapsibleList = ({
 	const availableUpdateTypes = useStreamSelectionStore(
 		selectAvailableUpdateTypes,
 	)
+	const availableWriteModes = useStreamSelectionStore(selectAvailableWriteModes)
 	const [openNamespaces, setOpenNamespaces] = useState<{
 		[ns: string]: boolean
 	}>({})
@@ -274,16 +276,19 @@ const StreamsCollapsibleList = ({
 	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(
 		IngestionMode.UPSERT,
 		sourceType,
+		availableWriteModes,
 	)
 
 	const isSourceAppendModeSupported = isSourceIngestionModeSupported(
 		IngestionMode.APPEND,
 		sourceType,
+		availableWriteModes,
 	)
 
 	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
 		IngestionMode.UPSERT,
 		destinationType,
+		availableWriteModes,
 	)
 
 	const upsertNotSupportedMessage = getUpsertNotSupportedMessage(
