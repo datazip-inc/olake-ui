@@ -17,12 +17,14 @@ const CATEGORIES: ReleaseType[] = [
 	ReleaseType.OLAKE_UI_WORKER,
 	ReleaseType.OLAKE_HELM,
 	ReleaseType.OLAKE,
+	ReleaseType.OLAKE_FUSION,
 ]
 
 const RELEASE_TYPE_TO_LABEL: Record<ReleaseType, string> = {
 	[ReleaseType.OLAKE_UI_WORKER]: "OLake UI and Worker",
 	[ReleaseType.OLAKE_HELM]: "OLake Helm",
 	[ReleaseType.OLAKE]: "OLake",
+	[ReleaseType.OLAKE_FUSION]: "OLake Fusion",
 	[ReleaseType.FEATURES]: "Features",
 }
 

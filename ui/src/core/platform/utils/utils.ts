@@ -50,6 +50,9 @@ export const processReleasesData = (
 			releases[ReleaseType.OLAKE_HELM],
 		),
 		[ReleaseType.OLAKE]: formatReleaseData(releases[ReleaseType.OLAKE]),
+		[ReleaseType.OLAKE_FUSION]: formatReleaseData(
+			releases[ReleaseType.OLAKE_FUSION],
+		),
 		[ReleaseType.FEATURES]: formatReleaseData(releases[ReleaseType.FEATURES]),
 	}
 }

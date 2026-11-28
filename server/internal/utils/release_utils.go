@@ -40,11 +40,12 @@ type GitHubRelease struct {
 type ReleaseType string
 
 const (
-	ReleaseOlakeUI   ReleaseType = "olake_ui"
-	ReleaseWorker    ReleaseType = "worker"
-	ReleaseOlakeHelm ReleaseType = "olake_helm"
-	ReleaseOlake     ReleaseType = "olake"
-	ReleaseFeatures  ReleaseType = "features"
+	ReleaseOlakeUI     ReleaseType = "olake_ui"
+	ReleaseWorker      ReleaseType = "worker"
+	ReleaseOlakeHelm   ReleaseType = "olake_helm"
+	ReleaseOlake       ReleaseType = "olake"
+	ReleaseOlakeFusion ReleaseType = "olake_fusion"
+	ReleaseFeatures    ReleaseType = "features"
 )
 
 // GithubReleaseSource represents a GitHub repository source for fetching releases.
@@ -61,6 +62,9 @@ var ReleaseSources = []GithubReleaseSource{
 	{Type: ReleaseWorker, Repo: "olake-helm", OnlyNewerReleases: true},
 	{Type: ReleaseOlakeHelm, Repo: "olake-helm"},
 	{Type: ReleaseOlake, Repo: "olake", OnlyNewerReleases: true},
+	// OLake Fusion releases are listed in full: the version of the deployed Fusion
+	// instance is not known to this handler, so no newer-release filtering applies.
+	{Type: ReleaseOlakeFusion, Repo: "olake-fusion"},
 }
 
 // BuildReleasesResponse builds the final releases response from fetched data.
@@ -132,6 +136,8 @@ func BuildReleasesResponse(currentVersion, olakeSourceVersion string, fetched ma
 			resp.OlakeHelm = data
 		case ReleaseOlake:
 			resp.Olake = data
+		case ReleaseOlakeFusion:
+			resp.OlakeFusion = data
 		}
 	}
 
