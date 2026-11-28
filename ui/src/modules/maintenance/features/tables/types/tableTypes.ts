@@ -27,6 +27,9 @@ export interface FusionLatestRun {
 	finish_time: number
 	status: RunStatus
 	runID?: string
+	// Latest SKIPPED run, present when it is newer than the reported run so
+	// the popover can still mention the skips.
+	skipped_run?: FusionLatestRun | null
 }
 
 export interface FusionTable {
@@ -133,6 +136,8 @@ export type LatestRun = {
 	lastRun: string
 	status: RunStatus
 	runID?: string
+	// Relative time of the latest skipped run, when one is newer than this run.
+	skippedLastRun?: string
 } | null
 export type RunTypeLabel = ValueOf<typeof RUN_TYPE_LABEL>
 
